@@ -1,0 +1,58 @@
+[package]
+name = "prudentia"
+version = "0.1.0"
+edition = "2021"
+description = "Exchange integration adapters with failover and circuit breaker patterns"
+license = "MIT"
+
+[dependencies]
+# Core dependencies
+disciplina = { path = "../disciplina" }
+formatio = { path = "../formatio" }
+
+# HTTP client for REST APIs
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# WebSocket client for real-time data
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
+
+# Financial calculations
+rust_decimal = { version = "1.33", features = ["serde-with-str"] }
+rust_decimal_macros = "1.33"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Rate limiting and circuit breakers
+governor = "0.6"
+
+# Cryptographic functions for API signatures
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+wiremock = "0.5"
+
+[features]
+default = ["binance"]
+binance = []        # Binance exchange support
+bybit = []          # Bybit exchange support (future)
+coinbase = []       # Coinbase Pro support (future)

@@ -1,0 +1,66 @@
+[package]
+name = "imperium"
+version = "0.1.0"
+edition = "2021"
+description = "API server and command interface for Testudo trading platform"
+license = "MIT"
+
+[dependencies]
+# Core trading components
+disciplina = { path = "../disciplina" }
+formatio = { path = "../formatio" }
+prudentia = { path = "../prudentia" }
+
+# Web framework
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors", "trace", "compression"] }
+hyper = "1.0"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "decimal"] }
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# Financial calculations
+rust_decimal = { version = "1.33", features = ["serde-with-str"] }
+rust_decimal_macros = "1.33"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Security
+argon2 = "0.5"
+jsonwebtoken = "9.0"
+
+# Configuration
+config = "0.14"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# WebSocket support
+axum-extra = { version = "0.9", features = ["typed-header"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+axum-test = "14.0"
+
+[features]
+default = ["api-server"]
+api-server = []     # REST API server
+websocket = []      # WebSocket real-time updates
+admin = []          # Administrative interfaces

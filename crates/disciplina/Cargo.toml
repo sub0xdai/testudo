@@ -1,0 +1,36 @@
+[package]
+name = "disciplina"
+version = "0.1.0"
+edition = "2021" 
+description = "Core risk calculation engine implementing Van Tharp position sizing methodology"
+license = "MIT"
+
+[dependencies]
+# Financial calculations
+rust_decimal = { version = "1.33", features = ["serde-with-str"] }
+rust_decimal_macros = "1.33"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
+# Error handling  
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async support
+async-trait = "0.1"
+
+# Logging
+tracing = "0.1"
+
+[dev-dependencies]
+proptest = "1.0"
+tokio-test = "0.4"
+
+# Property-based testing is MANDATORY for all financial calculations
+[features]
+default = ["verification"]
+verification = []  # Enables formal verification checks
