@@ -11,7 +11,7 @@ pub mod rate_limiter;
 pub mod websocket;
 
 pub use adapters::{ExchangeAdapter, ExchangeAdapterTrait};
-pub use binance::BinanceAdapter;
+pub use binance::{BinanceAdapter, ExchangeConfig};  // Export ExchangeConfig
 pub use circuit_breaker::{CircuitBreaker, CircuitBreakerState};
 pub use rate_limiter::ExchangeRateLimiter;
 pub use failover::{FailoverManager, ExchangeFailoverConfig};

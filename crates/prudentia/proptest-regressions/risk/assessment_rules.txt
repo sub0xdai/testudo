@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5cea5de103e033fee4c593da91f146a9e1dbdf590a38e3c7cbb9316f1d9669c1 # shrinks to risk_pct = 0.07
+cc 90d26fe4cc4a32162cf8fcd1f36f7c75f7fc55df172cfda0e19a73bdfd5a37ab # shrinks to account_equity = 1000.0, risk_pct = 0.04693082539021153, entry_price = 10.0, stop_distance = 916.3642072849528
+cc be238be891c52feaeca6e532a7bb2de77452604e597b19639bb2a8d0744ee0da # shrinks to account_equity = 10000.0, risk_pct = 0.01267190633839752, entry_price = 100.0, stop_distance_pct = 0.01

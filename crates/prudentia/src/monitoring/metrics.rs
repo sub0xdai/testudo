@@ -3,6 +3,7 @@
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::time::SystemTime;
+use std::str::FromStr;
 
 /// Real-time risk metrics for monitoring
 #[derive(Debug, Clone)]

@@ -1,14 +1,511 @@
-//! Testudo Protocol implementation and enforcement
+//! Risk Management Protocol and Testudo Protocol implementation
 //!
-//! This module provides the core implementation of the Testudo Protocol,
-//! which serves as the immutable guardian of capital protection through
-//! systematic risk management.
+//! This module provides two main components:
+//! 1. RiskManagementProtocol - Coordinates multiple risk rules for comprehensive assessment
+//! 2. TestudoProtocol - Enforces immutable protocol limits and maintains trading state
+//!
+//! The RiskManagementProtocol serves as a collection-based system that runs multiple
+//! RiskRules against TradeProposals, while the TestudoProtocol maintains state and
+//! enforces the core Testudo Protocol limits.
 
-use crate::types::{ProtocolLimits, ProtocolViolation, TradeProposal};
+use crate::risk::assessment_rules::{RiskRule, AssessmentError};
+use crate::types::{ProtocolLimits, ProtocolViolation, TradeProposal, RiskAssessment, ApprovalStatus, ViolationSeverity};
+use crate::types::protocol_limits::ProtocolLimitViolation;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{SystemTime, Duration};
-use tracing::{info, warn};
+use thiserror::Error;
+use tracing::{debug, info, warn, error, instrument};
+
+//=============================================================================
+// RISK MANAGEMENT PROTOCOL - Task 3 Implementation
+//=============================================================================
+
+/// Errors that can occur during risk management protocol assessment
+#[derive(Debug, Error, Clone)]
+pub enum ProtocolError {
+    #[error("Risk assessment failed for rule '{rule_name}': {reason}")]
+    RuleAssessmentFailure { rule_name: String, reason: String },
+    
+    #[error("No risk rules configured - protocol cannot assess trade")]
+    NoRulesConfigured,
+    
+    #[error("Protocol configuration error: {reason}")]
+    ConfigurationError { reason: String },
+    
+    #[error("Multiple critical violations detected")]
+    MultipleCriticalViolations,
+}
+
+/// The central risk management protocol that coordinates multiple risk rules
+/// 
+/// Following the Roman principle of layered defense, this protocol applies
+/// multiple independent risk rules to create a comprehensive defense system
+/// against capital destruction. This is the main coordination point for Task 3.
+#[derive(Debug)]
+pub struct RiskManagementProtocol {
+    /// Collection of risk rules to apply to trade proposals
+    risk_rules: Vec<Arc<dyn RiskRule>>,
+    
+    /// Name identifier for logging and debugging
+    protocol_name: String,
+    
+    /// Whether to stop on first critical violation or collect all violations
+    fail_fast: bool,
+}
+
+/// The result of assessing a trade proposal through the complete protocol
+#[derive(Debug, Clone)]
+pub struct ProtocolAssessmentResult {
+    /// The consolidated risk assessment
+    pub assessment: RiskAssessment,
+    
+    /// Individual results from each risk rule (for debugging/analysis)
+    pub rule_results: Vec<RuleAssessmentResult>,
+    
+    /// Overall protocol decision
+    pub protocol_decision: ProtocolDecision,
+    
+    /// Detailed reasoning for the protocol decision
+    pub decision_reasoning: String,
+}
+
+/// Individual risk rule assessment result
+#[derive(Debug, Clone)]
+pub struct RuleAssessmentResult {
+    pub rule_name: String,
+    pub assessment: Result<RiskAssessment, AssessmentError>,
+    pub execution_time_ms: u64,
+}
+
+/// Protocol-level decision enumeration
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProtocolDecision {
+    /// Trade approved by all risk rules
+    Approved,
+    
+    /// Trade approved with warnings from some rules
+    ApprovedWithWarnings,
+    
+    /// Trade rejected due to critical violations
+    Rejected,
+    
+    /// Trade assessment failed due to system errors
+    AssessmentFailed,
+}
+
+impl RiskManagementProtocol {
+    /// Create a new risk management protocol with default settings
+    pub fn new() -> Self {
+        Self {
+            risk_rules: Vec::new(),
+            protocol_name: "RiskManagementProtocol".to_string(),
+            fail_fast: false,
+        }
+    }
+    
+    /// Create a protocol with custom name and settings
+    pub fn with_name(name: String, fail_fast: bool) -> Self {
+        Self {
+            risk_rules: Vec::new(),
+            protocol_name: name,
+            fail_fast,
+        }
+    }
+    
+    /// Add a risk rule to the protocol
+    /// 
+    /// Rules are executed in the order they are added. For optimal performance,
+    /// add cheaper rules first (like individual trade limits) before expensive
+    /// rules (like portfolio-wide calculations).
+    pub fn add_rule<R: RiskRule + 'static>(mut self, rule: R) -> Self {
+        self.risk_rules.push(Arc::new(rule));
+        self
+    }
+    
+    /// Add a risk rule by Arc reference (for sharing rules across protocols)
+    pub fn add_rule_ref(mut self, rule: Arc<dyn RiskRule>) -> Self {
+        self.risk_rules.push(rule);
+        self
+    }
+    
+    /// Get the number of configured risk rules
+    pub fn rule_count(&self) -> usize {
+        self.risk_rules.len()
+    }
+    
+    /// Get the protocol name
+    pub fn name(&self) -> &str {
+        &self.protocol_name
+    }
+    
+    /// Assess a trade proposal against all configured risk rules
+    /// 
+    /// This is the main entry point for trade validation. It runs all risk rules
+    /// and consolidates their assessments into a single protocol decision.
+    /// This implements the core requirement for Task 3.
+    #[instrument(skip(self, proposal), fields(proposal_id = %proposal.id, symbol = %proposal.symbol))]
+    pub fn assess_trade(&self, proposal: &TradeProposal) -> Result<ProtocolAssessmentResult, ProtocolError> {
+        if self.risk_rules.is_empty() {
+            error!("No risk rules configured for protocol '{}'", self.protocol_name);
+            return Err(ProtocolError::NoRulesConfigured);
+        }
+        
+        debug!(
+            "Starting risk assessment for trade {} ({})", 
+            proposal.id, 
+            proposal.symbol
+        );
+        
+        let start_time = std::time::Instant::now();
+        let mut rule_results = Vec::new();
+        let mut consolidated_violations = Vec::new();
+        let mut critical_violations = 0;
+        let mut warnings = 0;
+        let mut assessment_failures = 0;
+        
+        // Primary assessment from first successful rule (for position sizing baseline)
+        let mut primary_assessment: Option<RiskAssessment> = None;
+        
+        // Execute each risk rule
+        for rule in &self.risk_rules {
+            let rule_start = std::time::Instant::now();
+            let rule_name = rule.rule_name().to_string();
+            
+            debug!("Executing risk rule: {}", rule_name);
+            
+            let assessment_result = rule.assess(proposal);
+            let execution_time = rule_start.elapsed().as_millis() as u64;
+            
+            match &assessment_result {
+                Ok(assessment) => {
+                    // Use the first successful assessment as the primary one for position sizing
+                    if primary_assessment.is_none() {
+                        primary_assessment = Some(assessment.clone());
+                    }
+                    
+                    // Collect violations from this rule
+                    for violation in &assessment.violations {
+                        match violation.severity {
+                            ViolationSeverity::Critical => critical_violations += 1,
+                            ViolationSeverity::Warning => warnings += 1,
+                            ViolationSeverity::High => warnings += 1,
+                            ViolationSeverity::Blocking => critical_violations += 1,
+                        }
+                        consolidated_violations.push(violation.clone());
+                    }
+                    
+                    debug!(
+                        "Rule '{}' completed in {}ms - violations: {}", 
+                        rule_name, 
+                        execution_time,
+                        assessment.violations.len()
+                    );
+                }
+                Err(error) => {
+                    assessment_failures += 1;
+                    warn!(
+                        "Risk rule '{}' failed: {} (execution time: {}ms)",
+                        rule_name,
+                        error,
+                        execution_time
+                    );
+                    
+                    // If fail_fast is enabled and this is a critical failure, abort
+                    if self.fail_fast {
+                        return Err(ProtocolError::RuleAssessmentFailure {
+                            rule_name: rule_name.clone(),
+                            reason: error.to_string(),
+                        });
+                    }
+                }
+            }
+            
+            // Store the individual rule result
+            rule_results.push(RuleAssessmentResult {
+                rule_name,
+                assessment: assessment_result,
+                execution_time_ms: execution_time,
+            });
+        }
+        
+        // Determine protocol decision
+        let protocol_decision = self.determine_protocol_decision(
+            critical_violations, 
+            warnings, 
+            assessment_failures
+        );
+        
+        // Create consolidated assessment
+        let consolidated_assessment = self.create_consolidated_assessment(
+            proposal,
+            primary_assessment,
+            consolidated_violations,
+            &protocol_decision,
+        )?;
+        
+        // Generate decision reasoning
+        let decision_reasoning = self.generate_decision_reasoning(
+            critical_violations,
+            warnings,
+            assessment_failures,
+        );
+        
+        let total_time = start_time.elapsed().as_millis();
+        
+        info!(
+            "Protocol assessment completed in {}ms - Decision: {:?} (Critical: {}, Warnings: {}, Failures: {})",
+            total_time,
+            protocol_decision,
+            critical_violations,
+            warnings,
+            assessment_failures
+        );
+        
+        Ok(ProtocolAssessmentResult {
+            assessment: consolidated_assessment,
+            rule_results,
+            protocol_decision,
+            decision_reasoning,
+        })
+    }
+    
+    /// Determine the overall protocol decision based on rule results
+    fn determine_protocol_decision(
+        &self,
+        critical_violations: u32,
+        warnings: u32,
+        assessment_failures: u32,
+    ) -> ProtocolDecision {
+        // Any assessment failures require manual review
+        if assessment_failures > 0 {
+            return ProtocolDecision::AssessmentFailed;
+        }
+        
+        // Any critical violations mean rejection
+        if critical_violations > 0 {
+            return ProtocolDecision::Rejected;
+        }
+        
+        // Warnings are allowed but noted
+        if warnings > 0 {
+            return ProtocolDecision::ApprovedWithWarnings;
+        }
+        
+        // No violations means approval
+        ProtocolDecision::Approved
+    }
+    
+    /// Create a consolidated risk assessment from all rule results
+    fn create_consolidated_assessment(
+        &self,
+        _proposal: &TradeProposal,
+        primary_assessment: Option<RiskAssessment>,
+        violations: Vec<ProtocolViolation>,
+        protocol_decision: &ProtocolDecision,
+    ) -> Result<RiskAssessment, ProtocolError> {
+        match primary_assessment {
+            Some(mut assessment) => {
+                // Update the assessment with consolidated violations
+                assessment.violations = violations;
+                
+                // Update approval status based on protocol decision
+                assessment.approval_status = match protocol_decision {
+                    ProtocolDecision::Approved => ApprovalStatus::Approved,
+                    ProtocolDecision::ApprovedWithWarnings => ApprovalStatus::Approved,
+                    ProtocolDecision::Rejected => ApprovalStatus::Rejected,
+                    ProtocolDecision::AssessmentFailed => ApprovalStatus::Rejected,
+                };
+                
+                Ok(assessment)
+            }
+            None => {
+                // No primary assessment available - this shouldn't happen if rules are configured
+                Err(ProtocolError::ConfigurationError {
+                    reason: "No successful risk rule assessments to consolidate".to_string(),
+                })
+            }
+        }
+    }
+    
+    /// Generate detailed reasoning for the protocol decision
+    fn generate_decision_reasoning(
+        &self,
+        critical_violations: u32,
+        warnings: u32,
+        assessment_failures: u32,
+    ) -> String {
+        match (critical_violations, warnings, assessment_failures) {
+            (0, 0, 0) => {
+                "Trade proposal approved: All risk rules passed without violations. Trade meets Testudo Protocol requirements.".to_string()
+            }
+            (0, w, 0) if w > 0 => {
+                format!(
+                    "Trade proposal approved with {} warning(s): No critical violations detected. Warnings noted for monitoring.",
+                    w
+                )
+            }
+            (c, _, 0) if c > 0 => {
+                format!(
+                    "Trade proposal rejected: {} critical violation(s) detected. Trade violates Testudo Protocol limits.",
+                    c
+                )
+            }
+            (_, _, f) if f > 0 => {
+                format!(
+                    "Trade assessment failed: {} risk rule(s) failed to execute. Manual review required.",
+                    f
+                )
+            }
+            _ => {
+                "Trade assessment completed with mixed results. Review individual rule results for details.".to_string()
+            }
+        }
+    }
+}
+
+impl Default for RiskManagementProtocol {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Convert ProtocolLimitViolation to ProtocolViolation for consistency
+fn convert_limit_violation(violation: ProtocolLimitViolation) -> ProtocolViolation {
+    use crate::types::protocol_limits::ProtocolLimitViolation as PLV;
+    use crate::types::ViolationSeverity;
+    
+    match violation {
+        PLV::ExceedsMaxIndividualRisk { current, limit } => {
+            ProtocolViolation::new(
+                "MaxIndividualTradeRisk".to_string(),
+                ViolationSeverity::Critical,
+                format!("Individual trade risk {}% exceeds maximum limit {}%", current * Decimal::from(100), limit * Decimal::from(100)),
+                current,
+                limit,
+                format!("Reduce position risk to maximum {}% of account equity", limit * Decimal::from(100)),
+            )
+        },
+        PLV::BelowMinIndividualRisk { current, limit } => {
+            ProtocolViolation::new(
+                "MinIndividualTradeRisk".to_string(),
+                ViolationSeverity::Warning,
+                format!("Individual trade risk {}% below minimum recommended {}%", current * Decimal::from(100), limit * Decimal::from(100)),
+                current,
+                limit,
+                format!("Consider increasing position size to at least {}%", limit * Decimal::from(100)),
+            )
+        },
+        PLV::ExceedsMaxPortfolioRisk { current, limit } => {
+            ProtocolViolation::new(
+                "MaxPortfolioRisk".to_string(),
+                ViolationSeverity::Critical,
+                format!("Portfolio risk {}% exceeds maximum limit {}%", current * Decimal::from(100), limit * Decimal::from(100)),
+                current,
+                limit,
+                format!("Reduce total portfolio exposure to maximum {}%", limit * Decimal::from(100)),
+            )
+        },
+        PLV::ExceedsMaxConsecutiveLosses { current, limit } => {
+            ProtocolViolation::new(
+                "MaxConsecutiveLosses".to_string(),
+                ViolationSeverity::Critical,
+                format!("Consecutive losses {} exceeds maximum limit {}", current, limit),
+                Decimal::from(current),
+                Decimal::from(limit),
+                "Wait for winning trade to reset consecutive loss counter".to_string(),
+            )
+        },
+        PLV::BelowMinRewardRiskRatio { current, limit } => {
+            ProtocolViolation::new(
+                "MinRewardRiskRatio".to_string(),
+                ViolationSeverity::High,
+                format!("Reward-to-risk ratio {:.1}:1 below minimum requirement {:.1}:1", current, limit),
+                current,
+                limit,
+                format!("Adjust take profit target to achieve minimum {:.1}:1 reward-to-risk ratio", limit),
+            )
+        },
+        PLV::ExceedsMaxOpenPositions { current, limit } => {
+            ProtocolViolation::new(
+                "MaxOpenPositions".to_string(),
+                ViolationSeverity::High,
+                format!("Open positions {} exceeds maximum recommended limit {}", current, limit),
+                Decimal::from(current),
+                Decimal::from(limit),
+                "Close some positions before opening new ones".to_string(),
+            )
+        },
+        PLV::ExceedsMaxDailyLoss { current, limit } => {
+            ProtocolViolation::new(
+                "MaxDailyLoss".to_string(),
+                ViolationSeverity::Critical,
+                format!("Daily loss {}% exceeds maximum limit {}%", current * Decimal::from(100), limit * Decimal::from(100)),
+                current,
+                limit,
+                "Stop trading for today to prevent further losses".to_string(),
+            )
+        },
+        PLV::ExceedsMaxDrawdown { current, limit } => {
+            ProtocolViolation::new(
+                "MaxDrawdown".to_string(),
+                ViolationSeverity::Critical,
+                format!("Current drawdown {}% exceeds maximum limit {}%", current * Decimal::from(100), limit * Decimal::from(100)),
+                current,
+                limit,
+                "Reduce position sizes or stop trading until account recovers".to_string(),
+            )
+        },
+    }
+}
+
+impl ProtocolAssessmentResult {
+    /// Check if the trade was approved by the protocol
+    pub fn is_approved(&self) -> bool {
+        matches!(self.protocol_decision, ProtocolDecision::Approved | ProtocolDecision::ApprovedWithWarnings)
+    }
+    
+    /// Check if the trade was rejected
+    pub fn is_rejected(&self) -> bool {
+        matches!(self.protocol_decision, ProtocolDecision::Rejected)
+    }
+    
+    /// Check if there were assessment failures
+    pub fn has_failures(&self) -> bool {
+        matches!(self.protocol_decision, ProtocolDecision::AssessmentFailed)
+    }
+    
+    /// Get all violations from the consolidated assessment
+    pub fn violations(&self) -> &[ProtocolViolation] {
+        &self.assessment.violations
+    }
+    
+    /// Get critical violations only
+    pub fn critical_violations(&self) -> Vec<&ProtocolViolation> {
+        self.assessment.violations.iter()
+            .filter(|v| v.severity == ViolationSeverity::Critical)
+            .collect()
+    }
+    
+    /// Get the number of rules that failed to execute
+    pub fn failed_rule_count(&self) -> usize {
+        self.rule_results.iter()
+            .filter(|r| r.assessment.is_err())
+            .count()
+    }
+    
+    /// Get total assessment execution time
+    pub fn total_execution_time_ms(&self) -> u64 {
+        self.rule_results.iter()
+            .map(|r| r.execution_time_ms)
+            .sum()
+    }
+}
+
+//=============================================================================
+// TESTUDO PROTOCOL - Original implementation 
+//=============================================================================
 
 /// The Testudo Protocol enforcer
 ///
@@ -83,15 +580,19 @@ impl TestudoProtocol {
         
         // 1. Check circuit breaker status
         if self.circuit_breaker_active {
-            violations.push(ProtocolViolation::ExceedsMaxConsecutiveLosses {
-                current: self.consecutive_losses,
-                limit: self.limits.max_consecutive_losses,
-            });
+            violations.push(ProtocolViolation::new(
+                "ExceedsMaxConsecutiveLosses".to_string(),
+                ViolationSeverity::Critical,
+                format!("Consecutive losses {} exceeds limit {}", self.consecutive_losses, self.limits.max_consecutive_losses),
+                Decimal::from(self.consecutive_losses),
+                Decimal::from(self.limits.max_consecutive_losses),
+                "Wait for winning trade to reset consecutive loss counter".to_string(),
+            ));
         }
         
         // 2. Validate individual trade risk
         if let Err(violation) = self.limits.validate_individual_trade_risk(proposal.risk_percentage.value()) {
-            violations.push(violation);
+            violations.push(convert_limit_violation(violation));
         }
         
         // 3. Calculate potential new portfolio risk
@@ -99,26 +600,30 @@ impl TestudoProtocol {
         let potential_portfolio_risk = self.total_portfolio_risk + trade_risk;
         
         if let Err(violation) = self.limits.validate_portfolio_risk(potential_portfolio_risk) {
-            violations.push(violation);
+            violations.push(convert_limit_violation(violation));
         }
         
         // 4. Check consecutive losses
         if let Err(violation) = self.limits.validate_consecutive_losses(self.consecutive_losses) {
-            violations.push(violation);
+            violations.push(convert_limit_violation(violation));
         }
         
         // 5. Check open positions limit
         if self.open_positions >= self.limits.max_open_positions {
-            violations.push(ProtocolViolation::ExceedsMaxOpenPositions {
-                current: self.open_positions,
-                limit: self.limits.max_open_positions,
-            });
+            violations.push(ProtocolViolation::new(
+                "ExceedsMaxOpenPositions".to_string(),
+                ViolationSeverity::High,
+                format!("Open positions {} exceeds recommended limit {}", self.open_positions, self.limits.max_open_positions),
+                Decimal::from(self.open_positions),
+                Decimal::from(self.limits.max_open_positions),
+                "Consider closing some positions before opening new ones".to_string(),
+            ));
         }
         
         // 6. Check reward/risk ratio if take profit is set
         if let Some(ratio) = proposal.risk_reward_ratio() {
             if let Err(violation) = self.limits.validate_reward_risk_ratio(ratio) {
-                violations.push(violation);
+                violations.push(convert_limit_violation(violation));
             }
         }
         
@@ -127,10 +632,14 @@ impl TestudoProtocol {
         let daily_loss_percentage = potential_daily_loss / proposal.account_equity.value();
         
         if daily_loss_percentage > self.limits.max_daily_loss {
-            violations.push(ProtocolViolation::ExceedsMaxDailyLoss {
-                current: daily_loss_percentage,
-                limit: self.limits.max_daily_loss,
-            });
+            violations.push(ProtocolViolation::new(
+                "ExceedsMaxDailyLoss".to_string(),
+                ViolationSeverity::Critical,
+                format!("Daily loss {}% exceeds limit {}%", daily_loss_percentage * Decimal::from(100), self.limits.max_daily_loss * Decimal::from(100)),
+                daily_loss_percentage,
+                self.limits.max_daily_loss,
+                "Stop trading for the day to prevent further losses".to_string(),
+            ));
         }
         
         if violations.is_empty() {
@@ -394,7 +903,7 @@ mod tests {
         assert!(result.is_err());
         
         let violations = result.unwrap_err();
-        assert!(violations.iter().any(|v| matches!(v, ProtocolViolation::ExceedsMaxIndividualRisk { .. })));
+        assert!(violations.iter().any(|v| v.rule_name.contains("MaxIndividualTradeRisk") || v.rule_name.contains("ExceedsMaxIndividualRisk")));
     }
     
     #[test]
@@ -418,7 +927,7 @@ mod tests {
         assert!(result.is_err());
         
         let violations = result.unwrap_err();
-        assert!(violations.iter().any(|v| matches!(v, ProtocolViolation::ExceedsMaxPortfolioRisk { .. })));
+        assert!(violations.iter().any(|v| v.rule_name.contains("MaxPortfolioRisk") || v.rule_name.contains("ExceedsMaxPortfolioRisk")));
     }
     
     #[test]
@@ -529,5 +1038,320 @@ mod tests {
         assert_eq!(status.portfolio_exposure.get("BTCUSDT"), None);
         assert_eq!(status.portfolio_exposure.get("ETHUSDT"), Some(&dec!(0.02)));
         assert_eq!(status.total_portfolio_risk, dec!(0.02));
+    }
+    
+    //=============================================================================
+    // RISK MANAGEMENT PROTOCOL TESTS - Task 3
+    //=============================================================================
+    
+    /// Helper function to create a test trade proposal for RiskManagementProtocol tests
+    fn create_test_proposal_for_protocol() -> TradeProposal {
+        TradeProposal::new(
+            "BTCUSDT".to_string(),
+            TradeSide::Long,
+            PricePoint::new(dec!(50000)).unwrap(),
+            PricePoint::new(dec!(48000)).unwrap(),
+            Some(PricePoint::new(dec!(54000)).unwrap()),
+            AccountEquity::new(dec!(10000)).unwrap(),
+            RiskPercentage::new(dec!(0.02)).unwrap(),
+        ).unwrap()
+    }
+    
+    #[test]
+    fn test_risk_management_protocol_creation() {
+        let protocol = RiskManagementProtocol::new();
+        assert_eq!(protocol.rule_count(), 0);
+        assert_eq!(protocol.name(), "RiskManagementProtocol");
+        
+        let custom_protocol = RiskManagementProtocol::with_name("CustomProtocol".to_string(), true);
+        assert_eq!(custom_protocol.name(), "CustomProtocol");
+    }
+    
+    #[test]
+    fn test_empty_protocol_fails_assessment() {
+        let protocol = RiskManagementProtocol::new();
+        let proposal = create_test_proposal_for_protocol();
+        
+        let result = protocol.assess_trade(&proposal);
+        assert!(result.is_err());
+        
+        match result.unwrap_err() {
+            ProtocolError::NoRulesConfigured => {}, // Expected
+            other => panic!("Expected NoRulesConfigured, got: {:?}", other),
+        }
+    }
+    
+    #[test]
+    fn test_single_rule_protocol_approval() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new());
+        
+        let proposal = create_test_proposal_for_protocol();
+        let result = protocol.assess_trade(&proposal).unwrap();
+        
+        // Verify protocol decision
+        assert!(result.is_approved());
+        assert_eq!(result.protocol_decision, ProtocolDecision::Approved);
+        assert!(!result.is_rejected());
+        assert!(!result.has_failures());
+        
+        // Verify assessment details
+        assert_eq!(result.rule_results.len(), 1);
+        assert!(result.rule_results[0].assessment.is_ok());
+        assert_eq!(result.rule_results[0].rule_name, "MaxTradeRisk");
+        assert!(result.rule_results[0].execution_time_ms > 0);
+        
+        // Verify consolidated assessment
+        assert!(result.assessment.is_approved());
+        assert_eq!(result.assessment.approval_status, ApprovalStatus::Approved);
+        assert!(result.violations().is_empty());
+        assert!(result.critical_violations().is_empty());
+        assert_eq!(result.failed_rule_count(), 0);
+        
+        // Verify decision reasoning
+        assert!(!result.decision_reasoning.is_empty());
+        assert!(result.decision_reasoning.contains("approved"));
+        assert!(result.decision_reasoning.contains("Testudo Protocol"));
+    }
+    
+    #[test]
+    fn test_single_rule_protocol_rejection() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new());
+        
+        // Create a high-risk proposal that should be rejected
+        let high_risk_proposal = TradeProposal::new(
+            "ETHUSDT".to_string(),
+            TradeSide::Long,
+            PricePoint::new(dec!(3000)).unwrap(),
+            PricePoint::new(dec!(2900)).unwrap(),
+            None,
+            AccountEquity::new(dec!(10000)).unwrap(),
+            RiskPercentage::new(dec!(0.08)).unwrap(), // 8% risk - exceeds 6% limit
+        ).unwrap();
+        
+        let result = protocol.assess_trade(&high_risk_proposal).unwrap();
+        
+        // Verify protocol decision
+        assert!(result.is_rejected());
+        assert_eq!(result.protocol_decision, ProtocolDecision::Rejected);
+        assert!(!result.is_approved());
+        
+        // Verify violations
+        assert!(!result.violations().is_empty());
+        assert!(!result.critical_violations().is_empty());
+        
+        // Verify the specific violation
+        let critical_violations = result.critical_violations();
+        assert_eq!(critical_violations.len(), 1);
+        assert_eq!(critical_violations[0].rule_name, "MaxTradeRisk");
+        assert_eq!(critical_violations[0].severity, ViolationSeverity::Critical);
+        
+        // Verify decision reasoning
+        assert!(result.decision_reasoning.contains("rejected"));
+        assert!(result.decision_reasoning.contains("critical violation"));
+    }
+    
+    #[test]
+    fn test_multiple_rules_protocol_assessment() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new())
+            .add_rule(MaxTradeRiskRule::conservative()); // More restrictive rule
+        
+        let proposal = create_test_proposal_for_protocol();
+        let result = protocol.assess_trade(&proposal).unwrap();
+        
+        // Both rules should execute
+        assert_eq!(result.rule_results.len(), 2);
+        assert_eq!(protocol.rule_count(), 2);
+        
+        // First rule (standard) should pass
+        assert!(result.rule_results[0].assessment.is_ok());
+        
+        // Second rule (conservative) should also pass for 2% risk
+        assert!(result.rule_results[1].assessment.is_ok());
+        
+        // Overall result should be approved
+        assert!(result.is_approved());
+        assert_eq!(result.protocol_decision, ProtocolDecision::Approved);
+        
+        // Total execution time should be sum of both rules
+        let total_time: u64 = result.rule_results.iter().map(|r| r.execution_time_ms).sum();
+        assert_eq!(result.total_execution_time_ms(), total_time);
+    }
+    
+    #[test]
+    fn test_multiple_rules_with_mixed_results() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new())        // Standard: allows up to 6%
+            .add_rule(MaxTradeRiskRule::conservative()); // Conservative: allows up to 2%
+        
+        // Create a 3% risk trade - standard rule passes, conservative rule fails
+        let moderate_risk_proposal = TradeProposal::new(
+            "ETHUSDT".to_string(),
+            TradeSide::Long,
+            PricePoint::new(dec!(3000)).unwrap(),
+            PricePoint::new(dec!(2910)).unwrap(), // 3% risk distance
+            None,
+            AccountEquity::new(dec!(10000)).unwrap(),
+            RiskPercentage::new(dec!(0.03)).unwrap(), // 3% risk
+        ).unwrap();
+        
+        let result = protocol.assess_trade(&moderate_risk_proposal).unwrap();
+        
+        // First rule should pass
+        assert!(result.rule_results[0].assessment.is_ok());
+        let first_assessment = result.rule_results[0].assessment.as_ref().unwrap();
+        assert!(first_assessment.is_approved());
+        
+        // Second rule should pass but create violations
+        assert!(result.rule_results[1].assessment.is_ok());
+        let second_assessment = result.rule_results[1].assessment.as_ref().unwrap();
+        assert!(!second_assessment.is_approved()); // Conservative rule rejects 3%
+        
+        // Overall result should be rejected due to conservative rule violation
+        assert!(result.is_rejected());
+        assert!(!result.violations().is_empty());
+    }
+    
+    #[test]
+    fn test_protocol_assessment_result_methods() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new());
+        
+        let proposal = create_test_proposal_for_protocol();
+        let result = protocol.assess_trade(&proposal).unwrap();
+        
+        // Test all convenience methods
+        assert!(result.is_approved());
+        assert!(!result.is_rejected());
+        assert!(!result.has_failures());
+        assert_eq!(result.failed_rule_count(), 0);
+        assert!(result.total_execution_time_ms() > 0);
+        assert!(result.violations().is_empty());
+        assert!(result.critical_violations().is_empty());
+        
+        // Test assessment access
+        assert_eq!(result.assessment.proposal_id, proposal.id);
+        assert!(result.assessment.position_size.value() > Decimal::ZERO);
+        assert_eq!(result.assessment.risk_percentage, dec!(0.02));
+    }
+    
+    #[test]
+    fn test_protocol_rule_ordering() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new())
+            .add_rule(MaxTradeRiskRule::conservative())
+            .add_rule(MaxTradeRiskRule::aggressive());
+        
+        let proposal = create_test_proposal_for_protocol();
+        let result = protocol.assess_trade(&proposal).unwrap();
+        
+        // Verify rules executed in order
+        assert_eq!(result.rule_results.len(), 3);
+        
+        // All should have executed and returned results
+        for rule_result in &result.rule_results {
+            assert!(rule_result.assessment.is_ok());
+            assert!(rule_result.execution_time_ms > 0);
+        }
+        
+        // The primary assessment should come from the first rule
+        let first_assessment = result.rule_results[0].assessment.as_ref().unwrap();
+        assert_eq!(result.assessment.position_size, first_assessment.position_size);
+        assert_eq!(result.assessment.risk_percentage, first_assessment.risk_percentage);
+    }
+    
+    #[test]
+    fn test_protocol_fail_fast_behavior() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        // Create a protocol with fail_fast enabled
+        let protocol = RiskManagementProtocol::with_name("FailFastProtocol".to_string(), true)
+            .add_rule(MaxTradeRiskRule::new());
+        
+        let proposal = create_test_proposal_for_protocol();
+        
+        // With valid proposal, should succeed even with fail_fast
+        let result = protocol.assess_trade(&proposal);
+        assert!(result.is_ok());
+        
+        // The protocol configuration should be correct
+        assert_eq!(protocol.name(), "FailFastProtocol");
+    }
+    
+    #[test]
+    fn test_protocol_rule_sharing() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        use std::sync::Arc;
+        
+        // Create a shared rule
+        let shared_rule: Arc<dyn RiskRule> = Arc::new(MaxTradeRiskRule::new());
+        
+        // Use it in multiple protocols
+        let protocol1 = RiskManagementProtocol::with_name("Protocol1".to_string(), false)
+            .add_rule_ref(shared_rule.clone());
+            
+        let protocol2 = RiskManagementProtocol::with_name("Protocol2".to_string(), false)
+            .add_rule_ref(shared_rule.clone());
+        
+        let proposal = create_test_proposal_for_protocol();
+        
+        // Both protocols should work with the shared rule
+        let result1 = protocol1.assess_trade(&proposal).unwrap();
+        let result2 = protocol2.assess_trade(&proposal).unwrap();
+        
+        assert!(result1.is_approved());
+        assert!(result2.is_approved());
+        assert_eq!(result1.rule_results.len(), 1);
+        assert_eq!(result2.rule_results.len(), 1);
+        
+        // Both should have the same rule name
+        assert_eq!(result1.rule_results[0].rule_name, "MaxTradeRisk");
+        assert_eq!(result2.rule_results[0].rule_name, "MaxTradeRisk");
+    }
+    
+    #[test]
+    fn test_protocol_performance_tracking() {
+        use crate::risk::assessment_rules::MaxTradeRiskRule;
+        
+        let protocol = RiskManagementProtocol::new()
+            .add_rule(MaxTradeRiskRule::new())
+            .add_rule(MaxTradeRiskRule::conservative())
+            .add_rule(MaxTradeRiskRule::aggressive());
+        
+        let proposal = create_test_proposal_for_protocol();
+        let result = protocol.assess_trade(&proposal).unwrap();
+        
+        // Verify performance tracking
+        assert!(result.total_execution_time_ms() > 0);
+        
+        // Each rule should have recorded execution time
+        for rule_result in &result.rule_results {
+            assert!(rule_result.execution_time_ms > 0);
+        }
+        
+        // Total time should be at least the sum of individual times
+        let individual_sum: u64 = result.rule_results.iter().map(|r| r.execution_time_ms).sum();
+        assert_eq!(result.total_execution_time_ms(), individual_sum);
+    }
+    
+    #[test]
+    fn test_protocol_default_implementation() {
+        let protocol = RiskManagementProtocol::default();
+        assert_eq!(protocol.rule_count(), 0);
+        assert_eq!(protocol.name(), "RiskManagementProtocol");
     }
 }

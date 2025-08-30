@@ -77,7 +77,10 @@ pub use types::{
 pub use risk::{
     RiskEngine, RiskValidator, TestudoProtocol, RiskValidationResult,
     RiskRule, RiskViolation, TradeRiskAssessment,
-    AssessmentRiskRule, MaxTradeRiskRule  // Task 2: New RiskRule trait and implementation
+    AssessmentRiskRule, MaxTradeRiskRule,  // Task 2: New RiskRule trait and implementation
+    RiskManagementProtocol, ProtocolAssessmentResult, ProtocolDecision,  // Task 3: Risk Management Protocol
+    ProtocolError, RuleAssessmentResult,   // Task 3: Supporting types
+    MaxPortfolioRiskRule, OpenPosition, DailyLossLimitRule, ConsecutiveLossLimitRule  // Task 4a, 4b & 4c: Portfolio-level risk management
 };
 
 pub use monitoring::{
@@ -87,7 +90,7 @@ pub use monitoring::{
 
 // Legacy exchange integration exports (for backward compatibility)
 pub use exchange::{
-    ExchangeAdapter, ExchangeAdapterTrait, BinanceAdapter,
+    ExchangeAdapter, ExchangeAdapterTrait, BinanceAdapter, ExchangeConfig,
     CircuitBreaker, ExchangeRateLimiter, FailoverManager, ExchangeFailoverConfig
 };
 
