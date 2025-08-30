@@ -55,7 +55,7 @@ Remove human emotion from position sizing decisions through formal mathematical 
 
 ```bash
 # Clone the repository
-git clone https://github.com/testudo-platform/testudo.git
+git clone git@github.com:sub0xdai/testudo.git
 cd testudo
 
 # Install Rust dependencies
