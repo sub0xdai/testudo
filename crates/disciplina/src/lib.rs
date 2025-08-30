@@ -1,8 +1,8 @@
-//! Disciplina - Van Tharp Risk Calculation Engine
+//! Position Sizing and Risk Calculation Engine
 //!
-//! This crate implements the core risk calculation algorithms based on Van Tharp's
-//! position sizing methodology. All calculations are formally verified through
-//! property-based testing with zero tolerance for mathematical errors.
+//! This crate implements Van Tharp's position sizing methodology with mathematical precision
+//! and formal verification through property-based testing. All calculations use decimal
+//! arithmetic to ensure financial accuracy.
 //!
 //! ## Core Formula
 //!
@@ -10,122 +10,68 @@
 //! Position Size = (Account Equity × Risk %) ÷ (Entry Price - Stop Loss Price)
 //! ```
 //!
-//! ## Verification Requirements
+//! ## Usage Example
 //!
-//! - Property-based testing with minimum 10,000 iterations
-//! - Cross-validation through independent calculation methods
-//! - Boundary condition testing for all edge cases
-//! - Formal mathematical proof verification
+//! ```rust
+//! use disciplina::{PositionSizingCalculator, AccountEquity, RiskPercentage, PricePoint};
+//! use rust_decimal::Decimal;
+//! use std::str::FromStr;
 //!
-//! ## Roman Military Principle: Disciplina
+//! let calculator = PositionSizingCalculator::new();
+//! let account_equity = AccountEquity::new(Decimal::from(10000))?;
+//! let risk_percentage = RiskPercentage::new(Decimal::from_str("0.02")?)?; // 2%
+//! let entry_price = PricePoint::new(Decimal::from(100))?;
+//! let stop_loss = PricePoint::new(Decimal::from(95))?;
 //!
-//! Mathematical precision without deviation. Every calculation must be verified
-//! through multiple independent methods before being trusted with real capital.
+//! let position_size = calculator.calculate_position_size(
+//!     account_equity,
+//!     risk_percentage,
+//!     entry_price,
+//!     stop_loss,
+//! )?;
+//!
+//! println!("Position size: {} shares", position_size.value());
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
-pub mod calculator;
-pub mod protocols;
 pub mod types;
-pub mod validation;
-pub mod verification;
+pub mod errors;
+pub mod calculator;
 
-pub use calculator::{VanTharpCalculator, PositionSizeCalculator};
-pub use protocols::TestudoProtocol;
-pub use types::{
-    AccountEquity, PositionSize, RiskPercentage, PricePoint,
-    CalculationResult, RiskAssessment,
-};
-pub use validation::{InputValidator, ProtocolValidator};
+// Re-export main types for convenience
+pub use types::{AccountEquity, RiskPercentage, PricePoint, PositionSize};
+pub use errors::PositionSizingError;
+pub use calculator::PositionSizingCalculator;
 
-use rust_decimal::Decimal;
-use thiserror::Error;
-
-/// Disciplina calculation errors with recovery guidance
-#[derive(Debug, Error, Clone)]
-pub enum DisciplinaError {
-    #[error("Invalid account equity: {0} - must be positive")]
-    InvalidAccountEquity(Decimal),
-    
-    #[error("Invalid risk percentage: {0} - must be between 0.5% and 6%")]
-    InvalidRiskPercentage(Decimal),
-    
-    #[error("Invalid price point: entry={entry}, stop={stop} - stop too close to entry")]
-    InvalidPriceDistance { entry: Decimal, stop: Decimal },
-    
-    #[error("Position size calculation overflow - reduce risk percentage")]
-    CalculationOverflow,
-    
-    #[error("Testudo Protocol violation: {violation}")]
-    ProtocolViolation { violation: String },
-    
-    #[error("Calculation verification failed: expected={expected}, actual={actual}")]
-    VerificationFailure { expected: Decimal, actual: Decimal },
-}
-
-/// Result type for all Disciplina operations
-pub type Result<T> = std::result::Result<T, DisciplinaError>;
-
-/// Core trait for position size calculation with formal verification
-#[async_trait::async_trait]
-pub trait PositionSizeCalculator {
-    /// Calculate position size using Van Tharp methodology
-    async fn calculate_position_size(
-        &self,
-        account_equity: AccountEquity,
-        risk_percentage: RiskPercentage,
-        entry_price: PricePoint,
-        stop_loss: PricePoint,
-    ) -> Result<PositionSize>;
-    
-    /// Verify calculation through independent method
-    async fn verify_calculation(
-        &self,
-        input: &CalculationInput,
-        result: &PositionSize,
-    ) -> Result<bool>;
-}
-
-/// Input parameters for position size calculation
-#[derive(Debug, Clone)]
-pub struct CalculationInput {
-    pub account_equity: AccountEquity,
-    pub risk_percentage: RiskPercentage, 
-    pub entry_price: PricePoint,
-    pub stop_loss: PricePoint,
-}
+/// Result type for all position sizing operations
+pub type Result<T> = std::result::Result<T, PositionSizingError>;
 
 #[cfg(test)]
-mod tests {
+mod integration_tests {
     use super::*;
-    use proptest::prelude::*;
-    
-    /// Property-based test: Position size must be inversely related to stop distance
-    proptest! {
-        #[test]
-        fn position_size_inverse_to_stop_distance(
-            equity in 1000.0..100000.0f64,
-            risk_pct in 0.005..0.06f64,
-            entry in 1.0..1000.0f64,
-            stop_distance in 0.01..100.0f64,
-        ) {
-            let account_equity = AccountEquity::new(Decimal::try_from(equity)?)?;
-            let risk_percentage = RiskPercentage::new(Decimal::try_from(risk_pct)?)?;
-            let entry_price = PricePoint::new(Decimal::try_from(entry)?)?;
-            
-            let stop_close = PricePoint::new(Decimal::try_from(entry - stop_distance)?)?;
-            let stop_far = PricePoint::new(Decimal::try_from(entry - (stop_distance * 2.0))?)?;
-            
-            let calculator = VanTharpCalculator::new();
-            
-            let size_close = calculator.calculate_position_size(
-                account_equity, risk_percentage, entry_price, stop_close
-            ).await?;
-            
-            let size_far = calculator.calculate_position_size(
-                account_equity, risk_percentage, entry_price, stop_far
-            ).await?;
-            
-            // Closer stops should result in larger positions (less distance = less risk per unit)
-            prop_assert!(size_close.value() > size_far.value());
-        }
+    use rust_decimal::Decimal;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_end_to_end_position_sizing() {
+        let calculator = PositionSizingCalculator::new();
+        let account_equity = AccountEquity::new(Decimal::from(50000)).unwrap();
+        let risk_percentage = RiskPercentage::new(Decimal::from_str("0.015").unwrap()).unwrap(); // 1.5%
+        let entry_price = PricePoint::new(Decimal::from_str("250.50").unwrap()).unwrap();
+        let stop_loss = PricePoint::new(Decimal::from_str("240.25").unwrap()).unwrap();
+
+        let result = calculator.calculate_position_size(
+            account_equity,
+            risk_percentage,
+            entry_price,
+            stop_loss,
+        );
+
+        assert!(result.is_ok());
+        let position_size = result.unwrap();
+
+        // Manually verify: (50000 * 0.015) / (250.50 - 240.25) = 750 / 10.25 ≈ 73.17
+        let expected = Decimal::from_str("73.170731707317073170731707317").unwrap();
+        assert_eq!(position_size.value(), expected);
     }
 }
