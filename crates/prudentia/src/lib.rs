@@ -76,7 +76,8 @@ pub use types::{
 
 pub use risk::{
     RiskEngine, RiskValidator, TestudoProtocol, RiskValidationResult,
-    RiskRule, RiskViolation, TradeRiskAssessment
+    RiskRule, RiskViolation, TradeRiskAssessment,
+    AssessmentRiskRule, MaxTradeRiskRule  // Task 2: New RiskRule trait and implementation
 };
 
 pub use monitoring::{

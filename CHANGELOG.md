@@ -21,6 +21,13 @@ Following Roman military tradition, releases are named after Roman legions and m
 **The Disciplina Foundation + Prudentia Guardian**
 
 ### Added
+#### Task 2: RiskRule Trait and MaxTradeRiskRule Implementation ✅ **COMPLETED**
+- **RiskRule Trait**: New trait with `assess` method that takes `TradeProposal` and returns `RiskAssessment`
+- **MaxTradeRiskRule**: Complete implementation following Van Tharp methodology with protocol enforcement
+- **Assessment Engine**: Comprehensive risk assessment system with violation tracking and reasoning
+- **Multiple Risk Profiles**: Conservative (2%), Standard (6%), and Aggressive (10%) risk limits
+- **Property-Based Testing**: 10,000+ iterations testing mathematical accuracy and edge cases
+- **TDD Implementation**: Test-driven development with comprehensive unit test coverage
 #### Core Financial Engine (Disciplina Crate) ✅ **COMPLETED**
 - **Van Tharp Position Sizing Calculator**: Complete implementation with formula `Position Size = (Account Equity × Risk %) ÷ (Entry Price - Stop Loss)`
 - **Type-Safe Financial Types**: AccountEquity, RiskPercentage, PricePoint, PositionSize with validation
