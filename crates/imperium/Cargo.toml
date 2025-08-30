@@ -14,7 +14,7 @@ prudentia = { path = "../prudentia" }
 # Web framework
 axum = "0.7"
 tower = "0.4"
-tower-http = { version = "0.5", features = ["fs", "cors", "trace", "compression"] }
+tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 hyper = "1.0"
 
 # Async runtime
@@ -23,7 +23,7 @@ futures = "0.3"
 async-trait = "0.1"
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "decimal"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
 # Financial calculations

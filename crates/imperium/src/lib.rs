@@ -95,7 +95,7 @@ pub enum ImperiumError {
     TradingError { source: formatio::FormatioError },
     
     #[error("Risk calculation failed: {source}")]
-    RiskError { source: disciplina::DisciplinaError },
+    RiskError { source: disciplina::PositionSizingError },
     
     #[error("Internal server error: {message}")]
     InternalError { message: String },
@@ -114,7 +114,7 @@ pub struct AppState {
     pub cache: redis::aio::ConnectionManager,
     
     /// Van Tharp position size calculator
-    pub risk_calculator: Arc<disciplina::VanTharpCalculator>,
+    pub risk_calculator: Arc<disciplina::PositionSizingCalculator>,
     
     /// OODA loop trading controller
     pub trading_controller: Arc<formatio::OodaController>,

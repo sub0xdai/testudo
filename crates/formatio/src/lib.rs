@@ -41,7 +41,7 @@ pub use types::{
     ExecutionPlan, OodaPhase, LoopMetrics
 };
 
-use disciplina::{DisciplinaError, CalculationInput};
+use disciplina::PositionSizingError;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -52,7 +52,7 @@ pub enum FormatioError {
     ObservationFailure { reason: String },
     
     #[error("ORIENT phase failed: {source}")]
-    OrientationFailure { source: DisciplinaError },
+    OrientationFailure { source: PositionSizingError },
     
     #[error("DECIDE phase blocked: {violation}")]
     DecisionBlocked { violation: String },
@@ -116,7 +116,7 @@ impl Default for OodaConfig {
             max_decide_duration: Duration::from_millis(30),
             max_act_duration: Duration::from_millis(100),
             max_consecutive_failures: 3,
-            circuit_breaker_timeout: Duration::from_mins(5),
+            circuit_breaker_timeout: Duration::from_secs(5 * 60),
         }
     }
 }

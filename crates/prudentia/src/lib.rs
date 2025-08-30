@@ -1,43 +1,93 @@
-//! Prudentia - Exchange Integration Adapters
+//! Prudentia - Risk Management and Testudo Protocol Enforcement
 //!
-//! This crate provides wisdom in external communications through exchange adapters
-//! with failover, circuit breaker patterns, and comprehensive error handling.
-//! Primary focus on Binance integration with extensible architecture for additional exchanges.
+//! This crate embodies the Roman virtue of Prudentia (prudence) through comprehensive
+//! risk management and systematic capital protection. It serves as the immovable guardian
+//! that prevents catastrophic losses through disciplined protocol enforcement.
 //!
-//! ## Supported Exchanges
+//! ## Core Mission
 //!
-//! - **Binance**: Primary exchange with full feature support
-//! - **Bybit**: Secondary exchange (future implementation)
-//! - **Coinbase Pro**: Tertiary exchange (future implementation)
+//! Prudentia implements the Testudo Protocol - a comprehensive risk management framework
+//! designed to protect traders from emotional decision-making and account destruction.
+//! Every trade must pass through multiple layers of risk validation before execution.
 //!
-//! ## Architecture Patterns
+//! ## Risk Management Components
 //!
-//! - **Circuit Breaker**: Automatic failover when exchange becomes unresponsive
-//! - **Rate Limiting**: Respect exchange API limits with intelligent backoff
-//! - **Connection Pooling**: Efficient connection management for high throughput
-//! - **Failover Chain**: Automatic fallback to secondary exchanges
+//! - **Trade Validation**: Individual trade risk assessment using Van Tharp methodology
+//! - **Protocol Enforcement**: Immutable risk limits that cannot be overridden
+//! - **Portfolio Tracking**: Real-time monitoring of total portfolio risk exposure
+//! - **Circuit Breaker**: Automatic trading halt on consecutive losses
+//! - **Daily Limits**: Daily loss limits with automatic reset functionality
+//!
+//! ## Testudo Protocol Limits
+//!
+//! The protocol enforces these immutable limits to prevent account blowups:
+//! - Maximum individual trade risk: 6% of account equity
+//! - Maximum portfolio risk: 10% across all open positions
+//! - Circuit breaker: 3 consecutive losses halt trading
+//! - Minimum reward/risk ratio: 2:1 for profitable expectation
 //!
 //! ## Roman Military Principle: Prudentia
 //!
-//! Risk-aware decision making in external communications. Every exchange interaction
-//! is monitored, validated, and prepared for failure with systematic recovery procedures.
+//! Like the Roman virtue of prudence, this crate considers not just immediate risk
+//! but long-term capital preservation. Every decision is mathematically verified
+//! and designed to protect against the psychological pitfalls of trading.
+//!
+//! ## Usage Example
+//!
+//! ```rust
+//! use prudentia::{RiskValidator, TradeProposal, TradeSide};
+//! use disciplina::{AccountEquity, RiskPercentage, PricePoint};
+//! use rust_decimal_macros::dec;
+//!
+//! let validator = RiskValidator::new();
+//! 
+//! let proposal = TradeProposal::new(
+//!     "BTCUSDT".to_string(),
+//!     TradeSide::Long,
+//!     PricePoint::new(dec!(50000))?,
+//!     PricePoint::new(dec!(48000))?, // 4% stop loss
+//!     Some(PricePoint::new(dec!(54000))?), // 8% take profit (2:1 ratio)
+//!     AccountEquity::new(dec!(10000))?,
+//!     RiskPercentage::new(dec!(0.02))?, // 2% risk
+//! )?;
+//!
+//! let result = validator.validate_trade(&proposal);
+//! 
+//! if result.is_approved() {
+//!     // Trade passes all risk checks - safe to execute
+//!     validator.record_trade_execution(&proposal)?;
+//! }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
-pub mod adapters;
-pub mod binance;
-pub mod circuit_breaker;
-pub mod rate_limiter;
-pub mod failover;
+// Primary modules - Risk Management
 pub mod types;
-pub mod websocket;
+pub mod risk;
+pub mod monitoring;
 
-pub use adapters::{ExchangeAdapter, ExchangeAdapterTrait};
-pub use binance::BinanceAdapter;
-pub use circuit_breaker::{CircuitBreaker, CircuitBreakerState};
-pub use rate_limiter::ExchangeRateLimiter;
-pub use failover::{FailoverManager, ExchangeFailoverConfig};
+// Secondary modules - Exchange Integration (legacy support)
+pub mod exchange;
+
+// Re-export core risk management types and functions
 pub use types::{
-    ExchangeOrder, OrderStatus, OrderType, TimeInForce,
-    MarketData, OrderBook, Trade, Balance, ExchangeInfo
+    TradeProposal, TradeSide, RiskAssessment, ApprovalStatus, 
+    ProtocolViolation, ViolationSeverity, ProtocolLimits
+};
+
+pub use risk::{
+    RiskEngine, RiskValidator, TestudoProtocol, RiskValidationResult,
+    RiskRule, RiskViolation, TradeRiskAssessment
+};
+
+pub use monitoring::{
+    PortfolioTracker, PortfolioRiskMetrics, ConsecutiveLossTracker,
+    CircuitBreakerState, CircuitBreakerAction, RealTimeRiskMetrics
+};
+
+// Legacy exchange integration exports (for backward compatibility)
+pub use exchange::{
+    ExchangeAdapter, ExchangeAdapterTrait, BinanceAdapter,
+    CircuitBreaker, ExchangeRateLimiter, FailoverManager, ExchangeFailoverConfig
 };
 
 use disciplina::{AccountEquity, PositionSize, PricePoint};
@@ -45,170 +95,181 @@ use rust_decimal::Decimal;
 use std::time::Duration;
 use thiserror::Error;
 
-/// Prudentia exchange integration errors
+/// Prudentia risk management errors
 #[derive(Debug, Error, Clone)]
 pub enum PrudentiaError {
+    #[error("Risk validation failed: {reason}")]
+    RiskValidationFailure { reason: String },
+    
+    #[error("Protocol violation: {violation}")]
+    ProtocolViolation { violation: String },
+    
+    #[error("Circuit breaker active: trading is halted due to {reason}")]
+    CircuitBreakerActive { reason: String },
+    
+    #[error("Position sizing calculation failed: {reason}")]
+    PositionSizingFailure { reason: String },
+    
+    #[error("Portfolio risk limit exceeded: current={current}%, limit={limit}%")]
+    PortfolioRiskExceeded { current: Decimal, limit: Decimal },
+    
+    #[error("Daily loss limit exceeded: current=${current}, limit=${limit}")]
+    DailyLossLimitExceeded { current: Decimal, limit: Decimal },
+    
+    #[error("Trade proposal invalid: {reason}")]
+    InvalidTradeProposal { reason: String },
+    
+    #[error("Risk engine configuration error: {reason}")]
+    ConfigurationError { reason: String },
+    
+    #[error("Protocol state error: {reason}")]
+    ProtocolStateError { reason: String },
+    
+    // Legacy exchange integration errors (for backward compatibility)
     #[error("Exchange connection failed: {exchange} - {reason}")]
-    ConnectionFailure { exchange: String, reason: String },
+    ExchangeConnectionFailure { exchange: String, reason: String },
     
-    #[error("Rate limit exceeded: {exchange} - retry after {retry_after:?}")]
-    RateLimitExceeded { exchange: String, retry_after: Duration },
-    
-    #[error("Order placement failed: {reason}")]
-    OrderPlacementFailure { reason: String },
-    
-    #[error("Market data unavailable: {symbol} from {exchange}")]
-    MarketDataUnavailable { symbol: String, exchange: String },
-    
-    #[error("Authentication failed: {exchange} - check API credentials")]
-    AuthenticationFailure { exchange: String },
-    
-    #[error("Circuit breaker open: {exchange} - exchanges unavailable")]
-    CircuitBreakerOpen { exchange: String },
-    
-    #[error("Insufficient balance: required={required}, available={available}")]
-    InsufficientBalance { required: Decimal, available: Decimal },
-    
-    #[error("Exchange API error: {code} - {message}")]
-    ApiError { code: i32, message: String },
-    
-    #[error("WebSocket connection lost: {exchange}")]
-    WebSocketDisconnected { exchange: String },
+    #[error("Exchange rate limit exceeded: {exchange} - retry after {retry_after:?}")]
+    ExchangeRateLimitExceeded { exchange: String, retry_after: Duration },
 }
 
 /// Result type for all Prudentia operations
 pub type Result<T> = std::result::Result<T, PrudentiaError>;
 
-/// Core trait for exchange adapter implementations
-#[async_trait::async_trait]
-pub trait ExchangeAdapterTrait {
-    /// Get current market data for a trading pair
-    async fn get_market_data(&self, symbol: &str) -> Result<MarketData>;
-    
-    /// Place a new order on the exchange
-    async fn place_order(&self, order: &ExchangeOrder) -> Result<String>;
-    
-    /// Get order status by order ID
-    async fn get_order_status(&self, order_id: &str) -> Result<OrderStatus>;
-    
-    /// Cancel an existing order
-    async fn cancel_order(&self, order_id: &str) -> Result<bool>;
-    
-    /// Get account balance for a specific asset
-    async fn get_balance(&self, asset: &str) -> Result<Balance>;
-    
-    /// Get exchange information and trading rules
-    async fn get_exchange_info(&self) -> Result<ExchangeInfo>;
-    
-    /// Test connectivity to exchange
-    async fn ping(&self) -> Result<Duration>;
-    
-    /// Get exchange name identifier
-    fn exchange_name(&self) -> &'static str;
-}
+/// Convenient type alias for creating standard risk validators
+pub type StandardRiskValidator = RiskValidator;
 
-/// Configuration for exchange adapter
-#[derive(Debug, Clone)]
-pub struct ExchangeConfig {
-    /// Exchange name (binance, bybit, coinbase, etc.)
-    pub name: String,
-    
-    /// API endpoint base URL
-    pub base_url: String,
-    
-    /// WebSocket endpoint URL
-    pub websocket_url: String,
-    
-    /// API credentials
-    pub api_key: String,
-    pub api_secret: String,
-    
-    /// Rate limiting configuration
-    pub max_requests_per_minute: u32,
-    pub max_order_requests_per_second: u32,
-    
-    /// Connection timeouts
-    pub connect_timeout: Duration,
-    pub request_timeout: Duration,
-    
-    /// Circuit breaker settings
-    pub failure_threshold: u32,
-    pub recovery_timeout: Duration,
-}
+/// Convenient type alias for creating conservative risk validators
+pub type ConservativeRiskValidator = RiskValidator;
 
-/// Market data subscription configuration
-#[derive(Debug, Clone)]
-pub struct MarketDataConfig {
-    /// Trading pairs to subscribe to
-    pub symbols: Vec<String>,
-    
-    /// Update frequency preference
-    pub update_frequency: Duration,
-    
-    /// Order book depth level
-    pub book_depth: u32,
-    
-    /// Enable trade stream
-    pub trade_stream: bool,
-    
-    /// Enable 24hr ticker data
-    pub ticker_stream: bool,
-}
+/// Convenient type alias for creating aggressive risk validators  
+pub type AggressiveRiskValidator = RiskValidator;
 
-/// Exchange adapter factory for creating configured adapters
-pub struct ExchangeAdapterFactory;
+/// Risk management utility functions
+pub struct RiskManager;
 
-impl ExchangeAdapterFactory {
-    /// Create a new exchange adapter based on configuration
-    pub fn create_adapter(config: ExchangeConfig) -> Result<Box<dyn ExchangeAdapterTrait + Send + Sync>> {
-        match config.name.to_lowercase().as_str() {
-            "binance" => {
-                let adapter = BinanceAdapter::new(config)?;
-                Ok(Box::new(adapter))
-            },
-            _ => Err(PrudentiaError::ConnectionFailure {
-                exchange: config.name,
-                reason: "Unsupported exchange".to_string(),
-            }),
+impl RiskManager {
+    /// Create a risk validator with default (standard) limits
+    pub fn standard() -> RiskValidator {
+        RiskValidator::new()
+    }
+    
+    /// Create a risk validator with conservative limits (for new traders)
+    pub fn conservative() -> RiskValidator {
+        RiskValidator::conservative()
+    }
+    
+    /// Create a risk validator with aggressive limits (for experienced traders)
+    pub fn aggressive() -> RiskValidator {
+        RiskValidator::aggressive()
+    }
+    
+    /// Create a risk validator with custom protocol limits
+    pub fn with_custom_limits(limits: ProtocolLimits) -> RiskValidator {
+        RiskValidator::with_limits(limits)
+    }
+    
+    /// Create protocol limits based on trader experience level
+    pub fn limits_for_experience_level(level: TraderExperienceLevel) -> ProtocolLimits {
+        match level {
+            TraderExperienceLevel::Beginner => ProtocolLimits::conservative_limits(),
+            TraderExperienceLevel::Intermediate => ProtocolLimits::default_limits(),
+            TraderExperienceLevel::Advanced => ProtocolLimits::aggressive_limits(),
         }
     }
+}
+
+/// Trader experience levels for determining appropriate risk limits
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TraderExperienceLevel {
+    /// New to trading - needs maximum protection
+    Beginner,
+    /// Has some experience - standard protection
+    Intermediate,
+    /// Experienced trader - can handle higher risk
+    Advanced,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use disciplina::{AccountEquity, RiskPercentage, PricePoint};
+    use rust_decimal_macros::dec;
     
     #[test]
-    fn test_exchange_config_creation() {
-        let config = ExchangeConfig {
-            name: "binance".to_string(),
-            base_url: "https://api.binance.com".to_string(),
-            websocket_url: "wss://stream.binance.com:9443".to_string(),
-            api_key: "test_key".to_string(),
-            api_secret: "test_secret".to_string(),
-            max_requests_per_minute: 1200,
-            max_order_requests_per_second: 10,
-            connect_timeout: Duration::from_secs(10),
-            request_timeout: Duration::from_secs(30),
-            failure_threshold: 5,
-            recovery_timeout: Duration::from_mins(1),
-        };
+    fn test_risk_manager_factory_methods() {
+        let standard_validator = RiskManager::standard();
+        let conservative_validator = RiskManager::conservative();
+        let aggressive_validator = RiskManager::aggressive();
         
-        assert_eq!(config.name, "binance");
-        assert_eq!(config.max_requests_per_minute, 1200);
+        // Verify different protocol limits are set
+        let standard_limits = standard_validator.protocol_limits();
+        let conservative_limits = conservative_validator.protocol_limits();
+        let aggressive_limits = aggressive_validator.protocol_limits();
+        
+        assert_eq!(standard_limits.max_individual_trade_risk, dec!(0.06));
+        assert_eq!(conservative_limits.max_individual_trade_risk, dec!(0.02));
+        assert_eq!(aggressive_limits.max_individual_trade_risk, dec!(0.10));
     }
     
-    #[test] 
-    fn test_market_data_config_defaults() {
-        let config = MarketDataConfig {
-            symbols: vec!["BTCUSDT".to_string(), "ETHUSDT".to_string()],
-            update_frequency: Duration::from_millis(100),
-            book_depth: 20,
-            trade_stream: true,
-            ticker_stream: true,
+    #[test]
+    fn test_trader_experience_level_limits() {
+        let beginner_limits = RiskManager::limits_for_experience_level(TraderExperienceLevel::Beginner);
+        let intermediate_limits = RiskManager::limits_for_experience_level(TraderExperienceLevel::Intermediate);
+        let advanced_limits = RiskManager::limits_for_experience_level(TraderExperienceLevel::Advanced);
+        
+        // Beginner should have most conservative limits
+        assert!(beginner_limits.max_individual_trade_risk < intermediate_limits.max_individual_trade_risk);
+        assert!(intermediate_limits.max_individual_trade_risk < advanced_limits.max_individual_trade_risk);
+        
+        // Beginner should have lower consecutive loss tolerance
+        assert!(beginner_limits.max_consecutive_losses <= intermediate_limits.max_consecutive_losses);
+        assert!(intermediate_limits.max_consecutive_losses <= advanced_limits.max_consecutive_losses);
+    }
+    
+    #[test]
+    fn test_custom_limits_validator() {
+        let custom_limits = ProtocolLimits::default();
+        let validator = RiskManager::with_custom_limits(custom_limits.clone());
+        
+        assert_eq!(validator.protocol_limits(), &custom_limits);
+    }
+    
+    #[test]
+    fn test_risk_validation_integration() {
+        let validator = RiskManager::standard();
+        
+        // Create a valid trade proposal
+        let proposal = TradeProposal::new(
+            "BTCUSDT".to_string(),
+            TradeSide::Long,
+            PricePoint::new(dec!(50000)).unwrap(),
+            PricePoint::new(dec!(48000)).unwrap(),
+            Some(PricePoint::new(dec!(54000)).unwrap()),
+            AccountEquity::new(dec!(10000)).unwrap(),
+            RiskPercentage::new(dec!(0.02)).unwrap(),
+        ).unwrap();
+        
+        let result = validator.validate_trade(&proposal);
+        assert!(result.is_approved());
+        
+        let assessment = result.assessment().unwrap();
+        assert_eq!(assessment.risk_percentage, dec!(0.02));
+        assert!(assessment.position_size.value() > Decimal::ZERO);
+    }
+    
+    #[test]
+    fn test_prudentia_error_types() {
+        let risk_error = PrudentiaError::RiskValidationFailure {
+            reason: "Test error".to_string()
         };
         
-        assert_eq!(config.symbols.len(), 2);
-        assert!(config.trade_stream);
+        assert!(risk_error.to_string().contains("Risk validation failed"));
+        
+        let protocol_error = PrudentiaError::ProtocolViolation {
+            violation: "Exceeded risk limit".to_string()
+        };
+        
+        assert!(protocol_error.to_string().contains("Protocol violation"));
     }
 }
