@@ -1,4 +1,3 @@
-
 # Minimalist Trading Application - Product Requirements Document
 
 ## 1. Introduction
@@ -74,33 +73,27 @@ The platform targets disciplined retail crypto traders who understand the critic
 
 ## 5. Features and requirements
 
-### Core trading engine
-- **Real-time market data integration** from multiple cryptocurrency exchanges
-- **Van Tharp/Optimal F-Sizing position sizing calculator** implementing Risk/Distance formula
-- **Automated trade execution** with pre-configured risk parameters
-- **Dynamic stop-loss management** including break-even adjustments at 50% target achievement
-- **Multi-timeframe chart analysis** with TradingView integration
+### Core Trading Engine
+- **[COMPLETED]** **Van Tharp/Optimal F-Sizing position sizing calculator** implementing Risk/Distance formula.
+- **[COMPLETED]** **Risk Management Automation**: Real-time account monitoring, percentage-based risk allocation, and enforcement of portfolio-level risk limits (max trade risk, max portfolio risk, consecutive loss circuit breakers).
+- **[PLANNED]** **Real-time market data integration** from multiple cryptocurrency exchanges.
+- **[PLANNED]** **Automated trade execution** with pre-configured risk parameters.
+- **[PLANNED]** **Dynamic stop-loss management** including break-even adjustments at 50% target achievement.
+- **[PLANNED]** **Multi-timeframe chart analysis** with TradingView integration.
 
-### User interface components
-- **Roman shield login button** serving as primary authentication gateway
-- **Single-screen trading interface** featuring integrated charting and order management
-- **Drag-and-drop trade setup tools** for intuitive entry, stop, and target placement
-- **Minimalist portfolio dashboard** displaying essential position information only
-- **Clean typography and spacing**, with the UI built using the <ENTER UI FRAMEWORK> component library for a modern, accessible, and minimalist design
+### User Interface Components
+- **[PLANNED]** **Roman shield login button** serving as primary authentication gateway.
+- **[PLANNED]** **Single-screen trading interface** featuring integrated charting and order management.
+- **[PLANNED]** **Drag-and-drop trade setup tools** for intuitive entry, stop, and target placement.
+- **[PLANNED]** **Minimalist portfolio dashboard** displaying essential position information only.
+- **[PLANNED]** **Clean typography and spacing**, with the UI built using the <ENTER UI FRAMEWORK> component library for a modern, accessible, and minimalist design.
 
-### Risk management automation
-- **Account equity monitoring** with real-time balance updates
-- **Percentage-based risk allocation** configurable per user preference
-- **Automatic position sizing calculations** eliminating manual input requirements
-- **Stop-loss automation** with trailing and break-even adjustment protocols
-- **Risk exposure limits** preventing account damage through over-leveraging
-
-### Data and analytics
-- **Comprehensive trade logging** with automatic timestamp and screenshot capture
-- **R-multiple performance analysis** tracking trade quality and consistency
-- **Win rate and profit factor calculations** providing key performance indicators
-- **Monthly and quarterly performance reports** with statistical analysis
-- **Export functionality** for external analysis and tax reporting
+### Data and Analytics
+- **[PLANNED]** **Comprehensive trade logging** with automatic timestamp and screenshot capture.
+- **[PLANNED]** **R-multiple performance analysis** tracking trade quality and consistency.
+- **[PLANNED]** **Win rate and profit factor calculations** providing key performance indicators.
+- **[PLANNED]** **Monthly and quarterly performance reports** with statistical analysis.
+- **[PLANNED]** **Export functionality** for external analysis and tax reporting.
 
 ## 6. User stories and acceptance criteria
 

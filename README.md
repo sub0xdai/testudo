@@ -18,9 +18,9 @@ Remove human emotion from position sizing decisions through formal mathematical 
 ## ⚡ Key Features
 
 - **Automated Van Tharp Position Sizing**: `Position Size = (Account Equity × Risk %) ÷ (Entry - Stop)`
+- **Testudo Protocol Risk Management**: A complete, verified risk engine enforces individual trade limits, portfolio exposure caps, and circuit breakers for consecutive losses.
 - **OODA Loop Trading**: Systematic Observe → Orient → Decide → Act execution cycle
 - **Drag-to-Trade Interface**: Intuitive chart-based order placement with automatic sizing
-- **Real-time Risk Management**: Testudo Protocol enforcement with circuit breakers
 - **Sub-200ms Latency**: High-performance order execution and market data processing
 - **Comprehensive Trade Journal**: Automatic logging with R-multiple analysis
 
@@ -30,7 +30,7 @@ Remove human emotion from position sizing decisions through formal mathematical 
 
 - **Disciplina** (`crates/disciplina`): Van Tharp risk calculation engine with formal verification
 - **Formatio** (`crates/formatio`): OODA loop trading operations and execution logic
-- **Prudentia** (`crates/prudentia`): Exchange integration adapters with failover patterns
+- **Prudentia** (`crates/prudentia`): Risk management protocol and exchange integration adapters
 - **Imperium** (`crates/imperium`): API server and command interface
 
 ### Technology Stack
@@ -168,19 +168,22 @@ Following GEMINI principles for monotonic development:
 
 ## 📈 Roadmap
 
-### Phase 1: Core Risk Engine ✅
-- [x] Van Tharp position sizing calculator
-- [x] Testudo Protocol rule enforcement
-- [x] Property-based testing suite
-- [x] Database schema with audit trails
+### Phase 1: Core Risk Engine ✅ **COMPLETED**
+- **Status**: Implemented, tested, and verified.
+- **Components**: `disciplina` and `prudentia` crates.
+- **Features**:
+    - [x] Van Tharp position sizing calculator.
+    - [x] Testudo Protocol rule enforcement (individual, portfolio, and circuit-breaker limits).
+    - [x] Comprehensive property-based and integration testing suite.
+    - [x] Database schema with audit trails.
 
-### Phase 2: OODA Trading Loop 🚧
+### Phase 2: OODA Trading Loop 🚧 (In Progress)
 - [ ] Market data observation layer
 - [ ] Position orientation and analysis
 - [ ] Risk-based decision making
 - [ ] Order execution with exchange integration
 
-### Phase 3: User Interface
+### Phase 3: User Interface (Planned)
 - [ ] Progressive Web App foundation
 - [ ] TradingView chart integration
 - [ ] Drag-based trade setup interface
