@@ -30,6 +30,7 @@ pub mod decider;
 pub mod executor;
 pub mod types;
 pub mod metrics;
+pub mod exchange;
 
 pub use ooda::{OodaLoop, OodaController, OodaState};
 pub use observer::{MarketObserver, ObservationResult};
@@ -39,6 +40,10 @@ pub use executor::{OrderExecutor, ExecutionResult};
 pub use types::{
     TradeIntent, MarketObservation, TradeSetup, 
     ExecutionPlan, OodaPhase, LoopMetrics
+};
+pub use exchange::{
+    ExchangeAdapterTrait, MockExchange, MarketData, TradeOrder,
+    OrderSide, OrderType, OrderResult, OrderStatus, AccountBalance, ExchangeError
 };
 
 use disciplina::PositionSizingError;

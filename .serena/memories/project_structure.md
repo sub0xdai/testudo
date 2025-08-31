@@ -25,13 +25,27 @@ testudo/
 ### Prudentia (`crates/prudentia/`) - ✅ SUBSTANTIALLY COMPLETE
 **Purpose**: Risk management protocol and exchange integration
 - `src/risk/` - Risk assessment and protocol enforcement
+  - `assessment.rs` - RiskAssessment and TradeProposal types
+  - `rules.rs` - RiskRule trait and MaxTradeRiskRule
+  - `protocol.rs` - RiskManagementProtocol orchestrator
+  - `portfolio_rules.rs` - Portfolio-level risk rules
+  - `engine.rs` - Risk validation engine
 - `src/exchange/` - Exchange adapters and integration
+  - `adapters.rs` - ExchangeAdapterTrait and core types
+  - `mock.rs` - MockExchange for testing (5 passing tests)
+  - `binance.rs` - Binance exchange integration (placeholder)
 - `src/monitoring/` - Portfolio tracking and metrics
 - `src/types/` - Trade proposals and risk assessment types
 
-### Formatio (`crates/formatio/`) - ❌ PLANNED ONLY
+### Formatio (`crates/formatio/`) - 🚧 IN PROGRESS (Phase 1 Complete)
 **Purpose**: OODA loop trading operations and execution logic
-- Not yet implemented
+- `src/ooda.rs` - Core OodaLoop state machine (7 states, validated transitions)
+- `src/types.rs` - TradeIntent, MarketObservation, ExecutionPlan, LoopMetrics
+- `src/observer.rs` - Market observation phase (placeholder)
+- `src/orientator.rs` - Situation assessment phase (placeholder)
+- `src/decider.rs` - Decision making phase (placeholder)
+- `src/executor.rs` - Trade execution phase (placeholder)
+- `tests/ooda_tests.rs` - State machine tests (7 passing tests)
 
 ### Imperium (`crates/imperium/`) - ❌ MINIMAL
 **Purpose**: API server and command interface
@@ -50,3 +64,8 @@ testudo/
 - `Cargo.toml` - Main workspace configuration
 - `config/default.toml` - Application configuration template
 - Individual `crates/*/Cargo.toml` - Crate-specific dependencies
+
+## Recent Progress (2025-08-31)
+- **Formatio OODA Loop Phase 1**: State machine, ExchangeAdapter trait, MockExchange
+- **Prudentia Exchange Integration**: Unified adapter interface for exchange operations
+- **Test Coverage**: 12 new tests (7 OODA state tests, 5 MockExchange tests)
