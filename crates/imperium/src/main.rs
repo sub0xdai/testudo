@@ -1,22 +1,7 @@
-//! Testudo Trading Platform
+//! Testudo Trading Platform - Imperium Crate
 //! 
-//! A disciplined crypto trading platform implementing Van Tharp position sizing
-//! methodology with Roman military precision and systematic risk management.
-//!
-//! ## Architecture
-//! 
-//! The platform follows the OODA Loop (Observe, Orient, Decide, Act) pattern:
-//! - **Observe**: Market data ingestion and real-time monitoring
-//! - **Orient**: Van Tharp position sizing and risk assessment  
-//! - **Decide**: Testudo Protocol rule enforcement and validation
-//! - **Act**: Exchange order execution with confirmation
-//!
-//! ## Core Principles
-//! 
-//! - **Disciplina**: Mathematical precision without deviation
-//! - **Formatio**: Systematic execution under all conditions
-//! - **Prudentia**: Risk-aware decision making
-//! - **Imperium**: Clear command structure and control
+//! The Imperium crate serves as the command and control center for the platform,
+//! handling the main application entry point, API server, and overall orchestration.
 
 use anyhow::Result;
 use clap::{Arg, Command};
@@ -24,6 +9,7 @@ use config::{Config, Environment};
 use std::net::SocketAddr;
 use tracing::{info, warn};
 
+// Note: These modules will be created within the imperium crate
 mod config;
 mod error;
 mod routes;
@@ -38,13 +24,13 @@ async fn main() -> Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    info!("🏛️ Initializing Testudo Trading Platform");
+    info!("👑 Initializing Imperium Command Center");
 
     // Parse command line arguments
-    let matches = Command::new("testudo")
+    let matches = Command::new("imperium")
         .version("0.1.0")
         .author("Testudo Platform Team")
-        .about("Disciplined crypto trading platform with Van Tharp position sizing")
+        .about("Main executable for the Testudo Trading Platform")
         .arg(
             Arg::new("config")
                 .short('c')
@@ -86,21 +72,6 @@ async fn main() -> Result<()> {
     let redis_manager = redis::aio::ConnectionManager::new(redis_client).await?;
     info!("🗲 Redis connection established");
 
-    // Initialize core components following Roman military structure
-    info!("⚔️ Initializing Core Components:");
-    
-    // Disciplina - Risk calculation engine
-    info!("  🛡️ Disciplina: Van Tharp risk calculation engine");
-    
-    // Formatio - OODA loop trading operations
-    info!("  🏹 Formatio: OODA loop trading operations");
-    
-    // Prudentia - Exchange integrations
-    info!("  🏛️ Prudentia: Exchange integration adapters");
-    
-    // Imperium - Command and control
-    info!("  👑 Imperium: API server and command interface");
-
     // Build application router
     let app = routes::create_router(database_pool, redis_manager, &settings);
 
@@ -108,8 +79,7 @@ async fn main() -> Result<()> {
     let port: u16 = matches.get_one::<String>("port").unwrap().parse()?;
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    info!("🚀 Testudo Trading Platform starting on {}", addr);
-    info!("📊 Ready to serve disciplined traders");
+    info!("🚀 Imperium ready to command on {}", addr);
 
     // Start the server
     let listener = tokio::net::TcpListener::bind(&addr).await?;

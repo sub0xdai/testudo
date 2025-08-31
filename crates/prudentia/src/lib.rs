@@ -90,7 +90,7 @@ pub use monitoring::{
 
 // Legacy exchange integration exports (for backward compatibility)
 pub use exchange::{
-    ExchangeAdapter, ExchangeAdapterTrait, BinanceAdapter, ExchangeConfig,
+    ExchangeAdapterTrait, BinanceAdapter, ExchangeConfig,
     CircuitBreaker, ExchangeRateLimiter, FailoverManager, ExchangeFailoverConfig
 };
 

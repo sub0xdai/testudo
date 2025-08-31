@@ -10,91 +10,42 @@ categories = ["finance", "web-programming"]
 
 [workspace]
 members = [
-    "crates/disciplina",    # Core risk calculations (Van Tharp)
-    "crates/formatio",      # OODA loop trading operations  
-    "crates/prudentia",     # Exchange integrations
-    "crates/imperium",      # API server and routing
+    "crates/disciplina",
+    "crates/formatio",
+    "crates/prudentia",
+    "crates/imperium",
+    "crates/testudo-types",
 ]
+default-members = ["crates/imperium"]
 
-[[bin]]
-name = "testudo"
-path = "src/main.rs"
-
-[dependencies]
-# Web framework
+[workspace.dependencies]
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 tokio = { version = "1.0", features = ["full"] }
 hyper = "1.0"
-
-# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-# Database
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
-
-# Financial calculations
 rust_decimal = { version = "1.33", features = ["serde-with-str"] }
 rust_decimal_macros = "1.33"
-
-# Time handling
 chrono = { version = "0.4", features = ["serde"] }
-
-# Async utilities
 futures = "0.3"
 async-trait = "0.1"
-
-# Error handling
 anyhow = "1.0"
 thiserror = "1.0"
-
-# Tracing and monitoring
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
-
-# Configuration
 config = "0.14"
 clap = { version = "4.0", features = ["derive"] }
-
-# Security
 argon2 = "0.5"
 jsonwebtoken = "9.0"
-
-# HTTP client for exchanges
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
 
-# Development dependencies
-[dev-dependencies]
+[workspace.dev-dependencies]
 proptest = "1.0"
 tokio-test = "0.4"
 criterion = { version = "0.5", features = ["html_reports"] }
-
-# Workspace dependencies
-disciplina = { path = "crates/disciplina" }
-formatio = { path = "crates/formatio" }  
-prudentia = { path = "crates/prudentia" }
-imperium = { path = "crates/imperium" }
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = "abort"
-
-[profile.dev]
-opt-level = 0
-debug = true
-
-# Version constraints to avoid edition2024 issues
-[dependencies.base64ct]
-version = "=1.6.0"
-
-# Benchmarks will be added later
-# [[bench]]
-# name = "position_sizing"
-# harness = false

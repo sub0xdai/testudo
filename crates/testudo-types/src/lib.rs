@@ -1,7 +1,7 @@
-//! Exchange adapter trait for unified exchange integration
-//!
-//! Provides a common interface for interacting with different cryptocurrency exchanges.
-//! All exchange implementations must adhere to this trait for integration with the OODA loop.
+//! Shared types and traits for the Testudo trading platform
+//! 
+//! This crate provides the common data structures and traits used across
+//! the `formatio` and `prudentia` crates to break the circular dependency.
 
 use async_trait::async_trait;
 use rust_decimal::Decimal;
@@ -140,20 +140,4 @@ pub trait ExchangeAdapterTrait: Send + Sync {
     
     /// Check if a trading pair is supported
     async fn is_symbol_supported(&self, symbol: &str) -> Result<bool, ExchangeError>;
-}
-
-/// Legacy placeholder struct (to be removed when migrating to trait implementations)
-pub struct ExchangeAdapter;
-
-impl ExchangeAdapter {
-    /// Create a new exchange adapter (placeholder)
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for ExchangeAdapter {
-    fn default() -> Self {
-        Self::new()
-    }
 }

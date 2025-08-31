@@ -6,9 +6,9 @@ description = "OODA Loop trading operations - systematic trade execution framewo
 license = "MIT"
 
 [dependencies]
-# Core risk engine
+# Internal workspace dependencies
 disciplina = { path = "../disciplina" }
-
+testudo-types = { path = "../testudo-types" }
 
 # Financial calculations
 rust_decimal = { version = "1.33", features = ["serde-with-str"] }
@@ -26,6 +26,9 @@ serde_json = "1.0"
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# UUID for unique identifiers
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
 # Error handling
 thiserror = "1.0"
 anyhow = "1.0"
@@ -37,8 +40,9 @@ tracing = "0.1"
 dashmap = "5.5"
 
 [dev-dependencies]
-proptest = "1.0" 
+proptest = "1.0"
 tokio-test = "0.4"
+prudentia = { path = "../prudentia" } # For MockExchange in tests
 
 [features]
 default = ["ooda-verification"]

@@ -6,9 +6,9 @@ description = "Risk management and Testudo Protocol enforcement with comprehensi
 license = "MIT"
 
 [dependencies]
-# Core dependencies
+# Internal workspace dependencies
 disciplina = { path = "../disciplina" }
-formatio = { path = "../formatio" }
+testudo-types = { path = "../testudo-types" }
 
 # HTTP client for REST APIs
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }

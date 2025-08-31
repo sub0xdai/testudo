@@ -3,9 +3,9 @@
 //! Provides a controllable exchange adapter for unit and integration testing
 //! of the OODA loop and risk management systems.
 
-use super::adapters::{
+use testudo_types::{
     AccountBalance, ExchangeAdapterTrait, ExchangeError, MarketData, 
-    OrderResult, OrderStatus, TradeOrder
+    OrderResult, OrderStatus, TradeOrder, OrderSide, OrderType
 };
 use async_trait::async_trait;
 use rust_decimal::Decimal;
@@ -183,7 +183,7 @@ impl ExchangeAdapterTrait for MockExchange {
         }
         
         // Extract asset from symbol (e.g., "BTC/USDT" -> "USDT" for buy, "BTC" for sell)
-        let asset = if order.side == super::adapters::OrderSide::Buy {
+        let asset = if order.side == OrderSide::Buy {
             order.symbol.split('/').nth(1).unwrap_or("USDT")
         } else {
             order.symbol.split('/').nth(0).unwrap_or("BTC")
@@ -194,7 +194,7 @@ impl ExchangeAdapterTrait for MockExchange {
         
         // Simple balance check (in real implementation would be more complex)
         let required = order.quantity * order.price.unwrap_or(dec!(50000.0));
-        if balance.free < required && order.side == super::adapters::OrderSide::Buy {
+        if balance.free < required && order.side == OrderSide::Buy {
             return Err(ExchangeError::InsufficientBalance);
         }
         
@@ -317,7 +317,7 @@ impl ExchangeAdapterTrait for MockExchange {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::exchange::adapters::OrderSide;
+    use testudo_types::{OrderSide, OrderType};
     
     #[tokio::test]
     async fn test_mock_exchange_market_data() {
@@ -340,7 +340,7 @@ mod tests {
         let order = TradeOrder {
             symbol: "BTC/USDT".to_string(),
             side: OrderSide::Buy,
-            order_type: super::super::adapters::OrderType::Limit,
+            order_type: OrderType::Limit,
             quantity: dec!(0.01),
             price: Some(dec!(50000.0)),
             stop_price: None,
@@ -396,7 +396,7 @@ mod tests {
         let order = TradeOrder {
             symbol: "BTC/USDT".to_string(),
             side: OrderSide::Buy,
-            order_type: super::super::adapters::OrderType::Limit,
+            order_type: OrderType::Limit,
             quantity: dec!(0.01),
             price: Some(dec!(50000.0)),
             stop_price: None,

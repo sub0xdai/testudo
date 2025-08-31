@@ -34,17 +34,14 @@ pub mod exchange;
 
 pub use ooda::{OodaLoop, OodaController, OodaState};
 pub use observer::{MarketObserver, ObservationResult};
-pub use orientator::{PositionOrientator, TradeOrientation};
+pub use orientator::{PositionOrientator, TradeOrientation, OrientationError};
 pub use decider::{RiskDecider, DecisionMatrix};
 pub use executor::{OrderExecutor, ExecutionResult};
 pub use types::{
     TradeIntent, MarketObservation, TradeSetup, 
     ExecutionPlan, OodaPhase, LoopMetrics
 };
-pub use exchange::{
-    ExchangeAdapterTrait, MockExchange, MarketData, TradeOrder,
-    OrderSide, OrderType, OrderResult, OrderStatus, AccountBalance, ExchangeError
-};
+pub use testudo_types::*;
 
 use disciplina::PositionSizingError;
 use std::time::{Duration, Instant};
