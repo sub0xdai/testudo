@@ -11,7 +11,6 @@ use rust_decimal_macros::dec;
 use std::sync::Arc;
 use std::collections::HashMap;
 use std::time::SystemTime;
-use thiserror::Error;
 
 /// Represents an open position for portfolio risk calculations
 #[derive(Debug, Clone)]

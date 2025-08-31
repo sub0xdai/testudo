@@ -5,13 +5,12 @@
 
 use testudo_types::{
     AccountBalance, ExchangeAdapterTrait, ExchangeError, MarketData, 
-    OrderResult, OrderStatus, TradeOrder, OrderSide, OrderType
+    OrderResult, OrderStatus, TradeOrder, OrderSide
 };
 use async_trait::async_trait;
-use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
 use tokio::sync::RwLock;
 use rust_decimal_macros::dec;
 
@@ -28,6 +27,8 @@ pub struct MockExchangeState {
     pub is_healthy: bool,
     /// Counter for generating order IDs
     pub order_counter: u64,
+    /// Simulated response delay for testing timeouts
+    pub response_delay: Option<Duration>,
 }
 
 impl Default for MockExchangeState {
@@ -89,6 +90,7 @@ impl Default for MockExchangeState {
             orders: HashMap::new(),
             is_healthy: true,
             order_counter: 1000,
+            response_delay: None,
         }
     }
 }
@@ -145,6 +147,18 @@ impl MockExchange {
         let mut state = self.state.write().await;
         state.orders.clear();
     }
+
+    /// Set response delay for timeout simulation
+    pub async fn set_response_delay(&self, delay: Duration) {
+        let mut state = self.state.write().await;
+        state.response_delay = Some(delay);
+    }
+    
+    /// Clear response delay
+    pub async fn clear_response_delay(&self) {
+        let mut state = self.state.write().await;
+        state.response_delay = None;
+    }
 }
 
 impl Default for MockExchange {
@@ -158,19 +172,40 @@ impl ExchangeAdapterTrait for MockExchange {
     async fn get_market_data(&self, symbol: &str) -> Result<MarketData, ExchangeError> {
         let state = self.state.read().await;
         
-        if !state.is_healthy {
-            return Err(ExchangeError::ConnectionError {
-                message: "Mock exchange is unhealthy".to_string(),
-            });
+        // Simulate response delay if configured
+        if let Some(delay) = state.response_delay {
+            drop(state); // Release lock before sleeping
+            tokio::time::sleep(delay).await;
+            let state = self.state.read().await; // Re-acquire lock
+            
+            if !state.is_healthy {
+                return Err(ExchangeError::ConnectionError {
+                    message: "Mock exchange is unhealthy".to_string(),
+                });
+            }
+            
+            state
+                .market_data
+                .get(symbol)
+                .cloned()
+                .ok_or_else(|| ExchangeError::MarketDataUnavailable {
+                    symbol: symbol.to_string(),
+                })
+        } else {
+            if !state.is_healthy {
+                return Err(ExchangeError::ConnectionError {
+                    message: "Mock exchange is unhealthy".to_string(),
+                });
+            }
+            
+            state
+                .market_data
+                .get(symbol)
+                .cloned()
+                .ok_or_else(|| ExchangeError::MarketDataUnavailable {
+                    symbol: symbol.to_string(),
+                })
         }
-        
-        state
-            .market_data
-            .get(symbol)
-            .cloned()
-            .ok_or_else(|| ExchangeError::MarketDataUnavailable {
-                symbol: symbol.to_string(),
-            })
     }
     
     async fn place_order(&self, order: &TradeOrder) -> Result<OrderResult, ExchangeError> {

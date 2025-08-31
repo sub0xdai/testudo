@@ -94,7 +94,6 @@ pub use exchange::{
     CircuitBreaker, ExchangeRateLimiter, FailoverManager, ExchangeFailoverConfig
 };
 
-use disciplina::{AccountEquity, PositionSize, PricePoint};
 use rust_decimal::Decimal;
 use std::time::Duration;
 use thiserror::Error;

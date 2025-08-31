@@ -43,7 +43,7 @@ pub enum ProtocolError {
 /// Following the Roman principle of layered defense, this protocol applies
 /// multiple independent risk rules to create a comprehensive defense system
 /// against capital destruction. This is the main coordination point for Task 3.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RiskManagementProtocol {
     /// Collection of risk rules to apply to trade proposals
     risk_rules: Vec<Arc<dyn RiskRule>>,

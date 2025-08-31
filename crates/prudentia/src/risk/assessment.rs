@@ -8,7 +8,6 @@ use disciplina::PositionSize;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 /// Detailed risk assessment for an individual trade
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

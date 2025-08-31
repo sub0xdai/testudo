@@ -4,7 +4,7 @@
 //! by applying multiple risk rules and generating comprehensive risk assessments.
 
 use crate::types::{TradeProposal, RiskAssessment, ProtocolLimits, ApprovalStatus, ProtocolViolation, ViolationSeverity};
-use crate::risk::rules::{RiskRule, RiskViolation};
+use crate::risk::rules::RiskRule;
 use crate::risk::rules::{
     MaxIndividualTradeRiskRule, MinIndividualTradeRiskRule, MinRewardRiskRatioRule,
     StopLossDirectionRule, TakeProfitDirectionRule, ValidSymbolRule,

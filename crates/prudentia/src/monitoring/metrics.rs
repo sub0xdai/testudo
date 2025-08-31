@@ -1,7 +1,6 @@
 //! Real-time risk metrics calculation and monitoring
 
 use rust_decimal::Decimal;
-use std::collections::HashMap;
 use std::time::SystemTime;
 use std::str::FromStr;
 

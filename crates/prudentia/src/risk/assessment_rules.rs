@@ -6,7 +6,6 @@
 use crate::types::{TradeProposal, RiskAssessment, ProtocolLimits, ViolationSeverity, ProtocolViolation};
 use disciplina::PositionSizingCalculator;
 use rust_decimal::Decimal;
-use rust_decimal::prelude::FromPrimitive;
 use std::sync::Arc;
 use thiserror::Error;
 
