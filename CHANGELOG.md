@@ -17,10 +17,30 @@ Following Roman military tradition, releases are named after Roman legions and m
 
 ## [Unreleased]
 
-### 🏛️ **MAJOR MILESTONE: Complete Risk Management System** 
-**The Disciplina Foundation + Prudentia Guardian**
+### 🏛️ **MAJOR MILESTONE: OODA Loop Foundation & Complete Risk Management System** 
+**The Formatio Engine + Disciplina Foundation + Prudentia Guardian**
 
 ### Added
+#### Formatio Crate: OODA Loop Implementation (Phase 1) ✅ **IN PROGRESS**
+- **OodaLoop Core State Machine**: Complete state machine implementation with validated state transitions
+  - States: Idle, Observing, Orienting, Deciding, Acting, Completed, Failed
+  - Enforced state transition rules preventing invalid progression
+  - Thread-safe state management with Arc<RwLock> for concurrent access
+- **ExchangeAdapter Trait**: Unified interface for exchange integration
+  - Market data retrieval with bid/ask/last price and volume
+  - Order placement with multiple order types (Market, Limit, StopLoss)
+  - Order management (cancel, status tracking)
+  - Account balance queries
+  - Health check and connectivity monitoring
+- **MockExchange Implementation**: Comprehensive testing infrastructure
+  - Configurable market data and account balances
+  - Order recording and status tracking
+  - Simulated exchange health states
+  - Full trait implementation with 5 passing integration tests
+- **Type System Foundation**: Core OODA types with performance metrics
+  - TradeIntent, MarketObservation, TradeSetup, ExecutionPlan
+  - LoopMetrics for latency tracking (sub-200ms target)
+  - OodaPhase enum for cycle tracking
 #### Task 3: RiskManagementProtocol Implementation ✅ **COMPLETED**
 - **RiskManagementProtocol Struct**: Central orchestrator for multiple risk rules with comprehensive assessment
 - **Protocol Assessment System**: Aggregates results from multiple risk rules into unified protocol decisions

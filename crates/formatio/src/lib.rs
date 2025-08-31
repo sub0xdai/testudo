@@ -31,7 +31,7 @@ pub mod executor;
 pub mod types;
 pub mod metrics;
 
-pub use ooda::{OodaLoop, OodaController};
+pub use ooda::{OodaLoop, OodaController, OodaState};
 pub use observer::{MarketObserver, ObservationResult};
 pub use orientator::{PositionOrientator, TradeOrientation};
 pub use decider::{RiskDecider, DecisionMatrix};

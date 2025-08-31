@@ -90,6 +90,10 @@ panic = "abort"
 opt-level = 0
 debug = true
 
+# Version constraints to avoid edition2024 issues
+[dependencies.base64ct]
+version = "=1.6.0"
+
 # Benchmarks will be added later
 # [[bench]]
 # name = "position_sizing"
