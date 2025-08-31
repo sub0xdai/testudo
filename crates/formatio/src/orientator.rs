@@ -115,7 +115,7 @@ impl PositionOrientator {
         
         // Transition OODA loop to Deciding state
         ooda_loop.transition_to(OodaState::Deciding).await
-            .map_err(|e| OrientationError::StateTransitionFailed(e))?;
+            .map_err(|e| OrientationError::StateTransitionFailed(e.to_string()))?;
         
         let orientation_duration = start_time.elapsed().as_millis() as u64;
         

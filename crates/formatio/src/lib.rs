@@ -32,11 +32,11 @@ pub mod types;
 pub mod metrics;
 pub mod exchange;
 
-pub use ooda::{OodaLoop, OodaController, OodaState};
+pub use ooda::{OodaLoop, OodaController, OodaState, OodaLoopError};
 pub use observer::{MarketObserver, ObservationResult};
 pub use orientator::{PositionOrientator, TradeOrientation, OrientationError};
 pub use decider::{RiskDecider, DecisionResult, RiskDecision, ExecutionPriority};
-pub use executor::{OrderExecutor, ExecutionResult};
+pub use executor::{Executor, ExecutorError, ExecutionResult};
 pub use types::{
     TradeIntent, MarketObservation, TradeSetup, 
     ExecutionPlan, OodaPhase, LoopMetrics, DecisionError

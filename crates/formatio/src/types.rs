@@ -1,6 +1,8 @@
 //! OODA types - Core types for the trading loop
 
 use std::time::{Duration, Instant};
+use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 /// User's intent to trade
 #[derive(Debug, Clone)]
@@ -22,10 +24,12 @@ pub struct MarketObservation {
 #[derive(Debug, Clone)]
 pub struct TradeSetup {
     pub symbol: String,
-    pub entry_price: f64,
-    pub stop_loss: f64,
-    pub take_profit: Option<f64>,
-    pub position_size: f64,
+    pub entry_price: Decimal,
+    pub stop_loss: Decimal,
+    pub take_profit: Option<Decimal>,
+    pub position_size: Decimal,
+    pub current_price: Decimal,
+    pub r_multiple: Decimal,
 }
 
 /// Final execution plan after risk validation
@@ -59,8 +63,10 @@ pub struct LoopMetrics {
     pub orient_latency: Option<Duration>,
     pub decide_latency: Option<Duration>,
     pub act_latency: Option<Duration>,
+    pub act_duration: Duration,
     pub total_latency: Option<Duration>,
     pub last_updated: Instant,
+    pub last_execution_time: Option<DateTime<Utc>>,
 }
 
 impl LoopMetrics {
@@ -71,8 +77,10 @@ impl LoopMetrics {
             orient_latency: None,
             decide_latency: None,
             act_latency: None,
+            act_duration: Duration::from_millis(0),
             total_latency: None,
             last_updated: Instant::now(),
+            last_execution_time: None,
         }
     }
 

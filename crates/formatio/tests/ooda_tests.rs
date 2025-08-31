@@ -1,8 +1,10 @@
 //! Tests for the OODA Loop implementation
 
-use formatio::ooda::{OodaLoop, OodaState, OodaController};
+use formatio::ooda::{OodaLoop, OodaState, OodaController, OodaLoopError};
 use formatio::observer::{MarketObserver, ObservationResult};
-use formatio::exchange::{MockExchange, MarketData};
+use formatio::exchange::{MarketData};
+use prudentia::exchange::MockExchange;
+use testudo_types::OrderSide as TradeSide;
 use rust_decimal_macros::dec;
 use std::sync::Arc;
 use std::time::{SystemTime, Duration};
@@ -50,7 +52,8 @@ async fn test_invalid_state_transitions() {
     // Cannot go directly from Idle to Acting
     let result = ooda.transition_to(OodaState::Acting).await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Invalid state transition"));
+    let err = result.unwrap_err();
+    assert!(matches!(err, OodaLoopError::InvalidStateTransition { .. }));
     
     // Start proper sequence
     assert!(ooda.transition_to(OodaState::Observing).await.is_ok());
@@ -372,21 +375,21 @@ async fn test_orientator_successful_trade_proposal_creation() {
     // Verify trade proposal properties
     let proposal = &orientation.proposal;
     assert_eq!(proposal.symbol, "BTC/USDT");
-    assert_eq!(proposal.side, prudentia::TradeSide::Long);
-    assert_eq!(proposal.account_equity.value(), account_equity);
-    assert_eq!(proposal.risk_percentage.value(), risk_percentage);
+    assert_eq!(proposal.side, TradeSide::Buy);
+    // account_equity and risk_percentage are not fields in TradeProposal
+    // These are calculated inputs, not stored in the proposal struct
     
     // Verify Van Tharp position sizing was applied
     let expected_entry = dec!(50000.0);
     let expected_stop = expected_entry - (expected_entry * stop_loss_distance_percent);
-    assert_eq!(proposal.entry_price.value(), expected_entry);
-    assert_eq!(proposal.stop_loss.value(), expected_stop);
+    assert_eq!(proposal.entry_price, expected_entry);
+    assert_eq!(proposal.stop_loss, expected_stop);
     
     // Verify take profit (should be 2:1 risk/reward ratio)
     assert!(proposal.take_profit.is_some());
     let take_profit = proposal.take_profit.as_ref().unwrap();
-    let expected_take_profit = expected_entry + (2 * (expected_entry - expected_stop));
-    assert_eq!(take_profit.value(), expected_take_profit);
+    let expected_take_profit = expected_entry + (dec!(2) * (expected_entry - expected_stop));
+    assert_eq!(*take_profit, expected_take_profit);
     
     // Verify timing metrics
     assert!(orientation.orientation_duration_ms > 0);
@@ -578,7 +581,7 @@ async fn test_orientator_confidence_calculation() {
 #[tokio::test]
 async fn test_orientator_with_custom_calculator() {
     // Setup with custom Van Tharp calculator
-    let custom_calculator = disciplina::calculator::VanTharpCalculator::new();
+    let custom_calculator = disciplina::calculator::PositionSizingCalculator::new();
     let orientator = formatio::PositionOrientator::with_calculator(custom_calculator);
     let ooda_loop = OodaLoop::new();
     assert!(ooda_loop.transition_to(OodaState::Orienting).await.is_ok());
@@ -612,14 +615,14 @@ async fn test_orientator_with_custom_calculator() {
     // Verify proposal uses the specified parameters
     let proposal = &orientation.proposal;
     assert_eq!(proposal.symbol, "ETH/USDT");
-    assert_eq!(proposal.account_equity.value(), account_equity);
-    assert_eq!(proposal.risk_percentage.value(), risk_percentage);
+    // account_equity and risk_percentage are not fields in TradeProposal
+    // These are calculated inputs, not stored in the proposal struct
     
     // Verify position sizing is appropriate for higher risk scenario
     let expected_entry = dec!(3000.0);
     let expected_stop = expected_entry - (expected_entry * stop_loss_distance_percent);
-    assert_eq!(proposal.entry_price.value(), expected_entry);
-    assert_eq!(proposal.stop_loss.value(), expected_stop);
+    assert_eq!(proposal.entry_price, expected_entry);
+    assert_eq!(proposal.stop_loss, expected_stop);
     
     // Verify OODA state transition
     assert_eq!(ooda_loop.get_state().await, OodaState::Deciding);
