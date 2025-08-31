@@ -41,15 +41,17 @@ You are building a **disciplined crypto trading platform** that implements Van T
 
 ## 💡 Development Patterns
 
-### Code Organization Philosophy
+### Code Organization Philosophy (Crates)
+The project uses a multi-crate workspace to enforce modularity and clear separation of concerns.
 ```
-src/
-├── core/           # Immutable financial calculations (Van Tharp, risk rules)
-├── ooda/          # OODA loop implementation (observe, orient, decide, act)  
-├── exchange/      # Exchange adapters (add-only, never modify existing)
-├── risk/          # Testudo Protocol enforcement
-├── ui/            # Progressive Web App interface
-└── sops/          # Standard Operating Procedures
+/
+├── crates/
+│   ├── disciplina/   # Core financial calculations (Van Tharp, risk rules)
+│   ├── formatio/     # OODA loop implementation (observe, orient, decide, act)
+│   ├── prudentia/    # Testudo Protocol enforcement and exchange adapters
+│   ├── imperium/     # API Server and Command Interface (Axum)
+│   └── testudo-types # Shared types to prevent circular dependencies
+└── sop/              # Standard Operating Procedures
 ```
 
 ### Naming Conventions
