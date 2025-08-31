@@ -35,11 +35,11 @@ pub mod exchange;
 pub use ooda::{OodaLoop, OodaController, OodaState};
 pub use observer::{MarketObserver, ObservationResult};
 pub use orientator::{PositionOrientator, TradeOrientation, OrientationError};
-pub use decider::{RiskDecider, DecisionMatrix};
+pub use decider::{RiskDecider, DecisionResult, RiskDecision, ExecutionPriority};
 pub use executor::{OrderExecutor, ExecutionResult};
 pub use types::{
     TradeIntent, MarketObservation, TradeSetup, 
-    ExecutionPlan, OodaPhase, LoopMetrics
+    ExecutionPlan, OodaPhase, LoopMetrics, DecisionError
 };
 pub use testudo_types::*;
 

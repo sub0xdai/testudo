@@ -5,9 +5,14 @@ edition = "2021"
 description = "OODA Loop trading operations - systematic trade execution framework"
 license = "MIT"
 
+[lib]
+name = "formatio"
+path = "src/lib.rs"
+
 [dependencies]
 # Internal workspace dependencies
 disciplina = { path = "../disciplina" }
+prudentia = { path = "../prudentia" }
 testudo-types = { path = "../testudo-types" }
 
 # Financial calculations

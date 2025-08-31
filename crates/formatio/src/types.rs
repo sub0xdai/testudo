@@ -91,3 +91,32 @@ impl Default for LoopMetrics {
         Self::new()
     }
 }
+
+/// Error types for the decision process in Phase 4 (Decide) of OODA loop
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum DecisionError {
+    /// Protocol assessment error
+    #[error("Risk protocol error: {0}")]
+    ProtocolError(String),
+    
+    /// Decision timeout exceeded
+    #[error("Decision timeout: {0}")]
+    AssessmentTimeout(String),
+    
+    /// Invalid trade proposal format
+    #[error("Invalid proposal: {0}")]
+    InvalidProposal(String),
+    
+    /// System error during decision process
+    #[error("Decision system error: {0}")]
+    SystemError(String),
+    
+    /// Type conversion error
+    #[error("Type conversion error: {0}")]
+    ConversionError(String),
+}
+impl From<disciplina::PositionSizingError> for DecisionError {
+    fn from(err: disciplina::PositionSizingError) -> Self {
+        DecisionError::ConversionError(err.to_string())
+    }
+}

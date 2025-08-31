@@ -11,9 +11,14 @@ use std::sync::Arc;
 use rust_decimal::Decimal;
 use tokio::time::{Duration, Instant};
 use tracing::{debug, error, info, instrument, warn};
+use chrono::{DateTime, Utc};
 
 use prudentia::risk::protocol::{RiskManagementProtocol, ProtocolDecision, ProtocolAssessmentResult};
-use prudentia::risk::assessment::TradeProposal;
+use prudentia::types::trade_proposal::TradeProposal;
+use prudentia::types::TradeSide;
+use disciplina::types::{AccountEquity, RiskPercentage, PricePoint, PositionSize};
+use uuid::Uuid;
+use std::time::SystemTime;
 
 use crate::orientator::TradeProposal as FormatioTradeProposal;
 use crate::types::DecisionError;
@@ -120,8 +125,8 @@ impl RiskDecider {
         let start_time = Instant::now();
         let mut audit_trail = Vec::new();
         
-        debug!("Starting risk decision for trade proposal: {} {}", proposal.symbol, proposal.side);
-        audit_trail.push(format!("Decision started at {:?} for {} {}", start_time, proposal.symbol, proposal.side));
+        debug!("Starting risk decision for trade proposal: {} {:?}", proposal.symbol, proposal.side);
+        audit_trail.push(format!("Decision started at {:?} for {} {:?}", start_time, proposal.symbol, proposal.side));
         
         // Convert FormationTradeProposal to PrudentiaTradeProposal for protocol assessment
         let prudentia_proposal = self.convert_proposal(&proposal)?;
@@ -142,7 +147,7 @@ impl RiskDecider {
                 
                 return Ok(DecisionResult {
                     proposal,
-                    assessment: self.create_failed_assessment(&error_msg)?,
+                    assessment: self.create_failed_assessment(&error_msg),
                     decision: RiskDecision::AssessmentFailed { error_details: error_msg },
                     decision_time_ms: start_time.elapsed().as_millis() as u64,
                     audit_trail,
@@ -158,17 +163,17 @@ impl RiskDecider {
         // Log final decision
         match &risk_decision {
             RiskDecision::Execute { approved_position_size, execution_priority } => {
-                info!("Trade APPROVED: {} {} size={} priority={:?} ({}ms)", 
+                info!("Trade APPROVED: {} {:?} size={} priority={:?} ({}ms)", 
                     proposal.symbol, proposal.side, approved_position_size, execution_priority, decision_time_ms);
                 audit_trail.push(format!("APPROVED: Position size {} with {:?} priority", approved_position_size, execution_priority));
             },
             RiskDecision::Reject { rejection_reason, violation_count } => {
-                warn!("Trade REJECTED: {} {} - {} ({} violations, {}ms)", 
+                warn!("Trade REJECTED: {} {:?} - {} ({} violations, {}ms)", 
                     proposal.symbol, proposal.side, rejection_reason, violation_count, decision_time_ms);
                 audit_trail.push(format!("REJECTED: {} violations - {}", violation_count, rejection_reason));
             },
             RiskDecision::AssessmentFailed { error_details } => {
-                error!("Assessment FAILED: {} {} - {} ({}ms)", 
+                error!("Assessment FAILED: {} {:?} - {} ({}ms)", 
                     proposal.symbol, proposal.side, error_details, decision_time_ms);
                 audit_trail.push(format!("ASSESSMENT FAILED: {}", error_details));
             },
@@ -186,20 +191,33 @@ impl RiskDecider {
     /// Convert FormationTradeProposal to PrudentiaTradeProposal
     fn convert_proposal(&self, proposal: &FormatioTradeProposal) -> Result<TradeProposal, DecisionError> {
         // Generate a unique ID for the proposal
-        let proposal_id = format!("{}-{}-{}", 
-            proposal.symbol, 
-            proposal.entry_price, 
-            chrono::Utc::now().timestamp_millis()
-        );
+        let proposal_id = Uuid::new_v4();
+        
+        // Convert OrderSide to TradeSide
+        let trade_side = match proposal.side {
+            testudo_types::OrderSide::Buy => TradeSide::Long,
+            testudo_types::OrderSide::Sell => TradeSide::Short,
+        };
+        
+        // For this integration, we'll use placeholder values for account equity and risk percentage
+        // In a real implementation, these would come from the trading context
+        let account_equity = AccountEquity::new(rust_decimal::Decimal::from(10000))?; // $10,000 default
+        let risk_percentage = RiskPercentage::new(rust_decimal::Decimal::from(2))?; // 2% default risk
         
         Ok(TradeProposal {
             id: proposal_id,
             symbol: proposal.symbol.clone(),
-            side: proposal.side.clone(),
-            entry_price: proposal.entry_price,
-            stop_loss: proposal.stop_loss,
-            take_profit: proposal.take_profit,
-            position_size: proposal.position_size,
+            side: trade_side,
+            entry_price: PricePoint::new(proposal.entry_price)?,
+            stop_loss: PricePoint::new(proposal.stop_loss)?,
+            take_profit: match proposal.take_profit {
+                Some(price) => Some(PricePoint::new(price)?),
+                None => None,
+            },
+            account_equity,
+            risk_percentage,
+            timestamp: SystemTime::now(),
+            metadata: Some(format!("Converted from formatio proposal: position_size={}", proposal.position_size)),
         })
     }
     
@@ -221,7 +239,7 @@ impl RiskDecider {
             ProtocolDecision::Approved => {
                 audit_trail.push("Protocol decision: APPROVED - no violations detected".to_string());
                 RiskDecision::Execute {
-                    approved_position_size: result.assessment.recommended_position_size,
+                    approved_position_size: result.assessment.position_size.value(),
                     execution_priority: ExecutionPriority::Standard,
                 }
             },
@@ -230,7 +248,7 @@ impl RiskDecider {
                 let warning_count = result.assessment.violations.len();
                 audit_trail.push(format!("Protocol decision: APPROVED WITH WARNINGS - {} warnings noted", warning_count));
                 RiskDecision::Execute {
-                    approved_position_size: result.assessment.recommended_position_size,
+                    approved_position_size: result.assessment.position_size.value(),
                     execution_priority: ExecutionPriority::Careful,
                 }
             },
@@ -254,10 +272,36 @@ impl RiskDecider {
     }
     
     /// Create a failed assessment result for timeout/error cases
-    fn create_failed_assessment(&self, error_msg: &str) -> Result<ProtocolAssessmentResult, DecisionError> {
-        // This is a simplified assessment result for error cases
-        // In practice, we would use proper prudentia types
-        Err(DecisionError::AssessmentTimeout(error_msg.to_string()))
+    fn create_failed_assessment(&self, error_msg: &str) -> ProtocolAssessmentResult {
+        // Create a minimal failed assessment for error cases
+        use prudentia::RiskAssessment;
+        use prudentia::risk::protocol::RuleAssessmentResult;
+        use uuid::Uuid;
+        use std::time::SystemTime;
+        
+        // Create a minimal assessment with failed status
+        // Use a minimal valid position size of 0.01 since PositionSize cannot be zero
+        let minimal_position = disciplina::types::PositionSize::new(rust_decimal::Decimal::new(1, 2)).unwrap(); // 0.01
+        let assessment = RiskAssessment {
+            assessment_id: Uuid::new_v4(),
+            proposal_id: Uuid::new_v4(), 
+            position_size: minimal_position,
+            risk_amount: rust_decimal::Decimal::ZERO,
+            risk_percentage: rust_decimal::Decimal::ZERO,
+            reward_risk_ratio: None,
+            portfolio_impact: rust_decimal::Decimal::ZERO,
+            violations: Vec::new(),
+            approval_status: prudentia::types::risk_assessment::ApprovalStatus::Rejected,
+            timestamp: SystemTime::now(),
+            reasoning: Some(error_msg.to_string()),
+        };
+        
+        ProtocolAssessmentResult {
+            assessment,
+            rule_results: Vec::<RuleAssessmentResult>::new(), // Empty rule results for failed assessment
+            protocol_decision: ProtocolDecision::AssessmentFailed,
+            decision_reasoning: error_msg.to_string(),
+        }
     }
     
     /// Get the configured protocol name
