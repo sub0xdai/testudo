@@ -40,7 +40,7 @@ pub use handlers::{
     market_handlers, admin_handlers
 };
 pub use types::{
-    ApiResponse, ApiError, PaginationParams, 
+    ApiError, PaginationParams, 
     WebSocketMessage, UserSession
 };
 
@@ -52,7 +52,7 @@ use axum::{
 };
 use disciplina::{AccountEquity, PositionSize};
 use formatio::{TradeIntent, ExecutionResult};
-use prudentia::ExchangeAdapter;
+use prudentia::ExchangeAdapterTrait;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -61,7 +61,6 @@ use tower::ServiceBuilder;
 use tower_http::{
     cors::CorsLayer,
     trace::TraceLayer,
-    compression::CompressionLayer,
 };
 
 /// Imperium API server errors
@@ -224,12 +223,12 @@ pub fn create_app_router(state: AppState) -> axum::Router {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(CompressionLayer::new())
                 .layer(CorsLayer::permissive()) // Configure properly for production
-                .layer(middleware::AuthMiddleware::new(state.auth_handler.clone()))
-                .layer(middleware::RateLimitMiddleware::new(
-                    state.config.rate_limit_requests_per_minute
-                ))
+                // TODO: Add middleware when implementations are complete
+                // .layer(middleware::AuthMiddleware::new(state.auth_handler.clone()))
+                // .layer(middleware::RateLimitMiddleware::new(
+                //     state.config.rate_limit_requests_per_minute
+                // ))
         )
         .with_state(state)
 }
