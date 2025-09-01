@@ -92,7 +92,7 @@ max_files = 10
 
 # Market Data Configuration
 [market_data]
-default_symbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT"]
+default_symbols = ["BTC/USDT", "ETH/USDT", "ADA/USDT", "SOL/USDT", "DOT/USDT"]
 update_frequency = "100ms"
 order_book_depth = 20
 enable_trade_stream = true

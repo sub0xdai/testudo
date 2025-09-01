@@ -30,7 +30,7 @@ CREATE TABLE user_accounts (
     
     -- Trading preferences
     preferred_exchange VARCHAR(50) NOT NULL DEFAULT 'binance',
-    trading_symbols TEXT[] DEFAULT ARRAY['BTCUSDT', 'ETHUSDT'],
+    trading_symbols TEXT[] DEFAULT ARRAY['BTC/USDT', 'ETH/USDT'],
     
     CONSTRAINT valid_risk_percentage CHECK (
         default_risk_percentage >= 0.005 AND default_risk_percentage <= 0.06

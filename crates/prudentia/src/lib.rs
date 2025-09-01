@@ -42,7 +42,7 @@
 //! let validator = RiskValidator::new();
 //! 
 //! let proposal = TradeProposal::new(
-//!     "BTCUSDT".to_string(),
+//!     "BTC/USDT".to_string(),
 //!     TradeSide::Long,
 //!     PricePoint::new(dec!(50000))?,
 //!     PricePoint::new(dec!(48000))?, // 4% stop loss
@@ -244,7 +244,7 @@ mod tests {
         
         // Create a valid trade proposal
         let proposal = TradeProposal::new(
-            "BTCUSDT".to_string(),
+            "BTC/USDT".to_string(),
             TradeSide::Long,
             PricePoint::new(dec!(50000)).unwrap(),
             PricePoint::new(dec!(48000)).unwrap(),
