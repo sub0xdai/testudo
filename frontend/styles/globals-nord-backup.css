@@ -2,72 +2,58 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Design Tokens - Monochromatic Trading Terminal Theme */
+/* Design Tokens - Nord Arctic Theme */
 :root {
-  /* Deep Black to Light Gray Spectrum - Core Monochromatic Palette */
-  --black-000: #0A0A0A; /* Deepest black - main background */
-  --black-100: #0D0D0D; /* Near black - primary panels */
-  --black-200: #121212; /* Charcoal - secondary panels */
-  --black-300: #181818; /* Dark gray - cards */
-  --black-400: #1F1F1F; /* Elevated surfaces */
-  --black-500: #262626; /* Hover states */
+  /* Nord Polar Night - Darker Surfaces */
+  --polar-night-0: #1e222a; /* Darker base surface - deep midnight */
+  --polar-night-1: #242933; /* Darker elevated surface 1 */
+  --polar-night-2: #2e3440; /* Original polar night as elevated 2 */
+  --polar-night-3: #3b4252; /* Elevated surface 3 - borders, muted */
 
-  /* Mid Grays */
-  --gray-600: #404040; /* Borders/dividers */
-  --gray-700: #525252; /* Muted elements */
-  --gray-800: #6B6B6B; /* Secondary text */
-  --gray-900: #8B8B8B; /* Tertiary text */
+  /* Nord Snow Storm - Light Colors */
+  --snow-storm-0: #d8dee9; /* Muted text */
+  --snow-storm-1: #e5e9f0; /* Secondary text */
+  --snow-storm-2: #eceff4; /* Primary text - crisp white */
 
-  /* Light Grays */
-  --gray-950: #A8A8A8; /* Supplementary text */
-  --gray-980: #C4C4C4; /* Secondary content */
-  --gray-990: #D4D4D4; /* Primary content */
-  --white-000: #E8E8E8; /* Main text */
-  --white-100: #F5F5F5; /* Emphasized text */
+  /* Nord Frost - Cool Blue Accents */
+  --frost-0: #8fbcbb; /* Muted cyan-blue */
+  --frost-1: #88c0d0; /* Primary frost blue */
+  --frost-2: #81a1c1; /* Deeper blue */
+  --frost-3: #5e81ac; /* Dark blue accent */
 
-  /* Subtle Neon Accents - Used Sparingly (30-40% opacity) */
-  --accent-profit: rgba(0, 255, 133, 0.3); /* Very subtle green glow */
-  --accent-loss: rgba(255, 0, 102, 0.3); /* Very subtle red glow */
-  --accent-active: rgba(30, 144, 255, 0.25); /* Barely visible blue tint */
-  --accent-warning: rgba(255, 184, 0, 0.4); /* Soft amber hint */
+  /* Nord Aurora - Accent Colors */
+  --aurora-red: #bf616a; /* Muted crimson */
+  --aurora-orange: #d08770; /* Warm orange */
+  --aurora-yellow: #ebcb8b; /* Soft yellow */
+  --aurora-green: #a3be8c; /* Muted green */
+  --aurora-purple: #b48ead; /* Soft violet */
 
-  /* Solid Neon - Only for Critical Moments */
-  --neon-profit: #00FF85; /* Full neon green - only for large gains */
-  --neon-loss: #FF0066; /* Full neon red - only for stop losses */
-  --neon-alert: #FFB800; /* Full amber - only for critical alerts */
+  /* Surface Elevation System */
+  --surface-00: var(--polar-night-0); /* #1e222a - darker base */
+  --surface-01: var(--polar-night-1); /* #242933 - darker cards */
+  --surface-02: var(--polar-night-2); /* #2E3440 - modals */
+  --surface-03: var(--polar-night-3); /* #3B4252 - tooltips */
+  --surface-04: #434c5e; /* Interactive hover */
 
-  /* Surface Elevation System - Monochromatic */
-  --surface-00: var(--black-000); /* Deepest black - main background */
-  --surface-01: var(--black-100); /* Near black - primary panels */
-  --surface-02: var(--black-200); /* Charcoal - secondary panels */
-  --surface-03: var(--black-300); /* Dark gray - cards */
-  --surface-04: var(--black-400); /* Elevated surfaces */
-  --surface-05: var(--black-500); /* Interactive hover */
+  /* Text Hierarchy */
+  --text-primary: var(--snow-storm-2); /* #ECEFF4 - crisp white */
+  --text-secondary: var(--snow-storm-1); /* #E5E9F0 - secondary */
+  --text-disabled: var(--snow-storm-0); /* #D8DEE9 - muted */
+  --text-inverse: var(--polar-night-0); /* Dark on light */
 
-  /* Text Hierarchy - Monochromatic */
-  --text-primary: var(--white-000); /* Main text */
-  --text-secondary: var(--gray-980); /* Secondary text */
-  --text-muted: var(--gray-800); /* Disabled/muted */
-  --text-label: var(--gray-900); /* Form labels */
-  --text-inverse: var(--black-100); /* Dark on light */
+  /* Semantic Colors - Roman Theme with Blue/Purple Nord */
+  --imperial-purple: var(--aurora-purple); /* #B48EAD */
+  --legion-crimson: var(--frost-3); /* #5E81AC - dark blue */
+  --bronze-standard: var(--aurora-purple); /* #B48EAD - purple bronze */
+  --stone-gray: var(--frost-1); /* #88C0D0 - frost blue */
+  --victory-gold: var(--frost-2); /* #81A1C1 - blue instead of yellow */
 
-  /* Trading-Specific Text Colors */
-  --text-profit: var(--white-000); /* White text for profit values */
-  --text-loss: var(--white-000); /* White text for loss values */
-  --text-neutral: var(--gray-980); /* Neutral values */
-
-  /* Roman Military Branding - Minimal Usage */
-  --roman-gold: #FFD700; /* For logo/branding only */
-  --roman-crimson: #8B0000; /* Deep crimson accent */
-  --roman-purple: #4B0082; /* Imperial purple */
-
-  /* Chart Colors - Mostly Monochromatic */
-  --candle-up: var(--gray-700); /* Dark gray for up candles */
-  --candle-down: var(--black-400); /* Darker for down candles */
-  --candle-up-border: var(--accent-profit); /* Tiny green outline */
-  --candle-down-border: var(--accent-loss); /* Tiny red outline */
-  --volume-bar: var(--gray-600);
-  --grid-line: var(--black-400);
+  /* Extended Nord Palette */
+  --obsidian: var(--polar-night-0);
+  --marble: var(--snow-storm-2);
+  --iron: var(--polar-night-1);
+  --silver: var(--snow-storm-1);
+  --rust: var(--aurora-green);
 
   /* Van Tharp Landing Page Colors - Dark Metal Theme */
   --marble-white: #222222;
@@ -93,27 +79,25 @@
   --space-8: 2rem; /* 32px */
   --space-12: 3rem; /* 48px */
   --space-16: 4rem; /* 64px */
-  --radius: 0.375rem; /* Minimal rounded corners for terminal aesthetic */
-  
-  /* Tailwind CSS Custom Properties - Monochromatic Terminal Theme */
-  --background: 0 0% 4%; /* var(--black-000) converted to HSL */
-  --foreground: 0 0% 91%; /* var(--white-000) converted to HSL */
-  --card: 0 0% 7%; /* var(--black-100) converted to HSL */
-  --card-foreground: 0 0% 91%;
-  --popover: 0 0% 9%; /* var(--black-200) converted to HSL */
-  --popover-foreground: 0 0% 91%;
-  --primary: 0 0% 25%; /* var(--gray-600) for subtle primary */
-  --primary-foreground: 0 0% 96%; /* var(--white-100) */
-  --secondary: 0 0% 12%; /* var(--black-400) for subtle secondary */
-  --secondary-foreground: 0 0% 91%;
-  --muted: 0 0% 15%; /* var(--black-500) for muted elements */
-  --muted-foreground: 0 0% 42%; /* var(--gray-800) for muted text */
-  --accent: 0 0% 32%; /* var(--gray-700) for subtle accent */
-  --accent-foreground: 0 0% 91%;
-  --destructive: 342 100% 52%; /* var(--neon-loss) for critical alerts only */
-  --destructive-foreground: 0 0% 96%;
-  --border: 0 0% 25%; /* var(--gray-600) for borders */
-  --input: 0 0% 9%; /* var(--black-200) for input backgrounds */
+  --radius: 0.625rem; /* Nord Arctic Theme - Darker Blue/Purple Focus */
+  --background: 218 27% 12%; /* #1e222a - darker polar night */
+  --foreground: 218 27% 94%; /* #ECEFF4 - snow storm */
+  --card: 217 19% 15%; /* #242933 - darker elevated surface */
+  --card-foreground: 218 27% 94%;
+  --popover: 220 16% 22%; /* #2E3440 - higher elevation */
+  --popover-foreground: 218 27% 94%;
+  --primary: 213 32% 52%; /* #5E81AC - dark blue primary */
+  --primary-foreground: 218 27% 94%;
+  --secondary: 220 17% 26%; /* #3B4252 - muted surface */
+  --secondary-foreground: 218 27% 94%;
+  --muted: 220 17% 26%; /* #3B4252 - muted elements */
+  --muted-foreground: 220 9% 85%; /* #D8DEE9 - muted text */
+  --accent: 311 20% 63%; /* #B48EAD - aurora purple */
+  --accent-foreground: 218 27% 12%;
+  --destructive: 354 42% 56%; /* #BF616A - aurora red */
+  --destructive-foreground: 218 27% 94%;
+  --border: 220 17% 26%; /* #3B4252 - borders */
+  --input: 217 19% 15%; /* #242933 - darker input backgrounds */
   --ring: 213 32% 52%; /* #5E81AC - dark blue focus rings */
 
   /* Nord blue/purple accent colors for branding */
@@ -380,110 +364,49 @@ body {
   background: hsl(var(--accent));
 }
 
-/* Trading Terminal Utility Classes */
-
-/* Profit/Loss Text with Subtle Neon Glows */
-.profit-text {
-  color: var(--text-profit);
-  text-shadow: 0 0 20px var(--accent-profit);
+/* Roman Military Color Utilities */
+.text-crimson {
+  color: var(--legion-crimson);
 }
 
-.loss-text {
-  color: var(--text-loss);
-  text-shadow: 0 0 20px var(--accent-loss);
+.text-gold {
+  color: var(--victory-gold);
 }
 
-.neutral-text {
-  color: var(--text-neutral);
+.text-bronze {
+  color: var(--bronze-standard);
 }
 
-/* Trading Panel Backgrounds - Solid, No Glass Effects */
-.trading-panel {
-  background: var(--surface-01);
-  border: 1px solid var(--gray-600);
-  color: var(--text-primary);
+.bg-crimson {
+  background-color: var(--legion-crimson);
 }
 
-.data-panel {
-  background: var(--surface-00);
-  border: 1px solid var(--gray-600);
+.bg-gold {
+  background-color: var(--victory-gold);
 }
 
-.chart-panel {
-  background: var(--black-000);
-  border: none;
+.bg-bronze {
+  background-color: var(--bronze-standard);
 }
 
-/* Position Cards with Subtle Accent Borders */
-.position-card {
-  background: var(--surface-02);
-  border: 1px solid var(--gray-600);
-  color: var(--text-primary);
+.border-crimson {
+  border-color: var(--legion-crimson);
 }
 
-.position-card.profitable {
-  border-left: 2px solid var(--accent-profit);
+.border-gold {
+  border-color: var(--victory-gold);
 }
 
-.position-card.losing {
-  border-left: 2px solid var(--accent-loss);
+.border-bronze {
+  border-color: var(--bronze-standard);
 }
 
-.position-card.neutral {
-  border-left: 2px solid var(--gray-600);
-}
-
-/* Trading Buttons with Subtle Hover Effects */
-.btn-buy {
-  background: var(--surface-02);
-  color: var(--text-primary);
-  border: 1px solid var(--gray-600);
-}
-
-.btn-buy:hover {
-  background: var(--surface-03);
-  border: 1px solid var(--accent-profit);
-}
-
-.btn-sell {
-  background: var(--surface-02);
-  color: var(--text-primary);
-  border: 1px solid var(--gray-600);
-}
-
-.btn-sell:hover {
-  background: var(--surface-03);
-  border: 1px solid var(--accent-loss);
-}
-
-/* Critical Alert - Full Neon Color */
-.alert-critical {
-  background: var(--surface-02);
-  color: var(--neon-alert);
-  border: 1px solid var(--neon-alert);
-  text-shadow: 0 0 10px var(--neon-alert);
-}
-
-.alert-stop-loss {
-  background: var(--surface-02);
-  color: var(--neon-loss);
-  border: 1px solid var(--neon-loss);
-  text-shadow: 0 0 10px var(--neon-loss);
-}
-
-.alert-profit-target {
-  background: var(--surface-02);
-  color: var(--neon-profit);
-  border: 1px solid var(--neon-profit);
-  text-shadow: 0 0 10px var(--neon-profit);
-}
-
-/* Loading Spinner - Monochromatic */
+/* Loading Spinner */
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--gray-600);
-  border-top: 3px solid var(--white-000);
+  border: 3px solid var(--polar-night-3);
+  border-top: 3px solid var(--aurora-purple);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -497,17 +420,17 @@ body {
   }
 }
 
-/* Terminal UI Utility Classes */
-.terminal-panel {
-  background: var(--surface-01);
-  border: 1px solid var(--gray-600);
-  color: var(--text-primary);
+/* Theme Utility Classes */
+.glass-effect {
+  backdrop-filter: blur(20px);
+  background: hsl(var(--card) / 0.9);
+  border: 1px solid hsl(var(--border) / 0.6);
 }
 
-.terminal-card {
-  background: var(--surface-02);
-  border: 1px solid var(--gray-600);
-  color: var(--text-primary);
+.glass-effect-strong {
+  backdrop-filter: blur(40px);
+  background: hsl(var(--card) / 0.85);
+  border: 1px solid hsl(var(--border) / 0.5);
 }
 
 .roman-gradient {

@@ -181,7 +181,7 @@ interface TradeSetup {
 ```
 
 ### Roman Military Theme
-- **Color Palette**: Deep reds, golds, bronze
+- **Color Palette**: Deep reds for accents, black, grey, cream
 - **Typography**: Clean, authoritative fonts
 - **Iconography**: Subtle shield/spear elements
 - **Terminology**: "Command Center", "Battle Plan", "Formation"
@@ -294,6 +294,7 @@ pub enum CacheKey {
 2. **Implement minimal code** to pass test
 3. **Refactor** while maintaining test coverage
 4. **Document** with comprehensive examples
+5. RED-GREEN-REFACTOR Test-Drive
 
 ### Quality Gates
 - **Unit tests**: 90%+ coverage

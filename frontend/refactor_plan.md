@@ -1,10 +1,46 @@
-# Frontend Refactoring Plan: React to Leptos Migration (Final)
+# Testudo Trading Terminal - Leptos Implementation Plan
+
+## Current State
+✅ **React cleanup complete** - All React/TypeScript components removed
+✅ **Assets preserved** - Roman shield, Trajan column images retained  
+✅ **Theme preserved** - Nord Arctic Roman Glass theme in globals.css
+✅ **Documentation intact** - clarityUI.md requirements and reference materials
+✅ **Clean slate ready** - Directory prepared for ground-up Leptos build
+
+Note: `RomanShieldLanding.tsx` kept as reference for CSS techniques (mouse tracking, carousels) for future marketing pages.
 
 ## Architecture Decision
 - **Framework**: Leptos with Client-Side Rendering (CSR) for SPA
-- **Build Tool**: Trunk (optimized for WASM SPAs)
-- **Styling**: Tailwind CSS with existing Roman Glass theme
-- **Performance**: Fine-grained reactivity (no Virtual DOM) for <200ms latency targets
+- **Build Tool**: Trunk (optimized for WASM SPAs)  
+- **Styling**: Tailwind CSS with terminal-first approach
+- **Performance**: Fine-grained reactivity (no Virtual DOM) for <200ms OODA loop targets
+- **UI Philosophy**: Bloomberg Terminal inspired - information density over aesthetics
+
+## Terminal-First Design Principles
+
+### 1. **Information Density**
+- Every pixel serves a purpose - no wasted screen real estate
+- Tabular data displays with minimal padding/margins  
+- Compact typography and tight line spacing
+- Multiple data points visible simultaneously
+
+### 2. **Performance Over Aesthetics**
+- Solid backgrounds for all data panels (no transparency/glass effects)
+- High contrast colors for instant readability
+- Minimal animations - only for state changes
+- Zero glassmorphism in trading areas (reserve for modals/overlays only)
+
+### 3. **Professional Trading UX**
+- Keyboard shortcuts for all critical actions
+- Click-and-drag position sizing on charts
+- No modal interruptions during active trading
+- Instant visual feedback for all interactions
+
+### 4. **Roman Military Branding (Subtle)**
+- Color palette: Nord Arctic with Roman accents
+- Typography: Cinzel for headers, Inter for data
+- Terminology: "Command Center", "Legion", etc. in non-critical areas
+- Visual assets: Shield/column imagery in branding areas only
 
 ## Implementation Plan
 
@@ -30,32 +66,42 @@
    - Add tailwindcss and dependencies
    - Configure Tailwind with Rust file scanning
 
-### Phase 2: Port Authentication Components (Refined)
-1. **Convert React Components to Leptos**:
-   - `RomanShieldLanding.tsx` → `src/components/auth/roman_shield_landing.rs`
-   - `AuthModal.tsx` → `src/components/auth/auth_modal.rs`
-   - `LoginForm.tsx` → `src/components/auth/login_form.rs`
-   - `SignUpForm.tsx` → `src/components/auth/signup_form.rs`
+### Phase 2: Build Terminal-First Authentication & UI
+1. **Create Terminal Authentication Bar**:
+   - `src/components/auth/auth_bar.rs` - Inline authentication status/controls
+   - `src/components/auth/login_panel.rs` - Compact login form (not modal)
+   - `src/components/auth/user_menu.rs` - User profile dropdown
+   - **Design**: Top bar integration, no modal interruptions during trading
 
-2. **Port UI Library**:
-   - Convert the shadcn/ui components (Button, Card, etc.) to Leptos component equivalents in `src/components/ui/`
-   - Preserve all Tailwind CSS classes and styling variants
+2. **Build Core Terminal UI Components**:
+   - `src/components/ui/` - Purpose-built trading components
+   - High-density data tables, buttons optimized for rapid clicking
+   - Dark theme, high contrast, zero transparency in data areas
+   - Keyboard navigation and accessibility
 
 3. **Implement OIDC Authentication Flow**:
-   - **Primary Strategy**: Integrate the `leptos_oidc` crate as the core of the authentication system
-   - **Functionality**: Use `leptos_oidc` to handle the entire OIDC redirect flow, manage token state (storing them securely in memory), and provide reactive signals for authentication status (e.g., `is_authenticated`)
-   - **UI Integration**: The Login and Logout buttons in the UI will trigger the respective functions provided by the `leptos_oidc` library
+   - **Primary Strategy**: Integrate the `leptos_oidc` crate as the core authentication system
+   - **Functionality**: Handle OIDC redirect flow, manage JWT tokens in memory, provide reactive auth signals  
+   - **Terminal Integration**: Seamless auth state in top bar, no modal popups during trading
 
-### Phase 3: Extract and Refactor Styles
-1. **Move inline styles**:
-   - Extract large `<style>` block from RomanShieldLanding
-   - Create `styles/components/roman_shield.css`
-   - Use CSS modules approach
-
-2. **Clean up globals.css**:
+### Phase 3: Build Terminal-Specific Styling System
+1. **Enhance globals.css**:
    - Keep existing Nord Arctic theme variables
+   - Add terminal-specific CSS custom properties
    - Ensure standard Tailwind directives
-   - Maintain Roman Glass glassmorphism effects
+   - Create trading-optimized component classes
+
+2. **Terminal Color System**:
+   - High-contrast variants for data display
+   - Semantic colors: profit green, loss red, warning amber
+   - Accessible color combinations for colorblind users
+   - Dark theme optimization for extended screen time
+
+3. **Component Styling Strategy**:
+   - Utility-first with Tailwind for rapid development
+   - Custom CSS only for complex trading-specific components
+   - Roman Glass effects reserved for non-data areas (auth modals, settings)
+   - Terminal areas: solid backgrounds, zero transparency
 
 ### Phase 4: Implement Trading Terminal
 1. **Create three-panel layout**:
@@ -96,7 +142,19 @@
    - JWT tokens in memory only (via leptos_oidc)
    - Secure WebSocket connections
 
-## File Structure
+## Current Directory Structure
+```
+frontend/
+├── assets/                 # ✅ Roman military images (preserved)
+├── styles/
+│   └── globals.css        # ✅ Nord Arctic Roman Glass theme (preserved)
+├── clarityUI.md           # ✅ Complete requirements documentation
+├── refactor_plan.md       # ✅ This implementation plan
+├── README.md              # Documentation of previous React state
+└── RomanShieldLanding.tsx # Reference only (CSS techniques for future use)
+```
+
+## Target File Structure (After Implementation)
 ```
 frontend/
 ├── Cargo.toml              # Leptos dependencies
@@ -108,26 +166,30 @@ frontend/
 │   ├── main.rs            # Application entry
 │   ├── app.rs             # Root component
 │   ├── components/
-│   │   ├── auth/          # Authentication components
-│   │   ├── trading/       # Trading terminal components
-│   │   └── ui/            # Reusable UI components
+│   │   ├── auth/          # Terminal auth bar & user menu
+│   │   ├── trading/       # Three-panel terminal layout
+│   │   └── ui/            # High-density UI components
 │   └── lib.rs
 ├── styles/
-│   ├── globals.css        # Global styles with Tailwind
+│   ├── globals.css        # Enhanced terminal themes
 │   └── components/        # Component-specific styles
-└── assets/                # Images and static files
+├── assets/                # Roman imagery for branding
+├── clarityUI.md           # Requirements (preserved)
+├── refactor_plan.md       # This plan (preserved)
+└── RomanShieldLanding.tsx # CSS reference (preserved)
 ```
 
 ## Implementation Steps
 1. Set up Leptos CSR skeleton with Trunk
-2. Configure Tailwind CSS pipeline
-3. Port authentication flow using leptos_oidc (priority)
-4. Implement basic terminal layout
-5. Integrate TradingView charts
-6. Connect backend APIs
-7. Add real-time WebSocket data
-8. Performance testing & optimization
-9. Security hardening
+2. Configure Tailwind CSS pipeline  
+3. **Build** authentication bar using leptos_oidc (priority)
+4. **Create** three-panel terminal layout from scratch
+5. **Integrate** TradingView charts via JS interop
+6. **Connect** to imperium backend APIs
+7. **Implement** real-time WebSocket data streams
+8. **Build** onboarding wizard for API keys
+9. Performance testing & optimization
+10. Security hardening
 
 ## Key Technical Details
 
