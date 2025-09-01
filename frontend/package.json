@@ -1,0 +1,11 @@
+{
+  "name": "testudo-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  },
+  "scripts": {
+    "build-css": "tailwindcss -i ./styles/globals.css -o ./dist/tailwind.css"
+  }
+}

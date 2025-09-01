@@ -1,0 +1,22 @@
+[watch]
+# Paths to watch for changes
+watch = ["./src", "./styles"]
+
+[serve]
+# The address to serve the application on
+address = "127.0.0.1"
+port = 8080
+# Open the browser automatically
+open = true
+
+[[hooks]]
+# This hook ensures Tailwind CSS is re-compiled whenever our source files change
+stage = "pre_build"
+command = "sh"
+command_arguments = ["-c", "npx tailwindcss -i ./styles/globals.css -o ./dist/tailwind.css"]
+
+[[hooks]]
+# This hook copies the assets directory to the output directory
+stage = "post_build"
+command = "sh"
+command_arguments = ["-c", "cp -r ./assets ./dist/"]

@@ -1,153 +1,124 @@
 # Testudo Trading Terminal - Leptos Implementation Plan
 
 ## Current State
-✅ **React cleanup complete** - All React/TypeScript components removed
-✅ **Assets preserved** - Roman shield, Trajan column images retained  
-✅ **Theme preserved** - Nord Arctic Roman Glass theme in globals.css
-✅ **Documentation intact** - clarityUI.md requirements and reference materials
-✅ **Clean slate ready** - Directory prepared for ground-up Leptos build
+✅ **Fresh Build Initialized** - Project is a ground-up Leptos build, not a refactor.
+✅ **Assets preserved** - Roman shield, Trajan column images retained.
+✅ **New Theme Adopted** - Monochromatic terminal theme with neon accents is primary (`globals.css`).
+✅ **Old Theme Backed Up** - Previous Nord Arctic theme is archived in `globals-nord-backup.css`.
+✅ **Documentation Intact** - `clarityUI.md` requirements are up-to-date.
 
-Note: `RomanShieldLanding.tsx` kept as reference for CSS techniques (mouse tracking, carousels) for future marketing pages.
+Note: `RomanShieldLanding.tsx` is kept as a reference for potential future marketing pages, but is not part of the active application build.
 
 ## Architecture Decision
-- **Framework**: Leptos with Client-Side Rendering (CSR) for SPA
-- **Build Tool**: Trunk (optimized for WASM SPAs)  
-- **Styling**: Tailwind CSS with terminal-first approach
-- **Performance**: Fine-grained reactivity (no Virtual DOM) for <200ms OODA loop targets
-- **UI Philosophy**: Bloomberg Terminal inspired - information density over aesthetics
+- **Framework**: Leptos with Client-Side Rendering (CSR) for the Single-Page Application (SPA).
+- **Build Tool**: Trunk, optimized for WebAssembly (WASM) SPAs.
+- **Styling**: Tailwind CSS, configured for a "terminal-first" design.
+- **Performance**: Leptos's fine-grained reactivity (no V-DOM) is critical for meeting the sub-200ms OODA loop performance targets.
+- **UI Philosophy**: Inspired by a Bloomberg Terminal, prioritizing information density and performance over purely aesthetic concerns.
 
 ## Terminal-First Design Principles
 
 ### 1. **Information Density**
-- Every pixel serves a purpose - no wasted screen real estate
-- Tabular data displays with minimal padding/margins  
-- Compact typography and tight line spacing
-- Multiple data points visible simultaneously
+- Every pixel must serve a purpose; no wasted screen real estate.
+- Data will be displayed in tabular formats with minimal padding and margins.
+- Typography will be compact with tight line spacing to maximize data visibility.
 
 ### 2. **Performance Over Aesthetics**
-- Solid backgrounds for all data panels (no transparency/glass effects)
-- High contrast colors for instant readability
-- Minimal animations - only for state changes
-- Zero glassmorphism in trading areas (reserve for modals/overlays only)
+- All data panels will use solid, opaque backgrounds. No transparency or glassmorphism.
+- The color scheme is high-contrast to ensure instant readability.
+- Animations are minimal and used only to indicate a state change.
 
 ### 3. **Professional Trading UX**
-- Keyboard shortcuts for all critical actions
-- Click-and-drag position sizing on charts
-- No modal interruptions during active trading
-- Instant visual feedback for all interactions
+- Keyboard shortcuts will be available for all critical actions.
+- The primary interaction for position sizing will be a click-and-drag tool on the chart.
+- The workflow will not be interrupted by modals during active trading.
 
 ### 4. **Roman Military Branding (Subtle)**
-- Color palette: Nord Arctic with Roman accents
-- Typography: Cinzel for headers, Inter for data
-- Terminology: "Command Center", "Legion", etc. in non-critical areas
-- Visual assets: Shield/column imagery in branding areas only
+- **Color Palette**: A professional, monochromatic grayscale aesthetic with subtle, glowing neon accents for profit/loss indicators. Full neon colors are reserved for critical alerts only.
+- **Typography**: Cinzel for headers, Inter for data.
+- **Terminology**: "Command Center," "Legion," etc., will be used in non-critical areas.
+- **Visual Assets**: The shield and column imagery are reserved for branding areas.
 
 ## Implementation Plan
 
 ### Phase 1: Initialize Leptos Frontend Structure
-1. **Create frontend Cargo.toml**:
-   - Configure leptos with CSR features
-   - Add dependencies: leptos, wasm-bindgen, web-sys, console_error_panic_hook
-   - Set up WASM optimizations
-
-2. **Create index.html**:
-   - Set up document structure with Testudo - Imperium title
-   - Link to Tailwind CSS via Trunk
-   - Include Google Fonts (Cinzel, Inter) for Roman theming
-   - Mount point for Leptos application
-
-3. **Create Trunk.toml**:
-   - Configure watch paths (./src, ./styles)
-   - Set dev server (127.0.0.1:8080)
-   - Add pre-build hook for Tailwind compilation
-   - Add post-build hook for assets copying
-
-4. **Create package.json**:
-   - Add tailwindcss and dependencies
-   - Configure Tailwind with Rust file scanning
+1.  **Create `frontend/Cargo.toml`**:
+    -   Configure `leptos` with CSR features.
+    -   Add dependencies: `leptos`, `wasm-bindgen`, `web-sys`, `console_error_panic_hook`.
+    -   Set up WASM release optimizations.
+2.  **Create `index.html`**:
+    -   Set up the document structure with the title "Testudo - Imperium."
+    -   Link to the compiled Tailwind CSS.
+    -   Include Google Fonts (Cinzel, Inter).
+    -   Define the mount point for the Leptos application.
+3.  **Create `Trunk.toml`**:
+    -   Configure watch paths (`./src`, `./styles`).
+    -   Set the dev server to `127.0.0.1:8080`.
+    -   Add a pre-build hook for Tailwind compilation.
+    -   Add a post-build hook to copy assets.
+4.  **Create `package.json`**:
+    -   Add `tailwindcss` and its dependencies.
+    -   Configure Tailwind to scan Rust files for class discovery.
 
 ### Phase 2: Build Terminal-First Authentication & UI
-1. **Create Terminal Authentication Bar**:
-   - `src/components/auth/auth_bar.rs` - Inline authentication status/controls
-   - `src/components/auth/login_panel.rs` - Compact login form (not modal)
-   - `src/components/auth/user_menu.rs` - User profile dropdown
-   - **Design**: Top bar integration, no modal interruptions during trading
-
-2. **Build Core Terminal UI Components**:
-   - `src/components/ui/` - Purpose-built trading components
-   - High-density data tables, buttons optimized for rapid clicking
-   - Dark theme, high contrast, zero transparency in data areas
-   - Keyboard navigation and accessibility
-
-3. **Implement OIDC Authentication Flow**:
-   - **Primary Strategy**: Integrate the `leptos_oidc` crate as the core authentication system
-   - **Functionality**: Handle OIDC redirect flow, manage JWT tokens in memory, provide reactive auth signals  
-   - **Terminal Integration**: Seamless auth state in top bar, no modal popups during trading
+1.  **Create Terminal Authentication Bar**:
+    -   `src/components/auth/auth_bar.rs`: An inline component for auth status and controls.
+    -   `src/components/auth/login_panel.rs`: A compact login form, not a modal.
+    -   `src/components/auth/user_menu.rs`: A dropdown for the user profile.
+2.  **Build Core Terminal UI Components**:
+    -   `src/components/ui/`: A library of purpose-built trading components.
+    -   Focus on high-density data tables, buttons optimized for rapid interaction, and a dark, high-contrast theme.
+3.  **Implement OIDC Authentication Flow**:
+    -   Integrate the `leptos_oidc` crate as the primary authentication system.
+    -   It will handle the OIDC redirect flow, manage JWTs in memory, and provide reactive auth signals to the UI.
 
 ### Phase 3: Build Terminal-Specific Styling System
-1. **Enhance globals.css**:
-   - Keep existing Nord Arctic theme variables
-   - Add terminal-specific CSS custom properties
-   - Ensure standard Tailwind directives
-   - Create trading-optimized component classes
-
-2. **Terminal Color System**:
-   - High-contrast variants for data display
-   - Semantic colors: profit green, loss red, warning amber
-   - Accessible color combinations for colorblind users
-   - Dark theme optimization for extended screen time
-
-3. **Component Styling Strategy**:
-   - Utility-first with Tailwind for rapid development
-   - Custom CSS only for complex trading-specific components
-   - Roman Glass effects reserved for non-data areas (auth modals, settings)
-   - Terminal areas: solid backgrounds, zero transparency
+1.  **Enhance `globals.css`**:
+    -   Implement the new monochromatic theme with subtle neon accents.
+    -   Define terminal-specific CSS custom properties for profit, loss, and active states.
+    -   Ensure standard Tailwind directives are in place.
+2.  **Terminal Color System**:
+    -   Use high-contrast grayscale for data display.
+    -   Use semantic colors (subtle green/red glows) for P/L states.
+    -   Reserve full neon colors for critical alerts only.
+3.  **Component Styling Strategy**:
+    -   Employ a utility-first approach with Tailwind for rapid development.
+    -   Use "Roman Glass" effects only for non-data surfaces like modals or settings overlays.
+    -   All core terminal areas will have solid, opaque backgrounds.
 
 ### Phase 4: Implement Trading Terminal
-1. **Create three-panel layout**:
-   - Central: Chart container for TradingView integration
-   - Right: Order panel with Van Tharp calculations
-   - Bottom: Positions and status monitoring
-
-2. **TradingView Charts Integration**:
-   - Use wasm-bindgen for JS interop
-   - Load TradingView Lightweight Charts library
-   - Implement drag-and-drop position sizing tool
-
-3. **Real-time data**:
-   - WebSocket connection to backend
-   - Live price updates and order book
-   - Position monitoring
+1.  **Create Three-Panel Layout**:
+    -   **Central**: A container for the TradingView chart.
+    -   **Right**: The order panel, displaying real-time Van Tharp calculations.
+    -   **Bottom**: A panel for monitoring positions and system status.
+2.  **TradingView Charts Integration**:
+    -   Use `wasm-bindgen` for JavaScript interop to control the library.
+    -   Implement the drag-and-drop position sizing tool.
+3.  **Real-Time Data**:
+    -   Establish a WebSocket connection to the backend for live price updates and order book data.
 
 ### Phase 5: API Integration
-1. **Connect to Imperium backend**:
-   - REST API client for commands
-   - WebSocket for real-time data
-   - Handle JWT validation (tokens managed by leptos_oidc)
-
-2. **Onboarding wizard**:
-   - API key capture (Binance)
-   - Required permissions validation
-   - IP whitelisting instructions
-   - Risk profile selection
+1.  **Connect to Imperium Backend**:
+    -   Build a REST API client for sending commands.
+    -   Handle JWT validation for all requests (tokens managed by `leptos_oidc`).
+2.  **Onboarding Wizard**:
+    -   Create the UI for API key capture (Binance), permissions validation, and IP whitelisting instructions.
 
 ### Phase 6: Performance & Security
-1. **Performance optimizations**:
-   - Ensure <200ms OODA loop execution
-   - Optimize WASM bundle size
-   - Implement efficient re-rendering
-
-2. **Security measures**:
-   - No localStorage/sessionStorage for sensitive data
-   - JWT tokens in memory only (via leptos_oidc)
-   - Secure WebSocket connections
+1.  **Performance Optimizations**:
+    -   Benchmark and ensure the sub-200ms OODA loop target is met.
+    -   Optimize the final WASM bundle size.
+2.  **Security Measures**:
+    -   Ensure no sensitive data is ever stored in `localStorage` or `sessionStorage`.
+    -   Use secure WebSockets (`wss://`).
 
 ## Current Directory Structure
 ```
 frontend/
 ├── assets/                 # ✅ Roman military images (preserved)
 ├── styles/
-│   └── globals.css        # ✅ Nord Arctic Roman Glass theme (preserved)
+│   ├── globals.css        # ✅ NEW: Monochromatic terminal theme
+│   └── globals-nord-backup.css # ✅ OLD: Nord theme backup
 ├── clarityUI.md           # ✅ Complete requirements documentation
 ├── refactor_plan.md       # ✅ This implementation plan
 ├── README.md              # Documentation of previous React state

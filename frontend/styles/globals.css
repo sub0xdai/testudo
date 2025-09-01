@@ -95,6 +95,11 @@
   --space-16: 4rem; /* 64px */
   --radius: 0.375rem; /* Minimal rounded corners for terminal aesthetic */
   
+  /* Trading Terminal Grid Dimensions */
+  --header-height: 4rem; /* 64px header bar */
+  --order-panel-width: 20rem; /* 320px right panel */
+  --status-panel-height: 12rem; /* 192px bottom panel */
+  
   /* Tailwind CSS Custom Properties - Monochromatic Terminal Theme */
   --background: 0 0% 4%; /* var(--black-000) converted to HSL */
   --foreground: 0 0% 91%; /* var(--white-000) converted to HSL */
@@ -811,4 +816,95 @@ body {
   background: hsl(var(--roman-crimson) / 0.15);
   color: hsl(var(--roman-crimson));
   border: 1px solid hsl(var(--roman-crimson) / 0.3);
+}
+
+/* ========================================
+   TRADING TERMINAL CSS GRID LAYOUT SYSTEM
+   ======================================== */
+
+/* Main Terminal Grid Container */
+.terminal-grid {
+  display: grid;
+  grid-template-areas:
+    "header header header"
+    "chart chart order"
+    "status status status";
+  grid-template-rows: var(--header-height) 1fr var(--status-panel-height);
+  grid-template-columns: 1fr 1fr var(--order-panel-width);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Grid Area Assignments */
+.terminal-header {
+  grid-area: header;
+}
+
+.terminal-main {
+  display: contents; /* Allow children to participate in parent grid */
+}
+
+.chart-panel {
+  grid-area: chart;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.order-panel {
+  grid-area: order;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.status-panel {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Panel Content Areas */
+.chart-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+.order-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.status-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.panel-header {
+  flex-shrink: 0;
+  background: var(--surface-01);
+}
+
+/* Responsive Grid Adjustments */
+@media (max-width: 1200px) {
+  .terminal-grid {
+    grid-template-areas:
+      "header header"
+      "chart order"
+      "status status";
+    grid-template-columns: 1fr 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .terminal-grid {
+    grid-template-areas:
+      "header"
+      "chart"
+      "order"
+      "status";
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--header-height) 1fr 300px var(--status-panel-height);
+  }
 }
