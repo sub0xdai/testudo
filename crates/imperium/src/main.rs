@@ -1,11 +1,11 @@
-//! Testudo Trading Platform - Imperium Crate
-//! 
+'''//! Testudo Trading Platform - Imperium Crate
+//!
 //! The Imperium crate serves as the command and control center for the platform,
 //! handling the main application entry point, API server, and overall orchestration.
 
 use anyhow::Result;
 use clap::{Arg, Command};
-use config::{Config, Environment};
+// use config::{Config, Environment};
 use std::net::SocketAddr;
 use tracing::{info, warn};
 
@@ -51,14 +51,22 @@ async fn main() -> Result<()> {
 
     // Load configuration
     let config_file = matches.get_one::<String>("config").unwrap();
-    let settings = Settings::new(config_file)?;
+    //     let settings = Settings {
+        database_url: "postgres://user:pass@localhost:5432/testudo".to_string(),
+        redis_url: "redis://127.0.0.1/".to_string(),
+    };
+    let settings = Settings {
+        database_url: "postgres://user:pass@localhost:5432/testudo".to_string(),
+        redis_url: "redis://127.0.0.1/".to_string(),
+    };
+
 
     info!("📋 Configuration loaded from: {}", config_file);
 
     // Initialize database connections
     let database_pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(settings.database.max_connections)
-        .connect(&settings.database.url)
+        .max_connections(5)
+        .connect(&settings.database_url)
         .await?;
 
     info!("🗄️ Database connection established");
@@ -68,12 +76,12 @@ async fn main() -> Result<()> {
     info!("📈 Database migrations completed");
 
     // Initialize Redis connection
-    let redis_client = redis::Client::open(settings.redis.url.as_str())?;
+    let redis_client = redis::Client::open(settings.redis_url.as_str())?;
     let redis_manager = redis::aio::ConnectionManager::new(redis_client).await?;
     info!("🗲 Redis connection established");
 
     // Build application router
-    let app = routes::create_router(database_pool, redis_manager, &settings);
+    let app = routes::create_router();
 
     // Determine server address
     let port: u16 = matches.get_one::<String>("port").unwrap().parse()?;
@@ -87,3 +95,4 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+''

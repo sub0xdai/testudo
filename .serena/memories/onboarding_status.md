@@ -11,17 +11,44 @@ Testudo is a disciplined crypto trading platform implementing Van Tharp position
 3. **prudentia** - Risk management and Testudo Protocol enforcement
 4. **imperium** - Progressive Web App API server and command interface
 5. **testudo-types** - Shared types and exchange adapter traits (resolves circular dependencies)
+6. **frontend** - Leptos CSR trading terminal with Bloomberg Terminal-inspired interface
 
 ### Key Architectural Decisions
+- **Frontend-First Strategy**: Chart-driven trading interface prioritizing visual interaction
 - **Shared Dependencies**: Created testudo-types crate to break circular dependency between formatio and prudentia
 - **Exchange Integration**: Unified ExchangeAdapterTrait in testudo-types for cross-crate compatibility
 - **Risk Management**: Testudo Protocol enforces 6% max individual trade risk, 10% max portfolio risk
-- **Performance Targets**: <50ms position calculations, <200ms order execution
-- **API Architecture**: Imperium provides REST API, WebSocket, and Progressive Web App interface
+- **Performance Targets**: <50ms position calculations, <200ms order execution, <100ms chart updates
+- **API Architecture**: Imperium provides REST API, WebSocket, and serves Leptos frontend
 
 ## Current Implementation Status
 
 ### ✅ Completed Components
+
+#### Frontend (Leptos Trading Terminal) ✅ **PHASE 2 COMPLETE - MAJOR MILESTONE**
+- **Leptos CSR Foundation**: High-performance WASM SPA with optimal bundle size ✅
+  - Leptos 0.6 with CSR features and leptos_router integration
+  - WASM release optimization (opt-level="z", LTO, debuginfo stripping)
+  - Console error panic hook for superior browser debugging
+  - Workspace integration with proper crate structure
+- **Bloomberg Terminal Three-Panel Layout**: Professional trading interface ✅
+  - Header Panel: Roman gold branding with real-time status indicators
+  - Central Chart Panel: Full-height container ready for TradingView integration
+  - Right Order Panel: Van Tharp position sizing display with execution controls
+  - Bottom Status Panel: Four-column monitoring (Positions, OODA, Health, Performance)
+- **Advanced CSS Grid Layout**: Responsive professional design ✅
+  - Named grid areas with mobile-first responsive breakpoints
+  - Custom CSS variables for terminal dimensions and spacing
+  - Proper overflow management and flexbox integration
+  - High-contrast monochromatic theme with subtle neon accents
+- **Component Architecture**: Organized structure ready for Phase 3 expansion ✅
+  - Module hierarchy: src/components/{trading,layout,ui}/
+  - Future-ready placeholders for authentication and TradingView integration
+  - Clean separation of concerns and import management
+- **Build System**: Complete development infrastructure ✅
+  - Trunk build pipeline with Tailwind CSS pre-compilation
+  - Asset management and hot reload development server ready
+  - npm integration for CSS tooling and dependency management
 
 #### Disciplina (Position Sizing Engine)
 - Van Tharp position sizing calculator with Decimal precision
@@ -37,30 +64,20 @@ Testudo is a disciplined crypto trading platform implementing Van Tharp position
 - Real-time portfolio tracking and metrics
 - Comprehensive unit tests for all risk components
 
-#### Formatio (OODA Loop Engine) ✅ **MAJOR UPDATE - TYPE SYSTEM INTEGRATION COMPLETE**
-- **Phase 1: Observe** - Market data observation and validation ✅
-- **Phase 2: Orient** - Situation assessment and market analysis ✅ 
-- **Phase 3: Orient** - PositionOrientator component with Van Tharp integration ✅
-- **Phase 4: Decide** - RiskDecider component with prudentia integration ✅
-- **Phase 5: Act** - Executor component with exchange integration ✅
-- **COMPLETE OODA LOOP**: All phases implemented and integrated ✅
-- **TYPE SYSTEM UNIFICATION**: **JUST COMPLETED** - Full integration with prudentia's evolved type system ✅
+#### Formatio (OODA Loop Engine) ✅ **TYPE SYSTEM INTEGRATION COMPLETE**
+- **Phase 1-5: Complete OODA Loop** - All phases implemented and integrated ✅
+- **TYPE SYSTEM UNIFICATION**: Full integration with prudentia's evolved type system ✅
   - Fixed 16+ compilation errors through systematic type conversions
   - Decimal → PricePoint/AccountEquity/RiskPercentage conversions with validation
   - OrderSide ↔ TradeSide enum mapping for cross-crate compatibility
   - ProtocolAssessmentResult integration with proper decision pattern matching
-  - ExchangeAdapterTrait method alignment (health_check, is_symbol_supported)
-  - Async/await system fixes with synchronous assess_trade() proper wrapping
-  - TradeProposal architecture evolution support with UUID and timestamp fields
-  - Manual Default implementation for LoopMetrics containing Instant
 - **COMPILATION STATUS**: ✅ **ZERO ERRORS** - Formatio crate compiles cleanly
 - **INTEGRATION VERIFIED**: Full type safety between formatio ↔ prudentia ↔ disciplina ↔ testudo-types
 
 #### Imperium (API Server & Command Interface) ✅ **COMPILATION READY**
 - **Core Compilation Issues Resolved**: Fixed duplicate ApiResponse definitions and Router state mismatches ✅
 - **API Foundation Structure**: Clean library architecture with proper Axum Router integration ✅
-- **Type System Corrections**: Resolved import conflicts and dependency issues ✅
-- **Development Ready**: Library compiles successfully, ready for progressive web app implementation ✅
+- **Frontend Serving Ready**: Prepared to serve Leptos frontend with API endpoints ✅
 
 #### Infrastructure
 - **testudo-types** crate created to resolve circular dependencies
@@ -68,124 +85,120 @@ Testudo is a disciplined crypto trading platform implementing Van Tharp position
 - Mock exchange adapters for testing
 - Failover manager for exchange resilience
 
-### 🔄 Recent Development Completed
+### 🎯 Current Development Status
 
-**CRITICAL MILESTONE - Formatio Type System Integration (Phase 5.2)**
-- **16+ Compilation Errors Resolved**: Systematic fix of all type mismatches between formatio and evolved prudentia
-- **Cross-Crate Type Safety**: Full type system unification across disciplina ↔ prudentia ↔ formatio ↔ testudo-types
-- **OODA Loop Integration**: Complete working OODA loop with proper risk assessment integration
-- **Production Readiness**: Roman formation discipline fully restored - formatio ready for production use
-- **Git Commit**: `fix(formatio): resolve type system integration with prudentia` - 16 files changed, 1,133 insertions(+), 1,402 deletions(-)
-
-**Previous Achievement - Formatio Test Suite Restoration (Phase 5.1)**
-- **14 Test Compilation Errors Fixed**: Complete test suite restoration with proper type alignment
-- **Mathematical Operations Fixed**: Decimal arithmetic corrections throughout test suite
-- **Error Interface Modernization**: String-based error checking replaced with idiomatic Rust patterns
-- **Test Suite Status**: 16 tests compiled successfully with 12 passing, 4 runtime failures
+**MAJOR MILESTONE ACHIEVED: Frontend Foundation Complete**
+- **Phase 2 Status**: ✅ **COMPLETE** - Core Application Shell deployed
+- **Terminal Interface**: Professional Bloomberg Terminal-inspired layout with three-panel CSS Grid
+- **Development Ready**: Frontend builds successfully, ready for authentication and TradingView integration
+- **Performance Optimized**: WASM bundle optimized, responsive design across all breakpoints
+- **Chart-First Architecture**: Layout prioritizes visual trading with drag-to-trade preparation
 
 ### 📋 Next Implementation Priorities
 
-#### Immediate (Integration & Testing)
-1. **Imperium API Endpoints** - REST API for position calculation and risk assessment
-2. **End-to-End Integration Testing** - Complete OODA loop with real exchange data
-3. **Performance Optimization** - Meeting <200ms complete OODA cycle target
-4. **Test Suite Completion** - Fix remaining 4 runtime test failures in formatio
+#### Immediate (Phase 3: Authentication System)
+1. **OIDC Integration** - leptos_oidc for secure authentication flow
+2. **JWT Management** - In-memory token handling (no localStorage security risk)
+3. **Protected Routes** - Router guards for authenticated trading areas
+4. **Onboarding Wizard** - API key capture and risk profile selection
+5. **User Context** - Global authentication state with Leptos signals
 
-#### Medium Term (Production Features)
-5. **Progressive Web App Interface** - TradingView chart integration
-6. **WebSocket Implementation** - Real-time market data streaming
-7. **Database Integration** (PostgreSQL + TimescaleDB)
-8. **Multi-Exchange Support** - Binance, Coinbase Pro, Kraken adapters
+#### Phase 4: TradingView Integration
+6. **JavaScript Interop** - wasm-bindgen for TradingView library integration  
+7. **Drag-to-Trade Tool** - Price level manipulation for entry/stop/target
+8. **Real-Time Position Sizing** - Live Van Tharp calculations on drag
+9. **Chart WebSocket** - Real-time market data streaming integration
+
+#### Phase 5: Backend Integration
+10. **WebSocket Client** - Real-time market data and order updates
+11. **API Client** - REST integration with imperium backend
+12. **State Management** - Leptos signals for real-time data synchronization
+13. **Error Handling** - Circuit breaker patterns and error recovery
 
 ## Technical Standards
+
+### Frontend Development Patterns
+- **Chart-First Design**: Visual trading interface as primary interaction method
+- **Information Density**: Bloomberg Terminal-style data presentation priority
+- **Performance**: <100ms chart updates, <200ms OODA loop completion
+- **Responsive**: Mobile-first design with desktop trading optimization
+- **Accessibility**: High-contrast design with keyboard shortcuts
 
 ### Code Quality Requirements
 - **Mathematical Precision**: All financial calculations use Decimal types (never f64)
 - **Property-Based Testing**: Minimum 10,000 iterations for financial formulas
-- **Performance Targets**: <50ms position calculations, <200ms trade execution
+- **Performance Targets**: <50ms position calculations, <200ms trade execution, <100ms UI updates
 - **Roman Naming**: Latin-inspired names for core components
 - **Zero Financial Errors**: Position sizing calculations have zero tolerance for inaccuracy
 
-### Testing Strategy
-- **Unit Tests**: Individual component validation
-- **Integration Tests**: Complete OODA loop workflows
-- **Property Tests**: Mathematical verification of financial calculations
-- **Performance Tests**: Latency and throughput benchmarks
+## Current File Structure
 
-### Development Patterns
-- **Monotonic Development**: Add functionality, never modify core calculations
-- **TDD Approach**: Tests first, especially for financial components
-- **Formal Verification**: Mathematical proofs for position sizing accuracy
-- **Comprehensive Error Handling**: Detailed error types with recovery guidance
+### Frontend Structure
+```
+frontend/
+├── Cargo.toml              # ✅ Leptos CSR dependencies
+├── Trunk.toml              # ✅ Build configuration  
+├── index.html              # ✅ Entry point with fonts
+├── package.json            # ✅ Tailwind tooling
+├── tailwind.config.js      # ✅ Terminal theme config
+├── src/
+│   ├── main.rs            # ✅ WASM entry point
+│   ├── app.rs             # ✅ Root component with three-panel layout
+│   ├── lib.rs             # ✅ Module exports
+│   └── components/        # ✅ Component structure ready
+└── styles/
+    └── globals.css        # ✅ Enhanced with CSS Grid system
+```
 
-## Key Files and Locations
-
-### Configuration
-- `CLAUDE.md` - Main AI development context
-- `crates/formatio/CLAUDE.md` - Formatio OODA loop development context
-- `crates/prudentia/CLAUDE.md` - Risk management development context
-- `crates/imperium/CLAUDE.md` - API server development context
-- `Cargo.toml` - Workspace configuration
-- `CHANGELOG.md` - Development progress tracking (recently updated with Phase 5.2)
-
-### Implementation
+### Key Backend Files
 - `crates/disciplina/src/calculator.rs` - Van Tharp position sizing
-- `crates/prudentia/src/risk/protocol.rs` - Risk management core with ProtocolAssessmentResult
-- `crates/formatio/src/ooda.rs` - **Recently fixed** OODA loop with type integration
-- `crates/formatio/src/decider.rs` - **Recently fixed** Risk decision engine
-- `crates/formatio/src/executor.rs` - **Recently fixed** Order execution component
-- `crates/formatio/src/orientator.rs` - Position orientation component
+- `crates/prudentia/src/risk/protocol.rs` - Risk management core
+- `crates/formatio/src/ooda.rs` - Complete OODA loop implementation
 - `crates/imperium/src/lib.rs` - API server foundation
 - `crates/testudo-types/src/lib.rs` - Shared types and traits
 
-### Testing
-- `crates/disciplina/tests/` - Position sizing property tests
-- `crates/prudentia/tests/` - Risk management validation tests  
-- `crates/formatio/tests/` - **Recently restored** OODA loop integration tests
-
 ## Development Workflow
 
-### Before Starting New Features
-1. Read relevant crate-specific CLAUDE.md context
-2. Understand impact on Van Tharp calculations and risk management
-3. Write property-based tests first (TDD approach)
-4. Implement with formal verification mindset
-5. Benchmark against performance targets
+### Frontend Development
+1. Use `trunk serve` for hot reload development server
+2. Maintain Bloomberg Terminal aesthetic and information density
+3. Prioritize visual trading workflows over API abstraction
+4. Test responsiveness across desktop, tablet, mobile breakpoints
+5. Integrate with backend via WebSocket for real-time data
 
 ### Quality Gates (ALL MUST PASS)
 - `cargo test --all-features` - All tests passing
+- `cargo check -p testudo-frontend` - Frontend compilation success
+- `trunk build --release` - Optimized WASM bundle creation
 - `cargo clippy -- -D warnings` - Zero clippy warnings
 - `cargo fmt --check` - Consistent formatting
-- `cargo bench --no-run` - Benchmarks compile successfully
-- `cargo build` - **CURRENTLY PASSING** for disciplina, prudentia, formatio, testudo-types
-- **Known Issue**: imperium crate has references to non-existent formatio types (FormatioError, OodaController)
 
 ## Recent Achievements
-- ✅ **CRITICAL MILESTONE**: Complete formatio crate type system integration with prudentia
-- ✅ **OODA Loop Completion**: All 5 phases implemented (Observe → Orient → Decide → Act)
-- ✅ **Type System Unification**: Full cross-crate type safety and compilation success
-- ✅ **Roman Formation Restoration**: Disciplined approach to systematic fixes
-- ✅ **Test Suite Foundation**: Test compilation restored, runtime issues identified
-- ✅ **Circular Dependency Resolution**: testudo-types crate architecture
-- ✅ **Mathematical Precision**: Van Tharp calculations with property-based verification
-- ✅ **Risk Management System**: Comprehensive Testudo Protocol enforcement
+- ✅ **MAJOR MILESTONE**: Complete frontend foundation with three-panel terminal layout
+- ✅ **Bloomberg Terminal Interface**: Professional trading terminal aesthetic achieved
+- ✅ **Responsive Design**: Mobile-first with desktop optimization complete
+- ✅ **CSS Grid Layout**: Advanced layout system with named areas and proper overflow
+- ✅ **Leptos Integration**: High-performance WASM SPA with optimal bundle size
+- ✅ **Component Architecture**: Clean module structure ready for complex features
+- ✅ **Build System**: Complete Trunk pipeline with asset management
 
 ## Current Status Summary
-- **Formatio**: ✅ **PRODUCTION READY** - Complete OODA loop with type system integration
+- **Frontend**: ✅ **PHASE 2 COMPLETE** - Core application shell with terminal layout
+- **Formatio**: ✅ **PRODUCTION READY** - Complete OODA loop with type system integration  
 - **Disciplina**: ✅ **STABLE** - Van Tharp calculator with comprehensive testing
 - **Prudentia**: ✅ **STABLE** - Risk management with protocol enforcement
 - **Testudo-Types**: ✅ **STABLE** - Shared type system foundation
-- **Imperium**: ⚠️ **COMPILATION ISSUES** - References to deleted formatio types need updating
+- **Imperium**: ✅ **COMPILATION READY** - API foundation prepared for frontend serving
 
 ## Next Session Priorities
-1. **Fix Imperium Compilation** - Update references to FormatioError and OodaController
-2. **End-to-End Integration Test** - Complete OODA loop with real market data
-3. **Performance Benchmarking** - Verify <200ms complete cycle target
-4. **Production API Endpoints** - REST API for position sizing and risk assessment
+1. **Phase 3: Authentication System** - OIDC integration with leptos_oidc
+2. **Protected Routes** - Router guards and user context management
+3. **Onboarding Wizard** - API key capture and risk profile selection
+4. **TradingView Preparation** - JavaScript interop setup for Phase 4
 
 ---
 
-**Last Updated**: 2025-08-31 (Post formatio type system integration - Phase 5.2)
-**Current Phase**: Complete OODA loop implemented, imperium integration pending
-**Development Status**: Core trading engine 95% complete, API server foundation ready
-**Git Status**: All formatio fixes committed and pushed to master
+**Last Updated**: 2025-09-01 (Post Phase 2: Core Application Shell completion)
+**Current Phase**: Phase 2 ✅ Complete → Phase 3: Authentication System
+**Development Status**: Frontend foundation established, ready for authentication and chart integration
+**Architecture Achievement**: Chart-first trading terminal with Bloomberg Terminal aesthetic

@@ -1,10 +1,10 @@
 {
-  "session_id": "418c8ac9-d2ad-443a-bbb2-cdacc375fa38",
-  "transcript_path": "/home/m0xu/.claude/projects/-home-m0xu-1-projects-testudo/418c8ac9-d2ad-443a-bbb2-cdacc375fa38.jsonl",
+  "session_id": "b0d5055b-2437-4634-9941-1ed756cd84cf",
+  "transcript_path": "/home/m0xu/.claude/projects/-home-m0xu-1-projects-testudo/b0d5055b-2437-4634-9941-1ed756cd84cf.jsonl",
   "hook_event_name": "PreToolUse",
   "tool_name": "Write",
   "tool_input": {
-    "file_path": "/home/m0xu/1-projects/testudo/crates/formatio/src/errors.rs",
-    "content": "//! Consolidated error types for Formatio crate\n\nuse thiserror::Error;\nuse crate::{DecisionError, ExecutorError, OrientationError, OodaLoopError};\n\n/// Consolidated error type for all Formatio operations\n#[derive(Debug, Error)]\npub enum FormatioError {\n    #[error(\"OODA loop error: {source}\")]\n    OodaLoopError {\n        #[from]\n        source: OodaLoopError,\n    },\n    \n    #[error(\"Execution error: {source}\")]\n    ExecutorError {\n        #[from]\n        source: ExecutorError,\n    },\n    \n    #[error(\"Orientation error: {source}\")]\n    OrientationError {\n        #[from]\n        source: OrientationError,\n    },\n    \n    #[error(\"Decision error: {source}\")]\n    DecisionError {\n        #[from]\n        source: DecisionError,\n    },\n    \n    #[error(\"Observation failure: {reason}\")]\n    ObservationFailure { reason: String },\n    \n    #[error(\"Stale market data: symbol {symbol}, age {age_ms}ms exceeds limit\")]\n    StaleMarketData { symbol: String, age_ms: u64 },\n    \n    #[error(\"Configuration error: {message}\")]\n    ConfigurationError { message: String },\n}"
+    "file_path": "/home/m0xu/1-projects/testudo/frontend/Cargo.toml",
+    "content": "[package]\nname = \"testudo-frontend\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nleptos = { version = \"0.6\", features = [\"csr\"] }\nwasm-bindgen = \"0.2\"\nweb-sys = { version = \"0.3\", features = [\"Window\", \"Document\", \"Element\", \"HtmlElement\", \"console\"] }\nconsole_error_panic_hook = \"0.1\"\n\n[profile.release]\nopt-level = \"z\"\nlto = true\ncodegen-units = 1\npanic = \"abort\"\nstrip = \"debuginfo\""
   }
 }

@@ -1,13 +1,13 @@
-//! middleware (placeholder)
+'''//! middleware (placeholder)
 
 use std::sync::Arc;
-use crate::auth::JwtAuth;
+// // use crate::auth::JwtAuth;
 
 pub struct AuthMiddleware;
 pub struct RateLimitMiddleware;
 
 impl AuthMiddleware {
-    pub fn new(_auth: Arc<JwtAuth>) -> Self {
+    pub fn new() -> Self {
         Self
     }
 }
@@ -17,3 +17,10 @@ impl RateLimitMiddleware {
         Self
     }
 }
+
+// Example of how it might be used in Axum:
+// .layer(tower::ServiceBuilder::new()
+//     .layer(AuthMiddleware::new(auth_service))
+//     .layer(RateLimitMiddleware::new(100))
+// )
+''

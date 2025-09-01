@@ -37,8 +37,8 @@ Remove human emotion from position sizing decisions through formal mathematical 
 
 - **Backend**: Rust (Tokio + Axum) monolithic architecture
 - **Database**: PostgreSQL + TimescaleDB for time-series trade data
-- **Cache**: Redis for real-time market data and position state
-- **Frontend**: Progressive Web App (React/TypeScript)
+- **Cache**: Redis for real-time market data and position state - This has changed
+- **Frontend**: Progressive Web App (Rust Framework)
 - **Charts**: TradingView Lightweight Charts integration
 - **Monitoring**: Sentry error tracking, Prometheus metrics
 

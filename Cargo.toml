@@ -15,7 +15,9 @@ members = [
     "crates/prudentia",
     "crates/imperium",
     "crates/testudo-types",
+    "frontend",
 ]
+resolver = "2"
 default-members = ["crates/imperium"]
 
 [workspace.dependencies]
