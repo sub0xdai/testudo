@@ -6,7 +6,7 @@
     <title>Testudo - Imperium</title>
 
     <!-- Link to the compiled Tailwind CSS -->
-    <link data-trunk rel="css" href="styles/globals.css" />
+    <link data-trunk rel="css" href="/dist/tailwind.css" />
 
     <!-- Link to the Google Fonts used in the landing page -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,6 +15,9 @@
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Explicitly tell Trunk which Rust binary to build -->
+    <link data-trunk rel="rust" data-bin="testudo-frontend" />
   </head>
   <body>
     <!-- The Leptos application will be mounted here -->

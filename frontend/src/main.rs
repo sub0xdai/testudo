@@ -1,3 +1,4 @@
+#![no_main]
 use leptos::*;
 use wasm_bindgen::prelude::*;
 
