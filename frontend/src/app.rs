@@ -1,21 +1,35 @@
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_router::{components::*, hooks::*, *};
+use leptos::ev::*;
+use crate::components::auth::{AuthProvider, AuthStatus, ProtectedRoute, RoutePermission, MinimumRiskProfile};
+use crate::components::ui::{WebSocketService, WebSocketStatus, use_market_data};
+use crate::components::trading::VanTharpCalculator;
 
 #[component]
 pub fn App() -> impl IntoView {
     view! {
-        <Router>
-            <div class="min-h-screen bg-terminal-bg text-text-primary font-sans">
-                <Routes>
-                    <Route path="" view=TradingTerminal/>
-                </Routes>
-            </div>
-        </Router>
+        <AuthProvider>
+            <WebSocketService>
+                <Router>
+                    <div class="min-h-screen bg-terminal-bg text-text-primary font-sans">
+                        <Routes>
+                            <Route path="" view=TradingTerminal/>
+                            <Route path="/login" view=LoginPage/>
+                        </Routes>
+                    </div>
+                </Router>
+            </WebSocketService>
+        </AuthProvider>
     }
 }
 
 #[component]
 fn TradingTerminal() -> impl IntoView {
+    // Sample trading data - in production, this would come from WebSocket/API
+    let (symbol, _set_symbol) = signal("BTC/USDT".to_string());
+    let (current_price, _set_current_price) = signal(45234.56);
+    let (stop_loss_price, set_stop_loss_price) = signal(43000.0);
+    
     view! {
         <div class="terminal-grid h-screen">
             // Header Bar
@@ -24,12 +38,16 @@ fn TradingTerminal() -> impl IntoView {
                     <h1 class="text-roman-gold font-display text-xl font-bold">
                         "Testudo Command Center"
                     </h1>
-                    <div class="flex items-center space-x-4 text-sm">
-                        <span class="text-text-secondary">"Market Status: "</span>
-                        <span class="text-green-400">"ACTIVE"</span>
-                        <span class="text-text-secondary">"│"</span>
-                        <span class="text-text-secondary">"Connection: "</span>
-                        <span class="text-green-400">"CONNECTED"</span>
+                    <div class="flex items-center space-x-6 text-sm">
+                        <div class="flex items-center space-x-4">
+                            <span class="text-text-secondary">"Market Status: "</span>
+                            <span class="text-green-400">"ACTIVE"</span>
+                            <span class="text-text-secondary">"│"</span>
+                            <WebSocketStatus />
+                        </div>
+                        <div class="border-l border-terminal-border pl-6">
+                            <AuthStatus />
+                        </div>
                     </div>
                 </div>
             </header>
@@ -57,33 +75,45 @@ fn TradingTerminal() -> impl IntoView {
                     </div>
                     <div class="order-content p-4">
                         <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="grid grid-cols-2 gap-2 text-sm mb-4">
                                 <div class="text-text-secondary">"Symbol:"</div>
-                                <div class="text-text-primary font-mono">"BTC/USDT"</div>
+                                <div class="text-text-primary font-mono">{move || symbol.get()}</div>
                                 <div class="text-text-secondary">"Price:"</div>
-                                <div class="text-text-primary font-mono">"$45,234.56"</div>
-                                <div class="text-text-secondary">"Account:"</div>
-                                <div class="text-text-primary font-mono">"$10,000.00"</div>
+                                <div class="text-text-primary font-mono">{move || format!("${:.2}", current_price.get())}</div>
+                                <div class="text-text-secondary">"Stop Loss:"</div>
+                                <div class="text-text-primary font-mono">
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        value={move || stop_loss_price.get()}
+                                        on:input=move |ev| {
+                                            if let Ok(value) = event_target_value(&ev).parse::<f64>() {
+                                                set_stop_loss_price.set(value);
+                                            }
+                                        }
+                                        class="bg-terminal-bg border border-terminal-border rounded px-2 py-1 text-text-primary font-mono text-sm w-full"
+                                    />
+                                </div>
                             </div>
                             
                             <div class="border-t border-terminal-border pt-4">
-                                <h3 class="text-text-secondary text-sm mb-2">"Van Tharp Position Sizing"</h3>
-                                <div class="grid grid-cols-2 gap-2 text-sm">
-                                    <div class="text-text-muted">"Entry:"</div>
-                                    <div class="text-text-primary font-mono">"$45,234.56"</div>
-                                    <div class="text-text-muted">"Stop:"</div>
-                                    <div class="text-text-primary font-mono">"$43,000.00"</div>
-                                    <div class="text-text-muted">"Risk per R:"</div>
-                                    <div class="text-text-primary font-mono">"$200.00"</div>
-                                    <div class="text-text-muted">"Position Size:"</div>
-                                    <div class="text-green-400 font-mono font-bold">"0.0895 BTC"</div>
-                                </div>
+                                <VanTharpCalculator
+                                    symbol=symbol
+                                    price=current_price
+                                    stop_loss=stop_loss_price
+                                />
                             </div>
 
                             <div class="border-t border-terminal-border pt-4">
-                                <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-medium transition-colors">
-                                    "Execute Trade"
-                                </button>
+                                <ProtectedRoute 
+                                    required_permission=RoutePermission::ExecuteTrades
+                                    minimum_risk_profile=MinimumRiskProfile::Standard
+                                    show_loading=false
+                                >
+                                    <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-medium transition-colors">
+                                        "Execute Trade"
+                                    </button>
+                                </ProtectedRoute>
                             </div>
                         </div>
                     </div>
@@ -183,6 +213,45 @@ fn TradingTerminal() -> impl IntoView {
                     </div>
                 </section>
             </main>
+        </div>
+    }
+}
+
+/// Simple login page component
+#[component]
+fn LoginPage() -> impl IntoView {
+    use crate::components::auth::use_auth;
+    
+    let auth = use_auth();
+    
+    view! {
+        <div class="min-h-screen bg-terminal-bg flex items-center justify-center">
+            <div class="max-w-md w-full bg-terminal-card border border-terminal-border rounded-lg p-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-roman-gold font-display text-2xl font-bold mb-2">
+                        "Testudo Trading Platform"
+                    </h1>
+                    <p class="text-text-secondary">
+                        "Secure authentication required"
+                    </p>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="text-center">
+                        <button 
+                            class="w-full bg-roman-gold hover:bg-yellow-600 text-terminal-bg font-medium py-3 px-6 rounded-lg transition-colors"
+                            on:click=move |_| auth.login.set(())
+                        >
+                            "🔐 Login with Keycloak"
+                        </button>
+                    </div>
+                    
+                    <div class="border-t border-terminal-border pt-6 text-center text-sm text-text-muted">
+                        <p>"Authentication follows Van Tharp risk management protocols."</p>
+                        <p class="mt-2">"All trading operations require verified identity and risk profile."</p>
+                    </div>
+                </div>
+            </div>
         </div>
     }
 }

@@ -7,7 +7,9 @@
 pub mod trade_proposal;
 pub mod risk_assessment;
 pub mod protocol_limits;
+pub mod risk_profile;
 
 pub use trade_proposal::{TradeProposal, TradeSide};
 pub use risk_assessment::{RiskAssessment, ApprovalStatus, ProtocolViolation, ViolationSeverity};
 pub use protocol_limits::ProtocolLimits;
+pub use risk_profile::RiskProfile;

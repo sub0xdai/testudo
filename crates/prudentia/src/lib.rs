@@ -71,7 +71,7 @@ pub mod exchange;
 // Re-export core risk management types and functions
 pub use types::{
     TradeProposal, TradeSide, RiskAssessment, ApprovalStatus, 
-    ProtocolViolation, ViolationSeverity, ProtocolLimits
+    ProtocolViolation, ViolationSeverity, ProtocolLimits, RiskProfile
 };
 
 pub use risk::{

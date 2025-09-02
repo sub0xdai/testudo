@@ -42,6 +42,10 @@ jsonwebtoken.workspace = true
 
 # Crate-specific dependencies
 axum-extra = { version = "0.9", features = ["typed-header"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+base64 = "0.21"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+url = "2.4"
 
 [dev-dependencies]
 tokio-test = "0.4"

@@ -1,5 +1,4 @@
 // Reusable UI components for the terminal theme
-// TODO: Implement in Phase 3
-// pub mod button;
-// pub mod spinner;
-// pub mod status_indicator;
+pub mod websocket_service;
+
+pub use websocket_service::{WebSocketService, WebSocketStatus, use_websocket, use_market_data};

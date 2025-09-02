@@ -34,7 +34,10 @@ pub mod types;
 
 pub use api::{create_router, ApiState};
 pub use websocket::{WebSocketHandler, ConnectionManager};
-pub use auth::{JwtAuth, UserClaims, AuthMiddleware};
+pub use auth::{
+    OidcValidator, SessionManager, AuthMiddleware, 
+    UserClaims, AuthContext, AuthService, AuthState
+};
 pub use handlers::{
     auth_handlers, trade_handlers, account_handlers, 
     market_handlers, admin_handlers
@@ -127,8 +130,8 @@ pub struct AppState {
     /// Application configuration
     pub config: AppConfig,
     
-    /// JWT authentication handler
-    pub auth_handler: Arc<JwtAuth>,
+    /// Authentication service with OIDC validator
+    pub auth_service: Arc<AuthService>,
 }
 
 /// Configuration for the Imperium API server
@@ -225,7 +228,7 @@ pub fn create_app_router(state: AppState) -> axum::Router {
                 .layer(TraceLayer::new_for_http())
                 .layer(CorsLayer::permissive()) // Configure properly for production
                 // TODO: Add middleware when implementations are complete
-                // .layer(middleware::AuthMiddleware::new(state.auth_handler.clone()))
+                // .layer(middleware::AuthMiddleware::new(state.auth_service.clone()))
                 // .layer(middleware::RateLimitMiddleware::new(
                 //     state.config.rate_limit_requests_per_minute
                 // ))

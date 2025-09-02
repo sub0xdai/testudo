@@ -1,0 +1,37 @@
+# .dockerignore for Testudo Frontend
+#
+# This file specifies intentionally untracked files that Docker should ignore
+# when building the frontend image. This helps to keep the image size small
+# and build times fast.
+#
+# Purpose: Exclude unnecessary files from the Docker build context.
+#
+# TODO: Senior Implementation - Review and refine based on project evolution.
+
+# Ignore Git-related files
+.git
+.gitignore
+
+# Ignore Node.js modules (already handled by build process)
+node_modules
+
+# Ignore Rust target directory
+target
+
+# Ignore local development environment files
+.env
+.env.*
+
+# Ignore editor/IDE specific files
+.vscode
+.idea
+
+# Ignore build output (will be generated inside container)
+dist
+
+# Ignore temporary files
+*.tmp
+*.bak
+
+# Ignore any legacy build artifacts that are not needed in the Docker context
+legacy_js_build/
