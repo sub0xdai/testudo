@@ -1,4 +1,4 @@
-'''//! middleware (placeholder)
+//! middleware (placeholder)
 
 use std::sync::Arc;
 // // use crate::auth::JwtAuth;
@@ -23,4 +23,3 @@ impl RateLimitMiddleware {
 //     .layer(AuthMiddleware::new(auth_service))
 //     .layer(RateLimitMiddleware::new(100))
 // )
-''

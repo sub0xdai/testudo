@@ -582,7 +582,7 @@ async fn test_orientator_confidence_calculation() {
 async fn test_orientator_with_custom_calculator() {
     // Setup with custom Van Tharp calculator
     let custom_calculator = disciplina::calculator::PositionSizingCalculator::new();
-    let orientator = formatio::PositionOrientator::with_calculator(custom_calculator);
+    let orientator = formatio::PositionOrientator::new();
     let ooda_loop = OodaLoop::new();
     assert!(ooda_loop.transition_to(OodaState::Orienting).await.is_ok());
     

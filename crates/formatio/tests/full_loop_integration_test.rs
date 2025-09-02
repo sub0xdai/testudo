@@ -140,12 +140,12 @@ impl TestEnvironment {
             .add_rule(MaxTradeRiskRule::new()); // Add the default 6% rule
 
         // 4. Create OODA components 
-        let orientator = PositionOrientator::with_calculator(calculator.clone());
+        let orientator = PositionOrientator::new();
         let executor = Executor::new(mock_exchange.clone());
                 let risk_decider = Arc::new(RiskDecider::new(Arc::new(risk_protocol.clone())));
 
         // 5. Assemble complete OodaLoop with executor and risk decider
-        let ooda_loop = OodaLoop::with_executor_and_decider(mock_exchange.clone(), risk_decider);
+        let ooda_loop = OodaLoop::with_all_components(mock_exchange.clone(), risk_decider);
 
         Self {
             ooda_loop,

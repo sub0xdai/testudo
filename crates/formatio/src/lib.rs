@@ -95,3 +95,5 @@ pub use types::{
     TradeProposal,
     TradeSetup,
 };
+
+// FormatioError and OodaController are already public since they're defined with 'pub' in this module

@@ -1,4 +1,4 @@
-'''//! Testudo Trading Platform - Imperium Crate
+//! Testudo Trading Platform - Imperium Crate
 //!
 //! The Imperium crate serves as the command and control center for the platform,
 //! handling the main application entry point, API server, and overall orchestration.
@@ -51,10 +51,6 @@ async fn main() -> Result<()> {
 
     // Load configuration
     let config_file = matches.get_one::<String>("config").unwrap();
-    //     let settings = Settings {
-        database_url: "postgres://user:pass@localhost:5432/testudo".to_string(),
-        redis_url: "redis://127.0.0.1/".to_string(),
-    };
     let settings = Settings {
         database_url: "postgres://user:pass@localhost:5432/testudo".to_string(),
         redis_url: "redis://127.0.0.1/".to_string(),
@@ -95,4 +91,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-''

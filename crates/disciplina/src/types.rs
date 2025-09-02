@@ -124,9 +124,13 @@ impl RiskPercentage {
     /// ```
     /// use disciplina::RiskPercentage;
     /// use rust_decimal::Decimal;
+    /// use std::str::FromStr;
     /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let risk = RiskPercentage::from_percentage(Decimal::from_str("2.5")?)?; // 2.5%
     /// assert_eq!(risk.value(), Decimal::from_str("0.025")?);
+    /// # Ok(())
+    /// # }
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn from_percentage(percentage: Decimal) -> Result<Self, PositionSizingError> {
@@ -168,9 +172,13 @@ impl PricePoint {
     /// ```
     /// use disciplina::PricePoint;
     /// use rust_decimal::Decimal;
+    /// use std::str::FromStr;
     /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let price = PricePoint::new(Decimal::from_str("123.45")?)?;
     /// assert_eq!(price.value(), Decimal::from_str("123.45")?);
+    /// # Ok(())
+    /// # }
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn new(value: Decimal) -> Result<Self, PositionSizingError> {
@@ -235,6 +243,7 @@ impl PositionSize {
     /// ```
     /// use disciplina::PositionSize;
     /// use rust_decimal::Decimal;
+    /// use std::str::FromStr;
     /// 
     /// let size = PositionSize::new(Decimal::from_str("123.456789")?)?;
     /// assert_eq!(size.rounded(2).to_string(), "123.46");
@@ -253,12 +262,15 @@ impl PositionSize {
     /// ```
     /// use disciplina::{PositionSize, PricePoint};
     /// use rust_decimal::Decimal;
+    /// use std::str::FromStr;
     /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let size = PositionSize::new(Decimal::from(100))?;
     /// let price = PricePoint::new(Decimal::from_str("50.25")?)?;
     /// let total_value = size.total_value(price);
     /// assert_eq!(total_value, Decimal::from_str("5025.00")?);
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn total_value(self, price: PricePoint) -> Decimal {
         self.0 * price.value()

@@ -64,6 +64,18 @@ pub struct OodaLoop {
 }
 
 impl OodaLoop {
+    /// Create a minimal OODA loop for basic state machine testing
+    pub fn new() -> Self {
+        Self {
+            state: Arc::new(RwLock::new(OodaState::Idle)),
+            metrics: Arc::new(RwLock::new(LoopMetrics::new())),
+            executor: None,
+            orientator: None,
+            decider: None,
+            exchange: None,
+        }
+    }
+
     pub fn with_all_components(
         exchange: Arc<dyn ExchangeAdapterTrait + Send + Sync>,
         decider: Arc<RiskDecider>,
@@ -263,7 +275,7 @@ mod tests {
     use super::*;
     use crate::types::TradeDirection;
     use prudentia::exchange::MockExchange;
-    use prudentia::risk::{rules::MaxTradeRiskRule, PortfolioState, RiskManagementProtocol};
+    use prudentia::risk::{rules::MaxTradeRiskRule, RiskManagementProtocol};
     use rust_decimal_macros::dec;
     use testudo_types::AccountBalance;
 
@@ -284,10 +296,10 @@ mod tests {
         mock_exchange.set_market_data("BTC/USDT", dec!(50000.0), dec!(100.0));
         let exchange = Arc::new(mock_exchange);
 
-        let protocol = Arc::new(RiskManagementProtocol::new(
-            vec![Box::new(MaxTradeRiskRule::new(dec!(0.06)))],
-            Arc::new(RwLock::new(PortfolioState::new(dec!(10000.0)))),
-        ));
+        let protocol = Arc::new(
+            RiskManagementProtocol::new()
+                .add_rule(MaxTradeRiskRule::new(dec!(0.06)))
+        );
         let decider = Arc::new(RiskDecider::new(protocol));
 
         let loop_instance = OodaLoop::with_all_components(exchange, decider);
