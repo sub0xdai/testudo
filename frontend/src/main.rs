@@ -1,8 +1,9 @@
 #![no_main]
-use leptos::*;
+use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 
 mod app;
+mod components;
 use app::App;
 
 #[wasm_bindgen(start)]

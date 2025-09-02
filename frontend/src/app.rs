@@ -1,229 +1,338 @@
+// Frontend main app with Thaw UI configuration
+
 use leptos::prelude::*;
-use leptos_router::{components::*, hooks::*, *};
-use leptos::ev::*;
-use crate::components::auth::{AuthProvider, AuthStatus, ProtectedRoute, RoutePermission, MinimumRiskProfile};
-use crate::components::ui::{WebSocketService, WebSocketStatus, use_market_data};
-use crate::components::trading::VanTharpCalculator;
+use leptos::task::spawn_local;
+use crate::components::auth::AuthProvider;
+use crate::components::ui::{
+    WebSocketService, WebSocketStatus, NotificationSystem, TradingNotifications, use_notification
+};
+use crate::components::layout::NavigationBar;
+use crate::components::trading::{OrderForm, OrderData};
+use thaw::{
+    Button, ButtonAppearance, ButtonSize, Card, Flex, FlexAlign, FlexJustify, Space, SpaceGap, Tag, Icon, 
+    ConfigProvider, Theme, Layout, Grid, GridItem
+};
+use icondata as i;
+
+// Create custom Testudo Trading Terminal theme
+fn create_testudo_theme() -> RwSignal<Theme> {
+    let theme = Theme::dark();
+    
+    // The theme will automatically use our CSS variables defined in globals.css
+    // since we've mapped them to Thaw's expected variable names.
+    // Our comprehensive CSS variable mapping ensures all Thaw components
+    // will use our monochromatic trading terminal color scheme.
+    
+    RwSignal::new(theme)
+}
 
 #[component]
 pub fn App() -> impl IntoView {
+    // Create custom trading terminal theme with our CSS variables
+    let theme = create_testudo_theme();
+    
     view! {
-        <AuthProvider>
-            <WebSocketService>
-                <Router>
-                    <div class="min-h-screen bg-terminal-bg text-text-primary font-sans">
-                        <Routes>
-                            <Route path="" view=TradingTerminal/>
-                            <Route path="/login" view=LoginPage/>
-                        </Routes>
-                    </div>
-                </Router>
-            </WebSocketService>
-        </AuthProvider>
+        <ConfigProvider theme=theme>
+            <style>
+                {include_str!("../styles/thaw-custom.css")}
+            </style>
+            
+            <NotificationSystem>
+                <AuthProvider>
+                    <WebSocketService>
+                        <div class="terminal-bg min-h-screen text-text-primary">
+                            <TradingTerminal />
+                        </div>
+                    </WebSocketService>
+                </AuthProvider>
+            </NotificationSystem>
+        </ConfigProvider>
     }
 }
 
 #[component]
 fn TradingTerminal() -> impl IntoView {
-    // Sample trading data - in production, this would come from WebSocket/API
-    let (symbol, _set_symbol) = signal("BTC/USDT".to_string());
-    let (current_price, _set_current_price) = signal(45234.56);
-    let (stop_loss_price, set_stop_loss_price) = signal(43000.0);
+    // Responsive breakpoint logic
+    let (is_mobile, set_is_mobile) = signal(false);
+    
+    // Check window size (simplified - in real app would use proper breakpoint detection)
+    let check_mobile = move || {
+        // This is a simplified version - would use proper media query detection
+        false // For now, always desktop layout
+    };
+
+    view! {
+        <Layout class="h-screen">
+            // Navigation Header
+            <Layout>
+                <NavigationBar />
+            </Layout>
+            
+            // Main Content Area with Responsive Grid
+            <Layout class="flex-1">
+                <Grid cols=12 x_gap=Signal::derive(|| 16) y_gap=Signal::derive(|| 16) class="h-full p-4">
+                    // Chart Area - 9 cols on desktop, 12 on mobile
+                    <GridItem 
+                        column=Signal::derive(move || if is_mobile.get() { 12 } else { 9 })
+                        class="h-full"
+                    >
+                        <Card class="chart-container h-full">
+                            <div class="panel-header border-b p-3">
+                                <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                    <h2 class="text-roman-gold font-medium">"Market Chart"</h2>
+                                    <Space>
+                                        <span class="text-text-secondary">"BTC/USDT"</span>
+                                        <span class="font-mono font-semibold">"$45,234.56"</span>
+                                        <Tag>"+2.34%"</Tag>
+                                        <WebSocketStatus />
+                                    </Space>
+                                </Flex>
+                            </div>
+                            <div class="h-full relative flex items-center justify-center p-8">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 border-2 border-roman-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                    <p class="text-text-secondary mb-2">"TradingView Chart Loading..."</p>
+                                    <p class="text-text-muted text-sm">"Pure Thaw UI Layout Active"</p>
+                                </div>
+                                <FloatingExecutionButtons />
+                            </div>
+                        </Card>
+                    </GridItem>
+                    
+                    // Order Panel - 3 cols desktop, hidden on mobile
+                    <Show when=move || !is_mobile.get()>
+                        <GridItem column=3 class="h-full">
+                            <OrderFormWithNotifications />
+                        </GridItem>
+                    </Show>
+                </Grid>
+            </Layout>
+            
+            // Status Panel (Bottom)
+            <Layout class="border-t">
+                <StatusPanel />
+            </Layout>
+            
+            // Mobile Navigation (Conditional)
+            <Show when=move || is_mobile.get()>
+                <MobileNavigation />
+            </Show>
+        </Layout>
+    }
+}
+
+#[component]
+fn FloatingExecutionButtons() -> impl IntoView {
+    let (execution_mode, set_execution_mode) = signal(Option::<String>::None);
+
+    view! {
+        <div class="absolute bottom-6 right-6 z-10">
+            <Space vertical=true gap=SpaceGap::Small>
+                <Button
+                    appearance=ButtonAppearance::Primary
+                    size=ButtonSize::Large
+                    class="long-button animate-element hover:shadow-[0_0_20px_rgba(0,255,133,0.3)] active:scale-[0.98] transition-all duration-200"
+                    on_click=move |_| set_execution_mode.set(Some("LONG".to_string()))
+                >
+                    <Icon icon=i::AiArrowUpOutlined />
+                    " LONG"
+                </Button>
+                <Button
+                    appearance=ButtonAppearance::Primary
+                    size=ButtonSize::Large
+                    class="short-button animate-element hover:shadow-[0_0_20px_rgba(255,0,102,0.3)] active:scale-[0.98] transition-all duration-200"
+                    on_click=move |_| set_execution_mode.set(Some("SHORT".to_string()))
+                >
+                    <Icon icon=i::AiArrowDownOutlined />
+                    " SHORT"
+                </Button>
+            </Space>
+        </div>
+
+        <Show when=move || execution_mode.get().is_some()>
+            <Card class="absolute top-4 left-4 z-20">
+                <Space vertical=true gap=SpaceGap::Small>
+                    <div class="text-roman-gold text-sm font-medium">
+                        "Execution Mode: " {move || execution_mode.get().unwrap_or_default()}
+                    </div>
+                    <Button
+                        appearance=ButtonAppearance::Subtle
+                        size=ButtonSize::Small
+                        on_click=move |_| set_execution_mode.set(None)
+                    >
+                        "Cancel"
+                    </Button>
+                </Space>
+            </Card>
+        </Show>
+    }
+}
+
+// OrderPanel component replaced by OrderForm from components/trading/order_form.rs
+
+#[component]
+fn OrderFormWithNotifications() -> impl IntoView {
+    let notification = use_notification();
     
     view! {
-        <div class="terminal-grid h-screen">
-            // Header Bar
-            <header class="terminal-header bg-terminal-panel border-b border-terminal-border p-4">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-roman-gold font-display text-xl font-bold">
-                        "Testudo Command Center"
-                    </h1>
-                    <div class="flex items-center space-x-6 text-sm">
-                        <div class="flex items-center space-x-4">
-                            <span class="text-text-secondary">"Market Status: "</span>
-                            <span class="text-green-400">"ACTIVE"</span>
-                            <span class="text-text-secondary">"│"</span>
-                            <WebSocketStatus />
-                        </div>
-                        <div class="border-l border-terminal-border pl-6">
-                            <AuthStatus />
-                        </div>
-                    </div>
-                </div>
-            </header>
+        <OrderForm 
+            symbol=Signal::derive(|| "BTC/USDT".to_string())
+            current_price=Signal::derive(|| 45234.56)
+            account_balance=Signal::derive(|| 10000.0)
+            on_submit_buy=Callback::new(move |order: OrderData| {
+                // Simulate order execution  
+                let notification_fn = notification.show;
+                spawn_local(async move {
+                    // Show executing notification
+                    let executing = TradingNotifications::order_executed(
+                        order.symbol.clone(),
+                        "BUY".to_string(),
+                        order.amount,
+                    );
+                    notification_fn(executing);
+                });
+            })
+            on_submit_sell=Callback::new(move |order: OrderData| {
+                // Simulate order execution
+                let notification_fn = notification.show; 
+                spawn_local(async move {
+                    // Show executing notification
+                    let executing = TradingNotifications::order_executed(
+                        order.symbol.clone(),
+                        "SELL".to_string(),
+                        order.amount,
+                    );
+                    notification_fn(executing);
+                });
+            })
+        />
+    }
+}
 
-            // Main Trading Area - Three Panel Layout
-            <main class="terminal-main">
-                // Central Chart Panel
-                <section class="chart-panel bg-terminal-card border border-terminal-border">
-                    <div class="panel-header border-b border-terminal-border p-3">
-                        <h2 class="text-text-primary font-medium">"Market Chart"</h2>
-                    </div>
-                    <div class="chart-container p-4 h-full flex items-center justify-center">
-                        <div class="text-center">
-                            <div class="w-16 h-16 border-2 border-roman-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                            <p class="text-text-secondary">"TradingView Chart Loading..."</p>
-                            <p class="text-text-muted text-sm mt-2">"Phase 2: Core Shell Complete"</p>
-                        </div>
-                    </div>
-                </section>
+#[component]
+fn StatusPanel() -> impl IntoView {
+    view! {
+        <Card class="w-full">
+            <div class="panel-header border-b p-3">
+                <h2 class="text-roman-gold font-medium">"Positions & System Status"</h2>
+            </div>
+            <div class="p-4">
+                <Grid cols=4 x_gap=Signal::derive(|| 16) y_gap=Signal::derive(|| 16)>
+                    // Open Positions
+                    <GridItem>
+                        <Card class="hover-lift h-full">
+                            <div class="p-3">
+                                <Space vertical=true gap=SpaceGap::Small>
+                                    <h3 class="font-medium text-sm">"Open Positions"</h3>
+                                    <Space vertical=true gap=SpaceGap::Small>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="font-mono text-xs">"BTC/USDT"</span>
+                                            <Tag class="profit-glow text-xs">"+2.4%"</Tag>
+                                        </Flex>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="font-mono text-xs">"ETH/USDT"</span>
+                                            <Tag class="loss-glow text-xs">"-1.2%"</Tag>
+                                        </Flex>
+                                    </Space>
+                                </Space>
+                            </div>
+                        </Card>
+                    </GridItem>
+                    
+                    // OODA Status
+                    <GridItem>
+                        <Card class="hover-lift h-full">
+                            <div class="p-3">
+                                <Space vertical=true gap=SpaceGap::Small>
+                                    <h3 class="font-medium text-sm">"OODA Status"</h3>
+                                    <Space vertical=true gap=SpaceGap::Small>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="text-xs">"Observe"</span>
+                                            <Tag class="status-online text-xs">"Active"</Tag>
+                                        </Flex>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="text-xs">"Orient"</span>
+                                            <Tag class="status-online text-xs">"Ready"</Tag>
+                                        </Flex>
+                                    </Space>
+                                </Space>
+                            </div>
+                        </Card>
+                    </GridItem>
+                    
+                    // System Health
+                    <GridItem>
+                        <Card class="hover-lift h-full">
+                            <div class="p-3">
+                                <Space vertical=true gap=SpaceGap::Small>
+                                    <h3 class="font-medium text-sm">"System Health"</h3>
+                                    <Space vertical=true gap=SpaceGap::Small>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="text-xs">"API"</span>
+                                            <Tag class="status-online text-xs">"Connected"</Tag>
+                                        </Flex>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="text-xs">"WebSocket"</span>
+                                            <Tag class="status-online text-xs">"Live"</Tag>
+                                        </Flex>
+                                    </Space>
+                                </Space>
+                            </div>
+                        </Card>
+                    </GridItem>
+                    
+                    // Performance
+                    <GridItem>
+                        <Card class="hover-lift h-full">
+                            <div class="p-3">
+                                <Space vertical=true gap=SpaceGap::Small>
+                                    <h3 class="font-medium text-sm">"Performance"</h3>
+                                    <Space vertical=true gap=SpaceGap::Small>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="text-xs">"Latency"</span>
+                                            <Tag class="text-xs">"<50ms"</Tag>
+                                        </Flex>
+                                        <Flex justify=FlexJustify::SpaceBetween align=FlexAlign::Center>
+                                            <span class="text-xs">"Uptime"</span>
+                                            <Tag class="text-xs">"99.9%"</Tag>
+                                        </Flex>
+                                    </Space>
+                                </Space>
+                            </div>
+                        </Card>
+                    </GridItem>
+                </Grid>
+            </div>
+        </Card>
+    }
+}
 
-                // Right Order Panel
-                <section class="order-panel bg-terminal-card border border-terminal-border">
-                    <div class="panel-header border-b border-terminal-border p-3">
-                        <h2 class="text-text-primary font-medium">"Order Entry"</h2>
-                    </div>
-                    <div class="order-content p-4">
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-2 text-sm mb-4">
-                                <div class="text-text-secondary">"Symbol:"</div>
-                                <div class="text-text-primary font-mono">{move || symbol.get()}</div>
-                                <div class="text-text-secondary">"Price:"</div>
-                                <div class="text-text-primary font-mono">{move || format!("${:.2}", current_price.get())}</div>
-                                <div class="text-text-secondary">"Stop Loss:"</div>
-                                <div class="text-text-primary font-mono">
-                                    <input 
-                                        type="number" 
-                                        step="0.01"
-                                        value={move || stop_loss_price.get()}
-                                        on:input=move |ev| {
-                                            if let Ok(value) = event_target_value(&ev).parse::<f64>() {
-                                                set_stop_loss_price.set(value);
-                                            }
-                                        }
-                                        class="bg-terminal-bg border border-terminal-border rounded px-2 py-1 text-text-primary font-mono text-sm w-full"
-                                    />
-                                </div>
-                            </div>
-                            
-                            <div class="border-t border-terminal-border pt-4">
-                                <VanTharpCalculator
-                                    symbol=symbol
-                                    price=current_price
-                                    stop_loss=stop_loss_price
-                                />
-                            </div>
-
-                            <div class="border-t border-terminal-border pt-4">
-                                <ProtectedRoute 
-                                    required_permission=RoutePermission::ExecuteTrades
-                                    minimum_risk_profile=MinimumRiskProfile::Standard
-                                    show_loading=false
-                                >
-                                    <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-medium transition-colors">
-                                        "Execute Trade"
-                                    </button>
-                                </ProtectedRoute>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                // Bottom Status Panel  
-                <section class="status-panel bg-terminal-card border border-terminal-border">
-                    <div class="panel-header border-b border-terminal-border p-3">
-                        <h2 class="text-text-primary font-medium">"Positions & System Status"</h2>
-                    </div>
-                    <div class="status-content p-4">
-                        <div class="grid grid-cols-4 gap-6">
-                            // Open Positions
-                            <div>
-                                <h3 class="text-text-secondary text-sm mb-2">"Open Positions"</h3>
-                                <div class="space-y-1 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="font-mono">"BTC/USDT"</span>
-                                        <span class="text-green-400">"+2.4%"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="font-mono">"ETH/USDT"</span>
-                                        <span class="text-red-400">"-1.2%"</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            // OODA Loop Status
-                            <div>
-                                <h3 class="text-text-secondary text-sm mb-2">"OODA Status"</h3>
-                                <div class="space-y-1 text-sm">
-                                    <div class="flex justify-between">
-                                        <span>"Observe:"</span>
-                                        <span class="text-green-400">"ACTIVE"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Orient:"</span>
-                                        <span class="text-green-400">"READY"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Decide:"</span>
-                                        <span class="text-yellow-400">"PENDING"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Act:"</span>
-                                        <span class="text-text-muted">"IDLE"</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            // System Health
-                            <div>
-                                <h3 class="text-text-secondary text-sm mb-2">"System Health"</h3>
-                                <div class="space-y-1 text-sm">
-                                    <div class="flex justify-between">
-                                        <span>"API Latency:"</span>
-                                        <span class="text-green-400">"45ms"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"WS Stream:"</span>
-                                        <span class="text-green-400">"LIVE"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Risk Engine:"</span>
-                                        <span class="text-green-400">"ACTIVE"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Circuit Breaker:"</span>
-                                        <span class="text-text-muted">"OFF"</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            // Performance
-                            <div>
-                                <h3 class="text-text-secondary text-sm mb-2">"Performance"</h3>
-                                <div class="space-y-1 text-sm">
-                                    <div class="flex justify-between">
-                                        <span>"Daily P&L:"</span>
-                                        <span class="text-green-400">"+$234.56"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Total R:"</span>
-                                        <span class="text-green-400">"+1.2R"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Win Rate:"</span>
-                                        <span class="text-text-primary">"68%"</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>"Avg R:"</span>
-                                        <span class="text-green-400">"2.4R"</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </main>
+#[component]
+fn MobileNavigation() -> impl IntoView {
+    view! {
+        <div class="mobile-nav fixed bottom-0 left-0 right-0 p-2">
+            <Card>
+                <Flex justify=FlexJustify::SpaceAround align=FlexAlign::Center class="py-2">
+                    <Button appearance=ButtonAppearance::Transparent size=ButtonSize::Small>
+                        <Icon icon=i::AiHomeOutlined />
+                    </Button>
+                    <Button appearance=ButtonAppearance::Transparent size=ButtonSize::Small>
+                        <Icon icon=i::AiLineChartOutlined />
+                    </Button>
+                    <Button appearance=ButtonAppearance::Transparent size=ButtonSize::Small>
+                        <Icon icon=i::AiWalletOutlined />
+                    </Button>
+                    <Button appearance=ButtonAppearance::Transparent size=ButtonSize::Small>
+                        <Icon icon=i::AiUserOutlined />
+                    </Button>
+                </Flex>
+            </Card>
         </div>
     }
 }
 
-/// Simple login page component
 #[component]
 fn LoginPage() -> impl IntoView {
-    use crate::components::auth::use_auth;
-    
-    let auth = use_auth();
-    
     view! {
         <div class="min-h-screen bg-terminal-bg flex items-center justify-center">
             <div class="max-w-md w-full bg-terminal-card border border-terminal-border rounded-lg p-8">
@@ -235,17 +344,18 @@ fn LoginPage() -> impl IntoView {
                         "Secure authentication required"
                     </p>
                 </div>
-                
+
                 <div class="space-y-6">
                     <div class="text-center">
-                        <button 
-                            class="w-full bg-roman-gold hover:bg-yellow-600 text-terminal-bg font-medium py-3 px-6 rounded-lg transition-colors"
-                            on:click=move |_| auth.login.set(())
+                        <Button
+                            appearance=ButtonAppearance::Primary
+                            size=ButtonSize::Large
+                            class="w-full"
                         >
                             "🔐 Login with Keycloak"
-                        </button>
+                        </Button>
                     </div>
-                    
+
                     <div class="border-t border-terminal-border pt-6 text-center text-sm text-text-muted">
                         <p>"Authentication follows Van Tharp risk management protocols."</p>
                         <p class="mt-2">"All trading operations require verified identity and risk profile."</p>

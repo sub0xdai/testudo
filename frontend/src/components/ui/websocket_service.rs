@@ -13,7 +13,9 @@ use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{CloseEvent, ErrorEvent, MessageEvent, WebSocket};
-use crate::components::auth::{use_auth, AuthState, UserContext, RiskProfile};
+use gloo::console;
+use crate::components::auth::{AuthState, UserContext, RiskProfile};
+use thaw::{Tag, TagColor};
 
 /// WebSocket connection states
 #[derive(Debug, Clone, PartialEq)]
@@ -155,7 +157,7 @@ pub fn WebSocketService(
     #[prop(optional)] config: Option<WebSocketConfig>,
 ) -> impl IntoView {
     let config = config.unwrap_or_default();
-    let auth = use_auth();
+    // let auth = use_auth(); // TODO: Implement when auth is ready
 
     // Core WebSocket signals
     let (connection_state, set_connection_state) = signal(ConnectionState::Disconnected);
@@ -177,6 +179,8 @@ pub fn WebSocketService(
     provide_context(ws_context);
 
     // Handle authentication state changes
+    // TODO: Uncomment when auth is ready
+    /*
     create_effect(move |_| {
         match auth.auth_state.get() {
             AuthState::Authenticated(_) => {
@@ -203,8 +207,11 @@ pub fn WebSocketService(
             }
         }
     });
+    */
 
     // Handle manual reconnection requests
+    // TODO: Uncomment when auth is ready
+    /*
     create_effect(move |_| {
         reconnect_trigger.track();
         if matches!(auth.auth_state.get(), AuthState::Authenticated(_)) {
@@ -218,6 +225,7 @@ pub fn WebSocketService(
             });
         }
     });
+    */
 
     // Handle outgoing messages
     create_effect(move |_| {
@@ -302,12 +310,12 @@ async fn create_websocket_connection(
                             }
                         }
                         MarketDataMessage::AuthChallenge { .. } => {
-                            logging::info!("Received authentication challenge");
+                            console::info!("Received authentication challenge");
                             // Handle auth challenge here
                         }
                         _ => {
                             // Normal message processing
-                            logging::debug!("Received WebSocket message: {:?}", message);
+                            console::debug!("Received WebSocket message:", &message);
                         }
                     }
                     set_market_data.set(Some(message));
@@ -328,9 +336,9 @@ async fn create_websocket_connection(
         let reason = e.reason();
         
         match code {
-            1000 => logging::info!("WebSocket closed normally"),
-            1001..=1015 => logging::warn!("WebSocket closed with code {}: {}", code, reason),
-            _ => logging::error!("WebSocket closed unexpectedly with code {}: {}", code, reason),
+            1000 => console::info!("WebSocket closed normally"),
+            1001..=1015 => console::warn!("WebSocket closed with code", code, ":", &reason),
+            _ => console::error!("WebSocket closed unexpectedly with code", code, ":", &reason),
         }
         
         set_connection_state.set(ConnectionState::Reconnecting { 
@@ -382,7 +390,7 @@ async fn reconnect_with_backoff(
         config.max_reconnect_delay_ms,
     );
 
-    logging::info!("WebSocket reconnection attempt {} in {}ms", attempt, delay);
+    console::info!("WebSocket reconnection attempt", attempt, "in", delay, "ms");
 
     // Wait before reconnection attempt
     let delay_future = wasm_bindgen_futures::JsFuture::from(
@@ -401,10 +409,10 @@ async fn reconnect_with_backoff(
         Ok(ws) => {
             set_ws_connection.set(Some(ws));
             set_connection_state.set(ConnectionState::Connected);
-            logging::info!("WebSocket reconnected successfully on attempt {}", attempt);
+            console::info!("WebSocket reconnected successfully on attempt", attempt);
         }
         Err(e) => {
-            logging::error!("WebSocket reconnection attempt {} failed: {}", attempt, e);
+            console::error!("WebSocket reconnection attempt", attempt, "failed:", &e);
             
             // Continue with next attempt
             spawn_local(async move {

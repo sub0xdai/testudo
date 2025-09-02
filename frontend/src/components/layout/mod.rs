@@ -1,4 +1,4 @@
 // Layout components for terminal structure
-// TODO: Implement in Phase 3
-// pub mod header;
-// pub mod grid;
+pub mod navigation_bar;
+
+pub use navigation_bar::*;

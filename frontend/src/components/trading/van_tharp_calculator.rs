@@ -9,7 +9,7 @@
 
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::components::auth::{use_auth, use_user, AuthState, RiskProfile};
+use crate::components::auth::{AuthState, RiskProfile};
 use crate::components::ui::{use_market_data, use_websocket_sender, MarketDataMessage};
 
 /// Van Tharp position sizing calculation inputs
@@ -38,23 +38,17 @@ pub struct PositionSizingResult {
 /// Van Tharp calculator component with real-time verification
 #[component]
 pub fn VanTharpCalculator(
-    /// Trading symbol (e.g., "BTC/USDT")
     symbol: ReadSignal<String>,
-    /// Current market price
     price: ReadSignal<f64>,
-    /// Entry price (user input or current price)
     #[prop(optional)]
     entry_price: Option<ReadSignal<f64>>,
-    /// Stop loss price (user input)
     stop_loss: ReadSignal<f64>,
-    /// Custom risk percentage override
     #[prop(optional)]
     risk_percentage_override: Option<ReadSignal<f64>>,
-    /// Callback when calculation updates
     #[prop(optional)]
     on_calculation_update: Option<Box<dyn Fn(PositionSizingResult) + 'static>>,
 ) -> impl IntoView {
-    let user = use_user();
+    // let user = use_user(); // TODO: Implement when auth is ready
     let market_data = use_market_data();
     let ws_sender = use_websocket_sender();
 
@@ -65,7 +59,8 @@ pub fn VanTharpCalculator(
 
     // Calculate position size reactively
     let calculated_result = create_memo(move |_| {
-        let user_data = user.get()?;
+        // let user_data = user.get()?; // TODO: Get user data when auth is ready
+        return None; // Skip calculation until user data is available
         let symbol_val = symbol.get();
         let entry = entry_price.map(|s| s.get()).unwrap_or_else(|| price.get());
         let stop = stop_loss.get();
@@ -120,7 +115,8 @@ pub fn VanTharpCalculator(
                     user_id,
                     ..
                 } => {
-                    if let Some(user_data) = user.get() {
+                    // if let Some(user_data) = user.get() { // TODO: Get user data when auth is ready
+                    if false { // Skip verification until user data is available
                         if user_data.sub == user_id {
                             // Update with backend verification
                             if let Some(mut result) = calculation_result.get() {
@@ -236,7 +232,8 @@ pub fn VanTharpCalculator(
                             
                             <div class="risk-profile-info mt-3 text-xs text-text-muted">
                                 {move || {
-                                    if let Some(user_data) = user.get() {
+                                    // if let Some(user_data) = user.get() { // TODO: Get user data when auth is ready
+                    if false { // Skip verification until user data is available
                                         format!("Risk Profile: {} (Max: {:.1}%)", 
                                             user_data.risk_profile.description().split(" - ").next().unwrap_or("Unknown"),
                                             user_data.risk_profile.max_trade_risk_percent() * 100.0

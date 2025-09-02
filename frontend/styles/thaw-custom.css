@@ -1,0 +1,490 @@
+/* 🎨 Thaw UI Custom Theme for Testudo Trading Terminal */
+
+/* Trading button animations */
+.thaw-button--primary {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thaw-button--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.thaw-button--primary:active {
+    transform: scale(0.98);
+}
+
+/* Long/Short button specific styling */
+.long-button:hover {
+    box-shadow: 0 0 20px rgba(0, 255, 133, 0.3) !important;
+}
+
+.short-button:hover {
+    box-shadow: 0 0 20px rgba(255, 0, 102, 0.3) !important;
+}
+
+/* Profit/Loss glow animations */
+@keyframes pulse-profit {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(0, 255, 133, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(0, 255, 133, 0.5);
+    }
+}
+
+@keyframes pulse-loss {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 0, 102, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(255, 0, 102, 0.5);
+    }
+}
+
+.profit-glow {
+    animation: pulse-profit 2s infinite;
+}
+
+.loss-glow {
+    animation: pulse-loss 2s infinite;
+}
+
+/* Price update flash animation */
+@keyframes price-flash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.price-update {
+    animation: price-flash 0.3s ease-out;
+}
+
+/* Chart container styling */
+.chart-container {
+    background: linear-gradient(145deg, #0A0A0A, #1A1A1A);
+    border: 1px solid rgba(255, 215, 0, 0.1);
+    min-height: 600px;
+}
+
+.chart-container:hover {
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+/* Hover lift effect for cards */
+.hover-lift {
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Roman gold text */
+.text-roman-gold {
+    color: #FFD700;
+}
+
+/* Terminal theme enhancements */
+.terminal-bg {
+    background: linear-gradient(135deg, #0A0A0A 0%, #1A1A1A 100%);
+}
+
+/* Mobile navigation enhancements */
+.mobile-nav {
+    backdrop-filter: blur(10px);
+    background: rgba(10, 10, 10, 0.9);
+    border-top: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* Loading spinner customization */
+.thaw-spin {
+    color: #FFD700;
+}
+
+/* Enhanced card hover states */
+.thaw-card:hover {
+    border-color: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.1);
+}
+
+/* Form styling improvements */
+.thaw-form-item {
+    margin-bottom: 16px;
+}
+
+.thaw-input-number:focus {
+    border-color: #FFD700;
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+}
+
+/* Navigation bar enhancements */
+.thaw-navbar {
+    backdrop-filter: blur(10px);
+    background: rgba(10, 10, 10, 0.95);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+/* Status indicators */
+.status-online {
+    color: #00FF85;
+}
+
+.status-offline {
+    color: #FF0066;
+}
+
+.status-warning {
+    color: #FFA500;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+    .chart-container {
+        min-height: 400px;
+    }
+    
+    .thaw-button--large {
+        height: 48px;
+        font-size: 16px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .chart-container {
+        min-height: 700px;
+    }
+}
+
+/* Accessibility improvements */
+.thaw-button:focus {
+    outline: 2px solid #FFD700;
+    outline-offset: 2px;
+}
+
+/* Performance optimizations */
+.animate-element {
+    will-change: transform;
+}
+
+.animate-element:hover {
+    will-change: auto;
+}
+
+/* Additional Polish - Tooltips and Notifications */
+
+/* Tooltip enhancements */
+.thaw-tooltip {
+    backdrop-filter: blur(8px);
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Notification/Message enhancements */
+.thaw-message {
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.thaw-message--success {
+    background: rgba(0, 255, 133, 0.1);
+    border: 1px solid rgba(0, 255, 133, 0.3);
+}
+
+.thaw-message--error {
+    background: rgba(255, 0, 102, 0.1);
+    border: 1px solid rgba(255, 0, 102, 0.3);
+}
+
+.thaw-message--warning {
+    background: rgba(255, 165, 0, 0.1);
+    border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.thaw-message--info {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Enhanced dropdown animations */
+.thaw-dropdown {
+    animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Loading spinner enhancements */
+.thaw-spin .thaw-spin-indicator {
+    border-color: rgba(255, 215, 0, 0.3);
+    border-top-color: #FFD700;
+}
+
+/* Input field enhancements */
+.order-form input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+    border-color: #FFD700;
+}
+
+.order-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Price update flash animation */
+.price-update {
+    animation: priceFlash 0.3s ease-out;
+}
+
+@keyframes priceFlash {
+    0% { 
+        background-color: rgba(255, 215, 0, 0.2);
+        transform: scale(1);
+    }
+    50% { 
+        background-color: rgba(255, 215, 0, 0.4);
+        transform: scale(1.02);
+    }
+    100% { 
+        background-color: transparent;
+        transform: scale(1);
+    }
+}
+
+/* Table row hover effects */
+table tr:hover {
+    background-color: rgba(255, 215, 0, 0.05);
+    transform: translateX(2px);
+    transition: all 0.2s ease-out;
+}
+
+/* Button group enhancements */
+.thaw-button-group .thaw-button:hover {
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.2);
+}
+
+/* Card shadow depth on hover */
+.thaw-card:hover {
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 215, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Micro-animations for status indicators */
+.status-online {
+    animation: statusPulse 2s infinite;
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Enhanced focus states for accessibility */
+.thaw-button:focus-visible,
+.thaw-input:focus-visible {
+    outline: 2px solid #FFD700;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Success/Error state animations */
+.success-flash {
+    animation: successFlash 0.5s ease-out;
+}
+
+.error-flash {
+    animation: errorFlash 0.5s ease-out;
+}
+
+@keyframes successFlash {
+    0% { background-color: rgba(0, 255, 133, 0.3); }
+    100% { background-color: transparent; }
+}
+
+@keyframes errorFlash {
+    0% { background-color: rgba(255, 0, 102, 0.3); }
+    100% { background-color: transparent; }
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 640px) {
+    .thaw-card {
+        margin: 4px;
+        border-radius: 8px;
+    }
+    
+    .thaw-button--large {
+        min-height: 48px;
+        font-size: 16px;
+    }
+    
+    .price-card {
+        min-height: 80px;
+    }
+    
+    .order-form input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* Dark theme refinements */
+.thaw-card {
+    background: linear-gradient(145deg, rgba(26, 26, 26, 0.8), rgba(10, 10, 10, 0.9));
+    backdrop-filter: blur(10px);
+}
+
+.thaw-tag {
+    backdrop-filter: blur(8px);
+}
+
+/* Van Tharp assessment panel special styling */
+.van-tharp-panel {
+    background: linear-gradient(135deg, 
+        rgba(255, 215, 0, 0.1) 0%, 
+        rgba(255, 215, 0, 0.05) 50%, 
+        transparent 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255, 215, 0, 0.1);
+}
+
+/* Notification animations */
+.notification-enter {
+    animation: notificationSlideIn 0.3s ease-out;
+}
+
+.notification-exit {
+    animation: notificationSlideOut 0.2s ease-in;
+}
+
+@keyframes notificationSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes notificationSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%) scale(0.9);
+    }
+}
+
+/* Tooltip arrow refinements */
+.tooltip-arrow::after {
+    content: '';
+    position: absolute;
+    border: 4px solid transparent;
+}
+
+/* Enhanced button states */
+.thaw-button:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease-out;
+}
+
+/* Loading state animations */
+.loading-overlay {
+    background: rgba(10, 10, 10, 0.8);
+    backdrop-filter: blur(4px);
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Trading execution animation */
+.execution-success {
+    animation: executionPulse 0.6s ease-out;
+}
+
+@keyframes executionPulse {
+    0% { 
+        box-shadow: 0 0 0 0 rgba(0, 255, 133, 0.7);
+        background-color: rgba(0, 255, 133, 0.1);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 255, 133, 0);
+        background-color: rgba(0, 255, 133, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 133, 0);
+        background-color: transparent;
+    }
+}
+
+/* Market data update animations */
+.price-increase {
+    color: #00FF85 !important;
+    animation: priceIncrease 0.4s ease-out;
+}
+
+.price-decrease {
+    color: #FF0066 !important;
+    animation: priceDecrease 0.4s ease-out;
+}
+
+@keyframes priceIncrease {
+    0% { background-color: rgba(0, 255, 133, 0.3); }
+    100% { background-color: transparent; }
+}
+
+@keyframes priceDecrease {
+    0% { background-color: rgba(255, 0, 102, 0.3); }
+    100% { background-color: transparent; }
+}
+
+/* Connection status indicators */
+.connection-online {
+    animation: connectionPulse 2s ease-in-out infinite;
+}
+
+@keyframes connectionPulse {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(0, 255, 133, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(0, 255, 133, 0.8);
+    }
+}
+
+/* Skeleton loading animation */
+.skeleton {
+    background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}

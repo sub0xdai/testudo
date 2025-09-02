@@ -13,10 +13,9 @@
 
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{window, Request, RequestInit, RequestMode, Response};
+use web_sys::{Request, RequestInit, RequestMode, Response};
 
 /// User authentication context matching backend UserClaims
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -122,6 +121,8 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
     provide_context(auth_context);
 
     // Handle login trigger
+    // TODO: Uncomment when backend is ready - DISABLED to prevent runaway requests
+    /*
     create_effect(move |_| {
         login_trigger.track();
         spawn_local(async move {
@@ -131,8 +132,11 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
             }
         });
     });
+    */
 
     // Handle logout trigger  
+    // TODO: Uncomment when backend is ready - DISABLED to prevent runaway requests
+    /*
     create_effect(move |_| {
         logout_trigger.track();
         spawn_local(async move {
@@ -142,8 +146,11 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
             set_auth_state.set(AuthState::Unauthenticated);
         });
     });
+    */
 
     // Handle refresh trigger and initial load
+    // TODO: Uncomment when backend is ready - THIS WAS THE MAIN CULPRIT MAKING RUNAWAY REQUESTS!
+    /*
     create_effect(move |_| {
         refresh_trigger.track();
         spawn_local(async move {
@@ -166,6 +173,10 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
             }
         });
     });
+    */
+
+    // Set a default state for Phase 1 - no backend connectivity
+    set_auth_state.set(AuthState::Unauthenticated);
 
     // Initial authentication check on component mount
     spawn_local(async move {
@@ -335,47 +346,7 @@ pub fn AuthStatus() -> impl IntoView {
     
     view! {
         <div class="auth-status">
-            {move || match auth.auth_state.get() {
-                AuthState::Loading => view! {
-                    <span class="status loading">"🔄 Checking authentication..."</span>
-                }.into_view(),
-                AuthState::Authenticated(user) => view! {
-                    <div class="status authenticated">
-                        <span class="user-info">
-                            "👤 " {user.preferred_username.clone()}
-                            <span class="risk-profile">" (" {user.risk_profile.description()} ")"</span>
-                        </span>
-                        <button 
-                            class="logout-btn"
-                            on:click=move |_| auth.logout.set(())
-                        >
-                            "Logout"
-                        </button>
-                    </div>
-                }.into_view(),
-                AuthState::Unauthenticated => view! {
-                    <button 
-                        class="login-btn"
-                        on:click=move |_| auth.login.set(())
-                    >
-                        "🔐 Login"
-                    </button>
-                }.into_view(),
-                AuthState::ProviderUnreachable => view! {
-                    <div class="status provider-unreachable">
-                        <span class="warning">"⚠️ Authentication provider unreachable"</span>
-                        <button 
-                            class="retry-btn"
-                            on:click=move |_| auth.refresh.set(())
-                        >
-                            "Retry"
-                        </button>
-                    </div>
-                }.into_view(),
-                AuthState::Unknown => view! {
-                    <span class="status unknown">"❓ Authentication status unknown"</span>
-                }.into_view(),
-            }}
+            <div class="status loading">"🔄 Checking authentication..."</div>
         </div>
     }
 }
