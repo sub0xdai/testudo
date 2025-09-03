@@ -48,7 +48,7 @@ C4Container
     Person(trader, "Retail Crypto Trader")
     
     Container_Boundary(testudo, "Testudo Trading Platform") {
-        Container(webapp, "Web Application", "Progressive Web App", "React/TypeScript with TradingView charts")
+        Container(webapp, "Web Application", "Leptos (Rust/WASM) with JS Interop", "High-performance UI with native Rust logic and a JavaScript-based TradingView chart")
         Container(api, "API Server", "Rust/Axum", "Handles authentication, trading logic, and WebSocket connections")
         Container(riskengine, "Risk Engine", "Rust Core", "Van Tharp position sizing and Testudo Protocol enforcement. Implemented and Verified.")
         Container(tradingcore, "Trading Core", "Rust OODA Loop", "Market observation, analysis, decision making, and execution")
@@ -370,12 +370,12 @@ stateDiagram-v2
 - Easier state synchronization
 
 ### ADR-004: Frontend Framework
-**Decision**: Progressive Web App (React/TypeScript)  
+**Decision**: Hybrid Leptos (Rust/WASM) + JavaScript Application  
 **Rationale**:
-- Balances performance with accessibility requirements
-- Better reach than native desktop app
-- TradingView integration more straightforward
-- Can evolve to native wrapper if needed
+- **Best of Both Worlds**: Leverages Rust compiled to WebAssembly for core application logic, state management, and UI components, providing maximum performance and type safety.
+- **Specialized Charting**: Uses a mature, industry-standard JavaScript library (TradingView Lightweight Charts) for the highly specialized task of financial charting.
+- **Optimal Integration**: Communication between Rust and JavaScript is handled efficiently via `wasm-bindgen`, the official JS Interop toolchain.
+- **Future-Proof**: This modular, hybrid approach allows swapping out the JS charting library for a native Rust equivalent in the future without a full application rewrite.
 
 ---
 

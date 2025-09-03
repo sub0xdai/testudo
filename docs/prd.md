@@ -213,12 +213,11 @@ The platform targets disciplined retail crypto traders who understand the critic
 - **Real-Time Cache**: Redis 6+ for market data and position state caching
 - **Backup Strategy**: Continuous WAL archiving with 15-minute RPO
 
-#### Frontend (Progressive Web App)
-- **Architecture**: Desktop-first PWA for maximum accessibility
-- **Charts**: TradingView Lightweight Charts (streamlined integration)
-- **Framework**: React with TypeScript or Leptos (Rust WASM) - TBD based on performance requirements
-- **Styling**: Tailwind CSS with Roman military design system
-- **State Management**: Real-time via WebSocket with optimistic UI updates
+#### Frontend (Hybrid Rust/WASM + JS PWA)
+- **Architecture**: A hybrid Progressive Web App that uses Leptos (Rust/WASM) for the main UI, state management, and application logic, ensuring maximum performance and safety.
+- **Charts**: TradingView Lightweight Charts (a JavaScript library) rendered within a Leptos component. The two are integrated via a `wasm-bindgen` JS Interop bridge.
+- **Styling**: Tailwind CSS with a Roman military-inspired design system.
+- **State Management**: Real-time state is managed within Leptos (e.g., Signals) and updated via WebSocket. These state changes drive the JavaScript chart.
 
 #### External Integrations
 - **Exchange APIs**: Binance primary (REST + WebSocket), Bybit secondary

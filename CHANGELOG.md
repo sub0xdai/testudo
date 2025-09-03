@@ -17,6 +17,29 @@ Following Roman military tradition, releases are named after Roman legions and m
 
 ## [Unreleased]
 
+### 🏛️ **STRATEGIC PIVOT: Hybrid Frontend Architecture & Direct Exchange Integration**
+**Date**: 2025-09-03
+**Phase**: Architectural Refinement ✅ **PIVOT COMPLETE**
+**Impact**: Adoption of a more robust, maintainable, and performant architecture for the frontend and backend data integration.
+
+#### Frontend Architecture: The Hybrid Model ✅ **BEST OF BOTH WORLDS**
+- **Decision**: The frontend will be built using a hybrid architecture. The core application logic, state management, and UI structure will be implemented in **Leptos (Rust/WASM)** for maximum performance and type safety.
+- **Charting**: The highly specialized task of financial charting will be delegated to the industry-standard **TradingView Lightweight Charts** (a JavaScript library).
+- **Integration**: A seamless bridge between the Rust and JavaScript worlds will be established using **`wasm-bindgen`**. This allows Rust to remain the source of truth for all data and state, while leveraging the best-in-class JS library for rendering.
+- **Rationale**: This approach is pragmatic and future-proof, using the best tool for each job and ensuring the application can benefit from the maturity of the JavaScript charting ecosystem.
+
+#### Backend Integration: Direct WebSocket Connection ✅ **CONTROL & RELIABILITY**
+- **Decision**: To mitigate dependency risk and gain full control over performance, the project will no longer use third-party exchange libraries like `ccxt-rust`.
+- **Implementation**: The backend will connect to exchange data sources (e.g., Binance) **directly** using native Rust libraries.
+- **Tooling**: The **`tokio-tungstenite`** crate will be used to manage the WebSocket connection for streaming real-time market data.
+- **Rationale**: This strategy eliminates reliance on external abstractions, reduces potential points of failure, and allows for fine-tuned optimization of the data pipeline.
+
+#### Roman Military Principle Applied 🏛️
+*"Adapt the formation to the terrain. A flexible strategy ensures victory against any foe."*
+- Acknowledged the unique challenges of browser-based charting and dependency management.
+- Adapted the plan to leverage the strengths of different ecosystems (Rust for logic, JS for rendering).
+- Chose a path of direct control over critical data pipelines, ensuring reliability and discipline.
+
 ### 🎯 **FRONTEND COMPILATION SUCCESS: Build Errors Eliminated & Production Ready**
 **Date**: 2025-09-02  
 **Status**: ✅ **BUILD CLEANUP COMPLETE - 85% Error Reduction**  

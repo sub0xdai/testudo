@@ -71,16 +71,6 @@
   --volume-bar: var(--gray-600);
   --grid-line: var(--black-400);
 
-  /* Van Tharp Landing Page Colors - Dark Metal Theme */
-  --marble-white: #222222;
-  --imperial-gold: #888888;
-  --bronze-dark: #974b46;
-  --slate-charcoal: #121212;
-  --crimson-accent: #5f8787;
-  --stone-grey: #333333;
-  --shadow-subtle: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.18);
-
   /* Typography */
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
@@ -101,49 +91,162 @@
   --header-height: 4rem; /* 64px header bar */
   --order-panel-width: 20rem; /* 320px right panel */
   --status-panel-height: 12rem; /* 192px bottom panel */
-  
-  /* Tailwind CSS Custom Properties - Monochromatic Terminal Theme */
-  --background: 0 0% 4%; /* var(--black-000) converted to HSL */
-  --foreground: 0 0% 91%; /* var(--white-000) converted to HSL */
-  --card: 0 0% 7%; /* var(--black-100) converted to HSL */
-  --card-foreground: 0 0% 91%;
-  --popover: 0 0% 9%; /* var(--black-200) converted to HSL */
-  --popover-foreground: 0 0% 91%;
-  --primary: 0 0% 25%; /* var(--gray-600) for subtle primary */
-  --primary-foreground: 0 0% 96%; /* var(--white-100) */
-  --secondary: 0 0% 12%; /* var(--black-400) for subtle secondary */
-  --secondary-foreground: 0 0% 91%;
-  --muted: 0 0% 15%; /* var(--black-500) for muted elements */
-  --muted-foreground: 0 0% 42%; /* var(--gray-800) for muted text */
-  --accent: 0 0% 32%; /* var(--gray-700) for subtle accent */
-  --accent-foreground: 0 0% 91%;
-  --destructive: 342 100% 52%; /* var(--neon-loss) for critical alerts only */
-  --destructive-foreground: 0 0% 96%;
-  --border: 0 0% 25%; /* var(--gray-600) for borders */
-  --input: 0 0% 9%; /* var(--black-200) for input backgrounds */
-  --ring: 213 32% 52%; /* #5E81AC - dark blue focus rings */
 
-  /* Nord blue/purple accent colors for branding */
-  --roman-crimson: 213 32% 52%; /* #5E81AC - dark blue */
-  --roman-gold: 210 34% 63%; /* #81A1C1 - medium blue */
-  --roman-bronze: 311 20% 63%; /* #B48EAD - aurora purple */
+  /* ========================================
+     THAW UI CSS VARIABLE MAPPINGS
+     Maps our monochromatic theme to Thaw's theming system
+     ======================================== */
 
-  /* Chart colors optimized for overlay */
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  /* Brand Colors - Roman Gold Accent */
+  --colorBrandBackground: var(--roman-gold);
+  --colorBrandBackgroundHover: #FFE033; /* Lighter gold */
+  --colorBrandBackgroundPressed: #CCB000; /* Darker gold */
+  --colorBrandForeground: var(--black-000);
+  --colorBrandForegroundInverted: var(--white-000);
 
-  /* Sidebar system */
-  --sidebar: 0 0% 98%;
-  --sidebar-foreground: 0 0% 10%;
-  --sidebar-primary: 0 0% 18%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 0 0% 90%;
-  --sidebar-accent-foreground: 0 0% 10%;
-  --sidebar-border: 0 0% 85%;
-  --sidebar-ring: 0 0% 18%;
+  /* Neutral Backgrounds - Monochromatic Surface System */
+  --colorNeutralBackground1: var(--surface-02);
+  --colorNeutralBackground1Hover: var(--surface-03);
+  --colorNeutralBackground1Pressed: var(--surface-04);
+  --colorNeutralBackground1Selected: var(--surface-03);
+  --colorNeutralBackground2: var(--surface-01);
+  --colorNeutralBackground2Hover: var(--surface-02);
+  --colorNeutralBackground2Pressed: var(--surface-03);
+  --colorNeutralBackground3: var(--surface-00);
+  --colorNeutralBackground4: var(--black-500);
+  --colorNeutralBackground5: var(--gray-600);
+  --colorNeutralBackground6: var(--gray-700);
+
+  /* Neutral Foregrounds - Text Hierarchy */
+  --colorNeutralForeground1: var(--text-primary);
+  --colorNeutralForeground1Hover: var(--white-100);
+  --colorNeutralForeground1Pressed: var(--gray-990);
+  --colorNeutralForeground1Selected: var(--white-100);
+  --colorNeutralForeground2: var(--text-secondary);
+  --colorNeutralForeground2Hover: var(--text-primary);
+  --colorNeutralForeground2Pressed: var(--text-secondary);
+  --colorNeutralForeground3: var(--text-muted);
+  --colorNeutralForeground4: var(--text-label);
+  --colorNeutralForegroundDisabled: var(--gray-800);
+  --colorNeutralForegroundOnBrand: var(--black-000);
+
+  /* Neutral Strokes - Borders and Dividers */
+  --colorNeutralStroke1: var(--gray-600);
+  --colorNeutralStroke1Hover: var(--gray-700);
+  --colorNeutralStroke1Pressed: var(--gray-800);
+  --colorNeutralStroke2: var(--gray-700);
+  --colorNeutralStroke3: var(--gray-800);
+  --colorNeutralStrokeAccessible: var(--gray-600);
+  --colorNeutralStrokeOnBrand: var(--roman-gold);
+
+  /* Trading-specific Color Extensions */
+  --colorSuccessBackground1: rgba(0, 255, 133, 0.1);
+  --colorSuccessBackground2: rgba(0, 255, 133, 0.2);
+  --colorSuccessForeground1: var(--neon-profit);
+  --colorSuccessForeground2: #00CC6A;
+  --colorSuccessStroke1: rgba(0, 255, 133, 0.3);
+
+  --colorDangerBackground1: rgba(255, 0, 102, 0.1);
+  --colorDangerBackground2: rgba(255, 0, 102, 0.2);
+  --colorDangerForeground1: var(--neon-loss);
+  --colorDangerForeground2: #CC0052;
+  --colorDangerStroke1: rgba(255, 0, 102, 0.3);
+
+  --colorWarningBackground1: rgba(255, 184, 0, 0.1);
+  --colorWarningBackground2: rgba(255, 184, 0, 0.2);
+  --colorWarningForeground1: var(--neon-alert);
+  --colorWarningForeground2: #CC9600;
+  --colorWarningStroke1: rgba(255, 184, 0, 0.3);
+
+  /* Animation Durations (Thaw compatibility) */
+  --durationUltraFast: 50ms;
+  --durationFaster: 100ms;
+  --durationFast: 150ms;
+  --durationNormal: 200ms;
+  --durationGentle: 250ms;
+  --durationSlow: 300ms;
+  --durationSlower: 400ms;
+  --durationUltraSlow: 500ms;
+
+  /* Animation Curves */
+  --curveAccelerateMax: cubic-bezier(0.8, 0, 1, 1);
+  --curveAccelerateMid: cubic-bezier(0.7, 0, 1, 0.5);
+  --curveAccelerateMin: cubic-bezier(0.8, 0, 0.78, 1);
+  --curveDecelerateMax: cubic-bezier(0, 0, 0.2, 1);
+  --curveDecelerateMid: cubic-bezier(0, 0.5, 0.3, 1);
+  --curveDecelerateMin: cubic-bezier(0, 0.8, 0.2, 1);
+  --curveEasyEase: cubic-bezier(0.4, 0, 0.2, 1);
+  --curveLinear: cubic-bezier(0, 0, 1, 1);
+  --curveBounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Shadow System for Trading Terminal */
+  --shadow2: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow4: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow8: 0 4px 8px rgba(0, 0, 0, 0.5);
+  --shadow16: 0 8px 16px rgba(0, 0, 0, 0.6);
+  --shadow28: 0 14px 28px rgba(0, 0, 0, 0.7);
+  --shadow64: 0 32px 64px rgba(0, 0, 0, 0.8);
+
+  /* Additional Thaw Component Variables */
+  --borderRadiusNone: 0;
+  --borderRadiusSmall: 2px;
+  --borderRadiusMedium: var(--radius);
+  --borderRadiusLarge: 8px;
+  --borderRadiusXLarge: 12px;
+  --borderRadiusCircular: 50%;
+
+  /* Font Weight System */
+  --fontWeightRegular: 400;
+  --fontWeightMedium: 500;
+  --fontWeightSemibold: 600;
+  --fontWeightBold: 700;
+
+  /* Font Size System */
+  --fontSizeBase100: 10px;
+  --fontSizeBase200: 12px;
+  --fontSizeBase300: 14px;
+  --fontSizeBase400: 16px;
+  --fontSizeBase500: 20px;
+  --fontSizeBase600: 24px;
+  --fontSizeHero700: 28px;
+  --fontSizeHero800: 32px;
+  --fontSizeHero900: 40px;
+  --fontSizeHero1000: 68px;
+
+  /* Line Height System */
+  --lineHeightBase100: 14px;
+  --lineHeightBase200: 16px;
+  --lineHeightBase300: 20px;
+  --lineHeightBase400: 22px;
+  --lineHeightBase500: 28px;
+  --lineHeightBase600: 32px;
+  --lineHeightHero700: 36px;
+  --lineHeightHero800: 40px;
+  --lineHeightHero900: 52px;
+  --lineHeightHero1000: 92px;
+
+  /* Space System - Enhanced for Trading Terminal */
+  --spacingHorizontalXXS: 2px;
+  --spacingHorizontalXS: 4px;
+  --spacingHorizontalSNudge: 6px;
+  --spacingHorizontalS: 8px;
+  --spacingHorizontalMNudge: 10px;
+  --spacingHorizontalM: 12px;
+  --spacingHorizontalL: 16px;
+  --spacingHorizontalXL: 20px;
+  --spacingHorizontalXXL: 24px;
+  --spacingHorizontalXXXL: 32px;
+
+  --spacingVerticalXXS: 2px;
+  --spacingVerticalXS: 4px;
+  --spacingVerticalSNudge: 6px;
+  --spacingVerticalS: 8px;
+  --spacingVerticalMNudge: 10px;
+  --spacingVerticalM: 12px;
+  --spacingVerticalL: 16px;
+  --spacingVerticalXL: 20px;
+  --spacingVerticalXXL: 24px;
+  --spacingVerticalXXXL: 32px;
 }
 
 /* Base Styles */
@@ -153,220 +256,11 @@
 
 body {
   font-family: var(--font-primary);
-  background-color: var(--polar-night-0);
-  color: var(--snow-storm-2);
+  background-color: var(--black-000);
+  color: var(--white-000);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Nord Arctic Theme UI Components - Blue/Purple Focus */
-.btn-primary {
-  background: var(--frost-3);
-  color: var(--snow-storm-2);
-  font-weight: 600;
-  padding: var(--space-3) var(--space-6);
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(94, 129, 172, 0.3);
-}
-
-.btn-primary:hover {
-  background: var(--frost-2);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(94, 129, 172, 0.4);
-}
-
-.btn-secondary {
-  background: var(--polar-night-1);
-  color: var(--snow-storm-2);
-  font-weight: 500;
-  padding: var(--space-3) var(--space-6);
-  border-radius: 0.5rem;
-  border: 1px solid var(--aurora-purple);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background: var(--polar-night-2);
-  border-color: var(--frost-2);
-  box-shadow: 0 0 0 1px var(--frost-2);
-}
-
-.btn-success {
-  background: var(--aurora-purple);
-  color: var(--snow-storm-2);
-  font-weight: 600;
-  padding: var(--space-3) var(--space-6);
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(180, 142, 173, 0.3);
-}
-
-.btn-success:hover {
-  background: #a285a3;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(180, 142, 173, 0.4);
-}
-
-.input-field {
-  background: var(--polar-night-1);
-  border: 1px solid var(--polar-night-3);
-  color: var(--snow-storm-2);
-  padding: var(--space-3);
-  border-radius: 0.5rem;
-  font-family: var(--font-mono);
-  transition: all 0.2s ease;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--frost-3);
-  box-shadow: 0 0 0 2px rgba(94, 129, 172, 0.3);
-  background: var(--polar-night-2);
-}
-
-/* Glassmorphism Card System */
-.card {
-  background: hsl(var(--card) / 0.95);
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 1rem;
-  padding: var(--space-6);
-  backdrop-filter: blur(20px);
-  box-shadow:
-    0 8px 32px hsl(var(--foreground) / 0.1),
-    0 2px 8px hsl(var(--foreground) / 0.05);
-}
-
-.card-glass {
-  background: hsl(var(--card) / 0.85);
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 1rem;
-  padding: var(--space-6);
-  backdrop-filter: blur(40px);
-  box-shadow:
-    0 12px 40px hsl(var(--foreground) / 0.15),
-    0 4px 12px hsl(var(--foreground) / 0.08),
-    inset 0 1px 2px hsl(var(--background) / 0.1);
-}
-
-.card-solid {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 1rem;
-  padding: var(--space-6);
-  box-shadow:
-    0 4px 16px hsl(var(--foreground) / 0.1),
-    0 1px 4px hsl(var(--foreground) / 0.05);
-}
-
-.command-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(51, 51, 51, 0.1),
-    rgba(95, 135, 135, 0.05)
-  );
-  border: 1px solid var(--imperial-purple);
-  border-radius: 1rem;
-  padding: var(--space-6);
-}
-
-/* Status Indicators */
-.status-active {
-  color: var(--bronze-standard);
-}
-
-.status-pending {
-  color: var(--victory-gold);
-}
-
-.status-critical {
-  color: var(--legion-crimson);
-}
-
-.status-neutral {
-  color: var(--stone-gray);
-}
-
-/* Typography Utilities */
-.text-mono {
-  font-family: var(--font-mono);
-}
-
-.text-display {
-  font-family: var(--font-display);
-}
-
-/* Loading Animations */
-@keyframes pulse-bronze {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse-bronze {
-  animation: pulse-bronze 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Modal and Overlay System */
-.modal-overlay {
-  background: hsl(var(--background) / 0.8);
-  backdrop-filter: blur(8px);
-}
-
-.modal-content {
-  background: hsl(var(--card) / 0.95);
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 1.5rem;
-  backdrop-filter: blur(40px);
-  box-shadow:
-    0 20px 60px hsl(var(--foreground) / 0.2),
-    0 8px 24px hsl(var(--foreground) / 0.12),
-    inset 0 1px 3px hsl(var(--background) / 0.15);
-}
-
-.modal-content-glass {
-  background: hsl(var(--card) / 0.85);
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 1.5rem;
-  backdrop-filter: blur(60px);
-  box-shadow:
-    0 24px 80px hsl(var(--foreground) / 0.25),
-    0 12px 32px hsl(var(--foreground) / 0.15),
-    inset 0 1px 4px hsl(var(--background) / 0.2);
-}
-
-/* Ensure child elements respect modal rounded corners */
-.modal-content-glass > *:first-child {
-  border-radius: inherit;
-}
-
-.modal-content-glass .card {
-  border-radius: 0.75rem;
-}
-
-/* Roman Command Panel Enhanced */
-.command-panel {
-  background: hsl(var(--roman-crimson) / 0.08);
-  border: 1px solid hsl(var(--roman-crimson) / 0.3);
-  border-radius: 1rem;
-  padding: var(--space-6);
-  backdrop-filter: blur(20px);
-  box-shadow:
-    0 8px 32px hsl(var(--roman-crimson) / 0.1),
-    inset 0 1px 2px hsl(var(--roman-gold) / 0.1);
 }
 
 /* Scrollbar Styling */
@@ -404,87 +298,6 @@ body {
   color: var(--text-neutral);
 }
 
-/* Trading Panel Backgrounds - Solid, No Glass Effects */
-.trading-panel {
-  background: var(--surface-01);
-  border: 1px solid var(--gray-600);
-  color: var(--text-primary);
-}
-
-.data-panel {
-  background: var(--surface-00);
-  border: 1px solid var(--gray-600);
-}
-
-.chart-panel {
-  background: var(--black-000);
-  border: none;
-}
-
-/* Position Cards with Subtle Accent Borders */
-.position-card {
-  background: var(--surface-02);
-  border: 1px solid var(--gray-600);
-  color: var(--text-primary);
-}
-
-.position-card.profitable {
-  border-left: 2px solid var(--accent-profit);
-}
-
-.position-card.losing {
-  border-left: 2px solid var(--accent-loss);
-}
-
-.position-card.neutral {
-  border-left: 2px solid var(--gray-600);
-}
-
-/* Trading Buttons with Subtle Hover Effects */
-.btn-buy {
-  background: var(--surface-02);
-  color: var(--text-primary);
-  border: 1px solid var(--gray-600);
-}
-
-.btn-buy:hover {
-  background: var(--surface-03);
-  border: 1px solid var(--accent-profit);
-}
-
-.btn-sell {
-  background: var(--surface-02);
-  color: var(--text-primary);
-  border: 1px solid var(--gray-600);
-}
-
-.btn-sell:hover {
-  background: var(--surface-03);
-  border: 1px solid var(--accent-loss);
-}
-
-/* Critical Alert - Full Neon Color */
-.alert-critical {
-  background: var(--surface-02);
-  color: var(--neon-alert);
-  border: 1px solid var(--neon-alert);
-  text-shadow: 0 0 10px var(--neon-alert);
-}
-
-.alert-stop-loss {
-  background: var(--surface-02);
-  color: var(--neon-loss);
-  border: 1px solid var(--neon-loss);
-  text-shadow: 0 0 10px var(--neon-loss);
-}
-
-.alert-profit-target {
-  background: var(--surface-02);
-  color: var(--neon-profit);
-  border: 1px solid var(--neon-profit);
-  text-shadow: 0 0 10px var(--neon-profit);
-}
-
 /* Loading Spinner - Monochromatic */
 .loading-spinner {
   width: 32px;
@@ -517,344 +330,33 @@ body {
   color: var(--text-primary);
 }
 
-.roman-gradient {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--roman-crimson) / 0.1),
-    hsl(var(--roman-bronze) / 0.1)
-  );
-}
-
-.text-roman-crimson {
-  color: hsl(var(--roman-crimson));
-}
-
 .text-roman-gold {
   color: hsl(var(--roman-gold));
-}
-
-.text-roman-bronze {
-  color: hsl(var(--roman-bronze));
-}
-
-.bg-roman-crimson {
-  background-color: hsl(var(--roman-crimson));
-}
-
-.bg-roman-gold {
-  background-color: hsl(var(--roman-gold));
-}
-
-.bg-roman-bronze {
-  background-color: hsl(var(--roman-bronze));
-}
-
-.border-roman-crimson {
-  border-color: hsl(var(--roman-crimson));
-}
-
-.border-roman-gold {
-  border-color: hsl(var(--roman-gold));
-}
-
-.border-roman-bronze {
-  border-color: hsl(var(--roman-bronze));
-}
-
-@theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-.dark {
-  /* Nord Arctic Theme - Darker Blue/Purple Override */
-  --background: 218 27% 12%; /* #1e222a - darker polar night */
-  --foreground: 218 27% 94%; /* #ECEFF4 - snow storm */
-  --card: 217 19% 15%; /* #242933 - darker elevated surface */
-  --card-foreground: 218 27% 94%;
-  --popover: 220 16% 22%; /* #2E3440 - higher elevation */
-  --popover-foreground: 218 27% 94%;
-  --primary: 213 32% 52%; /* #5E81AC - dark blue primary */
-  --primary-foreground: 218 27% 94%;
-  --secondary: 220 17% 26%; /* #3B4252 - muted surface */
-  --secondary-foreground: 218 27% 94%;
-  --muted: 220 17% 26%; /* #3B4252 - muted elements */
-  --muted-foreground: 220 9% 85%; /* #D8DEE9 - muted text */
-  --accent: 311 20% 63%; /* #B48EAD - aurora purple */
-  --accent-foreground: 218 27% 12%;
-  --destructive: 354 42% 56%; /* #BF616A - aurora red */
-  --destructive-foreground: 218 27% 94%;
-  --border: 220 17% 26%; /* #3B4252 - borders */
-  --input: 217 19% 15%; /* #242933 - darker input backgrounds */
-  --ring: 213 32% 52%; /* #5E81AC - dark blue focus rings */
-
-  /* Nord blue/purple accent colors */
-  --roman-crimson: 213 32% 52%; /* #5E81AC - dark blue */
-  --roman-gold: 210 34% 63%; /* #81A1C1 - medium blue */
-  --roman-bronze: 311 20% 63%; /* #B48EAD - aurora purple */
-
-  /* Chart colors - Blue/Purple Nord palette */
-  --chart-1: 213 32% 52%; /* #5E81AC - dark blue */
-  --chart-2: 210 34% 63%; /* #81A1C1 - medium blue */
-  --chart-3: 193 43% 67%; /* #88C0D0 - frost blue */
-  --chart-4: 311 20% 63%; /* #B48EAD - aurora purple */
-  --chart-5: 179 25% 65%; /* #8FBCBB - frost cyan */
-
-  /* Sidebar system - Darker Nord theme */
-  --sidebar: 217 19% 15%; /* #242933 - darker elevated */
-  --sidebar-foreground: 218 27% 94%;
-  --sidebar-primary: 213 32% 52%; /* #5E81AC - dark blue */
-  --sidebar-primary-foreground: 218 27% 94%;
-  --sidebar-accent: 220 16% 22%; /* #2E3440 - higher elevation */
-  --sidebar-accent-foreground: 218 27% 94%;
-  --sidebar-border: 220 17% 26%; /* #3B4252 - borders */
-  --sidebar-ring: 213 32% 52%;
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    /* Roman-themed background image system */
-    background-image: url('../assets/Roman-testudo-Trajan-column-966204074.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
-  }
-
-  /* Container component for responsive layout */
-  .container {
-    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
-  /* Global overlay system for different contexts */
-  .app-overlay {
-    position: relative;
-  }
-
-  .app-overlay::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: hsl(var(--background) / 0.95);
-    z-index: -1;
-    pointer-events: none;
-  }
-
-  .app-overlay.context-dashboard::before {
-    background: hsl(var(--background) / 0.98);
-  }
-
-  .app-overlay.context-modal::before {
-    background: hsl(var(--background) / 0.92);
-  }
-
-  .app-overlay.context-settings::before {
-    background: hsl(var(--background) / 0.88);
-  }
-}
-
-/* Additional utility classes */
-.text-roman-bronze-foreground {
-  color: hsl(var(--foreground));
-}
-
-/* Roman-themed component overrides for shadcn/ui */
-.card-glass {
-  background: hsl(var(--card) / 0.85);
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 1rem;
-  padding: var(--space-6);
-  backdrop-filter: blur(40px);
-  box-shadow:
-    0 12px 40px hsl(var(--foreground) / 0.15),
-    0 4px 12px hsl(var(--foreground) / 0.08),
-    inset 0 1px 2px hsl(var(--background) / 0.1);
-}
-
-/* Roman Glass utility classes for shadcn/ui Cards */
-.roman-glass {
-  background: hsl(var(--card) / 0.85);
-  backdrop-filter: blur(40px);
-  box-shadow:
-    0 12px 40px hsl(var(--foreground) / 0.15),
-    0 4px 12px hsl(var(--foreground) / 0.08),
-    inset 0 1px 2px hsl(var(--background) / 0.1);
-}
-
-.roman-glass-bronze {
-  background: hsl(var(--card) / 0.85);
-  backdrop-filter: blur(40px);
-  border-color: hsl(var(--roman-bronze) / 0.2);
-  box-shadow:
-    0 12px 40px hsl(var(--foreground) / 0.15),
-    0 4px 12px hsl(var(--foreground) / 0.08),
-    inset 0 1px 2px hsl(var(--background) / 0.1);
-}
-
-.roman-glass-crimson {
-  background: hsl(var(--card) / 0.85);
-  backdrop-filter: blur(40px);
-  border-color: hsl(var(--roman-crimson) / 0.2);
-  box-shadow:
-    0 12px 40px hsl(var(--foreground) / 0.15),
-    0 4px 12px hsl(var(--foreground) / 0.08),
-    inset 0 1px 2px hsl(var(--background) / 0.1);
-}
-
-.roman-glass-gold {
-  background: hsl(var(--card) / 0.85);
-  backdrop-filter: blur(40px);
-  border-color: hsl(var(--roman-gold) / 0.2);
-  box-shadow:
-    0 12px 40px hsl(var(--foreground) / 0.15),
-    0 4px 12px hsl(var(--foreground) / 0.08),
-    inset 0 1px 2px hsl(var(--background) / 0.1);
-}
-
-/* Roman-themed button variants */
-.btn-roman-crimson {
-  background: hsl(var(--roman-crimson));
-  color: hsl(var(--foreground));
-  border: 1px solid hsl(var(--roman-crimson) / 0.8);
-}
-
-.btn-roman-crimson:hover {
-  background: hsl(var(--roman-crimson) / 0.9);
-  border-color: hsl(var(--roman-crimson));
-}
-
-.btn-roman-gold {
-  background: hsl(var(--roman-gold));
-  color: hsl(var(--background));
-  border: 1px solid hsl(var(--roman-gold) / 0.8);
-}
-
-.btn-roman-gold:hover {
-  background: hsl(var(--roman-gold) / 0.9);
-  border-color: hsl(var(--roman-gold));
-}
-
-.btn-roman-bronze {
-  background: hsl(var(--roman-bronze));
-  color: hsl(var(--foreground));
-  border: 1px solid hsl(var(--roman-bronze) / 0.8);
-}
-
-.btn-roman-bronze:hover {
-  background: hsl(var(--roman-bronze) / 0.9);
-  border-color: hsl(var(--roman-bronze));
-}
-
-/* Roman-themed badge variants */
-.badge-roman {
-  background: hsl(var(--roman-crimson) / 0.15);
-  color: hsl(var(--roman-crimson));
-  border: 1px solid hsl(var(--roman-crimson) / 0.3);
-}
-
-.badge-spqr {
-  background: hsl(var(--roman-gold) / 0.15);
-  color: hsl(var(--roman-gold));
-  border: 1px solid hsl(var(--roman-gold) / 0.3);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-/* Roman military status indicators */
-.status-active-roman {
-  background: hsl(var(--roman-bronze) / 0.15);
-  color: hsl(var(--roman-bronze));
-  border: 1px solid hsl(var(--roman-bronze) / 0.3);
-}
-
-.status-pending-roman {
-  background: hsl(var(--roman-gold) / 0.15);
-  color: hsl(var(--roman-gold));
-  border: 1px solid hsl(var(--roman-gold) / 0.3);
-}
-
-.status-inactive-roman {
-  background: hsl(var(--roman-crimson) / 0.15);
-  color: hsl(var(--roman-crimson));
-  border: 1px solid hsl(var(--roman-crimson) / 0.3);
 }
 
 /* ========================================
    TRADING TERMINAL CSS GRID LAYOUT SYSTEM
    ======================================== */
 
-/* Main Terminal Grid Container */
-.terminal-grid {
+/* New Professional Terminal Grid (Phase 1) */
+.new-terminal-grid {
   display: grid;
   grid-template-areas:
-    "header header header"
-    "chart chart order"
-    "status status status";
-  grid-template-rows: var(--header-height) 1fr var(--status-panel-height);
-  grid-template-columns: 1fr 1fr var(--order-panel-width);
+    "nav"
+    "chart"
+    "status";
+  grid-template-rows: 4rem 1fr 12rem;
   height: 100vh;
   overflow: hidden;
 }
 
 /* Grid Area Assignments */
-.terminal-header {
-  grid-area: header;
+.navigation-bar {
+  grid-area: nav;
 }
 
-.terminal-main {
-  display: contents; /* Allow children to participate in parent grid */
-}
-
-.chart-panel {
+.chart-main {
   grid-area: chart;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.order-panel {
-  grid-area: order;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -873,11 +375,6 @@ body {
   overflow: hidden;
 }
 
-.order-content {
-  flex: 1;
-  overflow-y: auto;
-}
-
 .status-content {
   flex: 1;
   overflow-y: auto;
@@ -889,24 +386,14 @@ body {
 }
 
 /* Responsive Grid Adjustments */
-@media (max-width: 1200px) {
-  .terminal-grid {
-    grid-template-areas:
-      "header header"
-      "chart order"
-      "status status";
-    grid-template-columns: 1fr 300px;
-  }
-}
-
 @media (max-width: 768px) {
-  .terminal-grid {
-    grid-template-areas:
-      "header"
-      "chart"
-      "order"
-      "status";
-    grid-template-columns: 1fr;
-    grid-template-rows: var(--header-height) 1fr 300px var(--status-panel-height);
+  .new-terminal-grid {
+    grid-template-rows: 4rem 1fr 10rem;
+  }
+
+  .navigation-bar {
+    flex-direction: column;
+    height: auto;
+    padding: 1rem;
   }
 }

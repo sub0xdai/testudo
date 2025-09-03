@@ -15,39 +15,79 @@ module.exports = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+        // Trading Terminal Monochromatic Color System
+        'terminal-bg': 'var(--black-000)',
+        'surface': {
+          '00': 'var(--surface-00)',
+          '01': 'var(--surface-01)',
+          '02': 'var(--surface-02)',
+          '03': 'var(--surface-03)',
+          '04': 'var(--surface-04)',
+          '05': 'var(--surface-05)',
         },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+        'text': {
+          'primary': 'var(--text-primary)',
+          'secondary': 'var(--text-secondary)',
+          'muted': 'var(--text-muted)',
+          'label': 'var(--text-label)',
         },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+        'roman': {
+          'gold': 'var(--roman-gold)',
+          'crimson': 'var(--roman-crimson)',
+          'purple': 'var(--roman-purple)',
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+        'neon': {
+          'profit': 'var(--neon-profit)',
+          'loss': 'var(--neon-loss)',
+          'alert': 'var(--neon-alert)',
         },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+        'accent': {
+          'profit': 'var(--accent-profit)',
+          'loss': 'var(--accent-loss)',
+          'active': 'var(--accent-active)',
+          'warning': 'var(--accent-warning)',
         },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+        // Gray scale system
+        'gray': {
+          600: 'var(--gray-600)',
+          700: 'var(--gray-700)',
+          800: 'var(--gray-800)',
+          900: 'var(--gray-900)',
+          950: 'var(--gray-950)',
+          980: 'var(--gray-980)',
+          990: 'var(--gray-990)',
         },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+        // Black to white spectrum
+        'black': {
+          '000': 'var(--black-000)',
+          '100': 'var(--black-100)',
+          '200': 'var(--black-200)',
+          '300': 'var(--black-300)',
+          '400': 'var(--black-400)',
+          '500': 'var(--black-500)',
         },
+        'white': {
+          '000': 'var(--white-000)',
+          '100': 'var(--white-100)',
+        },
+      },
+      fontFamily: {
+        'primary': 'var(--font-primary)',
+        'mono': 'var(--font-mono)',
+        'display': 'var(--font-display)',
+      },
+      spacing: {
+        '1': 'var(--space-1)',
+        '2': 'var(--space-2)',
+        '3': 'var(--space-3)',
+        '4': 'var(--space-4)',
+        '6': 'var(--space-6)',
+        '8': 'var(--space-8)',
+        '12': 'var(--space-12)',
+        '16': 'var(--space-16)',
+        'header': 'var(--header-height)',
+        'order-panel': 'var(--order-panel-width)',
+        'status-panel': 'var(--status-panel-height)',
       },
       borderRadius: {
         lg: "var(--radius)",

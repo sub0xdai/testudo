@@ -59,55 +59,58 @@ Before ANY new development:
 4. Create unified error handling patterns
 
 ### **Phase 1: Chart-First Frontend** (3 weeks)
-Build what traders actually use:
+Build what traders actually use with a high-performance, Rust-centric hybrid model.
 
 **Technology Stack**:
-- **Framework**: React 18 + TypeScript 5
-- **Charts**: TradingView Lightweight Charts v4
-- **State**: Zustand (real-time optimized)
-- **Styling**: Tailwind CSS with Roman design tokens
+- **Framework**: Leptos (Rust/WASM) for core UI and state management.
+- **Charts**: TradingView Lightweight Charts (JavaScript), integrated via a JS Interop bridge.
+- **JS Interop**: `wasm-bindgen` to create a seamless connection between Rust and JavaScript.
+- **Styling**: Tailwind CSS with Roman design tokens.
 
 **Core Interface**:
-```typescript
-interface TradingChart {
-  // Drag interactions
-  onDragEntry: (price: number) => void;
-  onDragStop: (price: number) => void;
-  onDragTarget: (price: number) => void;
-  
-  // Van Tharp calculation
-  calculatePosition: () => PositionSize;
-  
-  // Visual feedback
-  showRiskZones: () => void;
-  showRMultiples: () => void;
+```rust
+// Leptos Component controlling the JS Chart
+#[component]
+fn TradingChart(price_data: ReadSignal<Option<CandlestickData>>) -> impl IntoView {
+    // Effects to update the JS chart when Rust signals change
+    create_effect(move |_| {
+        if let Some(data) = price_data.get() {
+            // Calls a JS function via wasm-bindgen
+            update_chart(data.time, data.open, data.high, data.low, data.close);
+        }
+    });
+    
+    // Renders the div that will host the chart
+    view! { <div id="chart-container"></div> }
 }
 ```
 
 **Key Features**:
-- Drag-to-trade on price charts
-- Visual position sizing calculator
-- Real-time risk/reward display
-- Technical indicators (moving averages, trend lines)
+- Drag-to-trade on price charts.
+- Visual position sizing calculator.
+- Real-time risk/reward display.
+- Technical indicators (moving averages, trend lines).
 
 ### **Phase 2: Real Exchange Integration** (2 weeks)
-Replace MockExchange with production implementation:
+Replace MockExchange with a direct, native Rust production implementation.
 
 ```rust
-impl ExchangeAdapterTrait for BinanceExchange {
-    async fn get_market_data(&self, symbol: &str) -> Result<MarketData> {
-        // WebSocket stream with auto-reconnection
-        // Symbol normalization layer
-        // Data validation and sanitization
-    }
+// Example: crates/prudentia/src/exchange/binance_ws.rs
+use tokio_tungstenite::connect_async;
+
+pub async fn connect_to_binance_stream() {
+    let url = "wss://stream.binance.com:9443/ws/btcusdt@trade";
+    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
+    // ... logic to listen, parse, and stream price data
 }
 ```
 
 **Features**:
-- Binance WebSocket API integration
-- Multi-exchange failover system
-- Real-time market data streaming
-- Order execution with confirmation
+- **Direct Binance WebSocket Integration**: Connect directly to Binance's WebSocket API using native Rust libraries like `tokio-tungstenite` for maximum performance and control.
+- **No Third-Party Abstractions**: Avoid risky or unmaintained third-party libraries like `ccxt-rust`.
+- **Multi-exchange failover system**.
+- **Real-time market data streaming**.
+- **Order execution with confirmation**.
 
 ### **Phase 3: Event-Sourced Database** (2 weeks)
 Implement proper financial data architecture:
@@ -253,23 +256,24 @@ We've been building for engineers when we should build for traders.
 
 ---
 
-## 🚀 Immediate Action Plan
+## 🚀 Immediate Action Plan: The "Chart-to-Exchange" Vertical Slice
 
-### **TODAY**: 
-- ✅ Fix symbol format in integration tests
-- ✅ Document strategic pivot decisions
+Our immediate goal is to prove the end-to-end architecture by getting a live price from Binance onto a chart in our Leptos frontend. This is the highest priority.
 
-### **THIS WEEK**:
-- Create minimal React + TradingView prototype
-- Validate drag-to-trade concept
+### **Day 1: Backend Validation**
+- **Goal**: Prove we can connect to Binance directly from Rust.
+- **Action**: In the `prudentia` crate, write an integration test using `tokio-tungstenite` to connect to the `wss://stream.binance.com:9443/ws/btcusdt@trade` endpoint and receive at least one price message.
+- **Outcome**: Confidence that our core backend data source is viable.
 
-### **NEXT WEEK**:
-- Connect frontend prototype to OODA backend
-- Implement WebSocket communication layer
+### **Day 2: Frontend Chart Implementation**
+- **Goal**: Create the hybrid chart component.
+- **Action**: Implement the Leptos `TradingChart` component that acts as a wrapper. Write the minimal JavaScript code to render a TradingView Lightweight Chart inside the component's `div`. Populate it with static, mock data for now.
+- **Outcome**: A working, chart-centric UI component ready for live data.
 
-### **FOLLOWING WEEKS**:
-- Replace MockExchange with Binance integration
-- Build out full trading interface
+### **Day 3: Connect the Wires**
+- **Goal**: Stream the live price from backend to frontend.
+- **Action**: Create a WebSocket endpoint in `imperium`. This endpoint will run the `prudentia` connection logic from Day 1. Connect the Leptos component from Day 2 to this WebSocket. Use the `create_effect` hook to call the `update_chart` JS function with the live data.
+- **Outcome**: A live BTC price ticking on a chart, validating the entire architecture.
 
 ---
 

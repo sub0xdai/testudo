@@ -36,7 +36,7 @@ Observe (Market Data) → Orient (Position Sizing) → Decide (Risk Validation) 
 ```
 ┌─────────────────────────────────────────┐
 │             Frontend (PWA)              │
-│      TradingView + React/Leptos         │
+│   Leptos (Rust/WASM) + JS Charting      │
 └─────────────────────────────────────────┘
                     │ WebSocket
 ┌─────────────────────────────────────────┐
@@ -114,19 +114,23 @@ pub struct OrderExecutor;
 ```
 
 ### 3. Exchange Integration (PLANNED)
+**Strategy**: Direct integration with primary exchanges using native Rust libraries to avoid third-party dependency risks and maximize performance.
 **Primary**: Binance (high volume, good documentation)
 **Pattern**: Adapter pattern for future exchange additions
 
 ```rust
-// trading/exchange/binance_adapter.rs
+// crates/prudentia/src/exchange/binance_adapter.rs
+use tokio_tungstenite::connect_async;
+
 pub struct BinanceAdapter {
-    websocket_client: BinanceWebSocket,
-    rest_client: BinanceRest,
+    // The adapter will manage the WebSocket connection directly.
 }
 
 impl ExchangeAdapter for BinanceAdapter {
-    async fn place_order(&self, order: Order) -> Result<OrderResult, ExchangeError>;
-    async fn get_market_data(&self) -> Result<MarketData, ExchangeError>;
+    async fn place_order(&self, order: Order) -> Result<OrderResult, ExchangeError> { /* ... */ }
+    
+    // Data will be streamed from a separate WebSocket task
+    fn get_market_data_stream(&self) -> impl Stream<Item = MarketData> { /* ... */ }
 }
 ```
 
@@ -158,14 +162,15 @@ SELECT create_hypertable('trades', 'timestamp');
 
 ## 🎨 Frontend Architecture (PLANNED)
 
-### Progressive Web App (PWA)
-**Rationale**: Balances performance with accessibility requirements.
+### Hybrid PWA (Leptos + JS)
+**Rationale**: This hybrid approach provides the best of both worlds: the performance, type-safety, and concurrency of Rust/WASM for the application's core logic, combined with the mature, feature-rich ecosystem of JavaScript for specialized tasks like charting.
 
 **Technology Stack**:
-- **Charts**: TradingView Lightweight Charts (not full library)
-- **Framework**: React with TypeScript or Leptos (Rust WASM)
-- **Styling**: Tailwind CSS with Roman military design system
-- **State**: Real-time via WebSocket connection
+- **Framework**: Leptos (Rust/WASM) for the main UI structure, components, and state management.
+- **Charts**: TradingView Lightweight Charts, a JavaScript library, rendered in a dedicated component.
+- **JS Interop**: A `wasm-bindgen` bridge to allow seamless communication between the Rust logic and the JavaScript chart.
+- **Styling**: Tailwind CSS with a Roman military-inspired design system.
+- **State**: Real-time state managed in Leptos via signals, updated by the backend WebSocket, and then passed to the JS chart.
 
 ### Drag-to-Trade Interface
 ```typescript
