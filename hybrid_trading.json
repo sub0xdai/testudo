@@ -120,6 +120,48 @@
         "status": "complete",
         "layer": "backend"
       }
+    ],
+    "epic_e_live_execution": [
+      {
+        "id": "E.1",
+        "role": "Trader",
+        "goal": "Securely connect Binance API keys to enable live trading",
+        "benefit": "Execute real trades on Binance exchange",
+        "status": "pending",
+        "layer": "backend"
+      },
+      {
+        "id": "E.2",
+        "role": "System",
+        "goal": "Implement Decision Loop that validates shadow orders before live execution",
+        "benefit": "Ensure all trades pass risk checks before hitting exchange",
+        "status": "pending",
+        "layer": "backend"
+      },
+      {
+        "id": "E.3",
+        "role": "System",
+        "goal": "Execute validated orders on Binance via authenticated API",
+        "benefit": "Real order placement with proper error handling",
+        "status": "pending",
+        "layer": "backend"
+      },
+      {
+        "id": "E.4",
+        "role": "System",
+        "goal": "Sync shadow positions with actual Binance positions",
+        "benefit": "Maintain consistency between paper and live state",
+        "status": "pending",
+        "layer": "backend"
+      },
+      {
+        "id": "E.5",
+        "role": "Trader",
+        "goal": "Toggle between Shadow-only and Live execution modes",
+        "benefit": "Practice safely before going live, switch seamlessly",
+        "status": "pending",
+        "layer": "frontend"
+      }
     ]
   },
   "acceptance_criteria": {
@@ -188,6 +230,39 @@
       "sl_fill_cancels_tp": "SL fills at 49000 -> All TP orders auto-cancelled",
       "tp_fill_cancels_sl": "TP fills at 52000 -> SL order auto-cancelled",
       "partial_tp": "Partial TP fill reduces SL quantity proportionally"
+    },
+    "E.1": {
+      "key_storage": "API keys encrypted at rest, never logged",
+      "key_validation": "Test connection validates read permissions before saving",
+      "key_permissions": "Minimum required: Spot trading, read balances"
+    },
+    "E.2": {
+      "decision_flow": {
+        "step_1": "Shadow order created and validated",
+        "step_2": "Risk Engine approves (position size, drawdown check)",
+        "step_3": "If live mode enabled, forward to Binance executor",
+        "step_4": "Binance response updates shadow state"
+      },
+      "rejection_handling": "Failed risk check returns detailed reason, order stays in shadow only"
+    },
+    "E.3": {
+      "order_mapping": "Shadow order -> Binance order format conversion",
+      "error_handling": {
+        "insufficient_balance": "Return error, do not retry",
+        "rate_limit": "Exponential backoff, max 3 retries",
+        "network_error": "Retry with timeout, alert user if persistent"
+      },
+      "confirmation": "Wait for Binance fill confirmation before updating shadow"
+    },
+    "E.4": {
+      "sync_trigger": "On app start, after each trade, every 60s background",
+      "discrepancy_handling": "If Binance position != shadow position, alert user and offer reconciliation",
+      "balance_sync": "Update shadow balances from Binance on sync"
+    },
+    "E.5": {
+      "mode_toggle": "UI switch: Shadow Only | Live Trading",
+      "confirmation": "Live mode requires explicit confirmation dialog",
+      "visual_indicator": "Clear badge showing current mode (green=shadow, red=live)"
     }
   }
 }
