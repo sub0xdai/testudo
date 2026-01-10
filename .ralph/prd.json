@@ -89,5 +89,61 @@
     "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
     "acceptance_criteria": "Balances fetched accurately after trades, cargo test passes",
     "status": "done"
+  },
+  {
+    "id": "E4-1",
+    "description": "Create position_types.rs with BinancePosition, PositionDiff, SyncError types",
+    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_types.rs"],
+    "acceptance_criteria": "New file created, cargo check passes",
+    "status": "pending"
+  },
+  {
+    "id": "E4-2",
+    "description": "Create PositionSyncer struct with fetch_binance_positions method",
+    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"],
+    "acceptance_criteria": "Fetches positions from Binance API, unit tests pass",
+    "status": "pending"
+  },
+  {
+    "id": "E4-3",
+    "description": "Implement compare_positions to detect matches, mismatches, and orphans",
+    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"],
+    "acceptance_criteria": "Position comparison works correctly, unit tests pass",
+    "status": "pending"
+  },
+  {
+    "id": "E4-4",
+    "description": "Create SyncService with background sync task (60s interval)",
+    "file_context": ["testudo-exchange/crates/router/src/services/sync_service.rs"],
+    "acceptance_criteria": "Background task runs at interval, cargo test passes",
+    "status": "pending"
+  },
+  {
+    "id": "E4-5",
+    "description": "Add sync_after_trade hook to trigger sync after order execution",
+    "file_context": ["testudo-exchange/crates/router/src/services/sync_service.rs"],
+    "acceptance_criteria": "Sync triggers after trade, unit tests pass",
+    "status": "pending"
+  },
+  {
+    "id": "E4-6",
+    "description": "Create sync API endpoints (POST /sync, GET /sync/status, GET /sync/diff)",
+    "file_context": ["testudo-exchange/crates/router/src/routes/sync.rs"],
+    "acceptance_criteria": "API endpoints work correctly, cargo test passes",
+    "status": "pending"
+  },
+  {
+    "id": "E4-7",
+    "description": "Implement balance sync to update shadow balances from Binance",
+    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"],
+    "acceptance_criteria": "Balances sync correctly, unit tests pass",
+    "status": "pending"
+  },
+  {
+    "id": "E4-8",
+    "description": "Wire sync service into app startup and user login flow",
+    "file_context": ["testudo-exchange/crates/router/src/main.rs"],
+    "acceptance_criteria": "Sync starts on app init and user login, integration works",
+    "status": "pending"
   }
 ]

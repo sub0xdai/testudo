@@ -141,3 +141,46 @@
 ### Total Test Coverage
 **341 tests passing** across all modules (0 failed)
 
+---
+
+## E.3: Binance Order Execution (COMPLETED)
+**Date**: 2026-01-10
+
+### Summary
+Implemented the BinanceExecutor for executing validated orders on Binance exchange.
+
+### Key Components
+
+**1. Execution Types** (`common_utils/src/adapters/execution_types.rs`):
+- `ValidatedOrder` - Order ready for execution with Binance-format symbol
+- `BinanceOrderResult` - Execution result from Binance API
+- `ExecutionError` - Error handling (InsufficientBalance, RateLimited, etc.)
+- `ExecutionMode` - Shadow (paper) or Live (real) execution
+- `symbol::to_binance()` / `symbol::from_binance()` - Symbol normalization
+
+**2. Binance Executor** (`common_utils/src/adapters/binance_executor.rs`):
+- `BinanceExecutor::new()` - Create executor with API credentials
+- `BinanceExecutor::testnet()` - Create executor for Binance testnet
+- `execute()` - Execute validated order on Binance
+- `get_order()` - Get order status by ID
+- `cancel()` - Cancel an order
+- Feature-gated: `#[cfg(feature = "real-api")]` for actual API calls
+- Mock implementation for testing without real API
+
+**3. Decision Loop Integration** (`router/src/decision_loop.rs`):
+- Added `execution_mode` to `DecisionInput`
+- Added `execution_mode`, `binance_order`, `execution_error` to `DecisionResult`
+- Builder methods: `live_mode()`, `shadow_mode()`, `execution_mode()`
+
+### Symbol Normalization
+- Internal: `BTC_USDC` -> Binance: `BTCUSDT`
+- Handles USDT, BUSD, USDC suffixes
+
+### Tests
+- 10 BinanceExecutor tests (creation, execute, params building)
+- 12 execution_types tests (symbol normalization, order types)
+- 6 Decision Loop execution mode tests
+
+### Total Test Coverage
+**~480 tests passing** across all modules (0 failed)
+
