@@ -184,3 +184,63 @@ Implemented the BinanceExecutor for executing validated orders on Binance exchan
 ### Total Test Coverage
 **~480 tests passing** across all modules (0 failed)
 
+---
+
+## E.4: Position Sync (COMPLETED)
+**Date**: 2026-01-11
+
+### Summary
+Implemented position synchronization between Shadow Engine and Binance exchange.
+
+### Key Components
+
+**1. Position Types** (`common_utils/src/adapters/position_types.rs`):
+- `BinancePosition` - Position data from Binance
+- `PositionDiff` - Comparison result (shadow_only, binance_only, quantity_mismatch, matched)
+- `SyncError` - Error handling (NetworkError, AuthenticationFailed, RateLimited, etc.)
+- `SyncResult` - Sync operation result with diff and status
+- `QuantityMismatch` - Tracks quantity discrepancies between shadow and Binance
+- `BinanceBalance` - Account balance info
+
+**2. Position Syncer** (`common_utils/src/adapters/position_sync.rs`):
+- `PositionSyncer::new()` - Create syncer with BinanceExecutor
+- `fetch_binance_positions()` - Fetch current positions from Binance
+- `fetch_binance_balances()` - Fetch account balances
+- `compare_positions()` - Compare shadow vs Binance positions
+- `sync()` - Perform full sync and return SyncResult
+- Feature-gated: `#[cfg(feature = "real-api")]` for actual API calls
+
+**3. Sync Service** (`router/src/services/sync_service.rs`):
+- `SyncService::new()` - Create service with BinanceExecutor
+- `sync_now()` - Trigger immediate sync
+- `sync_after_trade()` - Sync after trade execution
+- `start_background_sync()` - Start 60-second background sync task
+- `stop_background_sync()` - Stop background sync
+- `get_last_sync_result()` - Get most recent sync result
+- `SyncServiceBuilder` - Builder pattern for service configuration
+
+**4. Sync API Routes** (`router/src/routes/sync.rs`):
+- `POST /api/v1/sync` - Trigger manual sync
+- `GET /api/v1/sync/status` - Get last sync result status
+- `GET /api/v1/sync/diff` - Get current position differences
+
+### Sync Triggers (from PRD acceptance criteria)
+1. **On app start** - Full position sync
+2. **After each trade** - Incremental sync via `sync_after_trade()`
+3. **Background sync** - Every 60 seconds via `start_background_sync()`
+
+### Discrepancy Handling
+- Shadow-only positions: Positions exist in shadow but not on Binance
+- Binance-only positions: Positions exist on Binance but not in shadow
+- Quantity mismatches: Same position exists but with different quantities
+- Alert user (no auto-reconcile per PRD requirements)
+
+### Tests
+- 13 position_types tests
+- 11 position_sync tests
+- 11 sync_service tests
+- 8 sync route tests
+
+### Total Test Coverage
+**529 tests passing** across all modules (0 failed)
+
