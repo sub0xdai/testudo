@@ -22,13 +22,17 @@
         "id": "A.1",
         "role": "Developer",
         "goal": "Implement BinanceDataService to poll Ticker, Depth, and Kline data to Redis",
-        "benefit": "Prevent rate limits across multiple user sessions"
+        "benefit": "Prevent rate limits across multiple user sessions",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "A.2",
         "role": "Trader",
         "goal": "UI gracefully handles connection drops",
-        "benefit": "Prevent acting on stale data"
+        "benefit": "Prevent acting on stale data",
+        "status": "complete",
+        "layer": "frontend"
       }
     ],
     "epic_b_shadow_execution": [
@@ -36,13 +40,17 @@
         "id": "B.1",
         "role": "Trader",
         "goal": "Shadow limit orders remain Open until price crossing",
-        "benefit": "Practice realistic entry timing"
+        "benefit": "Practice realistic entry timing",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "B.2",
         "role": "System",
         "goal": "Calculate Shadow P&L using Mark Price",
-        "benefit": "Avoid P&L noise from spread flickering"
+        "benefit": "Avoid P&L noise from spread flickering",
+        "status": "complete",
+        "layer": "backend"
       }
     ],
     "epic_c_risk_guardrails": [
@@ -50,13 +58,17 @@
         "id": "C.1",
         "role": "Risk Manager",
         "goal": "Set Daily Max Drawdown limit to block new entries",
-        "benefit": "Prevent catastrophic loss"
+        "benefit": "Prevent catastrophic loss",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "C.2",
         "role": "Trader",
         "goal": "Auto-calculate position size based on Entry vs Stop Loss",
-        "benefit": "Ensure fixed fractional risk (exact $X loss)"
+        "benefit": "Ensure fixed fractional risk (exact $X loss)",
+        "status": "complete",
+        "layer": "backend"
       }
     ],
     "epic_d_trade_management": [
