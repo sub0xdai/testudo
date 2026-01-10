@@ -1,0 +1,85 @@
+{
+  "project": "Testudo Hybrid Trading System",
+  "version": "1.0",
+  "prd": {
+    "system_definition": "A dual-state trading engine decoupling Decision (User/Strategy) from Execution (Shadow/Binance), utilizing a unified Risk Engine gatekeeper.",
+    "functional_logic": {
+      "data_arbitration": "Normalize external data (e.g., BTCUSDT -> BTC_USDC). Downstream services consume normalized format.",
+      "shadow_matching": {
+        "buy_limit": "Fills if Low Price <= Limit Price",
+        "buy_market": "Fills immediately at Best Ask"
+      },
+      "risk_policy": "Conservative Wins: Enforce smallest result among Account %, Fixed Risk Amount, and Max Size inputs."
+    },
+    "slas": {
+      "data_latency": "< 50ms overhead for internal processing (Binance -> Redis -> API)",
+      "risk_validation": "< 200ms for Decision Loop completion"
+    }
+  },
+  "user_stories": {
+    "epic_a_market_data": [
+      {
+        "id": "A.1",
+        "role": "Developer",
+        "goal": "Implement BinanceDataService to poll Ticker, Depth, and Kline data to Redis",
+        "benefit": "Prevent rate limits across multiple user sessions"
+      },
+      {
+        "id": "A.2",
+        "role": "Trader",
+        "goal": "UI gracefully handles connection drops",
+        "benefit": "Prevent acting on stale data"
+      }
+    ],
+    "epic_b_shadow_execution": [
+      {
+        "id": "B.1",
+        "role": "Trader",
+        "goal": "Shadow limit orders remain Open until price crossing",
+        "benefit": "Practice realistic entry timing"
+      },
+      {
+        "id": "B.2",
+        "role": "System",
+        "goal": "Calculate Shadow P&L using Mark Price",
+        "benefit": "Avoid P&L noise from spread flickering"
+      }
+    ],
+    "epic_c_risk_guardrails": [
+      {
+        "id": "C.1",
+        "role": "Risk Manager",
+        "goal": "Set Daily Max Drawdown limit to block new entries",
+        "benefit": "Prevent catastrophic loss"
+      },
+      {
+        "id": "C.2",
+        "role": "Trader",
+        "goal": "Auto-calculate position size based on Entry vs Stop Loss",
+        "benefit": "Ensure fixed fractional risk (exact $X loss)"
+      }
+    ]
+  },
+  "acceptance_criteria": {
+    "A.1": {
+      "polling_frequency": "Matches config (e.g., 1000ms)",
+      "ttl_check": "Redis keys expire automatically if service crashes",
+      "health_check": "Log warning if Binance API latency > 500ms"
+    },
+    "B.1": {
+      "limit_fill": "Buy Limit @ 90,000 fills when Low drops to 89,999",
+      "limit_hold": "Buy Limit @ 90,000 remains OPEN if Low is 90,001",
+      "ui_update": "Positions table updates instantly on fill without refresh"
+    },
+    "C.2": {
+      "auto_fill_scenario": {
+        "account": 10000,
+        "risk_percent": 0.01,
+        "entry": 50000,
+        "stop_loss": 49000,
+        "expected_qty": 0.1
+      },
+      "violation_check": "Manual override to 0.2 triggers 'Risk Violation' warning"
+    }
+  }
+}

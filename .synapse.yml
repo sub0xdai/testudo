@@ -1,0 +1,28 @@
+agent_versions:
+  4QZero: 1758448824.7d02e212
+  architect: 1758105011.33db70f7
+  code-hound: 1758106678.4ac9ced9
+  devops-engineer: 1758105111.f7c2db6d
+  docs-writer: 1758105325.cad0d55e
+  file-creator: 1758107649.2a0ff8f5
+  git-workflow: 1758107685.586ca78e
+  golang-specialist: 1758108054.1a54f6c6
+  python-specialist: 1758108120.4b3b303d
+  rust-specialist: 1758107914.627812e8
+  security-specialist: 1758105218.21e0d6a1
+  synapse-project-manager: 1758448898.69d496b3
+  test-runner: 1758107819.660c59fd
+  typescript-specialist: 1758108275.287bab2d
+  ux-designer: 1758105193.cab19c3e
+created_at: '2025-09-22T19:50:35.453684'
+deployment_method: copy
+knowledge_paths:
+- ./docs
+- ./README.md
+- ./CHANGELOG.md
+language: generic
+project_name: testudo
+synapse_home: /home/m0xu/.synapse-system
+synapse_version: 2024.1.0
+updated_at: '2025-09-22T19:50:35.453693'
+version: '1.0'
