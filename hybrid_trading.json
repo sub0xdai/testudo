@@ -58,6 +58,44 @@
         "goal": "Auto-calculate position size based on Entry vs Stop Loss",
         "benefit": "Ensure fixed fractional risk (exact $X loss)"
       }
+    ],
+    "epic_d_trade_management": [
+      {
+        "id": "D.0",
+        "role": "Trader",
+        "goal": "Use a visual long/short position tool on the chart to set entry, SL, and TP by dragging",
+        "benefit": "Intuitive trade planning with real-time position sizing and R:R calculation"
+      },
+      {
+        "id": "D.1",
+        "role": "Trader",
+        "goal": "Have SL/TP orders auto-create when entry fills (not when entry is placed)",
+        "benefit": "Never forget to set protective orders after getting filled"
+      },
+      {
+        "id": "D.2",
+        "role": "Trader",
+        "goal": "Cancel entry and have linked SL/TP orders auto-cancel",
+        "benefit": "Prevent orphaned orders cluttering the order book"
+      },
+      {
+        "id": "D.3",
+        "role": "Trader",
+        "goal": "Enable break-even automation that moves SL to entry at X% profit",
+        "benefit": "Lock in risk-free trade without manual monitoring"
+      },
+      {
+        "id": "D.4",
+        "role": "Trader",
+        "goal": "Set multiple take-profit targets to scale out of positions",
+        "benefit": "Capture profits at different levels (e.g., 50% at T1, 25% at T2)"
+      },
+      {
+        "id": "D.5",
+        "role": "System",
+        "goal": "When SL or TP fills, auto-cancel sibling orders",
+        "benefit": "Prevent double-execution and maintain position integrity"
+      }
     ]
   },
   "acceptance_criteria": {
@@ -80,6 +118,52 @@
         "expected_qty": 0.1
       },
       "violation_check": "Manual override to 0.2 triggers 'Risk Violation' warning"
+    },
+    "D.0": {
+      "position_tool": {
+        "interaction": "Click and drag on chart to create long/short position box",
+        "displays": ["Entry price", "Stop price with % and $ amount", "Target price with % and $ amount", "Position size (auto-calculated)", "R:R ratio (auto-calculated)", "Open P&L"],
+        "real_time_update": "All values recalculate as user drags any level"
+      },
+      "position_sizing_integration": "Uses Risk Engine (Phase C) to calculate size from entry-stop distance"
+    },
+    "D.1": {
+      "sl_tp_creation": {
+        "entry": 50000,
+        "stop_loss": 49000,
+        "take_profit": 52000,
+        "scenario": "Entry FILLS at 50000 -> SL order at 49000 and TP order at 52000 auto-created"
+      },
+      "timing": "SL/TP orders created ONLY after entry fills, not when entry is placed",
+      "order_group_tracking": "All linked orders share same order_group_id"
+    },
+    "D.2": {
+      "cascade_cancel": "Cancel entry order -> All linked SL/TP orders cancelled",
+      "partial_fill": "If entry partially filled, only create SL/TP for filled quantity"
+    },
+    "D.3": {
+      "break_even_scenario": {
+        "entry": 50000,
+        "initial_sl": 49000,
+        "trigger_percent": 1.0,
+        "scenario": "Price reaches 50500 (1% profit) -> SL moves from 49000 to 50000"
+      },
+      "offset_option": "Optional offset to move SL slightly above entry (e.g., entry + 10)"
+    },
+    "D.4": {
+      "multi_target_scenario": {
+        "entry_size": 1.0,
+        "targets": [
+          {"price": 52000, "percent": 50, "result": "Close 0.5 at T1"},
+          {"price": 55000, "percent": 25, "result": "Close 0.25 at T2"},
+          {"price": null, "percent": 25, "result": "Let 0.25 run with trailing SL"}
+        ]
+      }
+    },
+    "D.5": {
+      "sl_fill_cancels_tp": "SL fills at 49000 -> All TP orders auto-cancelled",
+      "tp_fill_cancels_sl": "TP fills at 52000 -> SL order auto-cancelled",
+      "partial_tp": "Partial TP fill reduces SL quantity proportionally"
     }
   }
 }

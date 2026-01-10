@@ -379,10 +379,36 @@ apps/web/src/
 
 **Test Coverage:** 26 unit tests passing
 
-### Phase D: Trade Management 🔜 NEXT
-- Order Groups (SL/TP linking)
-- Break-even Automation
-- Multi-target Exit Logic
+### Phase D: Trade Management ✅ COMPLETE
+**Completed: 2026-01-10**
+
+| # | Task | Status | File(s) |
+|---|------|--------|---------|
+| 19 | Order Groups Model | ✅ Done | `crates/engine/src/shadow/order_group.rs` |
+| 20 | SL/TP Auto-Creation on Fill | ✅ Done | `crates/engine/src/shadow/mod.rs` |
+| 21 | Break-even Automation | ✅ Done | `crates/engine/src/shadow/mod.rs` |
+| 22 | Multi-target Exit Logic | ✅ Done | `crates/engine/src/shadow/mod.rs` |
+| 23 | Sibling Cancellation (D.5) | ✅ Done | `crates/engine/src/shadow/mod.rs` |
+| 24 | Trade Management API | ✅ Done | `crates/router/src/routes/trade_management.rs` |
+
+**Trade Management Features:**
+- **Order Groups**: Link entry orders with SL/TP orders
+- **Auto SL/TP Creation**: SL/TP orders created automatically when entry fills (not when placed)
+- **Break-even Automation**: Move SL to entry price when position reaches X% profit
+- **Multi-target Exits**: Scale out at multiple TP levels (e.g., 50% at T1, 25% at T2)
+- **Sibling Cancellation**: SL fill cancels all TPs, TP fill cancels SL
+- **Cascade Cancel**: Cancelling entry cancels all linked orders
+
+**New API Endpoints:**
+- `POST /api/v1/trades` - Create trade with entry, SL, TP
+- `GET /api/v1/trades` - List active trade groups
+- `GET /api/v1/trades/{id}` - Get trade group details
+- `PUT /api/v1/trades/{id}/sl` - Update stop loss
+- `PUT /api/v1/trades/{id}/tp` - Add/update take profit
+- `PUT /api/v1/trades/{id}/breakeven` - Enable break-even
+- `DELETE /api/v1/trades/{id}` - Cancel trade group
+
+**Test Coverage:** 11 unit tests for trade management (398 total)
 
 ### Phase E: Live Execution 📋 PLANNED
 - API Key Connection

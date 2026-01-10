@@ -7,7 +7,7 @@ cd /home/m0xu/1-projects/testudo/testudo-exchange
 cargo test
 ```
 
-**Expected**: 341 tests passing, 0 failed
+**Expected**: 398 tests passing, 0 failed
 
 ---
 
@@ -43,8 +43,8 @@ testudo/
 | **A** | Market Data Pipeline (Binance → API) | ✅ Complete |
 | **B** | Shadow Engine (Paper Trading) | ✅ Complete |
 | **C** | Risk Engine (Position Sizing) | ✅ Complete |
-| **D** | Trade Management (SL/TP, Break-even) | 🔜 **NEXT** |
-| **E** | Live Execution (Binance Orders) | 📋 Planned |
+| **D** | Trade Management (SL/TP, Break-even) | ✅ Complete |
+| **E** | Live Execution (Binance Orders) | 🔜 **NEXT** |
 
 ### Key Files Created
 
@@ -59,66 +59,36 @@ crates/common_utils/src/
 │   └── validator.rs       # Pre-trade validation
 
 crates/engine/src/
+├── lib.rs                 # Engine library exports
 └── shadow/
-    ├── mod.rs             # ShadowEngine orchestrator
+    ├── mod.rs             # ShadowEngine orchestrator + trade management
     ├── balances.rs        # Virtual balance management
     ├── orders.rs          # Order simulation + fill logic
-    └── positions.rs       # Position tracking + P&L
+    ├── positions.rs       # Position tracking + P&L
+    └── order_group.rs     # OrderGroup, SL/TP linking, break-even
 
 crates/router/src/routes/
-└── market_data.rs         # /api/v1/market-data/* endpoints
+├── market_data.rs         # /api/v1/market-data/* endpoints
+└── trade_management.rs    # /api/v1/trades/* endpoints
 ```
 
 ---
 
-## Next Task: Phase D - Trade Management
+## Phase D Complete - Trade Management ✅
 
-**Goal**: Implement SL/TP linking, break-even automation, and multi-target exits
+**Completed**: 2026-01-10
 
-### Tasks
-
-| # | Task | File | Description |
-|---|------|------|-------------|
-| 19 | Order Groups Model | `common_utils/src/models/order_group.rs` | Link entry with SL/TP orders |
-| 20 | SL/TP Linking | `engine/src/shadow/sl_tp.rs` | Create SL/TP when entry fills |
-| 21 | Break-even Automation | `engine/src/shadow/breakeven.rs` | Move SL to entry at X% profit |
-| 22 | Multi-target Exit | `engine/src/shadow/multi_target.rs` | Exit 50% at T1, 25% at T2, etc. |
-| 23 | Trade Management API | `router/src/routes/trade_management.rs` | CRUD for trade groups |
-
-### TDD Starting Point
-
-```rust
-// RED: Write this test first in engine/src/shadow/sl_tp.rs
-#[tokio::test]
-async fn test_sl_tp_created_on_entry_fill() {
-    let engine = ShadowEngine::new();
-    let user_id = Uuid::new_v4();
-    engine.init_user(user_id).await;
-
-    // Place entry with SL/TP
-    let order = ShadowOrder::limit_buy(user_id, "BTC_USDC", dec!(0.1), dec!(50000))
-        .with_stop_loss(dec!(49000))
-        .with_take_profit(dec!(52000));
-
-    let placed = engine.place_order(user_id, order).await.unwrap();
-
-    // Simulate price hitting entry
-    engine.process_price_update("BTC_USDC", dec!(49900), dec!(50000), dec!(50100), dec!(49900)).await;
-
-    // Entry should be filled
-    let orders = engine.get_open_orders(user_id).await;
-
-    // SL and TP orders should now exist
-    assert!(orders.iter().any(|o| o.order_type == ShadowOrderType::StopLoss));
-    assert!(orders.iter().any(|o| o.order_type == ShadowOrderType::TakeProfit));
-}
-```
-
----
+| Feature | Description |
+|---------|-------------|
+| **Order Groups** | Link entry orders with SL/TP via `OrderGroup` struct |
+| **Auto SL/TP** | SL/TP orders created when entry fills (not when placed) |
+| **Break-even** | Move SL to entry when position hits X% profit |
+| **Multi-target** | Scale out at multiple TP levels (50% T1, 25% T2, etc.) |
+| **Sibling Cancel** | SL fill cancels TPs, TP fill cancels SL |
 
 ## API Endpoints
 
-### Existing (Phase A)
+### Market Data (Phase A)
 ```
 GET /api/v1/market-data/ticker?symbol=BTC_USDC
 GET /api/v1/market-data/orderbook?symbol=BTC_USDC&limit=20
@@ -126,16 +96,32 @@ GET /api/v1/market-data/klines?symbol=BTC_USDC&interval=1h&limit=100
 GET /api/v1/market-data/markets
 ```
 
-### To Create (Phase D)
+### Trade Management (Phase D) ✅
 ```
-POST /api/v1/trades              # Create trade with SL/TP
-GET  /api/v1/trades              # List active trades
-GET  /api/v1/trades/{id}         # Get trade details
-PUT  /api/v1/trades/{id}/sl      # Update stop loss
-PUT  /api/v1/trades/{id}/tp      # Update take profit
-PUT  /api/v1/trades/{id}/breakeven  # Enable break-even
-DELETE /api/v1/trades/{id}       # Cancel trade group
+POST   /api/v1/trades              # Create trade with SL/TP
+GET    /api/v1/trades              # List active trades
+GET    /api/v1/trades/{id}         # Get trade details
+PUT    /api/v1/trades/{id}/sl      # Update stop loss
+PUT    /api/v1/trades/{id}/tp      # Update take profit
+PUT    /api/v1/trades/{id}/breakeven  # Enable break-even
+DELETE /api/v1/trades/{id}         # Cancel trade group
 ```
+
+---
+
+## Next Task: Phase E - Live Execution
+
+**Goal**: Connect to Binance for live order execution with shadow verification
+
+### Tasks
+
+| # | Task | Description |
+|---|------|-------------|
+| 25 | API Key Connection | Secure storage and validation of Binance API keys |
+| 26 | Decision Loop | Shadow → External execution flow |
+| 27 | Order Execution | Place real orders on Binance |
+| 28 | Position Sync | Keep shadow positions in sync with exchange |
+| 29 | Risk Validation | Pre-trade checks before live execution |
 
 ---
 
