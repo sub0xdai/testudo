@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 EXCHANGE_DIR="$PROJECT_ROOT/testudo-exchange"
-WEB_DIR="$PROJECT_ROOT/testudo-web"
+WEB_DIR="$PROJECT_ROOT/testudo-web/apps/web"
 PID_DIR="$SCRIPT_DIR/.pids"
 
 # Default options
@@ -24,6 +24,7 @@ BACKGROUND=false
 SKIP_BUILD=false
 RESET_DB=false
 VERBOSE=false
+RELEASE=false
 
 # Usage function
 usage() {
@@ -32,6 +33,7 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --background, -b    Run services in background"
+    echo "  --release, -R       Build and run in release mode (faster, recommended)"
     echo "  --skip-build, -s    Skip compilation step"
     echo "  --reset-db, -r      Reset database (drop and recreate)"
     echo "  --verbose, -v       Verbose output"
@@ -52,6 +54,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --background|-b)
             BACKGROUND=true
+            shift
+            ;;
+        --release|-R)
+            RELEASE=true
             shift
             ;;
         --skip-build|-s)
@@ -124,8 +130,8 @@ check_prerequisites() {
         missing_deps+=("node.js")
     fi
 
-    if ! command_exists yarn; then
-        missing_deps+=("yarn")
+    if ! command_exists bun; then
+        missing_deps+=("bun")
     fi
 
     if ! command_exists sqlx; then
@@ -260,8 +266,13 @@ build_backend() {
     log_info "Building backend services..."
 
     cd "$EXCHANGE_DIR"
-    verbose_log "Running cargo build..."
-    cargo build
+    if [[ "$RELEASE" == "true" ]]; then
+        verbose_log "Running cargo build --release..."
+        cargo build --release
+    else
+        verbose_log "Running cargo build..."
+        cargo build
+    fi
 
     log_success "Backend build completed"
 }
@@ -274,7 +285,12 @@ start_backend_service() {
 
     cd "$EXCHANGE_DIR"
 
-    local cmd="cargo run --bin $service"
+    local release_flag=""
+    if [[ "$RELEASE" == "true" ]]; then
+        release_flag="--release"
+    fi
+
+    local cmd="cargo run $release_flag --bin $service"
     if [[ -n "$env_vars" ]]; then
         cmd="$env_vars $cmd"
     fi
@@ -329,7 +345,7 @@ setup_frontend() {
 
     if [[ ! -d node_modules ]] || [[ "$RESET_DB" == "true" ]]; then
         verbose_log "Installing frontend dependencies..."
-        yarn install
+        bun install
     fi
 
     log_success "Frontend setup completed"
@@ -343,17 +359,17 @@ start_frontend() {
 
     if [[ "$BACKGROUND" == "true" ]]; then
         verbose_log "Starting frontend in background..."
-        nohup yarn dev > "$PID_DIR/frontend.log" 2>&1 &
+        nohup bun run dev > "$PID_DIR/frontend.log" 2>&1 &
         echo $! > "$PID_DIR/frontend.pid"
 
-        wait_for_service localhost 5173 "Frontend" 20
+        wait_for_service 127.0.0.1 5173 "Frontend" 30
     else
         log_info "Starting frontend (press Ctrl+C to stop all services)..."
         echo "Starting frontend..." > "$PID_DIR/frontend.log"
-        yarn dev &
+        bun run dev &
         echo $! > "$PID_DIR/frontend.pid"
 
-        wait_for_service localhost 5173 "Frontend" 20
+        wait_for_service 127.0.0.1 5173 "Frontend" 30
     fi
 
     log_success "Frontend started"
@@ -382,6 +398,13 @@ show_status() {
     echo "  • Stop services:     $SCRIPT_DIR/stop-exchange.sh"
     echo "  • Check status:      $SCRIPT_DIR/status-exchange.sh"
     echo "  • View logs:         $SCRIPT_DIR/logs-exchange.sh"
+    echo ""
+
+    if [[ "$RELEASE" == "true" ]]; then
+        echo "⚡ Running in RELEASE mode (optimized)"
+    else
+        echo "🐛 Running in DEBUG mode (slower, use --release for production)"
+    fi
     echo ""
 
     if [[ "$BACKGROUND" == "true" ]]; then
