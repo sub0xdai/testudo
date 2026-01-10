@@ -64,37 +64,49 @@
         "id": "D.0",
         "role": "Trader",
         "goal": "Use a visual long/short position tool on the chart to set entry, SL, and TP by dragging",
-        "benefit": "Intuitive trade planning with real-time position sizing and R:R calculation"
+        "benefit": "Intuitive trade planning with real-time position sizing and R:R calculation",
+        "status": "pending",
+        "layer": "frontend"
       },
       {
         "id": "D.1",
         "role": "Trader",
         "goal": "Have SL/TP orders auto-create when entry fills (not when entry is placed)",
-        "benefit": "Never forget to set protective orders after getting filled"
+        "benefit": "Never forget to set protective orders after getting filled",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "D.2",
         "role": "Trader",
         "goal": "Cancel entry and have linked SL/TP orders auto-cancel",
-        "benefit": "Prevent orphaned orders cluttering the order book"
+        "benefit": "Prevent orphaned orders cluttering the order book",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "D.3",
         "role": "Trader",
         "goal": "Enable break-even automation that moves SL to entry at X% profit",
-        "benefit": "Lock in risk-free trade without manual monitoring"
+        "benefit": "Lock in risk-free trade without manual monitoring",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "D.4",
         "role": "Trader",
         "goal": "Set multiple take-profit targets to scale out of positions",
-        "benefit": "Capture profits at different levels (e.g., 50% at T1, 25% at T2)"
+        "benefit": "Capture profits at different levels (e.g., 50% at T1, 25% at T2)",
+        "status": "complete",
+        "layer": "backend"
       },
       {
         "id": "D.5",
         "role": "System",
         "goal": "When SL or TP fills, auto-cancel sibling orders",
-        "benefit": "Prevent double-execution and maintain position integrity"
+        "benefit": "Prevent double-execution and maintain position integrity",
+        "status": "complete",
+        "layer": "backend"
       }
     ]
   },
