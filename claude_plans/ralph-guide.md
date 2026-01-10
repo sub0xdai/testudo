@@ -21,6 +21,12 @@ I want to initialize this project using the "Ralph Flow" methodology.
 Do not start the loop yet. Just set up the environment, run 'chmod +x scripts/*.sh', and confirm when ready.
 
 ```
+- Step 1: Write a detailed PRD 
+- Step 2: Convert it to small, atomic user stories
+- Step 3: Add clear acceptance criteria for each
+- Step 4: Loop your AI agent through each story
+- Step 5: It logs learnings so it doesn't repeat mistakes
+- Step 6: Wake up, test, fix edge cases
 
 ---
 
