@@ -3,26 +3,31 @@
 ## Quick Start
 
 ```bash
+# Backend
 cd /home/m0xu/1-projects/testudo/testudo-exchange
-cargo test
+cargo run --bin router
+
+# Frontend (separate terminal)
+cd /home/m0xu/1-projects/testudo/testudo-web/apps/web
+bun run dev
 ```
 
-**Expected**: 398 tests passing, 0 failed
+**Navigate to**: http://localhost:5173/trade/SOLUSDT
 
 ---
 
 ## Project Overview
 
-**Testudo** is a hybrid trading system that:
-- Displays **live market data from Binance**
-- Executes orders through a **Shadow + External** model
+**Testudo** is a perpetual futures trading system that:
+- Displays **live market data from Binance Futures API** (539 USDT perp pairs)
+- Executes orders through a **Shadow + Live** execution model
 - Provides **automated risk management** with "Conservative Wins" policy
-- Supports **paper trading** for practice before live execution
+- Supports **paper trading** (Shadow mode) before live execution
 
 ### Architecture
 ```
 testudo/
-├── testudo-exchange/    # Rust backend (THIS IS WHERE YOU WORK)
+├── testudo-exchange/    # Rust backend
 │   └── crates/
 │       ├── common_utils/  # Services, adapters, risk engine
 │       ├── engine/        # Order matching + Shadow engine
@@ -34,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-10)
+## Current State (2026-01-11)
 
 ### Completed Phases
 
@@ -44,193 +49,149 @@ testudo/
 | **B** | Shadow Engine (Paper Trading) | ✅ Complete |
 | **C** | Risk Engine (Position Sizing) | ✅ Complete |
 | **D** | Trade Management (SL/TP, Break-even) | ✅ Complete |
-| **E** | Live Execution (Binance Orders) | 🔜 **NEXT** |
+| **E.1** | API Key Storage (encrypted) | ✅ Complete |
+| **E.2** | Decision Loop (Shadow → Live flow) | ✅ Complete |
+| **E.3** | Binance Order Execution | ✅ Complete |
+| **E.4** | Position Sync (Shadow ↔ Binance) | ✅ Complete |
+| **E.5** | Mode Toggle UI (Shadow/Live) | ✅ Complete |
+| **F** | Binance Futures Migration | ✅ Complete |
 
-### Key Files Created
+### Recent Changes (2026-01-11)
 
+**Switched from Binance Spot to Binance Futures (Perpetuals)**:
+- Backend now uses `fapi.binance.com` instead of `api.binance.com`
+- All endpoints changed from `/api/v3/*` to `/fapi/v1/*`
+- Markets filtered by `contractType=PERPETUAL`
+- Frontend MarketSelector shows 539 USDT perpetual pairs
+- Symbol format: `SOLUSDT`, `BTCUSDT` (native Binance format)
+
+---
+
+## Key Files
+
+### Backend (testudo-exchange)
 ```
 crates/common_utils/src/
 ├── services/
-│   ├── binance_data.rs    # Live Binance data fetching
-│   └── cache.rs           # Redis caching
+│   └── binance_data.rs    # Binance Futures API (fapi.binance.com)
+├── adapters/
+│   ├── binance_executor.rs  # Live order execution
+│   ├── position_sync.rs     # Shadow ↔ Binance sync
+│   └── ccxt_auth.rs         # API key authentication
 ├── risk/
-│   ├── config.rs          # RiskConfig (account %, max risk, etc.)
-│   ├── position_sizer.rs  # "Conservative Wins" sizing
-│   └── validator.rs       # Pre-trade validation
+│   ├── position_sizer.rs    # "Conservative Wins" sizing
+│   └── validator.rs         # Pre-trade validation
 
-crates/engine/src/
-├── lib.rs                 # Engine library exports
-└── shadow/
-    ├── mod.rs             # ShadowEngine orchestrator + trade management
-    ├── balances.rs        # Virtual balance management
-    ├── orders.rs          # Order simulation + fill logic
-    ├── positions.rs       # Position tracking + P&L
-    └── order_group.rs     # OrderGroup, SL/TP linking, break-even
+crates/router/src/
+├── decision_loop.rs         # Shadow → Live execution flow
+└── routes/
+    ├── market_data.rs       # /api/v1/market-data/*
+    └── trade_management.rs  # /api/v1/trades/*
+```
 
-crates/router/src/routes/
-├── market_data.rs         # /api/v1/market-data/* endpoints
-└── trade_management.rs    # /api/v1/trades/* endpoints
+### Frontend (testudo-web)
+```
+apps/web/src/
+├── App.tsx                  # Routes, default market: SOLUSDT
+├── pages/Trade.tsx          # Main trading page
+├── components/
+│   ├── MarketBar.tsx        # Price, stats display
+│   ├── MarketSelector.tsx   # Fuzzy search 539 markets
+│   └── ui/ModeToggle.tsx    # Shadow/Live mode switch
+└── utils/
+    ├── requests.ts          # API calls
+    └── format.ts            # parseMarketSymbol() for USDT pairs
 ```
 
 ---
 
-## Phase D Complete - Trade Management ✅
-
-**Completed**: 2026-01-10
-
-| Feature | Description |
-|---------|-------------|
-| **Order Groups** | Link entry orders with SL/TP via `OrderGroup` struct |
-| **Auto SL/TP** | SL/TP orders created when entry fills (not when placed) |
-| **Break-even** | Move SL to entry when position hits X% profit |
-| **Multi-target** | Scale out at multiple TP levels (50% T1, 25% T2, etc.) |
-| **Sibling Cancel** | SL fill cancels TPs, TP fill cancels SL |
-
 ## API Endpoints
 
-### Market Data (Phase A)
+### Market Data
 ```
-GET /api/v1/market-data/ticker?symbol=BTC_USDC
-GET /api/v1/market-data/orderbook?symbol=BTC_USDC&limit=20
-GET /api/v1/market-data/klines?symbol=BTC_USDC&interval=1h&limit=100
-GET /api/v1/market-data/markets
+GET /api/v1/market-data/ticker?symbol=SOLUSDT
+GET /api/v1/market-data/orderbook?symbol=SOLUSDT&limit=20
+GET /api/v1/market-data/klines?symbol=SOLUSDT&interval=1h&limit=100
+GET /api/v1/market-data/markets   # Returns 539 USDT perps
 ```
 
-### Trade Management (Phase D) ✅
+### Order Execution
+```
+POST /api/v1/order
+{
+  "market": "SOLUSDT",
+  "side": "buy",
+  "quantity": "0.1",
+  "price": "140.00",
+  "user_id": "...",
+  "execution_mode": "shadow" | "live"
+}
+```
+
+### Trade Management
 ```
 POST   /api/v1/trades              # Create trade with SL/TP
 GET    /api/v1/trades              # List active trades
-GET    /api/v1/trades/{id}         # Get trade details
 PUT    /api/v1/trades/{id}/sl      # Update stop loss
 PUT    /api/v1/trades/{id}/tp      # Update take profit
-PUT    /api/v1/trades/{id}/breakeven  # Enable break-even
 DELETE /api/v1/trades/{id}         # Cancel trade group
 ```
 
 ---
 
-## Next Task: Phase E - Live Execution
+## Execution Modes
 
-**Goal**: Connect to Binance for live order execution with shadow verification
+| Mode | Description |
+|------|-------------|
+| **Shadow** | Paper trading, no real orders. Default mode. |
+| **Live** | Real orders sent to Binance Futures. Requires API keys. |
 
-### Tasks
-
-| # | Task | Description |
-|---|------|-------------|
-| 25 | API Key Connection | Secure storage and validation of Binance API keys |
-| 26 | Decision Loop | Shadow → External execution flow |
-| 27 | Order Execution | Place real orders on Binance |
-| 28 | Position Sync | Keep shadow positions in sync with exchange |
-| 29 | Risk Validation | Pre-trade checks before live execution |
+The frontend ModeToggle component switches between modes. Live mode shows red indicator, Shadow shows green.
 
 ---
 
-## Risk Engine Summary
+## Development Commands
 
-### Position Sizing ("Conservative Wins")
-```rust
-let config = RiskConfig::new()
-    .with_account_risk_percent(dec!(2))    // 2% per trade
-    .with_max_risk_amount(dec!(100))       // Max $100 loss
-    .with_max_position_size(dec!(0.1));    // Max 0.1 BTC
-
-let sizer = PositionSizer::new(config);
-let result = sizer.calculate_position_size(
-    account_balance,  // $10,000
-    entry_price,      // $50,000
-    stop_loss_price,  // $49,000
-);
-// Result: size = 0.1 BTC (limited by max_position_size)
-```
-
-### Validation
-```rust
-let validator = RiskValidator::new(config);
-let result = validator.validate(&order, &account_state);
-
-if !result.is_valid {
-    // Handle violations: StopLossRequired, PositionSizeExceeded, etc.
-}
-```
-
----
-
-## Shadow Engine Usage
-
-```rust
-// Initialize
-let engine = ShadowEngine::new();
-engine.init_user(user_id).await;
-
-// Place order (reserves funds)
-let order = ShadowOrder::limit_buy(user_id, "BTC_USDC", dec!(0.1), dec!(50000));
-engine.place_order(user_id, order).await?;
-
-// Process price update (checks for fills)
-let filled = engine.process_price_update(
-    "BTC_USDC",
-    bid, ask, high, low
-).await;
-
-// Get positions and P&L
-let positions = engine.get_positions(user_id).await;
-let pnl = engine.get_unrealized_pnl(user_id).await;
-```
-
----
-
-## Fill Logic (from PRD)
-
-| Order Type | Side | Fill Condition |
-|------------|------|----------------|
-| Limit | Buy | `Low <= Limit Price` |
-| Limit | Sell | `High >= Limit Price` |
-| Market | Buy | Immediate at `Ask` |
-| Market | Sell | Immediate at `Bid` |
-| Stop Loss | Buy | `High >= Stop Price` |
-| Stop Loss | Sell | `Low <= Stop Price` |
-
----
-
-## Development Guidelines
-
-### TDD Cycle
-1. **RED**: Write failing test
-2. **GREEN**: Minimal code to pass
-3. **REFACTOR**: Clean up
-
-### Build Commands
+### Backend
 ```bash
-cargo check              # Quick compilation check
-cargo test               # Run all tests
-cargo test shadow        # Run shadow engine tests
-cargo test risk          # Run risk engine tests
-cargo clippy             # Linting
+cd testudo-exchange
+cargo build --bin router    # Build
+cargo run --bin router      # Run API server (port 8080)
+cargo test                  # Run tests
+cargo clippy                # Lint
 ```
 
-### Code Style
-- Use `rust_decimal::Decimal` for all financial values
-- `thiserror` for custom error types
-- Comprehensive doc comments
-- Unit tests for all public methods
+### Frontend
+```bash
+cd testudo-web/apps/web
+bun install                 # Install deps
+bun run dev                 # Dev server (port 5173)
+bun run build               # Production build
+bun run lint                # ESLint
+```
 
 ---
 
-## Key References
+## Known Issues / Warnings
 
-- **PRD**: `hybrid_trading.json` - System requirements
-- **Plan**: `HYBRID_TRADING_SYSTEM_PLAN.md` - Implementation roadmap
-- **Progress**: `.ralph/progress.md` - Completed work log
-- **Phase 2 Tasks**: `phase2-tasks.md` - External connectivity tasks
+1. **Rust 2024 compatibility warning** in `cache.rs` - needs type annotations for `!` fallback
+2. **Unused imports** in several files - cosmetic warnings only
+3. **Landing app lint fails** - missing vite dependency (not related to main app)
 
 ---
 
-## Test Counts
+## Next Steps (Potential)
 
-| Module | Tests |
-|--------|-------|
-| common_utils (adapters, risk, services) | 237 |
-| engine (shadow) | 25 |
-| router | 56 |
-| sqlx_postgres | 17 |
-| **Total** | **341** |
+1. **WebSocket real-time data** - Replace polling with Binance WS streams
+2. **Position display** - Show open positions with P&L
+3. **Order history** - Display filled orders
+4. **Leverage settings** - Allow configuring margin/leverage
+5. **Multi-account** - Support multiple Binance API keys
+
+---
+
+## References
+
+- **PRD**: `hybrid_trading.json`
+- **Implementation Plan**: `testudo-web/docs/plans/2026-01-11-perps-charts-implementation.json`
+- **Phase E Plans**: `docs/plans/e*.md`
