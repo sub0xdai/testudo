@@ -58,6 +58,14 @@ testudo/
 
 ### Recent Changes (2026-01-11)
 
+**Implemented Binance WebSocket Streaming**:
+- Frontend connects directly to `wss://fstream.binance.com`
+- Real-time orderbook updates every 100ms (`@depth@100ms` stream)
+- Real-time trade streaming (`@aggTrade` stream)
+- Real-time price updates (`@bookTicker` stream)
+- Removed internal ws-stream dependency for market data
+- Auto-reconnect with exponential backoff
+
 **Switched from Binance Spot to Binance Futures (Perpetuals)**:
 - Backend now uses `fapi.binance.com` instead of `api.binance.com`
 - All endpoints changed from `/api/v3/*` to `/fapi/v1/*`
@@ -95,10 +103,12 @@ apps/web/src/
 ├── App.tsx                  # Routes, default market: SOLUSDT
 ├── pages/Trade.tsx          # Main trading page
 ├── components/
-│   ├── MarketBar.tsx        # Price, stats display
+│   ├── Depth.tsx            # Orderbook + trades (WebSocket)
+│   ├── MarketBar.tsx        # Price, stats display (WebSocket)
 │   ├── MarketSelector.tsx   # Fuzzy search 539 markets
 │   └── ui/ModeToggle.tsx    # Shadow/Live mode switch
 └── utils/
+    ├── binance_ws.ts        # Binance WebSocket manager (real-time data)
     ├── requests.ts          # API calls
     └── format.ts            # parseMarketSymbol() for USDT pairs
 ```
