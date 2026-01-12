@@ -1,149 +1,177 @@
 [
   {
-    "id": "CCXT-1.1a",
-    "description": "Create CCXTHTTPClient struct with reqwest client, base URLs, and timeout configuration",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_adapter.rs"],
-    "acceptance_criteria": "cargo check passes, reqwest client initializes with configurable timeout",
-    "status": "done"
+    "id": "RISK-01",
+    "description": "Create user risk config types and storage in backend",
+    "file_context": ["testudo-exchange/crates/common_utils/src/risk/"],
+    "acceptance_criteria": "RiskConfig struct with all fields, save/load functions, cargo test passes",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.1b",
-    "description": "Implement GET and POST methods on CCXTHTTPClient with timeout handling",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_adapter.rs"],
-    "acceptance_criteria": "HTTP methods work with timeout, cargo test passes",
-    "status": "done"
+    "id": "RISK-02",
+    "description": "Add GET/PUT /api/v1/risk-config endpoints",
+    "file_context": ["testudo-exchange/crates/router/src/routes/risk_config.rs"],
+    "acceptance_criteria": "Endpoints return/update user config, tested with curl",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.1c",
-    "description": "Add retry logic with exponential backoff to CCXTHTTPClient",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_adapter.rs"],
-    "acceptance_criteria": "Retries on transient failures with backoff, unit tests pass",
-    "status": "done"
+    "id": "RISK-03",
+    "description": "Modify decision_loop to load user's risk config instead of default",
+    "file_context": ["testudo-exchange/crates/router/src/routes/order.rs"],
+    "acceptance_criteria": "Decision loop fetches config per user_id, falls back to default",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.2a",
-    "description": "Create ccxt_auth.rs with CCXTAuthenticator struct holding API credentials",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_auth.rs"],
-    "acceptance_criteria": "New file created, cargo check passes",
-    "status": "done"
+    "id": "RISK-04",
+    "description": "Create account_state adapter to fetch real balances",
+    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/account_state.rs"],
+    "acceptance_criteria": "Returns shadow balance or Binance balance based on mode",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.2b",
-    "description": "Implement HMAC-SHA256 signature generation for Binance authentication",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_auth.rs"],
-    "acceptance_criteria": "sign_binance method produces valid signatures, unit tests pass",
-    "status": "done"
+    "id": "RISK-05",
+    "description": "Replace hardcoded account state in order.rs with real data",
+    "file_context": ["testudo-exchange/crates/router/src/routes/order.rs"],
+    "acceptance_criteria": "Order route uses account_state adapter, no hardcoded $10k",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.2c",
-    "description": "Implement HMAC-SHA256 signature generation for Coinbase authentication",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_auth.rs"],
-    "acceptance_criteria": "sign_coinbase method produces valid signatures, unit tests pass",
-    "status": "done"
+    "id": "RISK-06",
+    "description": "Create /settings/risk page component in frontend",
+    "file_context": ["testudo-web/apps/web/src/pages/RiskSettings.tsx"],
+    "acceptance_criteria": "Page renders with form for all config options, styled consistently",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.2d",
-    "description": "Implement HMAC-SHA512 signature generation for Kraken authentication",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/ccxt_auth.rs"],
-    "acceptance_criteria": "sign_kraken method produces valid signatures, unit tests pass",
-    "status": "done"
+    "id": "RISK-07",
+    "description": "Add /settings/risk route to App.tsx",
+    "file_context": ["testudo-web/apps/web/src/App.tsx"],
+    "acceptance_criteria": "Navigation to /settings/risk works, page loads",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.3a",
-    "description": "Create market_data.rs with MarketDataLoader struct and load_markets method",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
-    "acceptance_criteria": "New file created, markets load for Binance, cargo test passes",
-    "status": "done"
+    "id": "RISK-08",
+    "description": "Connect RiskSettings page to backend API",
+    "file_context": ["testudo-web/apps/web/src/pages/RiskSettings.tsx", "testudo-web/apps/web/src/utils/requests.ts"],
+    "acceptance_criteria": "Settings persist after save, load on page open",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.3b",
-    "description": "Implement fetch_order_book with normalization to consistent format",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
-    "acceptance_criteria": "Order books fetched and normalized, cargo test passes",
-    "status": "done"
+    "id": "RISK-09",
+    "description": "Create useRiskCalculation hook for position sizing",
+    "file_context": ["testudo-web/apps/web/src/hooks/useRiskCalculation.ts"],
+    "acceptance_criteria": "Hook calculates size from entry/SL/risk%, updates on input change",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.3c",
-    "description": "Implement fetch_ticker and add caching layer to reduce API calls",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
-    "acceptance_criteria": "Tickers fetched with caching, cargo test passes",
-    "status": "done"
+    "id": "RISK-10",
+    "description": "Create RiskDisplay component showing calculated values",
+    "file_context": ["testudo-web/apps/web/src/components/RiskDisplay.tsx"],
+    "acceptance_criteria": "Shows Size, Risk $, Risk %, Profit $, R:R ratio",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.4a",
-    "description": "Implement create_order method with mock response (real API behind feature flag)",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
-    "acceptance_criteria": "Orders can be created, cargo test passes",
-    "status": "done"
+    "id": "RISK-11",
+    "description": "Create RiskAutomaton main component with entry/SL/TP inputs",
+    "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
+    "acceptance_criteria": "Component renders with all inputs, uses useRiskCalculation",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.4b",
-    "description": "Implement fetch_order and cancel_order methods",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
-    "acceptance_criteria": "Order status checking and cancellation work, cargo test passes",
-    "status": "done"
+    "id": "RISK-12",
+    "description": "Wire RiskAutomaton order submission to backend",
+    "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
+    "acceptance_criteria": "BUY/SELL buttons submit orders, success/error toasts work",
+    "status": "completed"
   },
   {
-    "id": "CCXT-1.4c",
-    "description": "Implement fetch_balance method for post-trade balance checking",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/market_data.rs"],
-    "acceptance_criteria": "Balances fetched accurately after trades, cargo test passes",
-    "status": "done"
+    "id": "RISK-13",
+    "description": "Replace SwapInterface with RiskAutomaton in Trade.tsx",
+    "file_context": ["testudo-web/apps/web/src/pages/Trade.tsx"],
+    "acceptance_criteria": "Trade page shows RiskAutomaton instead of SwapInterface",
+    "status": "completed"
   },
   {
-    "id": "E4-1",
-    "description": "Create position_types.rs with BinancePosition, PositionDiff, SyncError types",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_types.rs"],
-    "acceptance_criteria": "New file created, cargo check passes",
+    "id": "RISK-14",
+    "description": "Remove or deprecate old SwapInterface component",
+    "file_context": ["testudo-web/apps/web/src/components/SwapInterface.tsx"],
+    "acceptance_criteria": "File deleted or marked deprecated, no import errors",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-15",
+    "description": "End-to-end testing: place trade through Risk Automaton",
+    "file_context": ["testudo-web/apps/web/", "testudo-exchange/"],
+    "acceptance_criteria": "Can place limit order with calculated size, appears in open orders",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-01",
+    "description": "Add mouse event handlers to ChartManager for coordinate-to-price conversion",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "ChartManager exposes coordinateToPrice() and priceToCoordinate() methods, mouse events captured",
     "status": "pending"
   },
   {
-    "id": "E4-2",
-    "description": "Create PositionSyncer struct with fetch_binance_positions method",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"],
-    "acceptance_criteria": "Fetches positions from Binance API, unit tests pass",
+    "id": "DRAW-02",
+    "description": "Create PositionDrawingTool component with drawing state machine",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "State machine handles: idle → drawing_entry → drawing_sl → drawing_tp → complete",
     "status": "pending"
   },
   {
-    "id": "E4-3",
-    "description": "Implement compare_positions to detect matches, mismatches, and orphans",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"],
-    "acceptance_criteria": "Position comparison works correctly, unit tests pass",
+    "id": "DRAW-03",
+    "description": "Create PositionZoneOverlay component for visual profit/loss zones",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
+    "acceptance_criteria": "Green zone for profit, red zone for loss, labels show price/percentage/amount",
     "status": "pending"
   },
   {
-    "id": "E4-4",
-    "description": "Create SyncService with background sync task (60s interval)",
-    "file_context": ["testudo-exchange/crates/router/src/services/sync_service.rs"],
-    "acceptance_criteria": "Background task runs at interval, cargo test passes",
+    "id": "DRAW-04",
+    "description": "Add horizontal price lines to chart for entry/SL/TP levels",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "Dashed entry line, red SL line, green TP line render on chart",
     "status": "pending"
   },
   {
-    "id": "E4-5",
-    "description": "Add sync_after_trade hook to trigger sync after order execution",
-    "file_context": ["testudo-exchange/crates/router/src/services/sync_service.rs"],
-    "acceptance_criteria": "Sync triggers after trade, unit tests pass",
+    "id": "DRAW-05",
+    "description": "Integrate PositionDrawingTool into TradeView with toggle button",
+    "file_context": ["testudo-web/apps/web/src/components/trade_interface/TradeView.tsx"],
+    "acceptance_criteria": "Position Tool button in toolbar, clicking activates drawing mode",
     "status": "pending"
   },
   {
-    "id": "E4-6",
-    "description": "Create sync API endpoints (POST /sync, GET /sync/status, GET /sync/diff)",
-    "file_context": ["testudo-exchange/crates/router/src/routes/sync.rs"],
-    "acceptance_criteria": "API endpoints work correctly, cargo test passes",
+    "id": "DRAW-06",
+    "description": "Add draggable handles to adjust SL/TP levels after drawing",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
+    "acceptance_criteria": "User can drag handles to adjust levels, position recalculates in real-time",
     "status": "pending"
   },
   {
-    "id": "E4-7",
-    "description": "Implement balance sync to update shadow balances from Binance",
-    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"],
-    "acceptance_criteria": "Balances sync correctly, unit tests pass",
+    "id": "DRAW-07",
+    "description": "Wire drawing completion to order execution via createOrder()",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "Execute button on overlay submits order, success/error toast appears",
     "status": "pending"
   },
   {
-    "id": "E4-8",
-    "description": "Wire sync service into app startup and user login flow",
-    "file_context": ["testudo-exchange/crates/router/src/main.rs"],
-    "acceptance_criteria": "Sync starts on app init and user login, integration works",
+    "id": "DRAW-08",
+    "description": "Convert RiskAutomaton panel to risk config settings only",
+    "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
+    "acceptance_criteria": "Panel shows risk %, max position size, require SL toggle - no entry/SL/TP inputs",
     "status": "pending"
+  },
+  {
+    "id": "DRAW-09",
+    "description": "Add keyboard shortcuts (Escape to cancel, Enter to execute)",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "Escape cancels drawing, Enter executes order when complete",
+    "status": "pending"
+  },
+  {
+    "id": "DRAW-10",
+    "description": "Create position-tool-dataflow.md diagram in docs/diagrams",
+    "file_context": ["testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md"],
+    "acceptance_criteria": "ASCII diagram shows full dataflow from user interaction to order execution",
+    "status": "completed"
   }
 ]

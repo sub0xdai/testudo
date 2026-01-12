@@ -39,39 +39,79 @@ testudo/
 
 ---
 
-## Current State (2026-01-11)
+## Current State (2026-01-12)
 
 ### Completed Phases
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **A** | Market Data Pipeline (Binance → API) | ✅ Complete |
-| **B** | Shadow Engine (Paper Trading) | ✅ Complete |
-| **C** | Risk Engine (Position Sizing) | ✅ Complete |
-| **D** | Trade Management (SL/TP, Break-even) | ✅ Complete |
-| **E.1** | API Key Storage (encrypted) | ✅ Complete |
-| **E.2** | Decision Loop (Shadow → Live flow) | ✅ Complete |
-| **E.3** | Binance Order Execution | ✅ Complete |
-| **E.4** | Position Sync (Shadow ↔ Binance) | ✅ Complete |
-| **E.5** | Mode Toggle UI (Shadow/Live) | ✅ Complete |
-| **F** | Binance Futures Migration | ✅ Complete |
+| **A** | Market Data Pipeline (Binance → API) | Completed |
+| **B** | Shadow Engine (Paper Trading) | Completed |
+| **C** | Risk Engine (Position Sizing) | Completed |
+| **D** | Trade Management (SL/TP, Break-even) | Completed |
+| **E.1** | API Key Storage (encrypted) | Completed |
+| **E.2** | Decision Loop (Shadow → Live flow) | Completed |
+| **E.3** | Binance Order Execution | Completed |
+| **E.4** | Position Sync (Shadow ↔ Binance) | Completed |
+| **E.5** | Mode Toggle UI (Shadow/Live) | Completed |
+| **F** | Binance Futures Migration | Completed |
+| **RISK** | User Risk Config + Position Calculator | Completed |
 
-### Recent Changes (2026-01-11)
+### Recent Changes (2026-01-12)
 
-**Implemented Binance WebSocket Streaming**:
-- Frontend connects directly to `wss://fstream.binance.com`
-- Real-time orderbook updates every 100ms (`@depth@100ms` stream)
-- Real-time trade streaming (`@aggTrade` stream)
-- Real-time price updates (`@bookTicker` stream)
-- Removed internal ws-stream dependency for market data
-- Auto-reconnect with exponential backoff
+**Implemented User Risk Configuration System (RISK-01 to RISK-15)**:
 
-**Switched from Binance Spot to Binance Futures (Perpetuals)**:
-- Backend now uses `fapi.binance.com` instead of `api.binance.com`
-- All endpoints changed from `/api/v3/*` to `/fapi/v1/*`
-- Markets filtered by `contractType=PERPETUAL`
-- Frontend MarketSelector shows 539 USDT perpetual pairs
-- Symbol format: `SOLUSDT`, `BTCUSDT` (native Binance format)
+Backend:
+- `common_utils/src/risk/storage.rs` - RiskConfig storage with Redis
+- `router/src/routes/risk_config.rs` - GET/PUT `/api/v1/risk-config` endpoints
+- `common_utils/src/adapters/account_state.rs` - Shadow/Live balance adapter
+- Modified `order.rs` to load user's risk config per user_id
+
+Frontend:
+- `src/pages/RiskSettings.tsx` - Settings page for risk configuration
+- `src/hooks/useRiskCalculation.ts` - Position sizing hook
+- `src/components/RiskDisplay.tsx` - Risk metrics display
+- `src/components/RiskAutomaton.tsx` - Position calculator with order submission
+- Replaced old SwapInterface with RiskAutomaton in Trade.tsx
+
+---
+
+## Next Phase: DRAW (Drawable Position Tool)
+
+**Goal**: TradingView-style drawable position tool that allows users to click and drag on the chart to set Entry, Stop Loss, and Take Profit levels visually.
+
+### PRD Tasks (see `.ralph/prd.json`)
+
+| Task | Description | File |
+|------|-------------|------|
+| **DRAW-01** | Add coordinateToPrice/priceToCoordinate to ChartManager | `chart_manager.ts` |
+| **DRAW-02** | Create PositionDrawingTool with state machine | `chart/PositionDrawingTool.tsx` |
+| **DRAW-03** | Create PositionZoneOverlay (profit/loss zones) | `chart/PositionZoneOverlay.tsx` |
+| **DRAW-04** | Add horizontal price lines for entry/SL/TP | `chart_manager.ts` |
+| **DRAW-05** | Integrate into TradeView with toolbar button | `TradeView.tsx` |
+| **DRAW-06** | Add draggable handles to adjust levels | `PositionZoneOverlay.tsx` |
+| **DRAW-07** | Wire Execute button to createOrder() | `PositionDrawingTool.tsx` |
+| **DRAW-08** | Convert RiskAutomaton to config-only panel | `RiskAutomaton.tsx` |
+| **DRAW-09** | Add keyboard shortcuts (Esc/Enter) | `PositionDrawingTool.tsx` |
+| **DRAW-10** | Create dataflow diagram | Completed |
+
+### Implementation Order
+
+1. DRAW-01 → Chart coordinate conversion (foundation)
+2. DRAW-02 → Drawing state machine (core logic)
+3. DRAW-04 → Price lines on chart (visual feedback)
+4. DRAW-03 → Zone overlay component (full visual)
+5. DRAW-05 → TradeView integration (usable feature)
+6. DRAW-07 → Order execution (complete flow)
+7. DRAW-06 → Draggable handles (UX polish)
+8. DRAW-08 → Config panel conversion (cleanup)
+9. DRAW-09 → Keyboard shortcuts (accessibility)
+
+### Reference
+
+- **Dataflow Diagram**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
+- **lightweight-charts API**: Use `series.coordinateToPrice()`, `series.priceToCoordinate()`, `series.createPriceLine()`
+- **Existing hooks**: `useRiskCalculation.ts` handles position sizing (no changes needed)
 
 ---
 
@@ -85,31 +125,42 @@ crates/common_utils/src/
 ├── adapters/
 │   ├── binance_executor.rs  # Live order execution
 │   ├── position_sync.rs     # Shadow ↔ Binance sync
+│   ├── account_state.rs     # Balance adapter (Shadow/Live)
 │   └── ccxt_auth.rs         # API key authentication
 ├── risk/
 │   ├── position_sizer.rs    # "Conservative Wins" sizing
-│   └── validator.rs         # Pre-trade validation
+│   ├── validator.rs         # Pre-trade validation
+│   └── storage.rs           # RiskConfig Redis storage
 
 crates/router/src/
 ├── decision_loop.rs         # Shadow → Live execution flow
 └── routes/
     ├── market_data.rs       # /api/v1/market-data/*
-    └── trade_management.rs  # /api/v1/trades/*
+    ├── trade_management.rs  # /api/v1/trades/*
+    ├── risk_config.rs       # /api/v1/risk-config
+    └── order.rs             # /api/v1/order (uses risk config)
 ```
 
 ### Frontend (testudo-web)
 ```
 apps/web/src/
 ├── App.tsx                  # Routes, default market: SOLUSDT
-├── pages/Trade.tsx          # Main trading page
+├── pages/
+│   ├── Trade.tsx            # Main trading page
+│   └── RiskSettings.tsx     # Risk configuration page
 ├── components/
 │   ├── Depth.tsx            # Orderbook + trades (WebSocket)
 │   ├── MarketBar.tsx        # Price, stats display (WebSocket)
 │   ├── MarketSelector.tsx   # Fuzzy search 539 markets
+│   ├── RiskAutomaton.tsx    # Position calculator
+│   ├── RiskDisplay.tsx      # Risk metrics display
 │   └── ui/ModeToggle.tsx    # Shadow/Live mode switch
+├── hooks/
+│   └── useRiskCalculation.ts # Position sizing logic
 └── utils/
-    ├── binance_ws.ts        # Binance WebSocket manager (real-time data)
-    ├── requests.ts          # API calls
+    ├── chart_manager.ts     # Lightweight-charts wrapper
+    ├── binance_ws.ts        # Binance WebSocket manager
+    ├── requests.ts          # API calls (incl. risk config)
     └── format.ts            # parseMarketSymbol() for USDT pairs
 ```
 
@@ -125,14 +176,31 @@ GET /api/v1/market-data/klines?symbol=SOLUSDT&interval=1h&limit=100
 GET /api/v1/market-data/markets   # Returns 539 USDT perps
 ```
 
+### Risk Configuration
+```
+GET /api/v1/risk-config
+PUT /api/v1/risk-config
+{
+  "account_risk_percent": "2",
+  "max_risk_amount": null,
+  "max_position_size": null,
+  "max_leverage": 1,
+  "daily_max_drawdown_percent": "5",
+  "max_open_positions": 5,
+  "require_stop_loss": true,
+  "default_stop_atr_multiplier": "2",
+  "min_risk_reward_ratio": "1.5"
+}
+```
+
 ### Order Execution
 ```
 POST /api/v1/order
 {
   "market": "SOLUSDT",
   "side": "buy",
-  "quantity": "0.1",
-  "price": "140.00",
+  "quantity": 0.1,
+  "price": 140.00,
   "user_id": "...",
   "execution_mode": "shadow" | "live"
 }
@@ -190,18 +258,9 @@ bun run lint                # ESLint
 
 ---
 
-## Next Steps (Potential)
-
-1. **WebSocket real-time data** - Replace polling with Binance WS streams
-2. **Position display** - Show open positions with P&L
-3. **Order history** - Display filled orders
-4. **Leverage settings** - Allow configuring margin/leverage
-5. **Multi-account** - Support multiple Binance API keys
-
----
-
 ## References
 
-- **PRD**: `hybrid_trading.json`
-- **Implementation Plan**: `testudo-web/docs/plans/2026-01-11-perps-charts-implementation.json`
+- **PRD**: `.ralph/prd.json` (RISK-01 to RISK-15 completed, DRAW-01 to DRAW-10 pending)
+- **Dataflow Diagram**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
+- **Plan File**: `.claude/plans/lexical-wandering-firefly.md`
 - **Phase E Plans**: `docs/plans/e*.md`
