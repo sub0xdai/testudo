@@ -57,51 +57,40 @@ testudo/
 | **F** | Binance Futures Migration | Completed |
 | **RISK** | User Risk Config + Position Calculator | Completed |
 | **DRAW** | Drawable Position Tool | Completed |
+| **DRAW-UX** | TradingView-style Drag Interaction | Completed |
 
 ### Recent Changes (2026-01-12)
 
-**Implemented Drawable Position Tool (DRAW-01 to DRAW-09)**:
+**Position Tool UX Refactor - TradingView Style Drag Interaction**:
 
-Frontend:
-- `src/utils/chart_manager.ts` - Added coordinate conversion and price line methods
-  - `coordinateToPrice()` / `priceToCoordinate()` for chart interaction
-  - `createPriceLine()` / `removePriceLine()` for visual entry/SL/TP lines
-  - `subscribeClick()` / `subscribeCrosshairMove()` for mouse events
-- `src/components/chart/PositionDrawingTool.tsx` - Drawing state machine
-  - States: `idle → drawing_entry → drawing_sl → drawing_tp → complete`
-  - Keyboard shortcuts: Escape (cancel), Enter (execute)
-  - Order execution via `createOrder()` on completion
-- `src/components/chart/PositionZoneOverlay.tsx` - Visual overlay
-  - Green profit zone, red loss zone
-  - Draggable handles for adjusting SL/TP
-  - Position sizing display and execute button
-- `src/components/trade_interface/TradeView.tsx` - Toolbar integration
-  - "POSITION" button in chart header with icon
-  - Toggle activates/deactivates drawing mode
-- `src/components/RiskAutomaton.tsx` - Converted to config-only panel
-  - Shows risk %, max position size, require SL toggle
-  - Entry/SL/TP inputs removed (now handled by Position Tool)
+Major refactor from click-based to drag-based UX:
+- **New State Machine**: `idle → ready → dragging → complete`
+- **Drag-to-draw**: Click and hold to set entry, drag to set SL, release to complete
+- **Auto-calculated TP**: Based on R:R ratio from risk config (default 2:1)
+- **Adjustable zone width**: Draggable left edge to resize position rectangle
+- **Compact UI**: Stats panel tucked inside zone, minimal control bar
 
-**UX Polish Applied**:
+Technical fixes:
+- Fixed stale closure bug using refs for event handlers
+- Removed duplicate lines (native chart lines + overlay)
+- Lines now 1px thin (was 2-3px)
+- Zones extend from adjustable left edge to right (match price lines)
+- Minimum drag distance (0.1% of price) prevents accidental positions
 
-HUD (Control Panel):
-- Green/red color bar on left edge indicates Long/Short direction
-- Size truncated to 2 decimals (was 4)
-- Visual dividers between Size | Risk | R:R sections
-- Execute button has dark text on bright background (WCAG AA contrast)
+Files changed:
+- `src/components/chart/PositionDrawingTool.tsx` - Drag-based state machine with refs
+- `src/components/chart/PositionZoneOverlay.tsx` - Bounded zones, compact UI, draggable width
 
-Price Labels:
-- TP: Dark green text (#052e16) on green background
-- SL: Dark red text (#450a0a) on red background
-- Entry: Black text on white background with padding
+**Architecture Decision - Position Tool Implementation**:
 
-Interactions:
-- CANCEL styled as ghost button with border and hover state
-- Lines thicken from 2px → 3px on hover
-- Handles glow and scale on hover/drag
-- Cursor shows `ns-resize` on handles
+Evaluated options for native canvas rendering:
+1. **difurious/lightweight-charts-line-tools** - ❌ Deprecated, based on v3.8.0 (we're on v4.2.1)
+2. **Current DOM overlay** - ✅ Works, we control it, shipping now
+3. **V5 Pane Primitive plugin** - ✅ Future option for native canvas integration
 
-**Previously completed - User Risk Configuration System (RISK-01 to RISK-15)**:
+Decision: Keep DOM overlay for now, consider V5 plugin architecture for future native canvas rendering.
+
+**Previously completed - Drawable Position Tool (DRAW-01 to DRAW-09)**:
 
 Backend:
 - `common_utils/src/risk/storage.rs` - RiskConfig storage with Redis
@@ -134,12 +123,13 @@ All planned phases have been implemented:
 ### How to Use Position Tool
 
 1. Click the position tool button (crosshair icon) in chart toolbar
-2. Click on chart to set entry price
-3. Click again to set stop loss (red zone appears)
-4. Click again to set take profit (green zone appears)
-5. Adjust levels by dragging handles if needed
-6. Click Execute or press Enter to place order
-7. Press Escape to cancel at any time
+2. Click and **hold** on chart at desired entry price
+3. **Drag** up or down to set stop loss (zone grows as you drag)
+4. **Release** mouse - TP auto-calculates based on R:R ratio
+5. Adjust levels by dragging handles (entry, SL, TP)
+6. Drag left edge to adjust zone width
+7. Click Execute button or press Enter to place order
+8. Press Escape or click ✕ to cancel
 
 ### Reference
 
