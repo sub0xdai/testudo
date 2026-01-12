@@ -109,63 +109,63 @@
     "description": "Add mouse event handlers to ChartManager for coordinate-to-price conversion",
     "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
     "acceptance_criteria": "ChartManager exposes coordinateToPrice() and priceToCoordinate() methods, mouse events captured",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-02",
     "description": "Create PositionDrawingTool component with drawing state machine",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
     "acceptance_criteria": "State machine handles: idle → drawing_entry → drawing_sl → drawing_tp → complete",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-03",
     "description": "Create PositionZoneOverlay component for visual profit/loss zones",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
     "acceptance_criteria": "Green zone for profit, red zone for loss, labels show price/percentage/amount",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-04",
     "description": "Add horizontal price lines to chart for entry/SL/TP levels",
     "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
     "acceptance_criteria": "Dashed entry line, red SL line, green TP line render on chart",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-05",
     "description": "Integrate PositionDrawingTool into TradeView with toggle button",
     "file_context": ["testudo-web/apps/web/src/components/trade_interface/TradeView.tsx"],
     "acceptance_criteria": "Position Tool button in toolbar, clicking activates drawing mode",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-06",
     "description": "Add draggable handles to adjust SL/TP levels after drawing",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
     "acceptance_criteria": "User can drag handles to adjust levels, position recalculates in real-time",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-07",
     "description": "Wire drawing completion to order execution via createOrder()",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
     "acceptance_criteria": "Execute button on overlay submits order, success/error toast appears",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-08",
     "description": "Convert RiskAutomaton panel to risk config settings only",
     "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
     "acceptance_criteria": "Panel shows risk %, max position size, require SL toggle - no entry/SL/TP inputs",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-09",
     "description": "Add keyboard shortcuts (Escape to cancel, Enter to execute)",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
     "acceptance_criteria": "Escape cancels drawing, Enter executes order when complete",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "id": "DRAW-10",

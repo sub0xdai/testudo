@@ -56,10 +56,33 @@ testudo/
 | **E.5** | Mode Toggle UI (Shadow/Live) | Completed |
 | **F** | Binance Futures Migration | Completed |
 | **RISK** | User Risk Config + Position Calculator | Completed |
+| **DRAW** | Drawable Position Tool | Completed |
 
 ### Recent Changes (2026-01-12)
 
-**Implemented User Risk Configuration System (RISK-01 to RISK-15)**:
+**Implemented Drawable Position Tool (DRAW-01 to DRAW-09)**:
+
+Frontend:
+- `src/utils/chart_manager.ts` - Added coordinate conversion and price line methods
+  - `coordinateToPrice()` / `priceToCoordinate()` for chart interaction
+  - `createPriceLine()` / `removePriceLine()` for visual entry/SL/TP lines
+  - `subscribeClick()` / `subscribeCrosshairMove()` for mouse events
+- `src/components/chart/PositionDrawingTool.tsx` - Drawing state machine
+  - States: `idle → drawing_entry → drawing_sl → drawing_tp → complete`
+  - Keyboard shortcuts: Escape (cancel), Enter (execute)
+  - Order execution via `createOrder()` on completion
+- `src/components/chart/PositionZoneOverlay.tsx` - Visual overlay
+  - Green profit zone, red loss zone
+  - Draggable handles for adjusting SL/TP
+  - Position sizing display and execute button
+- `src/components/trade_interface/TradeView.tsx` - Toolbar integration
+  - Position Tool button in chart header
+  - Toggle activates/deactivates drawing mode
+- `src/components/RiskAutomaton.tsx` - Converted to config-only panel
+  - Shows risk %, max position size, require SL toggle
+  - Entry/SL/TP inputs removed (now handled by Position Tool)
+
+**Previously completed - User Risk Configuration System (RISK-01 to RISK-15)**:
 
 Backend:
 - `common_utils/src/risk/storage.rs` - RiskConfig storage with Redis
@@ -71,47 +94,38 @@ Frontend:
 - `src/pages/RiskSettings.tsx` - Settings page for risk configuration
 - `src/hooks/useRiskCalculation.ts` - Position sizing hook
 - `src/components/RiskDisplay.tsx` - Risk metrics display
-- `src/components/RiskAutomaton.tsx` - Position calculator with order submission
-- Replaced old SwapInterface with RiskAutomaton in Trade.tsx
 
 ---
 
-## Next Phase: DRAW (Drawable Position Tool)
+## All Phases Complete
 
-**Goal**: TradingView-style drawable position tool that allows users to click and drag on the chart to set Entry, Stop Loss, and Take Profit levels visually.
+All planned phases have been implemented:
 
-### PRD Tasks (see `.ralph/prd.json`)
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **A** | Market Data Pipeline (Binance → API) | Completed |
+| **B** | Shadow Engine (Paper Trading) | Completed |
+| **C** | Risk Engine (Position Sizing) | Completed |
+| **D** | Trade Management (SL/TP, Break-even) | Completed |
+| **E.1-E.5** | Live Execution Flow | Completed |
+| **F** | Binance Futures Migration | Completed |
+| **RISK** | User Risk Config | Completed |
+| **DRAW** | Drawable Position Tool | Completed |
 
-| Task | Description | File |
-|------|-------------|------|
-| **DRAW-01** | Add coordinateToPrice/priceToCoordinate to ChartManager | `chart_manager.ts` |
-| **DRAW-02** | Create PositionDrawingTool with state machine | `chart/PositionDrawingTool.tsx` |
-| **DRAW-03** | Create PositionZoneOverlay (profit/loss zones) | `chart/PositionZoneOverlay.tsx` |
-| **DRAW-04** | Add horizontal price lines for entry/SL/TP | `chart_manager.ts` |
-| **DRAW-05** | Integrate into TradeView with toolbar button | `TradeView.tsx` |
-| **DRAW-06** | Add draggable handles to adjust levels | `PositionZoneOverlay.tsx` |
-| **DRAW-07** | Wire Execute button to createOrder() | `PositionDrawingTool.tsx` |
-| **DRAW-08** | Convert RiskAutomaton to config-only panel | `RiskAutomaton.tsx` |
-| **DRAW-09** | Add keyboard shortcuts (Esc/Enter) | `PositionDrawingTool.tsx` |
-| **DRAW-10** | Create dataflow diagram | Completed |
+### How to Use Position Tool
 
-### Implementation Order
-
-1. DRAW-01 → Chart coordinate conversion (foundation)
-2. DRAW-02 → Drawing state machine (core logic)
-3. DRAW-04 → Price lines on chart (visual feedback)
-4. DRAW-03 → Zone overlay component (full visual)
-5. DRAW-05 → TradeView integration (usable feature)
-6. DRAW-07 → Order execution (complete flow)
-7. DRAW-06 → Draggable handles (UX polish)
-8. DRAW-08 → Config panel conversion (cleanup)
-9. DRAW-09 → Keyboard shortcuts (accessibility)
+1. Click the position tool button (crosshair icon) in chart toolbar
+2. Click on chart to set entry price
+3. Click again to set stop loss (red zone appears)
+4. Click again to set take profit (green zone appears)
+5. Adjust levels by dragging handles if needed
+6. Click Execute or press Enter to place order
+7. Press Escape to cancel at any time
 
 ### Reference
 
 - **Dataflow Diagram**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
-- **lightweight-charts API**: Use `series.coordinateToPrice()`, `series.priceToCoordinate()`, `series.createPriceLine()`
-- **Existing hooks**: `useRiskCalculation.ts` handles position sizing (no changes needed)
+- **PRD Tasks**: `.ralph/prd.json` (all DRAW-01 to DRAW-10 completed)
 
 ---
 
