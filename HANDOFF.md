@@ -76,11 +76,30 @@ Frontend:
   - Draggable handles for adjusting SL/TP
   - Position sizing display and execute button
 - `src/components/trade_interface/TradeView.tsx` - Toolbar integration
-  - Position Tool button in chart header
+  - "POSITION" button in chart header with icon
   - Toggle activates/deactivates drawing mode
 - `src/components/RiskAutomaton.tsx` - Converted to config-only panel
   - Shows risk %, max position size, require SL toggle
   - Entry/SL/TP inputs removed (now handled by Position Tool)
+
+**UX Polish Applied**:
+
+HUD (Control Panel):
+- Green/red color bar on left edge indicates Long/Short direction
+- Size truncated to 2 decimals (was 4)
+- Visual dividers between Size | Risk | R:R sections
+- Execute button has dark text on bright background (WCAG AA contrast)
+
+Price Labels:
+- TP: Dark green text (#052e16) on green background
+- SL: Dark red text (#450a0a) on red background
+- Entry: Black text on white background with padding
+
+Interactions:
+- CANCEL styled as ghost button with border and hover state
+- Lines thicken from 2px → 3px on hover
+- Handles glow and scale on hover/drag
+- Cursor shows `ns-resize` on handles
 
 **Previously completed - User Risk Configuration System (RISK-01 to RISK-15)**:
 
