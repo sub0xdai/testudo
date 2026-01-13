@@ -39,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-12)
+## Current State (2026-01-13)
 
 ### Completed Phases
 
@@ -58,8 +58,51 @@ testudo/
 | **RISK** | User Risk Config + Position Calculator | Completed |
 | **DRAW** | Drawable Position Tool | Completed |
 | **DRAW-UX** | TradingView-style Drag Interaction | Completed |
+| **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
 
-### Recent Changes (2026-01-12)
+### Recent Changes (2026-01-13)
+
+**Columnar Data Format (Structure-of-Arrays) - Wire Efficiency Optimization**:
+
+Implemented Structure-of-Arrays (SoA) pattern for ~25% smaller JSON payloads on orderbook data.
+
+Backend (Rust):
+- `common_utils/src/columnar/mod.rs` - NEW: `DepthColumnStore`, `ColumnarOrderBook` structs
+- `router/src/routes/market_data.rs` - Added `get_orderbook_columnar()` for v2 endpoint
+- `router/src/main.rs` - Registered `/api/v2/market-data/orderbook` route
+
+Frontend (TypeScript):
+- `src/utils/ColumnDataView.ts` - NEW: Type-safe `ColumnDataView<T>` and `RowView<T>` classes
+- `src/utils/ColumnDataView.test.ts` - NEW: 60 comprehensive tests (TDD)
+- `src/utils/requests.ts` - Added `getDepthColumnar()` API function
+
+Key design decisions:
+- **Custom lightweight ColumnStore** - Not IndexMap or Polars (data sizes ~60 rows too small for Polars overhead)
+- **Index shifting NOT needed** - Trading data is keyed by price, not sequential indices
+- **Nonce at top level** - Avoids duplication on bids/asks
+- **Payload validation** - Fail-fast error handling for malformed data
+
+Wire format:
+```json
+{
+  "symbol": "SOLUSDT",
+  "bids": { "columns": ["price", "quantity"], "data": [["180.50", "100.5"], ...] },
+  "asks": { "columns": ["price", "quantity"], "data": [["180.75", "25.0"], ...] },
+  "nonce": 12345
+}
+```
+
+Usage:
+```typescript
+const response = await getDepthColumnar('SOLUSDT');
+const bidsView = new ColumnDataView<DepthRow>(response.bids);
+const totalBidSize = bidsView.sumColumn('quantity');
+bidsView.map((row) => row.get('price'));
+```
+
+---
+
+### Previous Changes (2026-01-12)
 
 **Position Tool UX Refactor - TradingView Style Drag Interaction**:
 
@@ -119,6 +162,7 @@ All planned phases have been implemented:
 | **F** | Binance Futures Migration | Completed |
 | **RISK** | User Risk Config | Completed |
 | **DRAW** | Drawable Position Tool | Completed |
+| **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
 
 ### How to Use Position Tool
 
@@ -150,6 +194,8 @@ crates/common_utils/src/
 │   ├── position_sync.rs     # Shadow ↔ Binance sync
 │   ├── account_state.rs     # Balance adapter (Shadow/Live)
 │   └── ccxt_auth.rs         # API key authentication
+├── columnar/
+│   └── mod.rs               # SoA data structures (DepthColumnStore, ColumnarOrderBook)
 ├── risk/
 │   ├── position_sizer.rs    # "Conservative Wins" sizing
 │   ├── validator.rs         # Pre-trade validation
@@ -158,7 +204,7 @@ crates/common_utils/src/
 crates/router/src/
 ├── decision_loop.rs         # Shadow → Live execution flow
 └── routes/
-    ├── market_data.rs       # /api/v1/market-data/*
+    ├── market_data.rs       # /api/v1 + /api/v2 market-data endpoints
     ├── trade_management.rs  # /api/v1/trades/*
     ├── risk_config.rs       # /api/v1/risk-config
     └── order.rs             # /api/v1/order (uses risk config)
@@ -183,7 +229,8 @@ apps/web/src/
 └── utils/
     ├── chart_manager.ts     # Lightweight-charts wrapper
     ├── binance_ws.ts        # Binance WebSocket manager
-    ├── requests.ts          # API calls (incl. risk config)
+    ├── requests.ts          # API calls (v1 + v2 endpoints)
+    ├── ColumnDataView.ts    # SoA data wrapper (ColumnDataView, RowView)
     └── format.ts            # parseMarketSymbol() for USDT pairs
 ```
 
@@ -191,12 +238,18 @@ apps/web/src/
 
 ## API Endpoints
 
-### Market Data
+### Market Data (v1 - Row format)
 ```
 GET /api/v1/market-data/ticker?symbol=SOLUSDT
 GET /api/v1/market-data/orderbook?symbol=SOLUSDT&limit=20
 GET /api/v1/market-data/klines?symbol=SOLUSDT&interval=1h&limit=100
 GET /api/v1/market-data/markets   # Returns 539 USDT perps
+```
+
+### Market Data (v2 - Columnar format, ~25% smaller)
+```
+GET /api/v2/market-data/orderbook?symbol=SOLUSDT&limit=20
+# Returns: { symbol, bids: {columns, data}, asks: {columns, data}, nonce }
 ```
 
 ### Risk Configuration
