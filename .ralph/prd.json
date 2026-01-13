@@ -329,7 +329,7 @@
     "description": "Delete or archive old PositionZoneOverlay.tsx (DOM-only version)",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
     "acceptance_criteria": "Old file removed or moved to archive/, no import errors in project",
-    "status": "pending",
+    "status": "completed",
     "priority": "low",
     "depends_on": ["V5-15"]
   },
@@ -338,7 +338,7 @@
     "description": "Add canvas hit-testing for zone click detection",
     "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
     "acceptance_criteria": "Clicking inside zone area focuses the position tool, clicking outside deselects",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "depends_on": ["V5-15"]
   },
@@ -347,7 +347,7 @@
     "description": "Implement z-order so zones render behind candlesticks but above grid",
     "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
     "acceptance_criteria": "Set zOrder property so candles are visible on top of zones, grid lines behind zones",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "depends_on": ["V5-15"]
   },

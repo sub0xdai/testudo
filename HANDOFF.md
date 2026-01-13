@@ -63,6 +63,16 @@ testudo/
 
 ### Recent Changes (2026-01-13)
 
+**V5 Native Canvas Position Tool - Polish Phase (V5-16 to V5-18)**:
+
+- V5-16: Deleted legacy `PositionZoneOverlay.tsx` (superseded by hybrid architecture)
+- V5-17: Added canvas hit-testing (`hitTestZone()`, `isPointInZone()`) for zone click detection
+- V5-18: Verified z-order implementation (`zOrder: "bottom"` renders zones behind candles)
+
+**18/24 V5 tasks complete.** Remaining: price axis labels, unit tests, E2E testing, performance, docs.
+
+---
+
 **V5 Native Canvas Position Tool - Hybrid Architecture Complete (V5-01 to V5-15)**:
 
 Implemented hybrid canvas + DOM architecture for native-feel position zones that pan/zoom with the chart.
@@ -114,7 +124,7 @@ chartManager.updatePositionLevels({ entry, stopLoss, takeProfit, side });
 chartManager.detachPositionPrimitive();
 ```
 
-**Completed Tasks (V5-01 to V5-15)**:
+**Completed Tasks (V5-01 to V5-18)**:
 - V5-01 to V5-04: Upgrade to lightweight-charts v5.1.0, migrate API
 - V5-05 to V5-06: PositionZonePrimitive with canvas rendering
 - V5-07 to V5-08: Price lines and updateLevels() with requestUpdate()
@@ -123,8 +133,11 @@ chartManager.detachPositionPrimitive();
 - V5-11 to V5-12: PositionHandleOverlay with drag events
 - V5-13 to V5-14: Handle sync and stats panel
 - V5-15: PositionDrawingTool refactored to hybrid
+- V5-16: Deleted legacy PositionZoneOverlay.tsx
+- V5-17: Canvas hit-testing (hitTestZone, isPointInZone)
+- V5-18: z-order verification (zones behind candles)
 
-**Remaining (V5-16 to V5-24)**: Polish tasks - delete old overlay, hit-testing, z-order, tests, docs.
+**Remaining (V5-19 to V5-24)**: Price axis labels, unit tests, E2E testing, performance profiling, docs.
 
 ---
 

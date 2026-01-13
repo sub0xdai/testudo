@@ -84,16 +84,16 @@ Clean up, test, document.
 - Notes: Full hybrid architecture - canvas primitive for zones, DOM for handles
 
 ### V5-16: Delete old PositionZoneOverlay
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Deleted PositionZoneOverlay.tsx - no longer imported after hybrid architecture
 
 ### V5-17: Add canvas hit-testing
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Added hitTestZone() and isPointInZone() methods to primitive, exposed via ChartManager
 
 ### V5-18: Implement z-order
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Already implemented with zOrder(): "bottom" - zones render behind candles, above grid
 
 ### V5-19: Add price axis labels
 - Status: pending
