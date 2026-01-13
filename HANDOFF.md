@@ -59,8 +59,40 @@ testudo/
 | **DRAW** | Drawable Position Tool | Completed |
 | **DRAW-UX** | TradingView-style Drag Interaction | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
+| **V5** | Native Canvas Position Tool (Hybrid) | **In Progress** |
 
 ### Recent Changes (2026-01-13)
+
+**V5 Native Canvas Position Tool - Phase 1 & 2 (Partial)**:
+
+Upgraded to lightweight-charts V5 and created canvas primitive foundation for native-feel position zones.
+
+Changes:
+- `package.json` - Upgraded `lightweight-charts` from `^4.2.1` to `^5.1.0`
+- `src/utils/chart_manager.ts` - Migrated to V5 API: `addSeries(CandlestickSeries, opts)`
+- `src/primitives/PositionZonePrimitive.ts` - **NEW**: V5 series primitive with canvas rendering
+
+V5 API Migration (Breaking Changes):
+```typescript
+// Old (v4)
+const series = chart.addCandlestickSeries(options);
+
+// New (v5)
+import { CandlestickSeries } from 'lightweight-charts';
+const series = chart.addSeries(CandlestickSeries, options);
+```
+
+Completed Tasks:
+- V5-01: Upgrade lightweight-charts to v5.1.0
+- V5-02: Migrate series creation to V5 API
+- V5-03: Update series type imports
+- V5-04: Verify existing chart functionality
+- V5-05: Create `PositionZonePrimitive` implementing `ISeriesPrimitiveBase`
+- V5-06: Create `PositionZoneRenderer` with canvas drawing logic
+
+Remaining (V5-07 to V5-24): Price line rendering, ChartManager integration, DOM handles, testing.
+
+---
 
 **Columnar Data Format (Structure-of-Arrays) - Wire Efficiency Optimization**:
 
@@ -99,6 +131,60 @@ const bidsView = new ColumnDataView<DepthRow>(response.bids);
 const totalBidSize = bidsView.sumColumn('quantity');
 bidsView.map((row) => row.get('price'));
 ```
+
+---
+
+### Next Phase: V5 Hybrid Position Tool
+
+**Problem**: Current DOM overlay doesn't anchor to chart - zones don't pan/zoom with price action.
+
+**Solution**: Upgrade to lightweight-charts V5 and use Pane Primitives for native canvas rendering.
+
+**Architecture (Hybrid)**:
+```
+┌─────────────────────────────────────────────────────────┐
+│  Canvas Layer (V5 Pane Primitive)                       │
+│  - Profit/Loss zones (filled rectangles)                │
+│  - Entry/SL/TP price lines                              │
+│  - Moves with chart pan/zoom automatically              │
+└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  DOM Layer (React components)                           │
+│  - Drag handles (positioned via priceToCoordinate)      │
+│  - Stats panel (qty, risk $, R:R, execute button)       │
+│  - Re-positions on chart movement events                │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key Tasks (24 total)**:
+
+| Phase | Tasks | Description |
+|-------|-------|-------------|
+| 1. Upgrade | V5-01 to V5-04 | Upgrade to V5, migrate series API, verify chart works |
+| 2. Primitive | V5-05 to V5-10 | Build `PositionZonePrimitive`, canvas rendering, verify pan/zoom |
+| 3. Hybrid | V5-11 to V5-15 | DOM handles, drag events, stats panel, refactor tool |
+| 4. Polish | V5-16 to V5-24 | Hit-testing, z-order, tests, docs |
+
+**New Files**:
+- `src/primitives/PositionZonePrimitive.ts` - Canvas primitive implementing `IPanePrimitive`
+- `src/components/chart/PositionHandleOverlay.tsx` - Lightweight DOM for handles only
+- `src/components/chart/PositionStatsPanel.tsx` - Stats + execute button
+
+**V5 Migration (Breaking Changes)**:
+```typescript
+// Old (v4.2.1)
+const series = chart.addCandlestickSeries(options);
+
+// New (v5.x)
+import { CandlestickSeries } from 'lightweight-charts';
+const series = chart.addSeries(CandlestickSeries, options);
+```
+
+**Critical Success Criteria**:
+- V5-10: Zones pan and zoom correctly with chart
+- V5-21: End-to-end test confirms native feel
+
+**PRD**: `.ralph/prd.json` (V5-01 to V5-24)
 
 ---
 
@@ -148,9 +234,7 @@ Frontend:
 
 ---
 
-## All Phases Complete
-
-All planned phases have been implemented:
+## Phase Summary
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -163,6 +247,7 @@ All planned phases have been implemented:
 | **RISK** | User Risk Config | Completed |
 | **DRAW** | Drawable Position Tool | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
+| **V5** | Native Canvas Position Tool (Hybrid) | **Next Up** |
 
 ### How to Use Position Tool
 
@@ -328,15 +413,20 @@ bun run lint                # ESLint
 
 ## Known Issues / Warnings
 
-1. **Rust 2024 compatibility warning** in `cache.rs` - needs type annotations for `!` fallback
-2. **Unused imports** in several files - cosmetic warnings only
-3. **Landing app lint fails** - missing vite dependency (not related to main app)
+1. **Position tool DOM overlay doesn't anchor to chart** - zones don't pan/zoom with price action. Fix: V5 phase (V5-01 to V5-24)
+2. **Rust 2024 compatibility warning** in `cache.rs` - needs type annotations for `!` fallback
+3. **Unused imports** in several files - cosmetic warnings only
+4. **Landing app lint fails** - missing vite dependency (not related to main app)
 
 ---
 
 ## References
 
-- **PRD**: `.ralph/prd.json` (RISK-01 to RISK-15 completed, DRAW-01 to DRAW-10 pending)
+- **PRD**: `.ralph/prd.json`
+  - RISK-01 to RISK-15: Completed
+  - DRAW-01 to DRAW-10: Completed
+  - V5-01 to V5-24: **Pending** (Native canvas position tool)
+- **Context**: `.ralph/context.md` (V5 migration reference)
+- **Progress**: `.ralph/progress.md` (Task tracking)
 - **Dataflow Diagram**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
-- **Plan File**: `.claude/plans/lexical-wandering-firefly.md`
 - **Phase E Plans**: `docs/plans/e*.md`

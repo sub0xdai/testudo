@@ -1,246 +1,126 @@
-# Ralph Progress Log
+# V5 Hybrid Position Tool - Progress Log
 
-<!-- Append summaries of completed tasks below -->
+## Session Start
+- Date: 2026-01-13
+- Goal: Native-feeling position tool using V5 Pane Primitives
+- Total Tasks: 24 (V5-01 to V5-24)
 
-## CCXT-1.1a: Create CCXTHTTPClient struct (COMPLETED)
-**Date**: 2026-01-08
+## Phase Overview
 
-**Summary**:
-- Created `CCXTHTTPClient` struct in `ccxt_adapter.rs` (lines 975-1060)
-- Struct holds: `reqwest::Client`, `HashMap<String, String>` for base URLs, `Duration` for timeout
-- Feature-gated with `#[cfg(feature = "real-api")]`
-- Default exchange URLs configured: Binance, Binance Testnet, Coinbase, Coinbase Sandbox, Kraken
-- Implemented methods: `new()`, `with_base_urls()`, `get_base_url()`, `timeout()`, `set_base_url()`
-- Added 5 unit tests for the new struct
-- Exported from `mod.rs` with feature gate
+### Phase 1: V5 Upgrade (V5-01 to V5-04)
+Upgrade lightweight-charts and migrate existing code.
 
-**Tests**: 131 passed (126 base + 5 new CCXTHTTPClient tests)
+### Phase 2: Canvas Primitive (V5-05 to V5-10)
+Build the core primitive that renders zones on canvas.
 
-## CCXT-1.1b: Implement GET and POST methods (COMPLETED)
-**Date**: 2026-01-08
+### Phase 3: Hybrid Integration (V5-11 to V5-15)
+Connect DOM handles to canvas primitive.
 
-**Summary**:
-- Added `get(url)` async method - performs GET request, returns JSON Value
-- Added `post(url, body)` async method - performs POST request with JSON body
-- Added `build_url(exchange_id, endpoint)` helper to construct full URLs
-- Added `map_http_error(status, text)` for HTTP status code → CCXTError mapping
-- Proper error handling: timeout → RequestTimeout, connection → ExchangeNotAvailable
-- HTTP error code mapping: 401→Auth, 403→Permission, 404→BadRequest, 429→RateLimit, 5xx→Unavailable
-- Added 4 unit tests for new functionality
-
-**Tests**: 135 passed (131 + 4 new)
-
-## CCXT-1.1c: Add retry logic with exponential backoff (COMPLETED)
-**Date**: 2026-01-08
-
-**Summary**:
-- Added `RetryConfig` struct with configurable max_retries, initial_delay, max_delay
-- Implemented `get_with_retry(url, retry_config)` with exponential backoff
-- Implemented `post_with_retry(url, body, retry_config)` with exponential backoff
-- Added `is_retryable(error)` method - retries on Network/Timeout/Unavailable errors
-- Added `calculate_jitter(delay)` for randomized backoff (0-25% jitter)
-- Preset configurations: `default()`, `no_retry()`, `aggressive()`, `conservative()`
-- Exponential backoff: delay doubles each retry up to max_delay
-- Added 8 unit tests covering retry config, is_retryable, and retry behavior
-
-**Tests**: 143 passed (135 + 8 new)
-
-## CCXT-1.2a: Create ccxt_auth.rs with CCXTAuthenticator (COMPLETED)
-**Date**: 2026-01-08
-
-**Summary**:
-- Created new file `ccxt_auth.rs` with CCXTAuthenticator struct
-- Struct holds: api_key, api_secret, passphrase (optional), exchange_id
-- Implements Zeroize to securely clear credentials from memory on drop
-- Factory methods: `binance()`, `coinbase()`, `kraken()` for easy creation
-- Validation: empty key/secret rejection, Coinbase passphrase requirement
-- Timestamp utilities: `get_timestamp_millis()`, `get_timestamp_secs()`, `generate_nonce()`
-- Exchange-specific validation via `validate()` method
-- Added 11 unit tests covering creation, validation, and edge cases
-- Exported CCXTAuthenticator from mod.rs
-
-**Tests**: 154 passed with real-api feature (143 + 11 new ccxt_auth tests)
-
-## CCXT-1.2b: Implement Binance HMAC-SHA256 signature (COMPLETED)
-**Date**: 2026-01-08
-
-**Summary**:
-- Added `sign_binance(query_string)` method for HMAC-SHA256 signing
-- Added `sign_binance_request(params)` convenience method that adds timestamp and signature
-- Uses `pbkdf2::hmac` for HMAC-SHA256 implementation
-- Validates exchange_id before signing (prevents misuse)
-- Verified against official Binance API test vector
-- Added 6 unit tests: known vector, simple, deterministic, wrong exchange, request builder, empty query
-
-**Tests**: 160 passed (154 + 6 new Binance signature tests)
+### Phase 4: Polish & Docs (V5-16 to V5-24)
+Clean up, test, document.
 
 ---
 
-## Hybrid Trading System - Phase A, B, C (COMPLETED)
-**Date**: 2026-01-10
+## Task Progress
 
-### Phase A: Market Data Pipeline ✅
+### V5-01: Upgrade lightweight-charts
+- Status: completed
+- Notes: Upgraded from v4.2.1 to v5.1.0
 
-**Summary**:
-- Created `BinanceDataService` in `crates/common_utils/src/services/binance_data.rs`
-  - Fetches live ticker, orderbook, klines from Binance public API
-  - Symbol normalization: `BTC_USDC` → `BTCUSDT`
-  - Supports markets: BTC, ETH, SOL, BNB, XRP, ADA, DOGE, LINK
-- Created `CacheService` in `crates/common_utils/src/services/cache.rs`
-  - Redis-based caching with configurable TTL
-  - Key patterns: `binance:ticker:{symbol}`, `binance:orderbook:{symbol}`, etc.
-- Created `market_data.rs` routes in `crates/router/src/routes/market_data.rs`
-  - `GET /api/v1/market-data/ticker?symbol=BTC_USDC`
-  - `GET /api/v1/market-data/orderbook?symbol=BTC_USDC&limit=20`
-  - `GET /api/v1/market-data/klines?symbol=BTC_USDC&interval=1h&limit=100`
-  - `GET /api/v1/market-data/markets`
-- Wired up in `main.rs` with `MarketDataState`
+### V5-02: Migrate series creation to V5 API
+- Status: completed
+- Notes: Changed addCandlestickSeries() to addSeries(CandlestickSeries, opts)
 
-### Phase B: Shadow Engine (Paper Trading) ✅
+### V5-03: Update series type imports
+- Status: completed
+- Notes: Added CandlestickSeries import
 
-**Summary**:
-- Created `crates/engine/src/shadow/` module with 4 files:
-  - `mod.rs` - `ShadowEngine` orchestrator
-  - `balances.rs` - `ShadowBalanceManager` for virtual funds
-  - `orders.rs` - `ShadowOrderManager` with fill simulation
-  - `positions.rs` - `ShadowPositionManager` with P&L tracking
+### V5-04: Verify existing chart functionality
+- Status: completed
+- Notes: bun run build passes, lint shows 0 errors
 
-**Key Features**:
-- Virtual balance management (default 10,000 USDC per user)
-- Order placement with balance validation and fund reservation
-- Fill simulation based on PRD rules:
-  - Buy Limit: Fills when `Low <= Limit Price`
-  - Sell Limit: Fills when `High >= Limit Price`
-  - Market orders: Fill immediately at best bid/ask
-- Position tracking with unrealized P&L (mark price based)
-- Stop-loss and take-profit order types
+### V5-05: Create PositionZonePrimitive class
+- Status: completed
+- Notes: Implemented ISeriesPrimitiveBase (not IPanePrimitiveBase) for series.priceToCoordinate() access
 
-**Tests**: 25 shadow engine tests passing
+### V5-06: Create PositionZoneRenderer
+- Status: completed
+- Notes: Canvas drawing for profit/loss zones and entry/SL/TP lines
 
-### Phase C: Risk Engine ✅
+### V5-07: Implement price line rendering
+- Status: pending
+- Notes:
 
-**Summary**:
-- Created `crates/common_utils/src/risk/` module with 3 files:
-  - `config.rs` - `RiskConfig` with user-defined risk parameters
-  - `position_sizer.rs` - `PositionSizer` implementing "Conservative Wins"
-  - `validator.rs` - `RiskValidator` for pre-trade checks
+### V5-08: Add updateLevels() method
+- Status: pending
+- Notes:
 
-**Key Features**:
-- **RiskConfig**: account_risk_percent, max_risk_amount, max_position_size, max_leverage, daily_max_drawdown, max_open_positions, require_stop_loss, min_risk_reward_ratio
-- **PositionSizer**: Calculates position size as MINIMUM of:
-  1. Account % risk limit
-  2. Fixed risk amount limit
-  3. Maximum position size limit
-- **RiskValidator**: Returns violations (blocking) and warnings (informational)
-  - Violations: InsufficientBalance, PositionSizeExceeded, LeverageExceeded, StopLossRequired, etc.
-  - Warnings: HighRisk, TightStop, WideStop, LargePosition
-- **Presets**: `conservative()`, `aggressive()`, `default()`
+### V5-09: Integrate primitive into ChartManager
+- Status: pending
+- Notes:
 
-**Tests**: 26 risk engine tests passing
+### V5-10: Verify zones pan/zoom correctly
+- Status: pending
+- Notes: CRITICAL - This is the main goal
 
-### Total Test Coverage
-**341 tests passing** across all modules (0 failed)
+### V5-11: Create hybrid DOM overlay for handles
+- Status: pending
+- Notes:
 
----
+### V5-12: Add handle drag events
+- Status: pending
+- Notes:
 
-## E.3: Binance Order Execution (COMPLETED)
-**Date**: 2026-01-10
+### V5-13: Implement handle position sync
+- Status: pending
+- Notes:
 
-### Summary
-Implemented the BinanceExecutor for executing validated orders on Binance exchange.
+### V5-14: Create stats panel component
+- Status: pending
+- Notes:
 
-### Key Components
+### V5-15: Refactor PositionDrawingTool
+- Status: pending
+- Notes:
 
-**1. Execution Types** (`common_utils/src/adapters/execution_types.rs`):
-- `ValidatedOrder` - Order ready for execution with Binance-format symbol
-- `BinanceOrderResult` - Execution result from Binance API
-- `ExecutionError` - Error handling (InsufficientBalance, RateLimited, etc.)
-- `ExecutionMode` - Shadow (paper) or Live (real) execution
-- `symbol::to_binance()` / `symbol::from_binance()` - Symbol normalization
+### V5-16: Delete old PositionZoneOverlay
+- Status: pending
+- Notes:
 
-**2. Binance Executor** (`common_utils/src/adapters/binance_executor.rs`):
-- `BinanceExecutor::new()` - Create executor with API credentials
-- `BinanceExecutor::testnet()` - Create executor for Binance testnet
-- `execute()` - Execute validated order on Binance
-- `get_order()` - Get order status by ID
-- `cancel()` - Cancel an order
-- Feature-gated: `#[cfg(feature = "real-api")]` for actual API calls
-- Mock implementation for testing without real API
+### V5-17: Add canvas hit-testing
+- Status: pending
+- Notes:
 
-**3. Decision Loop Integration** (`router/src/decision_loop.rs`):
-- Added `execution_mode` to `DecisionInput`
-- Added `execution_mode`, `binance_order`, `execution_error` to `DecisionResult`
-- Builder methods: `live_mode()`, `shadow_mode()`, `execution_mode()`
+### V5-18: Implement z-order
+- Status: pending
+- Notes:
 
-### Symbol Normalization
-- Internal: `BTC_USDC` -> Binance: `BTCUSDT`
-- Handles USDT, BUSD, USDC suffixes
+### V5-19: Add price axis labels
+- Status: pending
+- Notes:
 
-### Tests
-- 10 BinanceExecutor tests (creation, execute, params building)
-- 12 execution_types tests (symbol normalization, order types)
-- 6 Decision Loop execution mode tests
+### V5-20: Write unit tests
+- Status: pending
+- Notes:
 
-### Total Test Coverage
-**~480 tests passing** across all modules (0 failed)
+### V5-21: End-to-end testing
+- Status: pending
+- Notes: CRITICAL
+
+### V5-22: Performance profiling
+- Status: pending
+- Notes:
+
+### V5-23: Update HANDOFF.md
+- Status: pending
+- Notes:
+
+### V5-24: Create architecture diagram
+- Status: pending
+- Notes:
 
 ---
 
-## E.4: Position Sync (COMPLETED)
-**Date**: 2026-01-11
+## Blockers / Notes
 
-### Summary
-Implemented position synchronization between Shadow Engine and Binance exchange.
-
-### Key Components
-
-**1. Position Types** (`common_utils/src/adapters/position_types.rs`):
-- `BinancePosition` - Position data from Binance
-- `PositionDiff` - Comparison result (shadow_only, binance_only, quantity_mismatch, matched)
-- `SyncError` - Error handling (NetworkError, AuthenticationFailed, RateLimited, etc.)
-- `SyncResult` - Sync operation result with diff and status
-- `QuantityMismatch` - Tracks quantity discrepancies between shadow and Binance
-- `BinanceBalance` - Account balance info
-
-**2. Position Syncer** (`common_utils/src/adapters/position_sync.rs`):
-- `PositionSyncer::new()` - Create syncer with BinanceExecutor
-- `fetch_binance_positions()` - Fetch current positions from Binance
-- `fetch_binance_balances()` - Fetch account balances
-- `compare_positions()` - Compare shadow vs Binance positions
-- `sync()` - Perform full sync and return SyncResult
-- Feature-gated: `#[cfg(feature = "real-api")]` for actual API calls
-
-**3. Sync Service** (`router/src/services/sync_service.rs`):
-- `SyncService::new()` - Create service with BinanceExecutor
-- `sync_now()` - Trigger immediate sync
-- `sync_after_trade()` - Sync after trade execution
-- `start_background_sync()` - Start 60-second background sync task
-- `stop_background_sync()` - Stop background sync
-- `get_last_sync_result()` - Get most recent sync result
-- `SyncServiceBuilder` - Builder pattern for service configuration
-
-**4. Sync API Routes** (`router/src/routes/sync.rs`):
-- `POST /api/v1/sync` - Trigger manual sync
-- `GET /api/v1/sync/status` - Get last sync result status
-- `GET /api/v1/sync/diff` - Get current position differences
-
-### Sync Triggers (from PRD acceptance criteria)
-1. **On app start** - Full position sync
-2. **After each trade** - Incremental sync via `sync_after_trade()`
-3. **Background sync** - Every 60 seconds via `start_background_sync()`
-
-### Discrepancy Handling
-- Shadow-only positions: Positions exist in shadow but not on Binance
-- Binance-only positions: Positions exist on Binance but not in shadow
-- Quantity mismatches: Same position exists but with different quantities
-- Alert user (no auto-reconcile per PRD requirements)
-
-### Tests
-- 13 position_types tests
-- 11 position_sync tests
-- 11 sync_service tests
-- 8 sync route tests
-
-### Total Test Coverage
-**529 tests passing** across all modules (0 failed)
 
