@@ -48,16 +48,16 @@ Clean up, test, document.
 - Notes: Canvas drawing for profit/loss zones and entry/SL/TP lines
 
 ### V5-07: Implement price line rendering
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Already implemented in V5-06 (lines 106-128 in renderer)
 
 ### V5-08: Add updateLevels() method
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Already implemented in V5-05 (lines 218-222 with requestUpdate())
 
 ### V5-09: Integrate primitive into ChartManager
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Added attachPositionPrimitive(), detachPositionPrimitive(), getPositionPrimitive(), updatePositionLevels()
 
 ### V5-10: Verify zones pan/zoom correctly
 - Status: pending

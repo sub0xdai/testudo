@@ -239,7 +239,7 @@
     "description": "Implement price line rendering in PositionZoneRenderer",
     "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
     "acceptance_criteria": "Canvas renders entry (dashed white), SL (solid red), TP (solid green) lines at correct Y coordinates",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
     "depends_on": ["V5-06"]
   },
@@ -248,7 +248,7 @@
     "description": "Add updateLevels() method to primitive with requestUpdate() trigger",
     "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
     "acceptance_criteria": "Calling updateLevels(entry, sl, tp) triggers canvas repaint with new zone positions",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
     "depends_on": ["V5-07"]
   },
@@ -260,7 +260,7 @@
       "testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"
     ],
     "acceptance_criteria": "ChartManager has attachPositionPrimitive() and detachPositionPrimitive() methods, primitive attaches to main pane",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
     "depends_on": ["V5-08"]
   },
