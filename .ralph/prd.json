@@ -299,7 +299,7 @@
     "description": "Implement handle position sync on chart pan/zoom events",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionHandleOverlay.tsx"],
     "acceptance_criteria": "Handles re-position when chart scrolls by subscribing to timeScale/priceScale visible range changes",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
     "depends_on": ["V5-12"]
   },
@@ -308,7 +308,7 @@
     "description": "Create compact stats panel component positioned inside profit zone",
     "file_context": ["testudo-web/apps/web/src/components/chart/PositionStatsPanel.tsx"],
     "acceptance_criteria": "Shows qty, risk $, R:R, and execute button, positioned relative to entry line Y coordinate",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "depends_on": ["V5-13"]
   },
@@ -320,7 +320,7 @@
       "testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"
     ],
     "acceptance_criteria": "PositionDrawingTool creates primitive for zones, uses PositionHandleOverlay for drag handles",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
     "depends_on": ["V5-14"]
   },

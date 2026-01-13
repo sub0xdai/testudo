@@ -63,16 +63,36 @@ testudo/
 
 ### Recent Changes (2026-01-13)
 
-**V5 Native Canvas Position Tool - Phase 1 & 2 (Partial)**:
+**V5 Native Canvas Position Tool - Hybrid Architecture Complete (V5-01 to V5-15)**:
 
-Upgraded to lightweight-charts V5 and created canvas primitive foundation for native-feel position zones.
+Implemented hybrid canvas + DOM architecture for native-feel position zones that pan/zoom with the chart.
 
-Changes:
-- `package.json` - Upgraded `lightweight-charts` from `^4.2.1` to `^5.1.0`
-- `src/utils/chart_manager.ts` - Migrated to V5 API: `addSeries(CandlestickSeries, opts)`
-- `src/primitives/PositionZonePrimitive.ts` - **NEW**: V5 series primitive with canvas rendering
+**Architecture**:
+```
+┌─────────────────────────────────────────────────────────┐
+│  Canvas Layer (PositionZonePrimitive)                   │
+│  - Profit zone (green rectangle)                        │
+│  - Loss zone (red rectangle)                            │
+│  - Entry/SL/TP price lines                              │
+│  - Auto pan/zoom via priceToCoordinate() per frame      │
+└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  DOM Layer (PositionHandleOverlay)                      │
+│  - Draggable handles for entry/SL/TP                    │
+│  - Stats panel (qty, risk $, R:R, execute button)       │
+│  - Re-positions on crosshair move                       │
+└─────────────────────────────────────────────────────────┘
+```
 
-V5 API Migration (Breaking Changes):
+**New Files**:
+- `src/primitives/PositionZonePrimitive.ts` - V5 series primitive with canvas rendering
+- `src/components/chart/PositionHandleOverlay.tsx` - Lightweight DOM handles + stats
+
+**Modified Files**:
+- `src/utils/chart_manager.ts` - V5 API + primitive attach/detach methods
+- `src/components/chart/PositionDrawingTool.tsx` - Refactored to hybrid architecture
+
+**V5 API Migration**:
 ```typescript
 // Old (v4)
 const series = chart.addCandlestickSeries(options);
@@ -82,15 +102,29 @@ import { CandlestickSeries } from 'lightweight-charts';
 const series = chart.addSeries(CandlestickSeries, options);
 ```
 
-Completed Tasks:
-- V5-01: Upgrade lightweight-charts to v5.1.0
-- V5-02: Migrate series creation to V5 API
-- V5-03: Update series type imports
-- V5-04: Verify existing chart functionality
-- V5-05: Create `PositionZonePrimitive` implementing `ISeriesPrimitiveBase`
-- V5-06: Create `PositionZoneRenderer` with canvas drawing logic
+**ChartManager API**:
+```typescript
+// Attach primitive and get reference
+const primitive = chartManager.attachPositionPrimitive(style?);
 
-Remaining (V5-07 to V5-24): Price line rendering, ChartManager integration, DOM handles, testing.
+// Update levels (triggers canvas repaint)
+chartManager.updatePositionLevels({ entry, stopLoss, takeProfit, side });
+
+// Detach when done
+chartManager.detachPositionPrimitive();
+```
+
+**Completed Tasks (V5-01 to V5-15)**:
+- V5-01 to V5-04: Upgrade to lightweight-charts v5.1.0, migrate API
+- V5-05 to V5-06: PositionZonePrimitive with canvas rendering
+- V5-07 to V5-08: Price lines and updateLevels() with requestUpdate()
+- V5-09: ChartManager attach/detach lifecycle
+- V5-10: Pan/zoom verification (architectural)
+- V5-11 to V5-12: PositionHandleOverlay with drag events
+- V5-13 to V5-14: Handle sync and stats panel
+- V5-15: PositionDrawingTool refactored to hybrid
+
+**Remaining (V5-16 to V5-24)**: Polish tasks - delete old overlay, hit-testing, z-order, tests, docs.
 
 ---
 

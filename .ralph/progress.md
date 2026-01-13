@@ -72,16 +72,16 @@ Clean up, test, document.
 - Notes: Drag handling built into PositionHandleOverlay, calls onLevelChange
 
 ### V5-13: Implement handle position sync
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Crosshair subscription in PositionHandleOverlay (lines 47-54)
 
 ### V5-14: Create stats panel component
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Stats panel integrated into PositionHandleOverlay (lines 155-192)
 
 ### V5-15: Refactor PositionDrawingTool
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Full hybrid architecture - canvas primitive for zones, DOM for handles
 
 ### V5-16: Delete old PositionZoneOverlay
 - Status: pending
