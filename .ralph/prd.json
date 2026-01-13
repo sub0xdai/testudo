@@ -356,7 +356,7 @@
     "description": "Add price labels to right edge of canvas via priceAxisViews",
     "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
     "acceptance_criteria": "Entry/SL/TP prices shown as labels on price axis, styled to match TradingView",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "depends_on": ["V5-15"]
   },
@@ -365,7 +365,7 @@
     "description": "Write unit tests for PositionZonePrimitive coordinate calculations",
     "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.test.ts"],
     "acceptance_criteria": "Tests verify zone height calculation, line positions, updateLevels behavior",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "depends_on": ["V5-08"]
   },
@@ -374,7 +374,7 @@
     "description": "End-to-end test: draw position, pan chart, verify zones follow",
     "file_context": ["testudo-web/apps/web/"],
     "acceptance_criteria": "Manual test confirms zones and lines move with chart pan, handles stay aligned",
-    "status": "pending",
+    "status": "completed",
     "priority": "critical",
     "depends_on": ["V5-15"]
   },

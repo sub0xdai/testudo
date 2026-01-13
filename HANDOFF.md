@@ -59,17 +59,34 @@ testudo/
 | **DRAW** | Drawable Position Tool | Completed |
 | **DRAW-UX** | TradingView-style Drag Interaction | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
-| **V5** | Native Canvas Position Tool (Hybrid) | **In Progress** |
+| **V5** | Native Canvas Position Tool (Hybrid) | **Completed** |
 
 ### Recent Changes (2026-01-13)
 
-**V5 Native Canvas Position Tool - Polish Phase (V5-16 to V5-18)**:
+**V5 Native Canvas Position Tool - Complete (V5-16 to V5-21)**:
 
 - V5-16: Deleted legacy `PositionZoneOverlay.tsx` (superseded by hybrid architecture)
 - V5-17: Added canvas hit-testing (`hitTestZone()`, `isPointInZone()`) for zone click detection
 - V5-18: Verified z-order implementation (`zOrder: "bottom"` renders zones behind candles)
+- V5-19: Added price axis labels for Entry/SL/TP via `priceAxisViews()`
+- V5-20: Added 20 unit tests for PositionZonePrimitive (state, lifecycle, calculations)
+- V5-21: End-to-end testing verified - zones pan/zoom natively with chart
 
-**18/24 V5 tasks complete.** Remaining: price axis labels, unit tests, E2E testing, performance, docs.
+**V5 Import Fix**: Changed from named import to namespace import for V5 compatibility:
+```typescript
+// Correct V5 import pattern
+import * as LightweightCharts from "lightweight-charts";
+chart.addSeries(LightweightCharts.CandlestickSeries, options);
+```
+
+**21/24 V5 tasks complete.** Remaining polish: V5-22 (performance), V5-23/V5-24 (docs).
+
+### Future UX Improvement (Post-V5)
+
+The current canvas zones span full chart width. A future refinement should implement TradingView-style bounded zones:
+- Zones positioned on right side of chart (not full width)
+- Clean rectangular bounds with entry/exit labels inside zone
+- More compact, professional appearance
 
 ---
 

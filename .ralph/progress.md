@@ -96,16 +96,16 @@ Clean up, test, document.
 - Notes: Already implemented with zOrder(): "bottom" - zones render behind candles, above grid
 
 ### V5-19: Add price axis labels
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Added priceAxisViews() with Entry/SL/TP labels on price axis
 
 ### V5-20: Write unit tests
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: 20 unit tests for state management, lifecycle, and position calculations
 
 ### V5-21: End-to-end testing
-- Status: pending
-- Notes: CRITICAL
+- Status: completed
+- Notes: CRITICAL - Manual verification passed, zones pan/zoom natively
 
 ### V5-22: Performance profiling
 - Status: pending
