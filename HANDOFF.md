@@ -60,39 +60,43 @@ testudo/
 | **DRAW-UX** | TradingView-style Drag Interaction | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
 | **V5** | Native Canvas Position Tool (Hybrid) | Completed |
-| **GEOM** | Time-Anchored Bounded Zones | **In Progress** |
+| **GEOM** | Time-Anchored Bounded Zones | **Completed** |
 
 ### Recent Changes (2026-01-13)
 
-**GEOM Geometry Polish - Time-Anchored Bounded Zones (GEOM-01 to GEOM-07)**:
+**GEOM Geometry Polish - Time-Anchored Bounded Zones (Complete)**:
 
-Zones now match TradingView style with time-anchored bounds:
+Zones now match TradingView style with time-anchored bounds and draggable right edge:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                          │                                           │
-│  Candlesticks        ════╬═══════════════════════════════════════════╡ TP (dashed green)
-│     ████                 │▓▓▓▓▓▓ PROFIT ZONE ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-│   ██████             ════╬═══════════════════════════════════════════╡ Entry (dashed orange)
-│                          │░░░ LOSS ZONE ░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-│                      ════╬═══════════════════════════════════════════╡ SL (dashed red)
+│                          │                               ┃           │
+│  Candlesticks        ════╬═══════════════════════════════┃═══════════╡ TP (dashed green)
+│     ████                 │▓▓▓▓▓▓ PROFIT ZONE ▓▓▓▓▓▓▓▓▓▓▓┃           │
+│   ██████             ════╬═══════════════════════════════┃═══════════╡ Entry (dashed orange)
+│                          │░░░ LOSS ZONE ░░░░░░░░░░░░░░░░░┃           │
+│                      ════╬═══════════════════════════════┃═══════════╡ SL (dashed red)
 └──────────────────────────────────────────────────────────────────────┘
-                           ▲
-                      startTime (candle where position was drawn)
+                           ▲                               ▲
+                      startTime                       endTime (draggable)
 ```
 
 **Key changes:**
 - GEOM-01: Added `startTime: Time` and `endTime?: Time` to PositionLevels
 - GEOM-02: Renderer now uses `ITimeScaleApi` for X coordinate conversion
-- GEOM-03: Zones bounded from `startTime` to chart right edge (expands on pan left)
+- GEOM-03: Zones bounded from `startTime` to `endTime` (or chart edge if not set)
 - GEOM-04: All lines now dashed, 1px, entry color changed to orange (#f0b90b)
-- GEOM-05: `coordinateToTime()` added to ChartManager, captures click position
+- GEOM-05: `coordinateToTime()` and `timeToCoordinate()` added to ChartManager
 - GEOM-06: Primitive auto-gets timeScale from chart on attach
 - GEOM-07: 22 unit tests pass (added startTime tests)
 
-**7/8 GEOM tasks complete.** Remaining: GEOM-08 (manual E2E verification).
+**Additional UX improvements:**
+- Draggable right-edge handle for setting `endTime` (vertical bar with grip dots)
+- Double-click right edge to clear `endTime` (extends to chart boundary)
+- Stats panel redesigned: compact, subtle (small ▶ button instead of large LONG/SHORT)
+- Entry handle now orange to match entry line
 
-**Future enhancement noted:** `endTime` property enables visual trade timeout (zone right edge = expiry time).
+**Trade timeout feature ready:** `endTime` enables visual trade timeout where zone right edge = expiry time.
 
 ---
 
