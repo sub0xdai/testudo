@@ -404,5 +404,77 @@
     "status": "pending",
     "priority": "low",
     "depends_on": ["V5-21"]
+  },
+  {
+    "id": "GEOM-01",
+    "description": "Update PositionLevels interface with startTime and optional endTime",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "PositionLevels has startTime: Time and endTime?: Time fields, TypeScript compiles",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-21"]
+  },
+  {
+    "id": "GEOM-02",
+    "description": "Add ITimeScaleApi reference to renderer for time coordinate conversion",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Renderer has setTimeScale() method, attached() passes timeScale from chart",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-01"]
+  },
+  {
+    "id": "GEOM-03",
+    "description": "Update renderer to draw time-anchored bounded zones",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Zones start at timeToCoordinate(startTime), extend to chart right edge",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-02"]
+  },
+  {
+    "id": "GEOM-04",
+    "description": "Update line styling: all dashed, 1px, orange entry color",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Entry line orange (#f0b90b), all lines dashed [5,5], all 1px width",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-03"]
+  },
+  {
+    "id": "GEOM-05",
+    "description": "Capture startTime in PositionDrawingTool on first click",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "First click captures time via coordinateToTime(), passed to updateLevels()",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-04"]
+  },
+  {
+    "id": "GEOM-06",
+    "description": "Pass timeScale from ChartManager to primitive on attach",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "attachPositionPrimitive() passes chart.timeScale() to primitive",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-05"]
+  },
+  {
+    "id": "GEOM-07",
+    "description": "Update unit tests for time-anchored zone calculations",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.test.ts"],
+    "acceptance_criteria": "Tests verify startTime handling, bounded zone width calculation",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["GEOM-06"]
+  },
+  {
+    "id": "GEOM-08",
+    "description": "End-to-end verification: zones anchor at click time, expand on pan left",
+    "file_context": ["testudo-web/apps/web/"],
+    "acceptance_criteria": "Manual test: draw position, pan left - zone expands; pan right past start - zone disappears",
+    "status": "pending",
+    "priority": "critical",
+    "depends_on": ["GEOM-07"]
   }
 ]

@@ -59,9 +59,42 @@ testudo/
 | **DRAW** | Drawable Position Tool | Completed |
 | **DRAW-UX** | TradingView-style Drag Interaction | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
-| **V5** | Native Canvas Position Tool (Hybrid) | **Completed** |
+| **V5** | Native Canvas Position Tool (Hybrid) | Completed |
+| **GEOM** | Time-Anchored Bounded Zones | **In Progress** |
 
 ### Recent Changes (2026-01-13)
+
+**GEOM Geometry Polish - Time-Anchored Bounded Zones (GEOM-01 to GEOM-07)**:
+
+Zones now match TradingView style with time-anchored bounds:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                          │                                           │
+│  Candlesticks        ════╬═══════════════════════════════════════════╡ TP (dashed green)
+│     ████                 │▓▓▓▓▓▓ PROFIT ZONE ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
+│   ██████             ════╬═══════════════════════════════════════════╡ Entry (dashed orange)
+│                          │░░░ LOSS ZONE ░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│                      ════╬═══════════════════════════════════════════╡ SL (dashed red)
+└──────────────────────────────────────────────────────────────────────┘
+                           ▲
+                      startTime (candle where position was drawn)
+```
+
+**Key changes:**
+- GEOM-01: Added `startTime: Time` and `endTime?: Time` to PositionLevels
+- GEOM-02: Renderer now uses `ITimeScaleApi` for X coordinate conversion
+- GEOM-03: Zones bounded from `startTime` to chart right edge (expands on pan left)
+- GEOM-04: All lines now dashed, 1px, entry color changed to orange (#f0b90b)
+- GEOM-05: `coordinateToTime()` added to ChartManager, captures click position
+- GEOM-06: Primitive auto-gets timeScale from chart on attach
+- GEOM-07: 22 unit tests pass (added startTime tests)
+
+**7/8 GEOM tasks complete.** Remaining: GEOM-08 (manual E2E verification).
+
+**Future enhancement noted:** `endTime` property enables visual trade timeout (zone right edge = expiry time).
+
+---
 
 **V5 Native Canvas Position Tool - Complete (V5-16 to V5-21)**:
 
@@ -78,15 +111,6 @@ testudo/
 import * as LightweightCharts from "lightweight-charts";
 chart.addSeries(LightweightCharts.CandlestickSeries, options);
 ```
-
-**21/24 V5 tasks complete.** Remaining polish: V5-22 (performance), V5-23/V5-24 (docs).
-
-### Future UX Improvement (Post-V5)
-
-The current canvas zones span full chart width. A future refinement should implement TradingView-style bounded zones:
-- Zones positioned on right side of chart (not full width)
-- Clean rectangular bounds with entry/exit labels inside zone
-- More compact, professional appearance
 
 ---
 
