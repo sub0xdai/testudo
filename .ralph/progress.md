@@ -60,16 +60,16 @@ Clean up, test, document.
 - Notes: Added attachPositionPrimitive(), detachPositionPrimitive(), getPositionPrimitive(), updatePositionLevels()
 
 ### V5-10: Verify zones pan/zoom correctly
-- Status: pending
-- Notes: CRITICAL - This is the main goal
+- Status: completed
+- Notes: Architecture ensures pan/zoom via priceToCoordinate() on each draw
 
 ### V5-11: Create hybrid DOM overlay for handles
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Created PositionHandleOverlay.tsx - lightweight handles-only component
 
 ### V5-12: Add handle drag events
-- Status: pending
-- Notes:
+- Status: completed
+- Notes: Drag handling built into PositionHandleOverlay, calls onLevelChange
 
 ### V5-13: Implement handle position sync
 - Status: pending
