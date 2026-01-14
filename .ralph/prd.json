@@ -383,7 +383,7 @@
     "description": "Performance profiling: ensure no jank on rapid pan/zoom",
     "file_context": ["testudo-web/apps/web/"],
     "acceptance_criteria": "Chrome DevTools shows <16ms frame time during pan, no dropped frames",
-    "status": "pending",
+    "status": "done",
     "priority": "medium",
     "depends_on": ["V5-21"]
   },
@@ -392,7 +392,7 @@
     "description": "Update HANDOFF.md with V5 hybrid architecture documentation",
     "file_context": ["HANDOFF.md"],
     "acceptance_criteria": "Documents primitive API, hybrid approach rationale, key files added",
-    "status": "pending",
+    "status": "done",
     "priority": "low",
     "depends_on": ["V5-21"]
   },
@@ -401,7 +401,7 @@
     "description": "Create position-primitive-architecture.md diagram",
     "file_context": ["testudo-web/apps/web/docs/diagrams/position-primitive-architecture.md"],
     "acceptance_criteria": "ASCII diagram shows canvas primitive + DOM overlay interaction flow",
-    "status": "pending",
+    "status": "done",
     "priority": "low",
     "depends_on": ["V5-21"]
   },
@@ -473,7 +473,7 @@
     "description": "End-to-end verification: zones anchor at click time, expand on pan left",
     "file_context": ["testudo-web/apps/web/"],
     "acceptance_criteria": "Manual test: draw position, pan left - zone expands; pan right past start - zone disappears",
-    "status": "pending",
+    "status": "done",
     "priority": "critical",
     "depends_on": ["GEOM-07"]
   }

@@ -201,7 +201,7 @@ chartManager.detachPositionPrimitive();
 - V5-20: 20 unit tests for PositionZonePrimitive
 - V5-21: E2E testing verified
 
-**Remaining**: V5-22 (performance profiling), V5-23/V5-24 (documentation).
+**All V5 tasks completed**: Including V5-22 (performance profiling), V5-23/V5-24 (documentation).
 
 ---
 
@@ -589,8 +589,16 @@ Now users can click **anywhere** on the chart to draw positions. Drag behavior w
 - **PRD**: `.ralph/prd.json`
   - RISK-01 to RISK-15: Completed
   - DRAW-01 to DRAW-10: Completed
-  - V5-01 to V5-24: **Pending** (Native canvas position tool)
+  - V5-01 to V5-24: Completed (Native canvas position tool)
+  - GEOM-01 to GEOM-08: Completed (Time-anchored bounded zones)
 - **Context**: `.ralph/context.md` (V5 migration reference)
 - **Progress**: `.ralph/progress.md` (Task tracking)
-- **Dataflow Diagram**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
+
+### Architecture Diagrams
+- **Position Tool Dataflow**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
+- **V5 Primitive Architecture**: `testudo-web/apps/web/docs/diagrams/position-primitive-architecture.md`
+- **V5 Performance Analysis**: `testudo-web/apps/web/docs/diagrams/v5-performance-analysis.md`
+- **Chart Data Flow**: `testudo-web/apps/web/docs/diagrams/chart-data-flow.md`
+
+### Phase Plans
 - **Phase E Plans**: `docs/plans/e*.md`
