@@ -537,44 +537,50 @@ bun run lint                # ESLint
 ## Fixed Bug: Position Tool Mouse Events Not Firing (2026-01-14)
 
 ### Symptom
-Position tool activated (showed instruction) but clicking/dragging on the chart did nothing - mouse events weren't being detected.
+Position tool activated (showed instruction) but clicking/dragging on the chart did nothing.
 
-### Root Cause
-**Race condition in event listener attachment timing.** Two issues:
+### Root Cause (Identified via Diagnostic Logging)
+**Two issues discovered:**
 
-1. **State transition race**: When `isActive` became true, the event setup effect ran and attached listeners, but `drawingStateRef.current` was still `'idle'` (the state update to `'ready'` was async). The mousedown handler checked `drawingStateRef.current !== 'ready'` and returned early.
+1. **Event listener attachment**: Listeners were attached to `chartElement` which could become stale after chart recreation.
 
-2. **Chart element instability**: The `mousedown` listener was attached to `chartManager.getChartElement()`. When the chart was recreated (e.g., interval change), the listener was attached to a stale element that was no longer in the DOM.
+2. **coordinateToTime() returning null**: Clicks in the empty chart area (beyond the last candle) caused `coordinateToTime()` to return `null`, silently aborting the handler.
 
-### Solution (2026-01-14)
-Two-part fix in `PositionDrawingTool.tsx`:
-
-1. **Attach all mouse events to `window`** instead of `chartContainer`:
-   - More robust against chart element changes
-   - Get fresh chart element reference in each handler
-   - Check bounds manually to filter clicks outside chart area
-
-2. **Add `drawingState` to effect dependencies**:
-   - Only attach listeners when `drawingState === 'ready' || drawingState === 'dragging'`
-   - Prevents attaching listeners during the state transition window
-
+### Solution
 ```typescript
-// Before (broken):
-useEffect(() => {
-  chartContainer.addEventListener('mousedown', handleMouseDown);
-}, [chartManager, isActive]);
-
-// After (fixed):
+// Attach to window, get fresh element each time, handle null gracefully
 useEffect(() => {
   if (drawingState !== 'ready' && drawingState !== 'dragging') return;
+
+  const handleMouseDown = (e: MouseEvent) => {
+    const chartElement = chartManager.getChartElement(); // Fresh reference
+    const rect = chartElement.getBoundingClientRect();
+    // Check bounds manually...
+    const time = chartManager.coordinateToTime(x);
+    if (price !== null && time !== null) {
+      // Only proceed if both conversions succeed
+      setDrawingState('dragging');
+    }
+    // Clicks in empty area silently ignored (expected behavior)
+  };
+
   window.addEventListener('mousedown', handleMouseDown);
-  // Handler gets fresh chartElement and checks bounds each time
 }, [chartManager, isActive, drawingState]);
 ```
 
+### Enhancement (2026-01-14): Click Anywhere
+Added fallback for clicks in empty chart area (right of last candle):
+```typescript
+let time = chartManager.coordinateToTime(x);
+if (time === null) {
+  time = Math.floor(Date.now() / 1000) as Time; // Use current time as fallback
+}
+```
+
+Now users can click **anywhere** on the chart to draw positions. Drag behavior works: mousedown=entry, drag=SL, release=auto TP.
+
 ### Files Changed
-- `testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx` - Fixed event handling, removed debug code
-- `testudo-web/apps/web/src/components/trade_interface/TradeView.tsx` - Removed debug logs
+- `testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx`
 
 ---
 
