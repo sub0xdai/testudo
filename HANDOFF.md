@@ -39,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-13)
+## Current State (2026-01-14)
 
 ### Completed Phases
 
@@ -62,7 +62,13 @@ testudo/
 | **V5** | Native Canvas Position Tool (Hybrid) | Completed |
 | **GEOM** | Time-Anchored Bounded Zones | **Completed** |
 
-### Recent Changes (2026-01-13)
+### Recent Changes (2026-01-14)
+
+**Position Tool Event Handling Fix**:
+- Fixed race condition where mouse events weren't firing on the position tool
+- Root cause: event listeners attached before `drawingState` transitioned to 'ready'
+- Solution: attach to `window` + add `drawingState` to effect dependencies
+- See "Fixed Bug" section below for details
 
 **GEOM Geometry Polish - Time-Anchored Bounded Zones (Complete)**:
 
@@ -162,8 +168,16 @@ const series = chart.addSeries(CandlestickSeries, options);
 // Attach primitive and get reference
 const primitive = chartManager.attachPositionPrimitive(style?);
 
-// Update levels (triggers canvas repaint)
-chartManager.updatePositionLevels({ entry, stopLoss, takeProfit, side });
+// Update levels (triggers canvas repaint) - includes time anchoring
+chartManager.updatePositionLevels({
+  entry, stopLoss, takeProfit, side,
+  startTime,    // Time anchor for zone left edge
+  endTime?,     // Optional: zone right edge (defaults to chart boundary)
+});
+
+// Time coordinate conversion (GEOM phase)
+const time = chartManager.coordinateToTime(x);  // X pixel → Time
+const x = chartManager.timeToCoordinate(time);  // Time → X pixel
 
 // Detach when done
 chartManager.detachPositionPrimitive();
@@ -182,7 +196,12 @@ chartManager.detachPositionPrimitive();
 - V5-17: Canvas hit-testing (hitTestZone, isPointInZone)
 - V5-18: z-order verification (zones behind candles)
 
-**Remaining (V5-19 to V5-24)**: Price axis labels, unit tests, E2E testing, performance profiling, docs.
+**V5 Phase Complete (V5-19 to V5-21)**:
+- V5-19: Price axis labels for Entry/SL/TP
+- V5-20: 20 unit tests for PositionZonePrimitive
+- V5-21: E2E testing verified
+
+**Remaining**: V5-22 (performance profiling), V5-23/V5-24 (documentation).
 
 ---
 
@@ -339,7 +358,8 @@ Frontend:
 | **RISK** | User Risk Config | Completed |
 | **DRAW** | Drawable Position Tool | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
-| **V5** | Native Canvas Position Tool (Hybrid) | **Next Up** |
+| **V5** | Native Canvas Position Tool (Hybrid) | Completed |
+| **GEOM** | Time-Anchored Bounded Zones | Completed |
 
 ### How to Use Position Tool
 
@@ -348,9 +368,12 @@ Frontend:
 3. **Drag** up or down to set stop loss (zone grows as you drag)
 4. **Release** mouse - TP auto-calculates based on R:R ratio
 5. Adjust levels by dragging handles (entry, SL, TP)
-6. Drag left edge to adjust zone width
-7. Click Execute button or press Enter to place order
-8. Press Escape or click ✕ to cancel
+6. Drag right edge to set trade timeout (endTime)
+7. Double-click right edge to clear timeout (extend to chart boundary)
+8. Click Execute button (▶) or press Enter to place order
+9. Press Escape or click ✕ to cancel
+
+**Market Persistence**: Positions persist per-market. Switch to another symbol and back - your position is still there.
 
 ### Reference
 
@@ -505,10 +528,53 @@ bun run lint                # ESLint
 
 ## Known Issues / Warnings
 
-1. **Position tool DOM overlay doesn't anchor to chart** - zones don't pan/zoom with price action. Fix: V5 phase (V5-01 to V5-24)
-2. **Rust 2024 compatibility warning** in `cache.rs` - needs type annotations for `!` fallback
-3. **Unused imports** in several files - cosmetic warnings only
-4. **Landing app lint fails** - missing vite dependency (not related to main app)
+1. **Rust 2024 compatibility warning** in `cache.rs` - needs type annotations for `!` fallback
+2. **Unused imports** in several files - cosmetic warnings only
+3. **Landing app lint fails** - missing vite dependency (not related to main app)
+
+---
+
+## Fixed Bug: Position Tool Mouse Events Not Firing (2026-01-14)
+
+### Symptom
+Position tool activated (showed instruction) but clicking/dragging on the chart did nothing - mouse events weren't being detected.
+
+### Root Cause
+**Race condition in event listener attachment timing.** Two issues:
+
+1. **State transition race**: When `isActive` became true, the event setup effect ran and attached listeners, but `drawingStateRef.current` was still `'idle'` (the state update to `'ready'` was async). The mousedown handler checked `drawingStateRef.current !== 'ready'` and returned early.
+
+2. **Chart element instability**: The `mousedown` listener was attached to `chartManager.getChartElement()`. When the chart was recreated (e.g., interval change), the listener was attached to a stale element that was no longer in the DOM.
+
+### Solution (2026-01-14)
+Two-part fix in `PositionDrawingTool.tsx`:
+
+1. **Attach all mouse events to `window`** instead of `chartContainer`:
+   - More robust against chart element changes
+   - Get fresh chart element reference in each handler
+   - Check bounds manually to filter clicks outside chart area
+
+2. **Add `drawingState` to effect dependencies**:
+   - Only attach listeners when `drawingState === 'ready' || drawingState === 'dragging'`
+   - Prevents attaching listeners during the state transition window
+
+```typescript
+// Before (broken):
+useEffect(() => {
+  chartContainer.addEventListener('mousedown', handleMouseDown);
+}, [chartManager, isActive]);
+
+// After (fixed):
+useEffect(() => {
+  if (drawingState !== 'ready' && drawingState !== 'dragging') return;
+  window.addEventListener('mousedown', handleMouseDown);
+  // Handler gets fresh chartElement and checks bounds each time
+}, [chartManager, isActive, drawingState]);
+```
+
+### Files Changed
+- `testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx` - Fixed event handling, removed debug code
+- `testudo-web/apps/web/src/components/trade_interface/TradeView.tsx` - Removed debug logs
 
 ---
 
