@@ -62,30 +62,90 @@ testudo/
 | **V5** | Native Canvas Position Tool (Hybrid) | Completed |
 | **GEOM** | Time-Anchored Bounded Zones | Completed |
 | **PAPER** | Paper Trading Integration | **Completed** |
+| **BALANCE** | Paper Balance Reset Feature | **IN PROGRESS** |
+
+---
+
+## ⚠️ OUTSTANDING BUG: Paper Balance Reset 404 Error
+
+### Issue
+The new `POST /api/v1/paper/reset` endpoint returns **404 Not Found** when called from the frontend.
+
+### Symptoms
+- Reset button shows "Trade failed - Request failed with status code 404"
+- GET `/api/v1/paper/balances` works correctly (lazy init provides 10,000 USDT)
+- Only the POST `/paper/reset` endpoint fails
+
+### What Was Implemented
+**Backend:**
+- `paper_balance.rs`: Added `reset_paper_balance()` handler
+- `main.rs`: Route registered at `.route("/reset", web::post().to(paper_balance::reset_paper_balance))`
+- `shadow/balances.rs`: Added `reset_user_to_defaults()` method
+- `shadow/mod.rs`: Added `reset_user()` async method
+
+**Frontend:**
+- `requests.ts`: Added `resetPaperBalance(userId)` calling `POST /paper/reset`
+- `useBalances.ts`: Added `reset()` callback and `isResetting` state
+- `BalanceDisplay.tsx`: Added "Reset" button
+
+### Debugging Notes
+- Backend compiles successfully, all 42 engine tests pass
+- Route is registered in main.rs under `/paper` scope
+- Server restart was attempted but 404 persists
+- Need to investigate: route ordering, scope nesting, or actix-web route matching
+
+### Files Changed
+```
+testudo-exchange/crates/engine/src/shadow/balances.rs     # reset_user_to_defaults(), user_exists()
+testudo-exchange/crates/engine/src/shadow/mod.rs         # reset_user(), user_exists()
+testudo-exchange/crates/router/src/routes/paper_balance.rs  # reset_paper_balance()
+testudo-exchange/crates/router/src/main.rs               # /paper/reset route
+testudo-web/apps/web/src/utils/requests.ts               # resetPaperBalance()
+testudo-web/apps/web/src/hooks/useBalances.ts            # reset(), isResetting
+testudo-web/apps/web/src/components/ui/BalanceDisplay.tsx # Reset button
+```
+
+### To Fix
+Debug why actix-web isn't matching the `/api/v1/paper/reset` route. Possible causes:
+1. Route ordering conflict
+2. Scope nesting issue
+3. HTTP method mismatch
+4. Missing route export
+
+---
 
 ### Recent Changes (2026-01-15)
+
+**Paper Balance Reset Feature (BALANCE Phase - Partial)**:
+- Changed default paper balance from USDC → **USDT** (for perpetual futures)
+- Implemented lazy initialization: users auto-get 10,000 USDT on first balance request
+- Added reset endpoint (404 bug - see above)
+- UI shows "Reset" button next to refresh icon
 
 **Paper Trading Integration (PAPER Phase)**:
 - Connected position tool to shadow engine for paper trading
 - Position tool Execute button now creates trades with Entry + SL + TP
 - Added paper balance endpoint: `GET /api/v1/paper/balances`
 - BalanceDisplay component added to Trade page (above Risk Settings)
-- Default paper balance: $10,000 USDC
+- Default paper balance: $10,000 USDT
 
 **Backend Changes:**
-- `paper_balance.rs` (NEW): Balance endpoint returning shadow engine balances
+- `paper_balance.rs`: Balance endpoint + reset endpoint (404 bug)
 - `main.rs`: ShadowEngine instance shared between trade and balance routes
+- `shadow/balances.rs`: Defaults changed to USDT, added reset/exists methods
 - Trade management routes registered: POST/GET/PUT/DELETE `/api/v1/trades/*`
 
 **Frontend Changes:**
 - `PositionDrawingTool.tsx`: Uses `createTrade()` with full SL/TP instead of `createOrder()`
-- `requests.ts`: `getBalances()` now calls `/paper/balances` endpoint
+- `requests.ts`: `getBalances()` + `resetPaperBalance()` functions
+- `useBalances.ts`: Added `reset()` callback
+- `BalanceDisplay.tsx`: Reset button added
 - `Trade.tsx`: Added BalanceDisplay component to right panel
-- `PositionZonePrimitive.ts`: Canvas price labels now show just price (DOM handles show label+price)
 
 **API Endpoints Added:**
 ```
-GET  /api/v1/paper/balances     # Paper trading balance
+GET  /api/v1/paper/balances     # Paper trading balance (works)
+POST /api/v1/paper/reset        # Reset balance to 10,000 USDT (404 BUG)
 POST /api/v1/trades             # Create trade with SL/TP
 GET  /api/v1/trades             # List active trades
 GET  /api/v1/trades/{id}        # Get trade details
