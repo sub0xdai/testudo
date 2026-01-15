@@ -39,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-14)
+## Current State (2026-01-15)
 
 ### Completed Phases
 
@@ -60,9 +60,44 @@ testudo/
 | **DRAW-UX** | TradingView-style Drag Interaction | Completed |
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
 | **V5** | Native Canvas Position Tool (Hybrid) | Completed |
-| **GEOM** | Time-Anchored Bounded Zones | **Completed** |
+| **GEOM** | Time-Anchored Bounded Zones | Completed |
+| **PAPER** | Paper Trading Integration | **Completed** |
 
-### Recent Changes (2026-01-14)
+### Recent Changes (2026-01-15)
+
+**Paper Trading Integration (PAPER Phase)**:
+- Connected position tool to shadow engine for paper trading
+- Position tool Execute button now creates trades with Entry + SL + TP
+- Added paper balance endpoint: `GET /api/v1/paper/balances`
+- BalanceDisplay component added to Trade page (above Risk Settings)
+- Default paper balance: $10,000 USDC
+
+**Backend Changes:**
+- `paper_balance.rs` (NEW): Balance endpoint returning shadow engine balances
+- `main.rs`: ShadowEngine instance shared between trade and balance routes
+- Trade management routes registered: POST/GET/PUT/DELETE `/api/v1/trades/*`
+
+**Frontend Changes:**
+- `PositionDrawingTool.tsx`: Uses `createTrade()` with full SL/TP instead of `createOrder()`
+- `requests.ts`: `getBalances()` now calls `/paper/balances` endpoint
+- `Trade.tsx`: Added BalanceDisplay component to right panel
+- `PositionZonePrimitive.ts`: Canvas price labels now show just price (DOM handles show label+price)
+
+**API Endpoints Added:**
+```
+GET  /api/v1/paper/balances     # Paper trading balance
+POST /api/v1/trades             # Create trade with SL/TP
+GET  /api/v1/trades             # List active trades
+GET  /api/v1/trades/{id}        # Get trade details
+PUT  /api/v1/trades/{id}/sl     # Update stop loss
+PUT  /api/v1/trades/{id}/tp     # Update take profit
+PUT  /api/v1/trades/{id}/breakeven  # Enable break-even
+DELETE /api/v1/trades/{id}      # Cancel trade
+```
+
+---
+
+### Previous Changes (2026-01-14)
 
 **Position Tool Event Handling Fix**:
 - Fixed race condition where mouse events weren't firing on the position tool
