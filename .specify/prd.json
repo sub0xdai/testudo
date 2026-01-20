@@ -1,0 +1,75 @@
+[
+  {
+    "id": "UNIFY-01",
+    "spec": "001-deprecate-legacy-engine",
+    "description": "Deprecate legacy engine - route all traffic through Shadow Engine",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/engine/engine.rs",
+      "testudo-exchange/crates/engine/src/main.rs",
+      "testudo-exchange/crates/router/src/routes/order.rs"
+    ],
+    "acceptance_criteria": "No order can reach matching engine without DecisionLoop validation, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 1,
+    "depends_on": []
+  },
+  {
+    "id": "UNIFY-02",
+    "spec": "002-panic-prevention",
+    "description": "Replace unwrap() calls with Result propagation and EngineError enum",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/engine/engine.rs",
+      "testudo-exchange/crates/engine/src/engine/mod.rs",
+      "testudo-exchange/crates/redis/src/lib.rs"
+    ],
+    "acceptance_criteria": "Zero unwrap() on DB/Redis paths, EngineError enum exists, cargo clippy && cargo test pass",
+    "status": "pending",
+    "priority": "P0",
+    "phase": 1,
+    "depends_on": []
+  },
+  {
+    "id": "UNIFY-03",
+    "spec": "003-risk-enforcement",
+    "description": "Add risk_validated field to ShadowOrder, enforce on all orders",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/orders.rs",
+      "testudo-exchange/crates/router/src/decision_loop.rs",
+      "testudo-exchange/crates/engine/src/shadow/mod.rs"
+    ],
+    "acceptance_criteria": "ShadowOrder has risk_validated field, orders without validation rejected, cargo clippy && cargo test pass",
+    "status": "pending",
+    "priority": "P0",
+    "phase": 1,
+    "depends_on": ["UNIFY-01"]
+  },
+  {
+    "id": "PERF-01",
+    "spec": "004-read-compute-write",
+    "description": "Refactor process_price_update to Read-Compute-Write pattern",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/mod.rs"
+    ],
+    "acceptance_criteria": "Read locks first, compute without locks, write locks batch apply, cargo clippy && cargo test pass",
+    "status": "pending",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": ["UNIFY-01", "UNIFY-02", "UNIFY-03"]
+  },
+  {
+    "id": "PERF-02",
+    "spec": "005-atomic-cascades",
+    "description": "Implement TransactionContext for atomic SL/TP creation",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/mod.rs",
+      "testudo-exchange/crates/engine/src/shadow/orders.rs",
+      "testudo-exchange/crates/engine/src/shadow/order_group.rs"
+    ],
+    "acceptance_criteria": "TransactionContext struct exists, cascade ops atomic, cargo clippy && cargo test pass",
+    "status": "pending",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": ["UNIFY-03"]
+  }
+]
