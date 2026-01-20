@@ -39,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-15)
+## Current State (2026-01-21)
 
 ### Completed Phases
 
@@ -61,8 +61,19 @@ testudo/
 | **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
 | **V5** | Native Canvas Position Tool (Hybrid) | Completed |
 | **GEOM** | Time-Anchored Bounded Zones | Completed |
-| **PAPER** | Paper Trading Integration | **Completed** |
-| **BALANCE** | Paper Balance Reset Feature | **IN PROGRESS** |
+| **PAPER** | Paper Trading Integration | Completed |
+| **BALANCE** | Paper Balance Reset Feature | Completed |
+
+### Recent Specifications Completed (2026-01-20/21)
+
+| Spec | Description | Commit |
+|------|-------------|--------|
+| **001-deprecate-legacy** | Deprecated `Engine::create_order()` for Decision Loop | `7b6a1d0` |
+| **002-panic-prevention** | Hardened production code paths, reduced unwraps 544→505 | `a363cc4` |
+| **003-risk-enforcement** | All shadow orders must pass Decision Loop validation | `d99a457` |
+| **004-read-compute-write** | Lock optimization with Read-Compute-Write pattern | `c102c9d` |
+
+**Tests**: 558+ passing across all crates
 
 ---
 
@@ -89,7 +100,7 @@ The new `POST /api/v1/paper/reset` endpoint returns **404 Not Found** when calle
 - `BalanceDisplay.tsx`: Added "Reset" button
 
 ### Debugging Notes
-- Backend compiles successfully, all 42 engine tests pass
+- Backend compiles successfully, all 558+ tests pass (48 shadow engine tests)
 - Route is registered in main.rs under `/paper` scope
 - Server restart was attempted but 404 persists
 - Need to investigate: route ordering, scope nesting, or actix-web route matching
