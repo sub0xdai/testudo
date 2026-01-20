@@ -24,7 +24,7 @@
       "testudo-exchange/crates/redis/src/lib.rs"
     ],
     "acceptance_criteria": "Zero unwrap() on DB/Redis paths, EngineError enum exists, cargo clippy && cargo test pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P0",
     "phase": 1,
     "depends_on": []
@@ -39,7 +39,7 @@
       "testudo-exchange/crates/engine/src/shadow/mod.rs"
     ],
     "acceptance_criteria": "ShadowOrder has risk_validated field, orders without validation rejected, cargo clippy && cargo test pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P0",
     "phase": 1,
     "depends_on": ["UNIFY-01"]
