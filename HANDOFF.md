@@ -27,7 +27,7 @@ bun run dev
 ### Architecture
 ```
 testudo/
-├── testudo-exchange/    # Rust backend
+├── testudo-exchange/    # Rust backend (see CHANGELOG.md for details)
 │   └── crates/
 │       ├── common_utils/  # Services, adapters, risk engine
 │       ├── engine/        # Order matching + Shadow engine
@@ -41,560 +41,69 @@ testudo/
 
 ## Current State (2026-01-21)
 
+**Tests**: 558+ passing across all crates
+
 ### Completed Phases
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **A** | Market Data Pipeline (Binance → API) | Completed |
-| **B** | Shadow Engine (Paper Trading) | Completed |
-| **C** | Risk Engine (Position Sizing) | Completed |
-| **D** | Trade Management (SL/TP, Break-even) | Completed |
-| **E.1** | API Key Storage (encrypted) | Completed |
-| **E.2** | Decision Loop (Shadow → Live flow) | Completed |
-| **E.3** | Binance Order Execution | Completed |
-| **E.4** | Position Sync (Shadow ↔ Binance) | Completed |
-| **E.5** | Mode Toggle UI (Shadow/Live) | Completed |
-| **F** | Binance Futures Migration | Completed |
-| **RISK** | User Risk Config + Position Calculator | Completed |
-| **DRAW** | Drawable Position Tool | Completed |
-| **DRAW-UX** | TradingView-style Drag Interaction | Completed |
-| **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
-| **V5** | Native Canvas Position Tool (Hybrid) | Completed |
-| **GEOM** | Time-Anchored Bounded Zones | Completed |
-| **PAPER** | Paper Trading Integration | Completed |
-| **BALANCE** | Paper Balance Reset Feature | Completed |
+| A | Market Data Pipeline (Binance → API) | Completed |
+| B | Shadow Engine (Paper Trading) | Completed |
+| C | Risk Engine (Position Sizing) | Completed |
+| D | Trade Management (SL/TP, Break-even) | Completed |
+| E.1-E.5 | Live Execution Flow | Completed |
+| F | Binance Futures Migration | Completed |
+| RISK | User Risk Config + Position Calculator | Completed |
+| DRAW | Drawable Position Tool | Completed |
+| COLUMNAR | Wire-Efficient SoA Data Format | Completed |
+| V5 | Native Canvas Position Tool (Hybrid) | Completed |
+| GEOM | Time-Anchored Bounded Zones | Completed |
+| PAPER | Paper Trading Integration | Completed |
+| BALANCE | Paper Balance Reset Feature | Completed |
 
-### Recent Specifications Completed (2026-01-20/21)
+### Recent Specifications (2026-01-20/21)
 
 | Spec | Description | Commit |
 |------|-------------|--------|
-| **001-deprecate-legacy** | Deprecated `Engine::create_order()` for Decision Loop | `7b6a1d0` |
-| **002-panic-prevention** | Hardened production code paths, reduced unwraps 544→505 | `a363cc4` |
-| **003-risk-enforcement** | All shadow orders must pass Decision Loop validation | `d99a457` |
-| **004-read-compute-write** | Lock optimization with Read-Compute-Write pattern | `c102c9d` |
-
-**Tests**: 558+ passing across all crates
-
----
-
-## ⚠️ OUTSTANDING BUG: Paper Balance Reset 404 Error
-
-### Issue
-The new `POST /api/v1/paper/reset` endpoint returns **404 Not Found** when called from the frontend.
-
-### Symptoms
-- Reset button shows "Trade failed - Request failed with status code 404"
-- GET `/api/v1/paper/balances` works correctly (lazy init provides 10,000 USDT)
-- Only the POST `/paper/reset` endpoint fails
-
-### What Was Implemented
-**Backend:**
-- `paper_balance.rs`: Added `reset_paper_balance()` handler
-- `main.rs`: Route registered at `.route("/reset", web::post().to(paper_balance::reset_paper_balance))`
-- `shadow/balances.rs`: Added `reset_user_to_defaults()` method
-- `shadow/mod.rs`: Added `reset_user()` async method
-
-**Frontend:**
-- `requests.ts`: Added `resetPaperBalance(userId)` calling `POST /paper/reset`
-- `useBalances.ts`: Added `reset()` callback and `isResetting` state
-- `BalanceDisplay.tsx`: Added "Reset" button
-
-### Debugging Notes
-- Backend compiles successfully, all 558+ tests pass (48 shadow engine tests)
-- Route is registered in main.rs under `/paper` scope
-- Server restart was attempted but 404 persists
-- Need to investigate: route ordering, scope nesting, or actix-web route matching
-
-### Files Changed
-```
-testudo-exchange/crates/engine/src/shadow/balances.rs     # reset_user_to_defaults(), user_exists()
-testudo-exchange/crates/engine/src/shadow/mod.rs         # reset_user(), user_exists()
-testudo-exchange/crates/router/src/routes/paper_balance.rs  # reset_paper_balance()
-testudo-exchange/crates/router/src/main.rs               # /paper/reset route
-testudo-web/apps/web/src/utils/requests.ts               # resetPaperBalance()
-testudo-web/apps/web/src/hooks/useBalances.ts            # reset(), isResetting
-testudo-web/apps/web/src/components/ui/BalanceDisplay.tsx # Reset button
-```
-
-### To Fix
-Debug why actix-web isn't matching the `/api/v1/paper/reset` route. Possible causes:
-1. Route ordering conflict
-2. Scope nesting issue
-3. HTTP method mismatch
-4. Missing route export
-
----
-
-### Recent Changes (2026-01-15)
-
-**Paper Balance Reset Feature (BALANCE Phase - Partial)**:
-- Changed default paper balance from USDC → **USDT** (for perpetual futures)
-- Implemented lazy initialization: users auto-get 10,000 USDT on first balance request
-- Added reset endpoint (404 bug - see above)
-- UI shows "Reset" button next to refresh icon
-
-**Paper Trading Integration (PAPER Phase)**:
-- Connected position tool to shadow engine for paper trading
-- Position tool Execute button now creates trades with Entry + SL + TP
-- Added paper balance endpoint: `GET /api/v1/paper/balances`
-- BalanceDisplay component added to Trade page (above Risk Settings)
-- Default paper balance: $10,000 USDT
-
-**Backend Changes:**
-- `paper_balance.rs`: Balance endpoint + reset endpoint (404 bug)
-- `main.rs`: ShadowEngine instance shared between trade and balance routes
-- `shadow/balances.rs`: Defaults changed to USDT, added reset/exists methods
-- Trade management routes registered: POST/GET/PUT/DELETE `/api/v1/trades/*`
-
-**Frontend Changes:**
-- `PositionDrawingTool.tsx`: Uses `createTrade()` with full SL/TP instead of `createOrder()`
-- `requests.ts`: `getBalances()` + `resetPaperBalance()` functions
-- `useBalances.ts`: Added `reset()` callback
-- `BalanceDisplay.tsx`: Reset button added
-- `Trade.tsx`: Added BalanceDisplay component to right panel
-
-**API Endpoints Added:**
-```
-GET  /api/v1/paper/balances     # Paper trading balance (works)
-POST /api/v1/paper/reset        # Reset balance to 10,000 USDT (404 BUG)
-POST /api/v1/trades             # Create trade with SL/TP
-GET  /api/v1/trades             # List active trades
-GET  /api/v1/trades/{id}        # Get trade details
-PUT  /api/v1/trades/{id}/sl     # Update stop loss
-PUT  /api/v1/trades/{id}/tp     # Update take profit
-PUT  /api/v1/trades/{id}/breakeven  # Enable break-even
-DELETE /api/v1/trades/{id}      # Cancel trade
-```
-
----
-
-### Previous Changes (2026-01-14)
-
-**Position Tool Event Handling Fix**:
-- Fixed race condition where mouse events weren't firing on the position tool
-- Root cause: event listeners attached before `drawingState` transitioned to 'ready'
-- Solution: attach to `window` + add `drawingState` to effect dependencies
-- See "Fixed Bug" section below for details
-
-**GEOM Geometry Polish - Time-Anchored Bounded Zones (Complete)**:
-
-Zones now match TradingView style with time-anchored bounds and draggable right edge:
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          │                               ┃           │
-│  Candlesticks        ════╬═══════════════════════════════┃═══════════╡ TP (dashed green)
-│     ████                 │▓▓▓▓▓▓ PROFIT ZONE ▓▓▓▓▓▓▓▓▓▓▓┃           │
-│   ██████             ════╬═══════════════════════════════┃═══════════╡ Entry (dashed orange)
-│                          │░░░ LOSS ZONE ░░░░░░░░░░░░░░░░░┃           │
-│                      ════╬═══════════════════════════════┃═══════════╡ SL (dashed red)
-└──────────────────────────────────────────────────────────────────────┘
-                           ▲                               ▲
-                      startTime                       endTime (draggable)
-```
-
-**Key changes:**
-- GEOM-01: Added `startTime: Time` and `endTime?: Time` to PositionLevels
-- GEOM-02: Renderer now uses `ITimeScaleApi` for X coordinate conversion
-- GEOM-03: Zones bounded from `startTime` to `endTime` (or chart edge if not set)
-- GEOM-04: All lines now dashed, 1px, entry color changed to orange (#f0b90b)
-- GEOM-05: `coordinateToTime()` and `timeToCoordinate()` added to ChartManager
-- GEOM-06: Primitive auto-gets timeScale from chart on attach
-- GEOM-07: 22 unit tests pass (added startTime tests)
-
-**Additional UX improvements:**
-- Draggable right-edge handle for setting `endTime` (vertical bar with grip dots)
-- Double-click right edge to clear `endTime` (extends to chart boundary)
-- Stats panel redesigned: compact, subtle (small ▶ button instead of large LONG/SHORT)
-- Entry handle now orange to match entry line
-
-**Trade timeout feature ready:** `endTime` enables visual trade timeout where zone right edge = expiry time.
-
----
-
-**V5 Native Canvas Position Tool - Complete (V5-16 to V5-21)**:
-
-- V5-16: Deleted legacy `PositionZoneOverlay.tsx` (superseded by hybrid architecture)
-- V5-17: Added canvas hit-testing (`hitTestZone()`, `isPointInZone()`) for zone click detection
-- V5-18: Verified z-order implementation (`zOrder: "bottom"` renders zones behind candles)
-- V5-19: Added price axis labels for Entry/SL/TP via `priceAxisViews()`
-- V5-20: Added 20 unit tests for PositionZonePrimitive (state, lifecycle, calculations)
-- V5-21: End-to-end testing verified - zones pan/zoom natively with chart
-
-**V5 Import Fix**: Changed from named import to namespace import for V5 compatibility:
-```typescript
-// Correct V5 import pattern
-import * as LightweightCharts from "lightweight-charts";
-chart.addSeries(LightweightCharts.CandlestickSeries, options);
-```
-
----
-
-**V5 Native Canvas Position Tool - Hybrid Architecture Complete (V5-01 to V5-15)**:
-
-Implemented hybrid canvas + DOM architecture for native-feel position zones that pan/zoom with the chart.
-
-**Architecture**:
-```
-┌─────────────────────────────────────────────────────────┐
-│  Canvas Layer (PositionZonePrimitive)                   │
-│  - Profit zone (green rectangle)                        │
-│  - Loss zone (red rectangle)                            │
-│  - Entry/SL/TP price lines                              │
-│  - Auto pan/zoom via priceToCoordinate() per frame      │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│  DOM Layer (PositionHandleOverlay)                      │
-│  - Draggable handles for entry/SL/TP                    │
-│  - Stats panel (qty, risk $, R:R, execute button)       │
-│  - Re-positions on crosshair move                       │
-└─────────────────────────────────────────────────────────┘
-```
-
-**New Files**:
-- `src/primitives/PositionZonePrimitive.ts` - V5 series primitive with canvas rendering
-- `src/components/chart/PositionHandleOverlay.tsx` - Lightweight DOM handles + stats
-
-**Modified Files**:
-- `src/utils/chart_manager.ts` - V5 API + primitive attach/detach methods
-- `src/components/chart/PositionDrawingTool.tsx` - Refactored to hybrid architecture
-
-**V5 API Migration**:
-```typescript
-// Old (v4)
-const series = chart.addCandlestickSeries(options);
-
-// New (v5)
-import { CandlestickSeries } from 'lightweight-charts';
-const series = chart.addSeries(CandlestickSeries, options);
-```
-
-**ChartManager API**:
-```typescript
-// Attach primitive and get reference
-const primitive = chartManager.attachPositionPrimitive(style?);
-
-// Update levels (triggers canvas repaint) - includes time anchoring
-chartManager.updatePositionLevels({
-  entry, stopLoss, takeProfit, side,
-  startTime,    // Time anchor for zone left edge
-  endTime?,     // Optional: zone right edge (defaults to chart boundary)
-});
-
-// Time coordinate conversion (GEOM phase)
-const time = chartManager.coordinateToTime(x);  // X pixel → Time
-const x = chartManager.timeToCoordinate(time);  // Time → X pixel
-
-// Detach when done
-chartManager.detachPositionPrimitive();
-```
-
-**Completed Tasks (V5-01 to V5-18)**:
-- V5-01 to V5-04: Upgrade to lightweight-charts v5.1.0, migrate API
-- V5-05 to V5-06: PositionZonePrimitive with canvas rendering
-- V5-07 to V5-08: Price lines and updateLevels() with requestUpdate()
-- V5-09: ChartManager attach/detach lifecycle
-- V5-10: Pan/zoom verification (architectural)
-- V5-11 to V5-12: PositionHandleOverlay with drag events
-- V5-13 to V5-14: Handle sync and stats panel
-- V5-15: PositionDrawingTool refactored to hybrid
-- V5-16: Deleted legacy PositionZoneOverlay.tsx
-- V5-17: Canvas hit-testing (hitTestZone, isPointInZone)
-- V5-18: z-order verification (zones behind candles)
-
-**V5 Phase Complete (V5-19 to V5-21)**:
-- V5-19: Price axis labels for Entry/SL/TP
-- V5-20: 20 unit tests for PositionZonePrimitive
-- V5-21: E2E testing verified
-
-**All V5 tasks completed**: Including V5-22 (performance profiling), V5-23/V5-24 (documentation).
-
----
-
-**Columnar Data Format (Structure-of-Arrays) - Wire Efficiency Optimization**:
-
-Implemented Structure-of-Arrays (SoA) pattern for ~25% smaller JSON payloads on orderbook data.
-
-Backend (Rust):
-- `common_utils/src/columnar/mod.rs` - NEW: `DepthColumnStore`, `ColumnarOrderBook` structs
-- `router/src/routes/market_data.rs` - Added `get_orderbook_columnar()` for v2 endpoint
-- `router/src/main.rs` - Registered `/api/v2/market-data/orderbook` route
-
-Frontend (TypeScript):
-- `src/utils/ColumnDataView.ts` - NEW: Type-safe `ColumnDataView<T>` and `RowView<T>` classes
-- `src/utils/ColumnDataView.test.ts` - NEW: 60 comprehensive tests (TDD)
-- `src/utils/requests.ts` - Added `getDepthColumnar()` API function
-
-Key design decisions:
-- **Custom lightweight ColumnStore** - Not IndexMap or Polars (data sizes ~60 rows too small for Polars overhead)
-- **Index shifting NOT needed** - Trading data is keyed by price, not sequential indices
-- **Nonce at top level** - Avoids duplication on bids/asks
-- **Payload validation** - Fail-fast error handling for malformed data
-
-Wire format:
-```json
-{
-  "symbol": "SOLUSDT",
-  "bids": { "columns": ["price", "quantity"], "data": [["180.50", "100.5"], ...] },
-  "asks": { "columns": ["price", "quantity"], "data": [["180.75", "25.0"], ...] },
-  "nonce": 12345
-}
-```
-
-Usage:
-```typescript
-const response = await getDepthColumnar('SOLUSDT');
-const bidsView = new ColumnDataView<DepthRow>(response.bids);
-const totalBidSize = bidsView.sumColumn('quantity');
-bidsView.map((row) => row.get('price'));
-```
-
----
-
-### Next Phase: V5 Hybrid Position Tool
-
-**Problem**: Current DOM overlay doesn't anchor to chart - zones don't pan/zoom with price action.
-
-**Solution**: Upgrade to lightweight-charts V5 and use Pane Primitives for native canvas rendering.
-
-**Architecture (Hybrid)**:
-```
-┌─────────────────────────────────────────────────────────┐
-│  Canvas Layer (V5 Pane Primitive)                       │
-│  - Profit/Loss zones (filled rectangles)                │
-│  - Entry/SL/TP price lines                              │
-│  - Moves with chart pan/zoom automatically              │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│  DOM Layer (React components)                           │
-│  - Drag handles (positioned via priceToCoordinate)      │
-│  - Stats panel (qty, risk $, R:R, execute button)       │
-│  - Re-positions on chart movement events                │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Key Tasks (24 total)**:
-
-| Phase | Tasks | Description |
-|-------|-------|-------------|
-| 1. Upgrade | V5-01 to V5-04 | Upgrade to V5, migrate series API, verify chart works |
-| 2. Primitive | V5-05 to V5-10 | Build `PositionZonePrimitive`, canvas rendering, verify pan/zoom |
-| 3. Hybrid | V5-11 to V5-15 | DOM handles, drag events, stats panel, refactor tool |
-| 4. Polish | V5-16 to V5-24 | Hit-testing, z-order, tests, docs |
-
-**New Files**:
-- `src/primitives/PositionZonePrimitive.ts` - Canvas primitive implementing `IPanePrimitive`
-- `src/components/chart/PositionHandleOverlay.tsx` - Lightweight DOM for handles only
-- `src/components/chart/PositionStatsPanel.tsx` - Stats + execute button
-
-**V5 Migration (Breaking Changes)**:
-```typescript
-// Old (v4.2.1)
-const series = chart.addCandlestickSeries(options);
-
-// New (v5.x)
-import { CandlestickSeries } from 'lightweight-charts';
-const series = chart.addSeries(CandlestickSeries, options);
-```
-
-**Critical Success Criteria**:
-- V5-10: Zones pan and zoom correctly with chart
-- V5-21: End-to-end test confirms native feel
-
-**PRD**: `.ralph/prd.json` (V5-01 to V5-24)
-
----
-
-### Previous Changes (2026-01-12)
-
-**Position Tool UX Refactor - TradingView Style Drag Interaction**:
-
-Major refactor from click-based to drag-based UX:
-- **New State Machine**: `idle → ready → dragging → complete`
-- **Drag-to-draw**: Click and hold to set entry, drag to set SL, release to complete
-- **Auto-calculated TP**: Based on R:R ratio from risk config (default 2:1)
-- **Adjustable zone width**: Draggable left edge to resize position rectangle
-- **Compact UI**: Stats panel tucked inside zone, minimal control bar
-
-Technical fixes:
-- Fixed stale closure bug using refs for event handlers
-- Removed duplicate lines (native chart lines + overlay)
-- Lines now 1px thin (was 2-3px)
-- Zones extend from adjustable left edge to right (match price lines)
-- Minimum drag distance (0.1% of price) prevents accidental positions
-
-Files changed:
-- `src/components/chart/PositionDrawingTool.tsx` - Drag-based state machine with refs
-- `src/components/chart/PositionZoneOverlay.tsx` - Bounded zones, compact UI, draggable width
-
-**Architecture Decision - Position Tool Implementation**:
-
-Evaluated options for native canvas rendering:
-1. **difurious/lightweight-charts-line-tools** - ❌ Deprecated, based on v3.8.0 (we're on v4.2.1)
-2. **Current DOM overlay** - ✅ Works, we control it, shipping now
-3. **V5 Pane Primitive plugin** - ✅ Future option for native canvas integration
-
-Decision: Keep DOM overlay for now, consider V5 plugin architecture for future native canvas rendering.
-
-**Previously completed - Drawable Position Tool (DRAW-01 to DRAW-09)**:
-
-Backend:
-- `common_utils/src/risk/storage.rs` - RiskConfig storage with Redis
-- `router/src/routes/risk_config.rs` - GET/PUT `/api/v1/risk-config` endpoints
-- `common_utils/src/adapters/account_state.rs` - Shadow/Live balance adapter
-- Modified `order.rs` to load user's risk config per user_id
-
-Frontend:
-- `src/pages/RiskSettings.tsx` - Settings page for risk configuration
-- `src/hooks/useRiskCalculation.ts` - Position sizing hook
-- `src/components/RiskDisplay.tsx` - Risk metrics display
-
----
-
-## Phase Summary
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| **A** | Market Data Pipeline (Binance → API) | Completed |
-| **B** | Shadow Engine (Paper Trading) | Completed |
-| **C** | Risk Engine (Position Sizing) | Completed |
-| **D** | Trade Management (SL/TP, Break-even) | Completed |
-| **E.1-E.5** | Live Execution Flow | Completed |
-| **F** | Binance Futures Migration | Completed |
-| **RISK** | User Risk Config | Completed |
-| **DRAW** | Drawable Position Tool | Completed |
-| **COLUMNAR** | Wire-Efficient SoA Data Format | Completed |
-| **V5** | Native Canvas Position Tool (Hybrid) | Completed |
-| **GEOM** | Time-Anchored Bounded Zones | Completed |
-
-### How to Use Position Tool
-
-1. Click the position tool button (crosshair icon) in chart toolbar
-2. Click and **hold** on chart at desired entry price
-3. **Drag** up or down to set stop loss (zone grows as you drag)
-4. **Release** mouse - TP auto-calculates based on R:R ratio
-5. Adjust levels by dragging handles (entry, SL, TP)
-6. Drag right edge to set trade timeout (endTime)
-7. Double-click right edge to clear timeout (extend to chart boundary)
-8. Click Execute button (▶) or press Enter to place order
-9. Press Escape or click ✕ to cancel
-
-**Market Persistence**: Positions persist per-market. Switch to another symbol and back - your position is still there.
-
-### Reference
-
-- **Dataflow Diagram**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
-- **PRD Tasks**: `.ralph/prd.json` (all DRAW-01 to DRAW-10 completed)
-
----
-
-## Key Files
-
-### Backend (testudo-exchange)
-```
-crates/common_utils/src/
-├── services/
-│   └── binance_data.rs    # Binance Futures API (fapi.binance.com)
-├── adapters/
-│   ├── binance_executor.rs  # Live order execution
-│   ├── position_sync.rs     # Shadow ↔ Binance sync
-│   ├── account_state.rs     # Balance adapter (Shadow/Live)
-│   └── ccxt_auth.rs         # API key authentication
-├── columnar/
-│   └── mod.rs               # SoA data structures (DepthColumnStore, ColumnarOrderBook)
-├── risk/
-│   ├── position_sizer.rs    # "Conservative Wins" sizing
-│   ├── validator.rs         # Pre-trade validation
-│   └── storage.rs           # RiskConfig Redis storage
-
-crates/router/src/
-├── decision_loop.rs         # Shadow → Live execution flow
-└── routes/
-    ├── market_data.rs       # /api/v1 + /api/v2 market-data endpoints
-    ├── trade_management.rs  # /api/v1/trades/*
-    ├── risk_config.rs       # /api/v1/risk-config
-    └── order.rs             # /api/v1/order (uses risk config)
-```
-
-### Frontend (testudo-web)
-```
-apps/web/src/
-├── App.tsx                  # Routes, default market: SOLUSDT
-├── pages/
-│   ├── Trade.tsx            # Main trading page
-│   └── RiskSettings.tsx     # Risk configuration page
-├── components/
-│   ├── Depth.tsx            # Orderbook + trades (WebSocket)
-│   ├── MarketBar.tsx        # Price, stats display (WebSocket)
-│   ├── MarketSelector.tsx   # Fuzzy search 539 markets
-│   ├── RiskAutomaton.tsx    # Position calculator
-│   ├── RiskDisplay.tsx      # Risk metrics display
-│   └── ui/ModeToggle.tsx    # Shadow/Live mode switch
-├── hooks/
-│   └── useRiskCalculation.ts # Position sizing logic
-└── utils/
-    ├── chart_manager.ts     # Lightweight-charts wrapper
-    ├── binance_ws.ts        # Binance WebSocket manager
-    ├── requests.ts          # API calls (v1 + v2 endpoints)
-    ├── ColumnDataView.ts    # SoA data wrapper (ColumnDataView, RowView)
-    └── format.ts            # parseMarketSymbol() for USDT pairs
-```
+| 001-deprecate-legacy | Deprecated `Engine::create_order()` for Decision Loop | `7b6a1d0` |
+| 002-panic-prevention | Hardened production code, reduced unwraps 544→505 | `a363cc4` |
+| 003-risk-enforcement | All shadow orders must pass Decision Loop validation | `d99a457` |
+| 004-read-compute-write | Lock optimization with Read-Compute-Write pattern | `c102c9d` |
+
+**Full changelog**: `testudo-exchange/CHANGELOG.md`
 
 ---
 
 ## API Endpoints
 
-### Market Data (v1 - Row format)
+### Market Data
 ```
 GET /api/v1/market-data/ticker?symbol=SOLUSDT
 GET /api/v1/market-data/orderbook?symbol=SOLUSDT&limit=20
 GET /api/v1/market-data/klines?symbol=SOLUSDT&interval=1h&limit=100
 GET /api/v1/market-data/markets   # Returns 539 USDT perps
+GET /api/v2/market-data/orderbook # Columnar format (~25% smaller)
 ```
 
-### Market Data (v2 - Columnar format, ~25% smaller)
-```
-GET /api/v2/market-data/orderbook?symbol=SOLUSDT&limit=20
-# Returns: { symbol, bids: {columns, data}, asks: {columns, data}, nonce }
-```
-
-### Risk Configuration
-```
-GET /api/v1/risk-config
-PUT /api/v1/risk-config
-{
-  "account_risk_percent": "2",
-  "max_risk_amount": null,
-  "max_position_size": null,
-  "max_leverage": 1,
-  "daily_max_drawdown_percent": "5",
-  "max_open_positions": 5,
-  "require_stop_loss": true,
-  "default_stop_atr_multiplier": "2",
-  "min_risk_reward_ratio": "1.5"
-}
-```
-
-### Order Execution
-```
-POST /api/v1/order
-{
-  "market": "SOLUSDT",
-  "side": "buy",
-  "quantity": 0.1,
-  "price": 140.00,
-  "user_id": "...",
-  "execution_mode": "shadow" | "live"
-}
-```
-
-### Trade Management
+### Trading
 ```
 POST   /api/v1/trades              # Create trade with SL/TP
 GET    /api/v1/trades              # List active trades
 PUT    /api/v1/trades/{id}/sl      # Update stop loss
 PUT    /api/v1/trades/{id}/tp      # Update take profit
 DELETE /api/v1/trades/{id}         # Cancel trade group
+```
+
+### Paper Trading
+```
+GET  /api/v1/paper/balances        # Paper balance (lazy init: 10,000 USDT)
+POST /api/v1/paper/reset           # Reset balance
+```
+
+### Risk Configuration
+```
+GET /api/v1/risk-config
+PUT /api/v1/risk-config
 ```
 
 ---
@@ -606,8 +115,6 @@ DELETE /api/v1/trades/{id}         # Cancel trade group
 | **Shadow** | Paper trading, no real orders. Default mode. |
 | **Live** | Real orders sent to Binance Futures. Requires API keys. |
 
-The frontend ModeToggle component switches between modes. Live mode shows red indicator, Shadow shows green.
-
 ---
 
 ## Development Commands
@@ -617,7 +124,7 @@ The frontend ModeToggle component switches between modes. Live mode shows red in
 cd testudo-exchange
 cargo build --bin router    # Build
 cargo run --bin router      # Run API server (port 8080)
-cargo test                  # Run tests
+cargo test                  # Run tests (558+)
 cargo clippy                # Lint
 ```
 
@@ -627,84 +134,67 @@ cd testudo-web/apps/web
 bun install                 # Install deps
 bun run dev                 # Dev server (port 5173)
 bun run build               # Production build
-bun run lint                # ESLint
 ```
 
 ---
 
-## Known Issues / Warnings
+## Key Files
 
-1. **Rust 2024 compatibility warning** in `cache.rs` - needs type annotations for `!` fallback
-2. **Unused imports** in several files - cosmetic warnings only
-3. **Landing app lint fails** - missing vite dependency (not related to main app)
+### Backend
+```
+crates/engine/src/shadow/
+├── mod.rs              # ShadowEngine (Read-Compute-Write pattern)
+├── orders.rs           # Order management + risk validation
+├── balances.rs         # Paper trading balances
+└── positions.rs        # Position tracking
+
+crates/router/src/routes/
+├── trade_management.rs # /api/v1/trades/* (Decision Loop)
+├── paper_balance.rs    # /api/v1/paper/*
+└── market_data.rs      # /api/v1 + /api/v2 market-data
+```
+
+### Frontend
+```
+apps/web/src/
+├── pages/Trade.tsx                    # Main trading page
+├── components/chart/
+│   ├── PositionDrawingTool.tsx        # Position tool (hybrid)
+│   └── PositionHandleOverlay.tsx      # Drag handles
+├── primitives/PositionZonePrimitive.ts # V5 canvas primitive
+└── utils/chart_manager.ts             # Lightweight-charts wrapper
+```
 
 ---
 
-## Fixed Bug: Position Tool Mouse Events Not Firing (2026-01-14)
+## How to Use Position Tool
 
-### Symptom
-Position tool activated (showed instruction) but clicking/dragging on the chart did nothing.
+1. Click position tool button (crosshair icon) in chart toolbar
+2. Click and **hold** on chart at desired entry price
+3. **Drag** up or down to set stop loss
+4. **Release** mouse - TP auto-calculates based on R:R ratio
+5. Adjust levels by dragging handles (entry, SL, TP)
+6. Drag right edge to set trade timeout
+7. Click Execute button (▶) or press Enter to place order
+8. Press Escape or click ✕ to cancel
 
-### Root Cause (Identified via Diagnostic Logging)
-**Two issues discovered:**
+---
 
-1. **Event listener attachment**: Listeners were attached to `chartElement` which could become stale after chart recreation.
+## Specifications
 
-2. **coordinateToTime() returning null**: Clicks in the empty chart area (beyond the last candle) caused `coordinateToTime()` to return `null`, silently aborting the handler.
-
-### Solution
-```typescript
-// Attach to window, get fresh element each time, handle null gracefully
-useEffect(() => {
-  if (drawingState !== 'ready' && drawingState !== 'dragging') return;
-
-  const handleMouseDown = (e: MouseEvent) => {
-    const chartElement = chartManager.getChartElement(); // Fresh reference
-    const rect = chartElement.getBoundingClientRect();
-    // Check bounds manually...
-    const time = chartManager.coordinateToTime(x);
-    if (price !== null && time !== null) {
-      // Only proceed if both conversions succeed
-      setDrawingState('dragging');
-    }
-    // Clicks in empty area silently ignored (expected behavior)
-  };
-
-  window.addEventListener('mousedown', handleMouseDown);
-}, [chartManager, isActive, drawingState]);
+Specs are located in `.specify/specs/`:
 ```
-
-### Enhancement (2026-01-14): Click Anywhere
-Added fallback for clicks in empty chart area (right of last candle):
-```typescript
-let time = chartManager.coordinateToTime(x);
-if (time === null) {
-  time = Math.floor(Date.now() / 1000) as Time; // Use current time as fallback
-}
+001-deprecate-legacy/      # Completed
+002-panic-prevention/      # Completed
+003-risk-enforcement/      # Completed
+004-read-compute-write/    # Completed
+005-atomic-cascades/       # Ready
 ```
-
-Now users can click **anywhere** on the chart to draw positions. Drag behavior works: mousedown=entry, drag=SL, release=auto TP.
-
-### Files Changed
-- `testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx`
 
 ---
 
 ## References
 
-- **PRD**: `.ralph/prd.json`
-  - RISK-01 to RISK-15: Completed
-  - DRAW-01 to DRAW-10: Completed
-  - V5-01 to V5-24: Completed (Native canvas position tool)
-  - GEOM-01 to GEOM-08: Completed (Time-anchored bounded zones)
-- **Context**: `.ralph/context.md` (V5 migration reference)
-- **Progress**: `.ralph/progress.md` (Task tracking)
-
-### Architecture Diagrams
-- **Position Tool Dataflow**: `testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md`
-- **V5 Primitive Architecture**: `testudo-web/apps/web/docs/diagrams/position-primitive-architecture.md`
-- **V5 Performance Analysis**: `testudo-web/apps/web/docs/diagrams/v5-performance-analysis.md`
-- **Chart Data Flow**: `testudo-web/apps/web/docs/diagrams/chart-data-flow.md`
-
-### Phase Plans
-- **Phase E Plans**: `docs/plans/e*.md`
+- **Changelog**: `testudo-exchange/CHANGELOG.md`
+- **PRD**: `.specify/prd.json`
+- **Diagrams**: `testudo-web/apps/web/docs/diagrams/`
