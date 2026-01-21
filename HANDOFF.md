@@ -41,7 +41,7 @@ testudo/
 
 ## Current State (2026-01-21)
 
-**Tests**: 558+ passing across all crates
+**Tests**: 580+ passing across all crates
 
 ### Completed Phases
 
@@ -69,6 +69,7 @@ testudo/
 | 002-panic-prevention | Hardened production code, reduced unwraps 544→505 | `a363cc4` |
 | 003-risk-enforcement | All shadow orders must pass Decision Loop validation | `d99a457` |
 | 004-read-compute-write | Lock optimization with Read-Compute-Write pattern | `c102c9d` |
+| 005-atomic-cascades | Atomic transaction context for Entry + SL + TP creation | pending |
 
 **Full changelog**: `testudo-exchange/CHANGELOG.md`
 
@@ -124,7 +125,7 @@ PUT /api/v1/risk-config
 cd testudo-exchange
 cargo build --bin router    # Build
 cargo run --bin router      # Run API server (port 8080)
-cargo test                  # Run tests (558+)
+cargo test                  # Run tests (580+)
 cargo clippy                # Lint
 ```
 
@@ -146,7 +147,8 @@ crates/engine/src/shadow/
 ├── mod.rs              # ShadowEngine (Read-Compute-Write pattern)
 ├── orders.rs           # Order management + risk validation
 ├── balances.rs         # Paper trading balances
-└── positions.rs        # Position tracking
+├── positions.rs        # Position tracking
+└── transaction.rs      # TransactionContext for atomic cascades
 
 crates/router/src/routes/
 ├── trade_management.rs # /api/v1/trades/* (Decision Loop)
@@ -188,7 +190,7 @@ Specs are located in `.specify/specs/`:
 002-panic-prevention/      # Completed
 003-risk-enforcement/      # Completed
 004-read-compute-write/    # Completed
-005-atomic-cascades/       # Ready
+005-atomic-cascades/       # Completed
 ```
 
 ---
