@@ -69,7 +69,23 @@ testudo/
 | 002-panic-prevention | Hardened production code, reduced unwraps 544→505 | `a363cc4` |
 | 003-risk-enforcement | All shadow orders must pass Decision Loop validation | `d99a457` |
 | 004-read-compute-write | Lock optimization with Read-Compute-Write pattern | `c102c9d` |
-| 005-atomic-cascades | Atomic transaction context for Entry + SL + TP creation | pending |
+| 005-atomic-cascades | Atomic transaction context for Entry + SL + TP creation | `25192ef` |
+| 006-performance-overhaul | Latency reduction, DashMap, range matching | `6f46736` |
+| **007-open-positions-layer** | **Persistent position lines after trade creation** | **Latest** |
+
+### Latest: 007-open-positions-layer ✅ COMPLETE
+
+**Problem:** Position lines disappeared after trade creation because `handleCancel()` was called.
+
+**Solution:** Created `OpenPositionsLayer` component that:
+- Fetches open trades from `/api/v1/trades` API
+- Renders persistent Entry/SL/TP lines on chart
+- Auto-polls every 5s for updates
+- Survives page refresh
+
+**Files:**
+- Frontend: `OpenPositionsLayer.tsx`, `useOpenPositions.ts`, `chart_manager.ts`
+- Backend: `trade_management.rs` (user auto-init, entry price for pending orders)
 
 **Full changelog**: `testudo-exchange/CHANGELOG.md`
 
@@ -162,9 +178,12 @@ apps/web/src/
 ├── pages/Trade.tsx                    # Main trading page
 ├── components/chart/
 │   ├── PositionDrawingTool.tsx        # Position tool (hybrid)
-│   └── PositionHandleOverlay.tsx      # Drag handles
+│   ├── PositionHandleOverlay.tsx      # Drag handles
+│   └── OpenPositionsLayer.tsx         # Persistent position rendering
+├── hooks/
+│   └── useOpenPositions.ts            # Fetch & manage open trades
 ├── primitives/PositionZonePrimitive.ts # V5 canvas primitive
-└── utils/chart_manager.ts             # Lightweight-charts wrapper
+└── utils/chart_manager.ts             # Lightweight-charts wrapper (multi-primitive)
 ```
 
 ---
@@ -191,6 +210,8 @@ Specs are located in `.specify/specs/`:
 003-risk-enforcement/      # Completed
 004-read-compute-write/    # Completed
 005-atomic-cascades/       # Completed
+006-performance-overhaul/  # Completed
+007-open-positions-layer/  # Completed (ad-hoc, not spec'd)
 ```
 
 ---
