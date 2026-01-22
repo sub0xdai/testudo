@@ -39,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-21)
+## Current State (2026-01-22)
 
 **Tests**: 580+ passing across all crates
 
@@ -61,7 +61,7 @@ testudo/
 | PAPER | Paper Trading Integration | Completed |
 | BALANCE | Paper Balance Reset Feature | Completed |
 
-### Recent Specifications (2026-01-20/21)
+### Recent Specifications (2026-01-20/21/22)
 
 | Spec | Description | Commit |
 |------|-------------|--------|
@@ -71,21 +71,30 @@ testudo/
 | 004-read-compute-write | Lock optimization with Read-Compute-Write pattern | `c102c9d` |
 | 005-atomic-cascades | Atomic transaction context for Entry + SL + TP creation | `25192ef` |
 | 006-performance-overhaul | Latency reduction, DashMap, range matching | `6f46736` |
-| **007-open-positions-layer** | **Persistent position lines after trade creation** | **Latest** |
+| 007-open-positions-layer | Persistent position lines after trade creation | `36a18a9` |
+| **007-editable-position-levels** | **Draggable handles to edit Entry/SL/TP** | **Latest** |
 
-### Latest: 007-open-positions-layer ✅ COMPLETE
+### Latest: 007-editable-position-levels ✅ COMPLETE
 
-**Problem:** Position lines disappeared after trade creation because `handleCancel()` was called.
+**Problem:** Users could not edit position levels after creating a trade. Edits would revert due to polling overwriting local state.
 
-**Solution:** Created `OpenPositionsLayer` component that:
-- Fetches open trades from `/api/v1/trades` API
-- Renders persistent Entry/SL/TP lines on chart
-- Auto-polls every 5s for updates
-- Survives page refresh
+**Solution:** Editable position handles with drag-end persistence:
+
+1. **Backend**: Added `PUT /api/v1/trades/{id}/entry` endpoint for pending orders
+2. **Frontend**:
+   - `onDragEnd` callback fires API on mouseup (drag release)
+   - Sync effect skips editing position to prevent poll overwrite
+   - Locked handles for filled orders (entry locked, SL/TP draggable)
+
+**How it works:**
+1. Drag handle → Visual updates immediately
+2. Release handle → API called, toast confirms
+3. Polling skips edited position → No revert
+4. Filled orders → Entry locked with lock icon
 
 **Files:**
-- Frontend: `OpenPositionsLayer.tsx`, `useOpenPositions.ts`, `chart_manager.ts`
-- Backend: `trade_management.rs` (user auto-init, entry price for pending orders)
+- Backend: `trade_management.rs`, `order_group.rs`, `main.rs`
+- Frontend: `PositionHandleOverlay.tsx`, `OpenPositionsLayer.tsx`, `requests.ts`
 
 **Full changelog**: `testudo-exchange/CHANGELOG.md`
 
@@ -106,6 +115,7 @@ GET /api/v2/market-data/orderbook # Columnar format (~25% smaller)
 ```
 POST   /api/v1/trades              # Create trade with SL/TP
 GET    /api/v1/trades              # List active trades
+PUT    /api/v1/trades/{id}/entry   # Update entry price (pending only)
 PUT    /api/v1/trades/{id}/sl      # Update stop loss
 PUT    /api/v1/trades/{id}/tp      # Update take profit
 DELETE /api/v1/trades/{id}         # Cancel trade group
