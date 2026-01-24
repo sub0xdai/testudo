@@ -39,7 +39,7 @@ testudo/
 
 ---
 
-## Current State (2026-01-22)
+## Current State (2026-01-24)
 
 **Tests**: 580+ passing across all crates
 
@@ -61,7 +61,7 @@ testudo/
 | PAPER | Paper Trading Integration | Completed |
 | BALANCE | Paper Balance Reset Feature | Completed |
 
-### Recent Specifications (2026-01-20/21/22)
+### Recent Specifications (2026-01-20/21/22/24)
 
 | Spec | Description | Commit |
 |------|-------------|--------|
@@ -72,29 +72,32 @@ testudo/
 | 005-atomic-cascades | Atomic transaction context for Entry + SL + TP creation | `25192ef` |
 | 006-performance-overhaul | Latency reduction, DashMap, range matching | `6f46736` |
 | 007-open-positions-layer | Persistent position lines after trade creation | `36a18a9` |
-| **007-editable-position-levels** | **Draggable handles to edit Entry/SL/TP** | **Latest** |
+| 007-editable-position-levels | Draggable handles to edit Entry/SL/TP | `b7814bc` |
+| **008-unified-exchange-adapter** | **DRY refactoring: lock macro, get_adapter()** | **Latest** |
 
-### Latest: 007-editable-position-levels ✅ COMPLETE
+### Latest: 008-unified-exchange-adapter ✅ COMPLETE
 
-**Problem:** Users could not edit position levels after creating a trade. Edits would revert due to polling overwriting local state.
+**Problem:** ~100 lines of duplicated code in router crate:
+- 11 identical lock poisoning patterns
+- 3 methods with identical adapter dispatch logic
+- Unused `LiquidityBased` routing strategy
 
-**Solution:** Editable position handles with drag-end persistence:
+**Solution:** DRY refactoring:
 
-1. **Backend**: Added `PUT /api/v1/trades/{id}/entry` endpoint for pending orders
-2. **Frontend**:
-   - `onDragEnd` callback fires API on mouseup (drag release)
-   - Sync effect skips editing position to prevent poll overwrite
-   - Locked handles for filled orders (entry locked, SL/TP draggable)
+1. **`lock_or_recover!` macro** - Replaced 11 lock patterns with a single macro
+2. **`get_adapter()` method** - Centralized adapter dispatch logic
+3. **Removed YAGNI** - Deleted unused `LiquidityBased` variant
 
-**How it works:**
-1. Drag handle → Visual updates immediately
-2. Release handle → API called, toast confirms
-3. Polling skips edited position → No revert
-4. Filled orders → Entry locked with lock icon
+**Metrics:**
+| Before | After |
+|--------|-------|
+| ExecutionService ~82 LOC | ~12 LOC |
+| Lock boilerplate ~80 LOC | ~11 LOC |
+| 134 tests passing | 134 tests passing |
 
 **Files:**
-- Backend: `trade_management.rs`, `order_group.rs`, `main.rs`
-- Frontend: `PositionHandleOverlay.tsx`, `OpenPositionsLayer.tsx`, `requests.ts`
+- `crates/router/src/exchange/mod.rs`
+- `crates/router/src/services/execution_service.rs`
 
 **Full changelog**: `testudo-exchange/CHANGELOG.md`
 
@@ -215,13 +218,14 @@ apps/web/src/
 
 Specs are located in `.specify/specs/`:
 ```
-001-deprecate-legacy/      # Completed
-002-panic-prevention/      # Completed
-003-risk-enforcement/      # Completed
-004-read-compute-write/    # Completed
-005-atomic-cascades/       # Completed
-006-performance-overhaul/  # Completed
-007-open-positions-layer/  # Completed (ad-hoc, not spec'd)
+001-deprecate-legacy/           # Completed
+002-panic-prevention/           # Completed
+003-risk-enforcement/           # Completed
+004-read-compute-write/         # Completed
+005-atomic-cascades/            # Completed
+006-performance-overhaul/       # Completed
+007-open-positions-layer/       # Completed (ad-hoc, not spec'd)
+008-unified-exchange-adapter/   # Completed
 ```
 
 ---
