@@ -49,6 +49,11 @@
 - **Ingress**: NGINX with TLS
 - **Monitoring**: Prometheus + Grafana
 
+### Path Context
+- All paths in this document are relative to the repository root.
+- The agent is assumed to be executing commands from the root.
+- Do not create new top-level directories without explicit instruction.
+
 ---
 
 ## 3. Development Standards
@@ -77,12 +82,19 @@
 - Frontend: Component tests for user-facing features
 - Integration: API endpoints must have request/response validation
 
+### Test-Driven Development (TDD) Protocol
+- If a spec references an existing failing test, **do not modify the test logic**. Your job is to make the implementation satisfy the test.
+- If no test exists, you are responsible for creating unit tests to verify your work.
+- The test is the specification. Analyze failing tests to understand requirements.
+- Red → Green → Refactor: Write failing test, make it pass, then clean up.
+
 ---
 
 ## 4. Verification Commands
 
-Before marking any task complete, run:
+Run the verification commands as defined in the automation environment (e.g., `ralph-loop.sh`).
 
+Reference commands (may be overridden by automation):
 ```bash
 # Backend
 cd testudo-exchange && cargo clippy --all-targets && cargo test
@@ -112,6 +124,13 @@ If any check fails:
 3. Commit the fix
 4. Re-run verification
 5. Repeat until all checks pass
+
+### Recovery Protocol
+If verification fails for >3 iterations on the same error:
+1. Stop modifying the implementation.
+2. Check if the test expectation itself is incorrect.
+3. If the error is a toolchain/environment issue, consider `cargo clean` or `rm -rf node_modules`.
+4. If truly stuck, document the blocker and signal for human review.
 
 ---
 
@@ -145,4 +164,4 @@ All updates should be committed with `docs: update constitution` message.
 
 ---
 
-*Last updated: 2026-01-15*
+*Last updated: 2026-01-26*
