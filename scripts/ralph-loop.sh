@@ -87,12 +87,32 @@ run_single_spec() {
         return 1
     fi
 
+    # Initialize feedback variables for the loop
+    local VERIFY_OUTPUT=""
+    local VERIFY_EXIT_CODE=0
+    local FEEDBACK=""
+
     while [[ $iteration -lt $MAX_ITERATIONS ]]; do
         ((iteration++))
         echo ""
         echo "--- Iteration $iteration of $MAX_ITERATIONS ---"
 
-        # Construct the prompt
+        # 1. Capture verification output from previous iteration (or initial state)
+        #    On first iteration, we run verification to establish baseline
+        echo "Running verification checks..."
+        VERIFY_OUTPUT=$(eval "$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND" 2>&1) || true
+        VERIFY_EXIT_CODE=$?
+
+        # 2. Determine feedback based on verification results
+        if [[ $VERIFY_EXIT_CODE -eq 0 ]]; then
+            echo "✓ Verification passed!"
+            FEEDBACK="Verification PASSED. Please perform final cleanup and output <promise>DONE</promise> if all requirements are met."
+        else
+            echo "✗ Verification failed (exit code: $VERIFY_EXIT_CODE)"
+            FEEDBACK="Verification FAILED. Fix the errors shown below."
+        fi
+
+        # 3. Construct the prompt with feedback
         PROMPT="
 ROLE: You are Ralph Wiggum, an autonomous developer implementing specifications.
 
@@ -100,27 +120,32 @@ CONTEXT:
 - Read the constitution: $CONSTITUTION
 - Read the specification: $SPECS_DIR/$spec/spec.md
 
+STATUS:
+- Iteration: $iteration of $MAX_ITERATIONS
+- Previous Verification Exit Code: $VERIFY_EXIT_CODE
+- $FEEDBACK
+
+VERIFICATION OUTPUT:
+----------------------------------------
+$VERIFY_OUTPUT
+----------------------------------------
+
 INSTRUCTIONS:
 1. ANALYZE: Understand all requirements in the spec
 2. IMPLEMENT: Write code to satisfy all functional requirements
-3. VERIFY BACKEND: Run '$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND'
-4. VERIFY FRONTEND: Run '$CHECK_CMD_FRONTEND && $BUILD_CMD_FRONTEND'
-5. FIX: If any verification fails, fix the issue and re-verify
+3. FIX: If verification failed above, fix the reported errors
+4. VERIFY BACKEND: Run '$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND'
+5. VERIFY FRONTEND: Run '$CHECK_CMD_FRONTEND && $BUILD_CMD_FRONTEND'
 6. COMMIT: Run 'git add . && git commit -m \"feat: implement $spec\"'
 7. COMPLETE: When ALL verifications pass, output <promise>DONE</promise>
-
-ITERATION: $iteration of $MAX_ITERATIONS
 "
 
-        # Execute agent
+        # 4. Execute agent
         if [[ "$HEADLESS" == true && "$USE_CODEX" == true ]]; then
             $AGENT_CMD --dangerously-bypass-approvals-and-sandbox "$PROMPT"
         else
             $AGENT_CMD "$PROMPT"
         fi
-
-        # Check for completion signal in recent output
-        # (Agent should have output DONE if complete)
 
         # Git safety check
         if [[ -n $(git status --porcelain) ]]; then
@@ -130,9 +155,6 @@ ITERATION: $iteration of $MAX_ITERATIONS
 
         echo ""
         echo "Iteration $iteration complete. Checking for DONE signal..."
-
-        # The agent should output DONE when complete
-        # In practice, we rely on the agent to manage its own completion
 
     done
 
