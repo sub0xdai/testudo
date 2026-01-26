@@ -145,10 +145,17 @@ INSTRUCTIONS:
 7. COMPLETE: When ALL verifications pass, output <promise>DONE</promise>
 "
 
-        # 4. Execute agent
-        if [[ "$HEADLESS" == true && "$USE_CODEX" == true ]]; then
+        # 4. Execute agent in non-interactive mode
+        # -p forces print mode (run once and exit, no chat window)
+        # --dangerously-skip-permissions prevents "Can I edit this file?" prompts
+        echo "🤖 Waking up Ralph..."
+
+        if [[ "$AGENT_CMD" == "claude" ]]; then
+            $AGENT_CMD -p "$PROMPT" --dangerously-skip-permissions
+        elif [[ "$HEADLESS" == true && "$USE_CODEX" == true ]]; then
             $AGENT_CMD --dangerously-bypass-approvals-and-sandbox "$PROMPT"
         else
+            # Fallback for other agents
             $AGENT_CMD "$PROMPT"
         fi
 
