@@ -21,7 +21,8 @@ CONSTITUTION=".specify/memory/constitution.md"
 # Verification commands
 CHECK_CMD_BACKEND="cd testudo-exchange && cargo clippy --all-targets"
 TEST_CMD_BACKEND="cd testudo-exchange && cargo test"
-CHECK_CMD_FRONTEND="cd testudo-web/apps/web && bun run lint"
+# Frontend: lint + Playwright E2E tests (use npx for Playwright compatibility)
+CHECK_CMD_FRONTEND="cd testudo-web/apps/web && bun run lint && npx playwright test"
 BUILD_CMD_FRONTEND="cd testudo-web/apps/web && bun run build"
 
 # --- ARGUMENT PARSING ---

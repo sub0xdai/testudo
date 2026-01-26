@@ -42,6 +42,7 @@
 - **Package Manager**: Bun
 - **Linting**: `bun run lint`
 - **Building**: `bun run build`
+- **E2E Testing**: Playwright (`npx playwright test`)
 
 ### Infrastructure (testudo-ops/)
 - **Orchestration**: Kubernetes (GKE)
@@ -81,6 +82,8 @@
 - Backend: Unit tests for all public functions
 - Frontend: Component tests for user-facing features
 - Integration: API endpoints must have request/response validation
+- UI/E2E: New UI features must have a corresponding Playwright test in `tests/e2e/`
+- Test Integrity: Never delete a failing test to make the pipeline pass. Fix the implementation.
 
 ### Test-Driven Development (TDD) Protocol
 - If a spec references an existing failing test, **do not modify the test logic**. Your job is to make the implementation satisfy the test.
