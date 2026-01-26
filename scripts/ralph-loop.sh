@@ -94,15 +94,19 @@ run_single_spec() {
     local FEEDBACK=""
 
     while [[ $iteration -lt $MAX_ITERATIONS ]]; do
-        ((iteration++))
+        iteration=$((iteration + 1))
         echo ""
         echo "--- Iteration $iteration of $MAX_ITERATIONS ---"
 
         # 1. Capture verification output from previous iteration (or initial state)
         #    On first iteration, we run verification to establish baseline
         echo "Running verification checks..."
-        VERIFY_OUTPUT=$(eval "$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND" 2>&1) || true
-        VERIFY_EXIT_CODE=$?
+        # Capture both output and exit code (without triggering set -e)
+        if VERIFY_OUTPUT=$(eval "$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND" 2>&1); then
+            VERIFY_EXIT_CODE=0
+        else
+            VERIFY_EXIT_CODE=$?
+        fi
 
         # 2. Determine feedback based on verification results
         if [[ $VERIFY_EXIT_CODE -eq 0 ]]; then
@@ -183,7 +187,7 @@ run_all_specs() {
             return 1
         fi
 
-        ((total_iterations += MAX_ITERATIONS))
+        total_iterations=$((total_iterations + MAX_ITERATIONS))
         if [[ $total_iterations -ge $MAX_TOTAL_ITERATIONS ]]; then
             echo "WARNING: Reached total iteration limit ($MAX_TOTAL_ITERATIONS)"
             return 1
