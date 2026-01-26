@@ -1,67 +1,55 @@
 #!/bin/bash
 #
-# Ralph Loop - Autonomous AI Implementation Runner
-# Part of the Ralph Wiggum Framework
+# Ralph Loop - Autonomous AI Development Loop
+# Based on the Ralph Wiggum Technique: https://github.com/ghuntley/how-to-ralph-wiggum
 #
 # Usage:
-#   ./scripts/ralph-loop.sh <spec-name>        # Single spec
-#   ./scripts/ralph-loop.sh --all              # All specs
-#   ./scripts/ralph-loop.sh --all --headless   # Non-interactive batch
+#   ./scripts/ralph-loop.sh plan <spec-name>    # Planning mode (no code)
+#   ./scripts/ralph-loop.sh build <spec-name>   # Building mode (one task per iteration)
+#   ./scripts/ralph-loop.sh --help              # Show help
 #
 
-set -e
+set -euo pipefail
 
 # --- CONFIGURATION ---
-AGENT_CMD="claude"
-MAX_ITERATIONS=30
-MAX_TOTAL_ITERATIONS=100
 SPECS_DIR=".specify/specs"
+MEMORY_DIR=".specify/memory"
+PROMPT_PLAN=".specify/PROMPT_plan.md"
+PROMPT_BUILD=".specify/PROMPT_build.md"
+IMPLEMENTATION_PLAN=".specify/IMPLEMENTATION_PLAN.md"
+AGENTS_MD=".specify/AGENTS.md"
 CONSTITUTION=".specify/memory/constitution.md"
 
-# Verification commands
-CHECK_CMD_BACKEND="cd testudo-exchange && cargo clippy --all-targets"
-TEST_CMD_BACKEND="cd testudo-exchange && cargo test"
-# Frontend: lint + Playwright E2E tests (use npx for Playwright compatibility)
-CHECK_CMD_FRONTEND="cd testudo-web/apps/web && bun run lint && npx playwright test"
-BUILD_CMD_FRONTEND="cd testudo-web/apps/web && bun run build"
+MAX_ITERATIONS=30
+AGENT_CMD="claude"
 
-# --- ARGUMENT PARSING ---
-SPEC_NAME=""
-RUN_ALL=false
-HEADLESS=false
-USE_CODEX=false
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --all)
-            RUN_ALL=true
-            shift
-            ;;
-        --headless)
-            HEADLESS=true
-            shift
-            ;;
-        --codex)
-            USE_CODEX=true
-            AGENT_CMD="codex"
-            shift
-            ;;
-        --claude)
-            AGENT_CMD="claude"
-            shift
-            ;;
-        --max-iterations)
-            MAX_ITERATIONS="$2"
-            shift 2
-            ;;
-        *)
-            SPEC_NAME="$1"
-            shift
-            ;;
-    esac
-done
+# --- COLORS ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
 # --- HELPER FUNCTIONS ---
+
+print_help() {
+    echo "Ralph Loop - Autonomous AI Development"
+    echo ""
+    echo "Usage:"
+    echo "  $0 plan <spec-name>     Run planning mode (gap analysis, no code)"
+    echo "  $0 build <spec-name>    Run build mode (one task per iteration)"
+    echo "  $0 --help               Show this help"
+    echo ""
+    echo "Examples:"
+    echo "  $0 plan 006-execution-latency"
+    echo "  $0 build 006-execution-latency"
+    echo ""
+    echo "Options:"
+    echo "  --max-iterations N      Set max iterations (default: 30)"
+    echo ""
+    echo "Available specs:"
+    list_specs
+}
 
 list_specs() {
     if [[ -d "$SPECS_DIR" ]]; then
@@ -73,161 +61,225 @@ spec_exists() {
     [[ -f "$SPECS_DIR/$1/spec.md" ]]
 }
 
-run_single_spec() {
+build_context() {
     local spec="$1"
-    local iteration=0
+    local mode="$2"
 
-    echo "=========================================="
-    echo "Ralph Wiggum: Implementing $spec"
-    echo "=========================================="
+    echo "# Context for Ralph"
+    echo ""
+    echo "## Mode: ${mode^^}"
+    echo "## Spec: $spec"
+    echo ""
+
+    # Include constitution
+    if [[ -f "$CONSTITUTION" ]]; then
+        echo "---"
+        echo "## Constitution"
+        echo ""
+        cat "$CONSTITUTION"
+        echo ""
+    fi
+
+    # Include spec
+    if [[ -f "$SPECS_DIR/$spec/spec.md" ]]; then
+        echo "---"
+        echo "## Specification: $spec"
+        echo ""
+        cat "$SPECS_DIR/$spec/spec.md"
+        echo ""
+    fi
+
+    # Include operational learnings
+    if [[ -f "$AGENTS_MD" ]]; then
+        echo "---"
+        echo "## Operational Learnings"
+        echo ""
+        cat "$AGENTS_MD"
+        echo ""
+    fi
+
+    # Include implementation plan
+    if [[ -f "$IMPLEMENTATION_PLAN" ]]; then
+        echo "---"
+        echo "## Implementation Plan"
+        echo ""
+        cat "$IMPLEMENTATION_PLAN"
+        echo ""
+    fi
+
+    # Include mode-specific prompt
+    echo "---"
+    echo "## Instructions"
+    echo ""
+    if [[ "$mode" == "plan" ]]; then
+        cat "$PROMPT_PLAN"
+    else
+        cat "$PROMPT_BUILD"
+    fi
+}
+
+check_done_signal() {
+    local output="$1"
+    if echo "$output" | grep -q "<promise>DONE</promise>"; then
+        return 0
+    fi
+    return 1
+}
+
+run_planning() {
+    local spec="$1"
+
+    echo -e "${BLUE}=========================================="
+    echo "Ralph Wiggum: PLANNING MODE"
+    echo "Spec: $spec"
+    echo -e "==========================================${NC}"
 
     if ! spec_exists "$spec"; then
-        echo "ERROR: Spec not found: $SPECS_DIR/$spec/spec.md"
-        echo "Available specs:"
+        echo -e "${RED}ERROR: Spec not found: $SPECS_DIR/$spec/spec.md${NC}"
         list_specs
         return 1
     fi
 
-    # Initialize feedback variables for the loop
-    local VERIFY_OUTPUT=""
-    local VERIFY_EXIT_CODE=0
-    local FEEDBACK=""
+    echo ""
+    echo -e "${YELLOW}🤖 Waking up Ralph for planning...${NC}"
+    echo ""
+
+    # Build context and pipe to claude
+    local output
+    output=$(build_context "$spec" "plan" | $AGENT_CMD -p --dangerously-skip-permissions 2>&1) || true
+
+    echo "$output"
+
+    echo ""
+    echo -e "${GREEN}Planning complete. Review IMPLEMENTATION_PLAN.md${NC}"
+    echo "Next: ./scripts/ralph-loop.sh build $spec"
+}
+
+run_building() {
+    local spec="$1"
+    local iteration=0
+
+    echo -e "${BLUE}=========================================="
+    echo "Ralph Wiggum: BUILD MODE"
+    echo "Spec: $spec"
+    echo "Max iterations: $MAX_ITERATIONS"
+    echo -e "==========================================${NC}"
+
+    if ! spec_exists "$spec"; then
+        echo -e "${RED}ERROR: Spec not found: $SPECS_DIR/$spec/spec.md${NC}"
+        list_specs
+        return 1
+    fi
 
     while [[ $iteration -lt $MAX_ITERATIONS ]]; do
         iteration=$((iteration + 1))
+
         echo ""
-        echo "--- Iteration $iteration of $MAX_ITERATIONS ---"
+        echo -e "${YELLOW}--- Iteration $iteration of $MAX_ITERATIONS ---${NC}"
+        echo ""
+        echo -e "${YELLOW}🤖 Waking up Ralph...${NC}"
 
-        # 1. Capture verification output from previous iteration (or initial state)
-        #    On first iteration, we run verification to establish baseline
-        echo "Running verification checks..."
-        # Capture both output and exit code (without triggering set -e)
-        if VERIFY_OUTPUT=$(eval "$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND" 2>&1); then
-            VERIFY_EXIT_CODE=0
-        else
-            VERIFY_EXIT_CODE=$?
-        fi
+        # Build context and pipe to claude
+        local output
+        output=$(build_context "$spec" "build" | $AGENT_CMD -p --dangerously-skip-permissions 2>&1) || true
 
-        # 2. Determine feedback based on verification results
-        if [[ $VERIFY_EXIT_CODE -eq 0 ]]; then
-            echo "✓ Verification passed!"
-            FEEDBACK="Verification PASSED. Please perform final cleanup and output <promise>DONE</promise> if all requirements are met."
-        else
-            echo "✗ Verification failed (exit code: $VERIFY_EXIT_CODE)"
-            FEEDBACK="Verification FAILED. Fix the errors shown below."
-        fi
+        echo "$output"
 
-        # 3. Construct the prompt with feedback
-        PROMPT="
-ROLE: You are Ralph Wiggum, an autonomous developer implementing specifications.
-
-CONTEXT:
-- Read the constitution: $CONSTITUTION
-- Read the specification: $SPECS_DIR/$spec/spec.md
-
-STATUS:
-- Iteration: $iteration of $MAX_ITERATIONS
-- Previous Verification Exit Code: $VERIFY_EXIT_CODE
-- $FEEDBACK
-
-VERIFICATION OUTPUT:
-----------------------------------------
-$VERIFY_OUTPUT
-----------------------------------------
-
-INSTRUCTIONS:
-1. ANALYZE: Understand all requirements in the spec
-2. IMPLEMENT: Write code to satisfy all functional requirements
-3. FIX: If verification failed above, fix the reported errors
-4. VERIFY BACKEND: Run '$CHECK_CMD_BACKEND && $TEST_CMD_BACKEND'
-5. VERIFY FRONTEND: Run '$CHECK_CMD_FRONTEND && $BUILD_CMD_FRONTEND'
-6. COMMIT: Run 'git add . && git commit -m \"feat: implement $spec\"'
-7. COMPLETE: When ALL verifications pass, output <promise>DONE</promise>
-"
-
-        # 4. Execute agent in non-interactive mode
-        # -p forces print mode (run once and exit, no chat window)
-        # --dangerously-skip-permissions prevents "Can I edit this file?" prompts
-        echo "🤖 Waking up Ralph..."
-
-        if [[ "$AGENT_CMD" == "claude" ]]; then
-            $AGENT_CMD -p "$PROMPT" --dangerously-skip-permissions
-        elif [[ "$HEADLESS" == true && "$USE_CODEX" == true ]]; then
-            $AGENT_CMD --dangerously-bypass-approvals-and-sandbox "$PROMPT"
-        else
-            # Fallback for other agents
-            $AGENT_CMD "$PROMPT"
+        # Check for DONE signal
+        if check_done_signal "$output"; then
+            echo ""
+            echo -e "${GREEN}=========================================="
+            echo "🎉 SPEC COMPLETE: $spec"
+            echo -e "==========================================${NC}"
+            return 0
         fi
 
         # Git safety check
-        if [[ -n $(git status --porcelain) ]]; then
-            echo "WARNING: Uncommitted changes detected after iteration"
+        if [[ -n $(git status --porcelain 2>/dev/null || true) ]]; then
+            echo ""
+            echo -e "${YELLOW}Uncommitted changes after iteration:${NC}"
             git status --short
         fi
 
         echo ""
-        echo "Iteration $iteration complete. Checking for DONE signal..."
+        echo -e "${BLUE}Iteration $iteration complete. Continuing...${NC}"
 
-    done
+        # Small delay to avoid rate limiting
+        sleep 2
 
-    echo "WARNING: Reached max iterations ($MAX_ITERATIONS) for $spec"
-    return 1
-}
-
-run_all_specs() {
-    local total_iterations=0
-    local specs=($(list_specs))
-
-    echo "=========================================="
-    echo "Ralph Wiggum: Processing ALL specs"
-    echo "Found ${#specs[@]} specs"
-    echo "=========================================="
-
-    for spec in "${specs[@]}"; do
-        echo ""
-        echo ">>> Starting: $spec"
-
-        if run_single_spec "$spec"; then
-            echo "<<< Completed: $spec"
-        else
-            echo "<<< FAILED: $spec"
-            return 1
-        fi
-
-        total_iterations=$((total_iterations + MAX_ITERATIONS))
-        if [[ $total_iterations -ge $MAX_TOTAL_ITERATIONS ]]; then
-            echo "WARNING: Reached total iteration limit ($MAX_TOTAL_ITERATIONS)"
-            return 1
-        fi
     done
 
     echo ""
-    echo "=========================================="
-    echo "<promise>ALL_DONE</promise>"
-    echo "=========================================="
+    echo -e "${RED}WARNING: Reached max iterations ($MAX_ITERATIONS) for $spec${NC}"
+    return 1
 }
 
 # --- MAIN ---
 
-echo "Ralph Wiggum - Autonomous Implementation Framework"
+MODE=""
+SPEC_NAME=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        plan|build)
+            MODE="$1"
+            shift
+            ;;
+        --max-iterations)
+            MAX_ITERATIONS="$2"
+            shift 2
+            ;;
+        --help|-h)
+            print_help
+            exit 0
+            ;;
+        *)
+            if [[ -z "$SPEC_NAME" ]]; then
+                SPEC_NAME="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Validate arguments
+if [[ -z "$MODE" ]]; then
+    echo -e "${RED}ERROR: Mode required (plan or build)${NC}"
+    echo ""
+    print_help
+    exit 1
+fi
+
+if [[ -z "$SPEC_NAME" ]]; then
+    echo -e "${RED}ERROR: Spec name required${NC}"
+    echo ""
+    print_help
+    exit 1
+fi
+
+# Check required files exist
+if [[ ! -f "$PROMPT_PLAN" ]]; then
+    echo -e "${RED}ERROR: Missing $PROMPT_PLAN${NC}"
+    exit 1
+fi
+
+if [[ ! -f "$PROMPT_BUILD" ]]; then
+    echo -e "${RED}ERROR: Missing $PROMPT_BUILD${NC}"
+    exit 1
+fi
+
+# Run appropriate mode
+echo "Ralph Loop - Autonomous AI Development"
 echo "Agent: $AGENT_CMD"
 echo ""
 
-if [[ "$RUN_ALL" == true ]]; then
-    run_all_specs
-elif [[ -n "$SPEC_NAME" ]]; then
-    run_single_spec "$SPEC_NAME"
+if [[ "$MODE" == "plan" ]]; then
+    run_planning "$SPEC_NAME"
+elif [[ "$MODE" == "build" ]]; then
+    run_building "$SPEC_NAME"
 else
-    echo "Usage:"
-    echo "  $0 <spec-name>     Run single spec"
-    echo "  $0 --all           Run all specs"
-    echo ""
-    echo "Options:"
-    echo "  --headless         Non-interactive mode (codex only)"
-    echo "  --codex            Use OpenAI Codex CLI"
-    echo "  --claude           Use Claude Code (default)"
-    echo "  --max-iterations N Set max iterations (default: 30)"
-    echo ""
-    echo "Available specs:"
-    list_specs
+    echo -e "${RED}ERROR: Unknown mode: $MODE${NC}"
+    print_help
+    exit 1
 fi
