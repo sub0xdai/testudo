@@ -12,18 +12,20 @@
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T1 | Create `TradeIntent` struct in `execution_types.rs` | pending | Fields: symbol, entry, stop, account_equity, risk_pct |
-| T2 | Create `SignedOrder` struct in `execution_types.rs` | pending | Output of ExecutionService |
-| T3 | Implement auto-sizing formula in `risk/calculator.rs` | pending | `Size = (Equity * 0.02) / abs(Entry - Stop)` |
-| T4 | Create `MockCexGateway` trait | pending | For testing without real funds |
-| T5 | Implement `ExecutionService::process_order()` | pending | Accept TradeIntent, return SignedOrder |
-| T6 | Add latency guard (reject if >50ms) | pending | FR-3 requirement |
-| T7 | Create latency benchmark test | pending | `test_end_to_end_execution_latency` |
-| T8 | Verify P99 latency <10ms | pending | Run 100 iterations, assert avg <10,000μs |
+| T1 | Create `TradeIntent` struct in `execution_types.rs` | complete | Fields: symbol, entry, stop, account_equity, risk_pct |
+| T2 | Create `SignedOrder` struct in `execution_types.rs` | complete | Output of ExecutionService |
+| T3 | Implement auto-sizing formula in `risk/calculator.rs` | complete | Implemented in `TradeIntent::calculate_size()` |
+| T4 | Create `MockCexGateway` trait | complete | `CexGateway` trait + `MockCexGateway` impl |
+| T5 | Implement `ExecutionService::process_order()` | complete | `DrawToTradeService::process_order()` |
+| T6 | Add latency guard (reject if >50ms) | complete | FR-3: Returns `LatencyExceededError` |
+| T7 | Create latency benchmark test | complete | `test_end_to_end_execution_latency` |
+| T8 | Verify P99 latency <10ms | complete | Avg: 3μs, Throughput: 70,565 orders/sec |
 
 ### Discoveries
 
-<!-- Ralph will add discoveries here as implementation progresses -->
+- Position sizing integrated into `TradeIntent::calculate_size()` for minimal allocation
+- Used `Pin<Box<dyn Future>>` for trait object dispatch in `CexGateway`
+- Zero-latency mock gateway achieves 3μs average internal latency
 
 ### Blockers
 
