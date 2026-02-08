@@ -2,7 +2,7 @@
 
 > Spec ID: 005-atomic-cascades
 > Created: 2026-01-20
-> Status: Ready
+> Status: Complete
 > Priority: P1 (Data Integrity)
 
 ---

@@ -12,7 +12,8 @@
     "status": "completed",
     "priority": "P0",
     "phase": 1,
-    "depends_on": []
+    "depends_on": [],
+    "completed_date": "2026-01-20"
   },
   {
     "id": "UNIFY-02",
@@ -27,7 +28,8 @@
     "status": "completed",
     "priority": "P0",
     "phase": 1,
-    "depends_on": []
+    "depends_on": [],
+    "completed_date": "2026-01-20"
   },
   {
     "id": "UNIFY-03",
@@ -42,7 +44,8 @@
     "status": "completed",
     "priority": "P0",
     "phase": 1,
-    "depends_on": ["UNIFY-01"]
+    "depends_on": ["UNIFY-01"],
+    "completed_date": "2026-01-20"
   },
   {
     "id": "PERF-01",
@@ -52,10 +55,11 @@
       "testudo-exchange/crates/engine/src/shadow/mod.rs"
     ],
     "acceptance_criteria": "Read locks first, compute without locks, write locks batch apply, cargo clippy && cargo test pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P1",
     "phase": 2,
-    "depends_on": ["UNIFY-01", "UNIFY-02", "UNIFY-03"]
+    "depends_on": ["UNIFY-01", "UNIFY-02", "UNIFY-03"],
+    "completed_date": "2026-01-20"
   },
   {
     "id": "PERF-02",
@@ -67,9 +71,44 @@
       "testudo-exchange/crates/engine/src/shadow/order_group.rs"
     ],
     "acceptance_criteria": "TransactionContext struct exists, cascade ops atomic, cargo clippy && cargo test pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P1",
     "phase": 2,
-    "depends_on": ["UNIFY-03"]
+    "depends_on": ["UNIFY-03"],
+    "completed_date": "2026-01-21"
+  },
+  {
+    "id": "PERF-03",
+    "spec": "006-execution-latency",
+    "description": "Optimize draw-to-trade latency with auto-sizing and P99 <10ms target",
+    "file_context": [
+      "testudo-exchange/crates/router/src/services/execution_service.rs",
+      "testudo-exchange/crates/common_utils/src/risk/calculator.rs"
+    ],
+    "acceptance_criteria": "TradeIntent with auto-sizing, P99 internal latency <10ms, 100 orders/sec throughput, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": ["PERF-01", "PERF-02"],
+    "completed_date": "2026-01-26",
+    "notes": "Achieved 3μs avg latency, 70,565 orders/sec throughput"
+  },
+  {
+    "id": "FILL-01",
+    "spec": "008-shadow-fill-engine",
+    "description": "Wire live Binance prices to Shadow Engine so paper trading orders actually fill",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/mod.rs",
+      "testudo-exchange/crates/router/src/services/price_feed.rs",
+      "testudo-exchange/crates/router/src/main.rs",
+      "testudo-exchange/crates/router/src/routes/trade_management.rs",
+      "testudo-web/apps/web/src/components/OpenOrders.tsx"
+    ],
+    "acceptance_criteria": "Orders fill when price crosses entry, balance wired to Decision Loop, correct UI labels, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 3,
+    "depends_on": ["PERF-03"],
+    "completed_date": "2026-02-07"
   }
 ]
