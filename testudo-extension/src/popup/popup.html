@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testudo Sniper</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #00d4aa;
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      background: #16213e;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      font-family: monospace;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #00d4aa;
+    }
+    .toggle-group {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+    }
+    .toggle-btn {
+      flex: 1;
+      padding: 8px;
+      background: #16213e;
+      border: 1px solid #333;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .toggle-btn:first-child { border-right: none; }
+    .toggle-btn.active {
+      background: #00d4aa;
+      color: #1a1a2e;
+      border-color: #00d4aa;
+    }
+    .toggle-btn.active.live {
+      background: #ff4757;
+      border-color: #ff4757;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #888;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff4757;
+    }
+    .status-dot.connected { background: #00d4aa; }
+    #save-status {
+      font-size: 11px;
+      color: #00d4aa;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #save-status.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>Testudo Sniper</h1>
+
+  <label for="backend-url">Backend URL</label>
+  <input type="text" id="backend-url" placeholder="http://localhost:8080">
+
+  <label>Execution Mode</label>
+  <div class="toggle-group">
+    <div class="toggle-btn active" data-mode="paper">Paper</div>
+    <div class="toggle-btn" data-mode="live">Live</div>
+  </div>
+
+  <div id="save-status">Settings saved</div>
+
+  <div class="status">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Disconnected</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

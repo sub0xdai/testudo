@@ -1,0 +1,22 @@
+{
+  "name": "testudo-sniper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Testudo Sniper - TradingView to Testudo trade execution",
+  "scripts": {
+    "build": "bun run build.ts",
+    "build:chrome": "bun run build.ts --chrome",
+    "build:firefox": "bun run build.ts --firefox",
+    "dev": "bun run build.ts --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "webextension-polyfill": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/webextension-polyfill": "^0.12.1",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}
