@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Last updated: 2026-02-08
-> Current spec: EXT-05-auth-live (next)
+> Current spec: EXT-06-websocket (next)
 > Phase: 4 (Browser Extension - Testudo Sniper)
 
 ---
@@ -16,7 +16,7 @@
 | EXT-02 DOM Scraper | COMPLETE | 3-strategy scraper with fallbacks |
 | EXT-03 Confirmation Modal | COMPLETE | Shadow DOM modal, Alt+X hotkey, R:R display |
 | EXT-04 REST Execution | COMPLETE | REST via background worker, symbol normalization, position sizing |
-| EXT-05 Auth & Live | PENDING | JWT, BinanceAdapter activation |
+| EXT-05 Auth & Live | COMPLETE | Dual auth, login UI, token refresh, BinanceAdapter, LIVE double-confirm |
 | EXT-06 WebSocket | PENDING | WS upgrade, status indicator |
 
 ### Architecture

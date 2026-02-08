@@ -29,7 +29,9 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    input[type="text"] {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
       width: 100%;
       padding: 8px 10px;
       background: #16213e;
@@ -39,7 +41,7 @@
       font-size: 13px;
       margin-bottom: 12px;
     }
-    input[type="text"]:focus {
+    input:focus {
       outline: none;
       border-color: #00d4aa;
     }
@@ -71,6 +73,51 @@
       background: #ff4757;
       border-color: #ff4757;
     }
+    .section {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #333;
+    }
+    .auth-section { margin-top: 4px; }
+    .auth-status {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .auth-status .email {
+      color: #00d4aa;
+      font-family: monospace;
+    }
+    .btn {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #333;
+      background: #16213e;
+      color: #e0e0e0;
+      font-size: 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+    .btn:hover { border-color: #00d4aa; }
+    .btn.primary {
+      background: #00d4aa;
+      color: #1a1a2e;
+      border-color: #00d4aa;
+    }
+    .btn.danger {
+      background: transparent;
+      color: #ff4757;
+      border-color: #ff4757;
+    }
+    .error-msg {
+      font-size: 11px;
+      color: #ff4757;
+      margin-bottom: 8px;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
     .status {
       display: flex;
       align-items: center;
@@ -96,18 +143,41 @@
       transition: opacity 0.3s;
     }
     #save-status.visible { opacity: 1; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <h1>Testudo Sniper</h1>
 
-  <label for="backend-url">Backend URL</label>
-  <input type="text" id="backend-url" placeholder="http://localhost:8080">
+  <div class="section">
+    <label for="backend-url">Backend URL</label>
+    <input type="text" id="backend-url" placeholder="http://localhost:8080">
+  </div>
 
-  <label>Execution Mode</label>
-  <div class="toggle-group">
-    <div class="toggle-btn active" data-mode="paper">Paper</div>
-    <div class="toggle-btn" data-mode="live">Live</div>
+  <div class="section">
+    <label>Execution Mode</label>
+    <div class="toggle-group">
+      <div class="toggle-btn active" data-mode="paper">Paper</div>
+      <div class="toggle-btn" data-mode="live">Live</div>
+    </div>
+  </div>
+
+  <div class="section auth-section">
+    <label>Authentication</label>
+
+    <div id="auth-logged-out">
+      <div id="login-error" class="error-msg"></div>
+      <input type="email" id="login-email" placeholder="email@example.com">
+      <input type="password" id="login-password" placeholder="password">
+      <button class="btn primary" id="login-btn">Login</button>
+    </div>
+
+    <div id="auth-logged-in" class="hidden">
+      <div class="auth-status">
+        Logged in as <span class="email" id="auth-email"></span>
+      </div>
+      <button class="btn danger" id="logout-btn">Logout</button>
+    </div>
   </div>
 
   <div id="save-status">Settings saved</div>

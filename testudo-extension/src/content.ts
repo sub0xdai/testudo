@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 import { scrapeTradeSetup } from "./scraper";
 import type { TradeSetup } from "./scraper";
-import { showModal, showToast, isVisible, dismiss } from "./modal";
+import { showModal, showToast, isVisible } from "./modal";
 import type { ModalResult } from "./modal";
 
 console.log("Testudo Sniper loaded");
@@ -9,13 +9,19 @@ console.log("Testudo Sniper loaded");
 // --- Hotkey Listener ---
 // Default: Alt+X. EXT-03 FR-7 (configurable hotkey) is low priority, deferred.
 
-document.addEventListener("keydown", (e: KeyboardEvent) => {
+document.addEventListener("keydown", async (e: KeyboardEvent) => {
   if (e.altKey && e.key.toLowerCase() === "x" && !isVisible()) {
     e.preventDefault();
     e.stopPropagation();
 
     const setup = scrapeTradeSetup();
-    showModal(setup, handleModalResult);
+
+    // EXT-05: Check execution mode for LIVE warning
+    const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as {
+      executionMode: "paper" | "live";
+    };
+
+    showModal(setup, settings.executionMode === "live", handleModalResult);
   }
 }, true);
 
@@ -25,7 +31,7 @@ function handleModalResult(result: ModalResult, setup: TradeSetup | null): void 
   }
 }
 
-// --- Trade Execution (EXT-04: REST dispatch via background worker) ---
+// --- Trade Execution (EXT-04 + EXT-05: REST dispatch via background worker) ---
 
 async function executeTrade(setup: TradeSetup): Promise<void> {
   try {

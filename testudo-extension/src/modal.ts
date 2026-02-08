@@ -1,6 +1,7 @@
-// EXT-03: Confirmation Modal
+// EXT-03 + EXT-05: Confirmation Modal
 // Shadow DOM overlay showing trade details and R:R ratio.
 // Triggered by Alt+X, confirmed by Enter, dismissed by Escape.
+// EXT-05: LIVE mode badge and double-confirm for real money trades.
 
 import type { TradeSetup } from "./scraper";
 
@@ -34,6 +35,10 @@ const MODAL_STYLES = `
     max-width: 400px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   }
+  .panel.live-mode {
+    border-color: #ff4757;
+    box-shadow: 0 8px 32px rgba(255, 71, 87, 0.3);
+  }
   .header {
     display: flex;
     align-items: center;
@@ -59,6 +64,23 @@ const MODAL_STYLES = `
     font-size: 11px;
     color: #666;
     margin-left: 8px;
+  }
+  .live-badge {
+    display: inline-block;
+    background: #ff4757;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .live-warning {
+    font-size: 11px;
+    color: #ff4757;
+    margin-bottom: 12px;
+    text-align: center;
   }
   .rows {
     display: flex;
@@ -150,7 +172,6 @@ const MODAL_STYLES = `
 `;
 
 function formatPrice(price: number): string {
-  // Auto-detect decimal places based on magnitude
   if (price >= 1000) return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (price >= 1) return price.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   return price.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 8 });
@@ -168,6 +189,7 @@ let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
 export function showModal(
   setup: TradeSetup | null,
+  isLiveMode: boolean,
   onResult: (result: ModalResult, setup: TradeSetup | null) => void,
 ): void {
   dismiss();
@@ -195,10 +217,22 @@ export function showModal(
   } else {
     const rr = calculateRR(setup);
     const rrClass = rr >= 2 ? "good" : rr >= 1 ? "neutral" : "bad";
+    const panelClass = isLiveMode ? "panel live-mode" : "panel";
+
+    // EXT-05 FR-6: LIVE mode badge and double-confirm hint
+    const liveBadge = isLiveMode
+      ? `<span class="live-badge">LIVE MODE</span>
+         <div class="live-warning">Real money trade. Press Enter twice to confirm.</div>`
+      : "";
+
+    const confirmHint = isLiveMode
+      ? `<kbd>Enter</kbd> <kbd>Enter</kbd> confirm`
+      : `<kbd>Enter</kbd> execute`;
 
     container.innerHTML = `
       <div class="backdrop"></div>
-      <div class="panel">
+      <div class="${panelClass}">
+        ${liveBadge}
         <div class="header">
           <span class="side ${setup.side.toLowerCase()}">${setup.side}</span>
           <span>
@@ -226,7 +260,7 @@ export function showModal(
           <span class="rr-value ${rrClass}">1 : ${rr.toFixed(2)}</span>
         </div>
         <div class="footer">
-          <span class="hint"><kbd>Enter</kbd> execute</span>
+          <span class="hint">${confirmHint}</span>
           <span class="hint"><kbd>Esc</kbd> dismiss</span>
         </div>
       </div>
@@ -237,7 +271,9 @@ export function showModal(
   document.body.appendChild(host);
   activeHost = host;
 
-  // Keyboard handler
+  // EXT-05 FR-6: Double-confirm for live mode
+  let enterCount = 0;
+
   keyHandler = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -247,6 +283,12 @@ export function showModal(
     } else if (e.key === "Enter" && setup) {
       e.preventDefault();
       e.stopPropagation();
+
+      if (isLiveMode) {
+        enterCount++;
+        if (enterCount < 2) return; // Require double-Enter for live
+      }
+
       dismiss();
       onResult("confirm", setup);
     }
