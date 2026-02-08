@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Last updated: 2026-02-08
-> Current spec: EXT-03-confirmation-modal (next)
+> Current spec: EXT-04-rest-execution (next)
 > Phase: 4 (Browser Extension - Testudo Sniper)
 
 ---
@@ -14,7 +14,7 @@
 |------|--------|-------|
 | EXT-01 Extension Scaffold | COMPLETE | Manifest V3, esbuild, Chrome+Firefox |
 | EXT-02 DOM Scraper | COMPLETE | 3-strategy scraper with fallbacks |
-| EXT-03 Confirmation Modal | PENDING | Alt+X hotkey, shadow DOM modal |
+| EXT-03 Confirmation Modal | COMPLETE | Shadow DOM modal, Alt+X hotkey, R:R display |
 | EXT-04 REST Execution | PENDING | POST /api/v1/trades integration |
 | EXT-05 Auth & Live | PENDING | JWT, BinanceAdapter activation |
 | EXT-06 WebSocket | PENDING | WS upgrade, status indicator |
