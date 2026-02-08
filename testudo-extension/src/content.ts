@@ -25,13 +25,24 @@ function handleModalResult(result: ModalResult, setup: TradeSetup | null): void 
   }
 }
 
-// --- Trade Execution (wired in EXT-04) ---
+// --- Trade Execution (EXT-04: REST dispatch via background worker) ---
 
 async function executeTrade(setup: TradeSetup): Promise<void> {
-  // EXT-04 will implement REST dispatch here.
-  // For now, log the trade setup.
-  console.log("[Testudo] Trade confirmed:", setup);
-  showToast("Trade execution not yet connected", "error");
+  try {
+    const response = await browser.runtime.sendMessage({
+      type: "EXECUTE_TRADE",
+      payload: setup,
+    }) as { success: boolean; data?: unknown; error?: string };
+
+    if (response.success) {
+      showToast("Order Sent", "success");
+    } else {
+      showToast(`Error: ${response.error || "Unknown error"}`, "error");
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to send trade";
+    showToast(`Error: ${msg}`, "error");
+  }
 }
 
 // --- Message Listener ---

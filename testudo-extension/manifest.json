@@ -8,7 +8,9 @@
     "activeTab"
   ],
   "host_permissions": [
-    "*://*.tradingview.com/*"
+    "*://*.tradingview.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background.js",
