@@ -135,6 +135,11 @@
       background: #ff4757;
     }
     .status-dot.connected { background: #00d4aa; }
+    .status-dot.connecting { background: #f9ca24; animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
     #save-status {
       font-size: 11px;
       color: #00d4aa;
@@ -152,6 +157,8 @@
   <div class="section">
     <label for="backend-url">Backend URL</label>
     <input type="text" id="backend-url" placeholder="http://localhost:8080">
+    <label for="ws-url">WebSocket URL</label>
+    <input type="text" id="ws-url" placeholder="ws://localhost:4000">
   </div>
 
   <div class="section">

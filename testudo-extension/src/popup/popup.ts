@@ -3,8 +3,11 @@ import browser from "webextension-polyfill";
 type ExecutionMode = "paper" | "live";
 
 const backendUrlInput = document.getElementById("backend-url") as HTMLInputElement;
+const wsUrlInput = document.getElementById("ws-url") as HTMLInputElement;
 const toggleBtns = document.querySelectorAll<HTMLElement>(".toggle-btn");
 const saveStatus = document.getElementById("save-status") as HTMLElement;
+const statusDot = document.getElementById("status-dot") as HTMLElement;
+const statusText = document.getElementById("status-text") as HTMLElement;
 
 // Auth elements
 const authLoggedOut = document.getElementById("auth-logged-out") as HTMLElement;
@@ -19,8 +22,9 @@ const logoutBtn = document.getElementById("logout-btn") as HTMLButtonElement;
 let currentMode: ExecutionMode = "paper";
 
 async function loadSettings(): Promise<void> {
-  const stored = await browser.storage.local.get(["backendUrl", "executionMode"]);
+  const stored = await browser.storage.local.get(["backendUrl", "wsUrl", "executionMode"]);
   backendUrlInput.value = (stored.backendUrl as string) || "http://localhost:8080";
+  wsUrlInput.value = (stored.wsUrl as string) || "ws://localhost:4000";
   currentMode = (stored.executionMode as ExecutionMode) || "paper";
   updateToggleUI();
 }
@@ -38,6 +42,7 @@ function updateToggleUI(): void {
 async function saveSettings(): Promise<void> {
   await browser.storage.local.set({
     backendUrl: backendUrlInput.value.trim(),
+    wsUrl: wsUrlInput.value.trim(),
     executionMode: currentMode,
   });
   saveStatus.classList.add("visible");
@@ -45,6 +50,7 @@ async function saveSettings(): Promise<void> {
 }
 
 backendUrlInput.addEventListener("change", saveSettings);
+wsUrlInput.addEventListener("change", saveSettings);
 
 toggleBtns.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -108,7 +114,38 @@ logoutBtn.addEventListener("click", async () => {
   checkAuthStatus();
 });
 
+// --- WebSocket Status (EXT-06 FR-4, FR-5) ---
+
+type WsState = "disconnected" | "connecting" | "connected";
+
+const WS_STATE_LABELS: Record<WsState, string> = {
+  disconnected: "Disconnected",
+  connecting: "Connecting...",
+  connected: "Connected",
+};
+
+function updateWsStatus(state: WsState): void {
+  statusDot.className = "status-dot";
+  if (state === "connected") statusDot.classList.add("connected");
+  if (state === "connecting") statusDot.classList.add("connecting");
+  statusText.textContent = WS_STATE_LABELS[state];
+}
+
+async function checkWsStatus(): Promise<void> {
+  const response = await browser.runtime.sendMessage({ type: "WS_STATUS" }) as { state: WsState };
+  updateWsStatus(response.state);
+}
+
+// Listen for WS state broadcasts from background
+browser.runtime.onMessage.addListener((message: unknown) => {
+  const msg = message as { type: string; state?: WsState };
+  if (msg.type === "WS_STATE_CHANGED" && msg.state) {
+    updateWsStatus(msg.state);
+  }
+});
+
 // --- Initialize ---
 
 loadSettings();
 checkAuthStatus();
+checkWsStatus();

@@ -1,15 +1,16 @@
 import browser from "webextension-polyfill";
 
-// Background service worker — manages settings, auth, REST dispatch, and connection state.
-// EXT-06 will add WebSocket connection management here.
+// Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
 interface Settings {
   backendUrl: string;
+  wsUrl: string;
   executionMode: "paper" | "live";
 }
 
 const DEFAULT_SETTINGS: Settings = {
   backendUrl: "http://localhost:8080",
+  wsUrl: "ws://localhost:4000",
   executionMode: "paper",
 };
 
@@ -17,9 +18,10 @@ const DEFAULT_SETTINGS: Settings = {
 const PAPER_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 async function getSettings(): Promise<Settings> {
-  const stored = await browser.storage.local.get(["backendUrl", "executionMode"]);
+  const stored = await browser.storage.local.get(["backendUrl", "wsUrl", "executionMode"]);
   return {
     backendUrl: (stored.backendUrl as string) || DEFAULT_SETTINGS.backendUrl,
+    wsUrl: (stored.wsUrl as string) || DEFAULT_SETTINGS.wsUrl,
     executionMode: (stored.executionMode as Settings["executionMode"]) || DEFAULT_SETTINGS.executionMode,
   };
 }
@@ -236,6 +238,147 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
   }
 }
 
+// --- WebSocket Connection (EXT-06) ---
+
+type WsState = "disconnected" | "connecting" | "connected";
+
+let ws: WebSocket | null = null;
+let wsState: WsState = "disconnected";
+let wsReconnectDelay = 1000;
+let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let wsSubscriptionId = 1;
+
+const WS_MAX_RECONNECT_DELAY = 30000;
+const WS_BASE_RECONNECT_DELAY = 1000;
+
+function setWsState(state: WsState): void {
+  wsState = state;
+  // Broadcast state change to popup and any listeners
+  browser.runtime.sendMessage({ type: "WS_STATE_CHANGED", state }).catch(() => {
+    // No listeners — popup closed, ignore
+  });
+}
+
+async function getUserId(): Promise<string> {
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    try {
+      const payload = JSON.parse(atob(tokens.access_token.split(".")[1])) as { sub?: string };
+      if (payload.sub) return payload.sub;
+    } catch { /* fall through */ }
+  }
+  return PAPER_USER_ID;
+}
+
+async function connectWebSocket(): Promise<void> {
+  // Clean up existing connection
+  if (ws) {
+    ws.onclose = null;
+    ws.onerror = null;
+    ws.onmessage = null;
+    ws.close();
+    ws = null;
+  }
+
+  if (wsReconnectTimer) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+  }
+
+  const settings = await getSettings();
+  if (!settings.wsUrl) {
+    setWsState("disconnected");
+    return;
+  }
+
+  setWsState("connecting");
+
+  try {
+    ws = new WebSocket(settings.wsUrl);
+  } catch {
+    setWsState("disconnected");
+    scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = async () => {
+    console.log("WS connected to", settings.wsUrl);
+    wsReconnectDelay = WS_BASE_RECONNECT_DELAY;
+    setWsState("connected");
+
+    // Subscribe to order updates for current user
+    const userId = await getUserId();
+    const subMsg = {
+      method: "SUBSCRIBE",
+      params: [`order.${userId}`],
+      id: wsSubscriptionId++,
+    };
+    ws?.send(JSON.stringify(subMsg));
+    console.log("WS subscribed to order." + userId);
+  };
+
+  ws.onmessage = (event: MessageEvent) => {
+    try {
+      const msg = JSON.parse(event.data as string) as { stream?: string; data?: unknown };
+      if (msg.stream && msg.stream.startsWith("order.")) {
+        forwardOrderUpdate(msg.data);
+      }
+    } catch {
+      console.warn("WS: failed to parse message", event.data);
+    }
+  };
+
+  ws.onclose = () => {
+    console.log("WS disconnected");
+    ws = null;
+    setWsState("disconnected");
+    scheduleReconnect();
+  };
+
+  ws.onerror = (event: Event) => {
+    console.warn("WS error", event);
+    // onclose will fire after onerror, which handles reconnect
+  };
+}
+
+function scheduleReconnect(): void {
+  if (wsReconnectTimer) return;
+  wsReconnectTimer = setTimeout(() => {
+    wsReconnectTimer = null;
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, WS_MAX_RECONNECT_DELAY);
+    connectWebSocket();
+  }, wsReconnectDelay);
+}
+
+function disconnectWebSocket(): void {
+  if (wsReconnectTimer) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+  }
+  if (ws) {
+    ws.onclose = null;
+    ws.close();
+    ws = null;
+  }
+  setWsState("disconnected");
+}
+
+function forwardOrderUpdate(data: unknown): void {
+  // Send to all TradingView tabs
+  browser.tabs.query({ url: "*://*.tradingview.com/*" }).then((tabs) => {
+    for (const tab of tabs) {
+      if (tab.id) {
+        browser.tabs.sendMessage(tab.id, {
+          type: "WS_ORDER_UPDATE",
+          data,
+        }).catch(() => {
+          // Tab may not have content script loaded
+        });
+      }
+    }
+  });
+}
+
 // --- Message Router ---
 
 type Message =
@@ -244,7 +387,9 @@ type Message =
   | { type: "LOGIN"; email: string; password: string }
   | { type: "LOGOUT" }
   | { type: "AUTH_STATUS" }
-  | { type: "REFRESH_TOKEN" };
+  | { type: "REFRESH_TOKEN" }
+  | { type: "WS_STATUS" }
+  | { type: "WS_RECONNECT" };
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as Message;
@@ -272,11 +417,30 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   if (msg.type === "REFRESH_TOKEN") {
     return refreshAccessToken().then((ok) => ({ success: ok }));
   }
+
+  if (msg.type === "WS_STATUS") {
+    return Promise.resolve({ state: wsState });
+  }
+
+  if (msg.type === "WS_RECONNECT") {
+    connectWebSocket();
+    return Promise.resolve({ success: true });
+  }
 });
 
-// On startup, schedule token refresh if tokens exist
+// On startup, schedule token refresh if tokens exist, then connect WebSocket
 getTokens().then((tokens) => {
   if (tokens && tokens.expires_in > 0) {
     scheduleTokenRefresh(tokens.expires_in);
+  }
+});
+
+// EXT-06: Connect WebSocket on startup
+connectWebSocket();
+
+// Reconnect WebSocket when settings change
+browser.storage.onChanged.addListener((changes) => {
+  if (changes.wsUrl) {
+    connectWebSocket();
   }
 });

@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Last updated: 2026-02-08
-> Current spec: EXT-06-websocket (next)
+> Current spec: EXT-06-websocket (COMPLETE)
 > Phase: 4 (Browser Extension - Testudo Sniper)
 
 ---
@@ -17,13 +17,13 @@
 | EXT-03 Confirmation Modal | COMPLETE | Shadow DOM modal, Alt+X hotkey, R:R display |
 | EXT-04 REST Execution | COMPLETE | REST via background worker, symbol normalization, position sizing |
 | EXT-05 Auth & Live | COMPLETE | Dual auth, login UI, token refresh, BinanceAdapter, LIVE double-confirm |
-| EXT-06 WebSocket | PENDING | WS upgrade, status indicator |
+| EXT-06 WebSocket | COMPLETE | WS client in background worker, auto-reconnect, status indicator, order notifications |
 
 ### Architecture
 
 - **Directory:** `testudo-extension/`
 - **Build:** TypeScript + esbuild → `dist/chrome/` + `dist/firefox/`
-- **Communication:** REST first (POST /trades), WebSocket later (EXT-06)
+- **Communication:** REST (POST /trades) + WebSocket (ws-stream port 4000 for real-time order updates)
 - **Dependencies:** webextension-polyfill for cross-browser compat
 
 ### Discoveries
@@ -35,6 +35,8 @@
 - Backend uses `BTC_USDT` format (underscore-separated), TradingView uses `BTCUSDT` (concatenated)
 - Backend requires `quantity` field — calculated client-side: `risk_amount / stop_distance`
 - Backend side values: `"buy"` / `"sell"` (not LONG/SHORT)
+- ws-stream server runs on separate port (4000), uses PostgreSQL LISTEN/NOTIFY, supports `order.{user_id}` private channels
+- Manifest V3 service workers have native WebSocket support — no polyfill needed
 
 ---
 

@@ -54,13 +54,21 @@ async function executeTrade(setup: TradeSetup): Promise<void> {
 // --- Message Listener ---
 
 browser.runtime.onMessage.addListener((message: unknown) => {
-  const msg = message as { type: string };
+  const msg = message as { type: string; data?: Record<string, unknown> };
   if (msg.type === "PING") {
     return Promise.resolve({ status: "alive" });
   }
   if (msg.type === "SCRAPE") {
     const setup = scrapeTradeSetup();
     return Promise.resolve(setup);
+  }
+  // EXT-06 FR-6: Real-time order updates via WebSocket
+  if (msg.type === "WS_ORDER_UPDATE" && msg.data) {
+    const event = (msg.data.e as string) || "order";
+    const symbol = (msg.data.s as string) || "";
+    const status = (msg.data.status as string) || "";
+    const label = status ? `${event}: ${symbol} ${status}` : `${event}: ${symbol}`;
+    showToast(label, "success");
   }
 });
 
