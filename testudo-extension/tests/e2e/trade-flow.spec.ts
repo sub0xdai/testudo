@@ -189,7 +189,7 @@ test.describe("Trade Flow", () => {
     // Update symbol and timeframe on the mock page
     await page.evaluate(() => {
       (window as unknown as Record<string, Function>).__setPositionTool(
-        42000, 40000, 46000, "ETHUSDT", "240"
+        42000, 40000, 46000, "ETHUSDT", "240", "long"
       );
     });
 

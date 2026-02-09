@@ -5,19 +5,19 @@
   <title>Mock TradingView</title>
   <style>
     body { background: #131722; color: #d1d4dc; font-family: sans-serif; }
-    .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-    .row .label { font-size: 12px; color: #888; }
-    .row input { background: #1e222d; border: 1px solid #363a45; color: #d1d4dc; padding: 4px 8px; }
     #header-toolbar-symbol-search { padding: 8px; font-size: 16px; font-weight: bold; }
     #header-toolbar-intervals button { background: #1e222d; border: 1px solid #363a45; color: #888; padding: 4px 8px; cursor: pointer; }
     #header-toolbar-intervals button[aria-checked="true"] { color: #2962ff; border-color: #2962ff; }
+    .dialog-mock { background: #1e222d; border: 1px solid #363a45; padding: 16px; margin: 16px; max-width: 360px; }
+    .dialog-mock label { display: block; font-size: 11px; color: #888; margin: 8px 0 2px; }
+    .dialog-mock input { background: #131722; border: 1px solid #363a45; color: #d1d4dc; padding: 4px 8px; width: 120px; }
   </style>
 </head>
 <body>
-  <!-- Symbol search bar (scraper selector: #header-toolbar-symbol-search) -->
+  <!-- Symbol search bar -->
   <div id="header-toolbar-symbol-search">BTCUSDT</div>
 
-  <!-- Timeframe bar (scraper selector: #header-toolbar-intervals button[data-value][aria-checked="true"]) -->
+  <!-- Timeframe bar -->
   <div id="header-toolbar-intervals">
     <button data-value="15" aria-checked="false">15m</button>
     <button data-value="60" aria-checked="true">1H</button>
@@ -25,31 +25,25 @@
     <button data-value="1D" aria-checked="false">1D</button>
   </div>
 
-  <!-- Overlap manager root (scraper Strategy 1: properties panel with labeled inputs) -->
-  <div id="overlap-manager-root">
-    <!-- Position tool properties dialog — mimics TradingView's floating panel -->
-    <div class="property-dialog" data-name="properties-dialog">
-      <div class="property-row row">
-        <span class="label">Entry Price</span>
-        <input type="text" value="95000">
-      </div>
-      <div class="property-row row">
-        <span class="label">Stop Loss</span>
-        <input type="text" value="93000">
-      </div>
-      <div class="property-row row">
-        <span class="label">Take Profit</span>
-        <input type="text" value="99000">
-      </div>
-    </div>
+  <!-- Properties dialog (mimics TradingView's Risk/Reward dialog structure) -->
+  <div class="dialog-mock" data-name="source-properties-editor" role="dialog">
+    <div id="dialog-title">Long Position</div>
+
+    <label>Account size</label>
+    <input type="text" data-name="Risk/RewardlongAccountSize" value="1000">
+
+    <label>Entry price</label>
+    <input type="text" data-name="Risk/RewardlongEntryPrice" value="95000">
+
+    <label>Profit level — Price</label>
+    <input type="text" data-name="Risk/RewardlongProfitLevelPrice" value="99000">
+
+    <label>Stop level — Price</label>
+    <input type="text" data-name="Risk/RewardlongStopLevelPrice" value="93000">
   </div>
 
-  <!-- Chart overlay for Strategy 2 (data-name="long-position") -->
-  <div data-name="long-position" style="display:none;">
-    <span class="price">95000</span>
-    <span class="price">93000</span>
-    <span class="price">99000</span>
-  </div>
+  <!-- Overlay root (empty in modern TradingView — position tools are canvas-rendered) -->
+  <div id="overlap-manager-root"></div>
 
   <script>
     // Helper: update position tool values from test code
@@ -62,17 +56,34 @@
           b.setAttribute("aria-checked", b.getAttribute("data-value") === timeframe ? "true" : "false");
         });
       }
-      const inputs = document.querySelectorAll("#overlap-manager-root input");
-      if (inputs.length >= 3) {
-        inputs[0].value = String(entry);
-        inputs[1].value = String(stop);
-        inputs[2].value = String(target);
-      }
-      // Also update strategy 2 overlay
-      const overlay = document.querySelector('[data-name="long-position"]');
-      if (overlay && side === "SHORT") {
-        overlay.setAttribute("data-name", "short-position");
-      }
+
+      var s = (side || "long").toLowerCase();
+      var prefix = "Risk/Reward" + s;
+
+      // Update or create the correct data-name inputs
+      var dialog = document.querySelector('[data-name="source-properties-editor"]');
+
+      // Update title
+      var title = document.getElementById("dialog-title");
+      if (title) title.textContent = s === "short" ? "Short Position" : "Long Position";
+
+      // Swap data-name prefixes if side changed
+      var inputs = dialog.querySelectorAll("input[data-name]");
+      inputs.forEach(function(inp) {
+        var name = inp.getAttribute("data-name");
+        if (name.startsWith("Risk/Reward")) {
+          inp.setAttribute("data-name", name.replace(/Risk\/Reward(long|short)/, prefix));
+        }
+      });
+
+      // Set values
+      var entryInput = dialog.querySelector('input[data-name="' + prefix + 'EntryPrice"]');
+      var targetInput = dialog.querySelector('input[data-name="' + prefix + 'ProfitLevelPrice"]');
+      var stopInput = dialog.querySelector('input[data-name="' + prefix + 'StopLevelPrice"]');
+
+      if (entryInput) entryInput.value = String(entry);
+      if (targetInput) targetInput.value = String(target);
+      if (stopInput) stopInput.value = String(stop);
     };
   </script>
 </body>

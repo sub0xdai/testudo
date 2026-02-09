@@ -102,8 +102,9 @@ function normalizeTimeframe(raw: string): string {
 }
 
 // --- Position Tool Detection ---
-// TradingView's Long/Short Position tools render a floating panel with price levels.
-// The panel appears in #overlap-manager-root or as a direct child of the chart container.
+// TradingView's Long/Short Position tools are canvas-rendered. Price values are only
+// available in the properties dialog (opened by double-clicking the drawing tool).
+// The dialog uses data-name attributes like "Risk/RewardlongEntryPrice".
 
 interface PositionToolData {
   entry: number;
@@ -112,25 +113,88 @@ interface PositionToolData {
   side: "LONG" | "SHORT";
 }
 
-// Strategy 1: Look for the position tool's floating properties panel
-// The panel contains labeled rows with Entry, Stop, Target (or Profit) values
+// Data-name patterns for the properties dialog inputs (Feb 2026)
+const RISK_REWARD_INPUTS = {
+  long: {
+    entry: 'input[data-name="Risk/RewardlongEntryPrice"]',
+    target: 'input[data-name="Risk/RewardlongProfitLevelPrice"]',
+    stop: 'input[data-name="Risk/RewardlongStopLevelPrice"]',
+  },
+  short: {
+    entry: 'input[data-name="Risk/RewardshortEntryPrice"]',
+    target: 'input[data-name="Risk/RewardshortProfitLevelPrice"]',
+    stop: 'input[data-name="Risk/RewardshortStopLevelPrice"]',
+  },
+} as const;
+
+// Strategy 1: Read from the properties dialog using data-name selectors
+// This is the primary strategy — uses stable, semantic attributes.
+// Requires the properties dialog to be open (double-click the position tool).
+function findPositionToolByDataName(): PositionToolData | null {
+  // Try long first, then short
+  for (const [side, selectors] of Object.entries(RISK_REWARD_INPUTS)) {
+    const entryEl = document.querySelector(selectors.entry) as HTMLInputElement | null;
+    const targetEl = document.querySelector(selectors.target) as HTMLInputElement | null;
+    const stopEl = document.querySelector(selectors.stop) as HTMLInputElement | null;
+
+    if (entryEl?.value && targetEl?.value && stopEl?.value) {
+      const entry = parsePrice(entryEl.value);
+      const target = parsePrice(targetEl.value);
+      const stop = parsePrice(stopEl.value);
+
+      if (entry !== null && target !== null && stop !== null) {
+        return { entry, stop, target, side: side === "long" ? "LONG" : "SHORT" };
+      }
+    }
+  }
+  return null;
+}
+
+// Strategy 2: Look for the properties dialog by role="dialog" and scan inputs
+// Fallback if data-name attributes change but dialog structure remains.
+function findPositionToolByPropertiesDialog(): PositionToolData | null {
+  const dialog = document.querySelector(
+    '[data-name="source-properties-editor"], [role="dialog"]'
+  );
+  if (!dialog) return null;
+
+  const text = dialog.textContent?.toLowerCase() || "";
+  // Must be a position tool dialog
+  const isPositionTool = text.includes("long position") || text.includes("short position");
+  if (!isPositionTool) return null;
+
+  const side: "LONG" | "SHORT" = text.includes("long position") ? "LONG" : "SHORT";
+
+  // Find all inputs and look for entry/profit/stop price values
+  const inputs = dialog.querySelectorAll("input");
+  const values: number[] = [];
+  for (const input of inputs) {
+    const name = input.getAttribute("data-name") || "";
+    if (name.includes("Price") && !name.includes("Ticks")) {
+      const parsed = parsePrice(input.value);
+      if (parsed !== null) values.push(parsed);
+    }
+  }
+
+  // Expect entry, profit, stop (in order from dialog)
+  if (values.length >= 3) {
+    return { entry: values[0], target: values[1], stop: values[2], side };
+  }
+  return null;
+}
+
+// Strategy 3: Legacy — look for labeled inputs in #overlap-manager-root
 function findPositionToolByPropertiesPanel(): PositionToolData | null {
-  // The properties dialog appears in the overlap manager
   const overlayRoot = document.getElementById("overlap-manager-root");
   if (!overlayRoot) return null;
 
-  // Look for dialog/panel with position-related inputs
-  const allInputs = overlayRoot.querySelectorAll("input");
   const allLabels = overlayRoot.querySelectorAll("span, label, div");
-
-  // Build a map of label → value pairs
   const labelValuePairs: { label: string; value: string }[] = [];
 
   for (const label of allLabels) {
     const text = label.textContent?.trim().toLowerCase() || "";
     if (!text) continue;
 
-    // Check if this label is near an input
     const parent = label.closest("[class*='row'], [class*='cell'], [class*='group'], [class*='property']");
     if (!parent) continue;
 
@@ -143,7 +207,7 @@ function findPositionToolByPropertiesPanel(): PositionToolData | null {
   return extractFromLabelValues(labelValuePairs);
 }
 
-// Strategy 2: Look for the on-chart position tool overlay
+// Strategy 4: Look for the on-chart position tool overlay
 // When a position tool is drawn, TradingView shows entry/stop/target lines with price labels
 function findPositionToolByChartOverlay(): PositionToolData | null {
   // Position tools render directly on the chart canvas with HTML overlays for prices
@@ -174,7 +238,7 @@ function findPositionToolByChartOverlay(): PositionToolData | null {
   return null;
 }
 
-// Strategy 3: Scan all floating panels for price-like content
+// Strategy 5: Scan all floating panels for price-like content
 // Fallback when specific selectors fail
 function findPositionToolByPriceScan(): PositionToolData | null {
   const overlayRoot = document.getElementById("overlap-manager-root");
@@ -272,6 +336,8 @@ function inferSideFromPrices(entry: number, stop: number, target: number): Posit
 export function scrapeTradeSetup(): TradeSetup | null {
   // Try each strategy in order of reliability
   const strategies = [
+    findPositionToolByDataName,
+    findPositionToolByPropertiesDialog,
     findPositionToolByPropertiesPanel,
     findPositionToolByChartOverlay,
     findPositionToolByPriceScan,
