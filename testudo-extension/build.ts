@@ -7,23 +7,40 @@ const buildChrome = args.includes("--chrome") || (!args.includes("--firefox") &&
 const buildFirefox = args.includes("--firefox") || (!args.includes("--firefox") && !args.includes("--chrome"));
 const watch = args.includes("--watch");
 
-const ENTRY_POINTS = [
-  { in: "src/content.ts", out: "content" },
+// Background service worker uses ESM (manifest declares "type": "module")
+const ESM_ENTRIES = [
   { in: "src/background.ts", out: "background" },
+];
+
+// Content scripts and popup are classic scripts — must use IIFE
+const IIFE_ENTRIES = [
+  { in: "src/content.ts", out: "content" },
   { in: "src/popup/popup.ts", out: "popup/popup" },
 ];
 
 async function bundle(outdir: string): Promise<void> {
-  await esbuild.build({
-    entryPoints: ENTRY_POINTS.map((e) => ({ in: e.in, out: e.out })),
-    bundle: true,
-    outdir,
-    format: "esm",
-    target: "es2022",
-    sourcemap: true,
-    minify: !watch,
-    logLevel: "info",
-  });
+  await Promise.all([
+    esbuild.build({
+      entryPoints: ESM_ENTRIES.map((e) => ({ in: e.in, out: e.out })),
+      bundle: true,
+      outdir,
+      format: "esm",
+      target: "es2022",
+      sourcemap: true,
+      minify: !watch,
+      logLevel: "info",
+    }),
+    esbuild.build({
+      entryPoints: IIFE_ENTRIES.map((e) => ({ in: e.in, out: e.out })),
+      bundle: true,
+      outdir,
+      format: "iife",
+      target: "es2022",
+      sourcemap: true,
+      minify: !watch,
+      logLevel: "info",
+    }),
+  ]);
 }
 
 function copyStaticFiles(outdir: string): void {

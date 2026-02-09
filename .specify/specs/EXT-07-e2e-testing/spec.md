@@ -1,6 +1,6 @@
 # EXT-07: E2E Testing with Playwright
 
-> Priority: P2 | Depends on: EXT-06 | Status: PENDING
+> Priority: P2 | Depends on: EXT-06 | Status: DONE
 
 ## Overview
 **Current:** Extension has Tier 1 unit tests (pure functions) and Tier 2 integration tests (mocked browser APIs) via Vitest. No E2E tests exist — all verification is manual (load in Chrome, open TradingView, interact).
@@ -10,12 +10,12 @@
 
 | ID | Requirement | Status |
 |----|-------------|--------|
-| FR-1 | Playwright config -- launch Chromium with `--load-extension=dist/chrome` and `--disable-extensions-except` | TODO |
-| FR-2 | Popup tests -- open popup, verify settings save, execution mode toggle, login form renders | TODO |
-| FR-3 | Status indicator test -- verify status dot reflects WS connection state (disconnected when no server) | TODO |
-| FR-4 | Mock TradingView page -- local HTML page with Position Tool DOM structure for scraper testing | TODO |
-| FR-5 | Alt+X hotkey test -- inject mock Position Tool, press Alt+X, verify modal appears with correct values | TODO |
-| FR-6 | Trade flow test -- mock backend REST endpoint, confirm trade via modal, verify POST received | TODO |
+| FR-1 | Playwright config -- launch Chromium with `--load-extension=dist/chrome` and `--disable-extensions-except` | DONE |
+| FR-2 | Popup tests -- open popup, verify settings save, execution mode toggle, login form renders | DONE |
+| FR-3 | Status indicator test -- verify status dot reflects WS connection state (disconnected when no server) | DONE |
+| FR-4 | Mock TradingView page -- local HTML page with Position Tool DOM structure for scraper testing | DONE |
+| FR-5 | Alt+X hotkey test -- inject mock Position Tool, press Alt+X, verify modal appears with correct values | DONE |
+| FR-6 | Trade flow test -- mock backend REST endpoint, confirm trade via modal, verify POST received | DONE |
 
 ## Architecture
 
@@ -59,4 +59,6 @@ cd testudo-extension && npx playwright test
 ## Notes
 - Extensions require `headless: false` in Playwright (Chromium limitation)
 - Service worker must be waited for before testing popup messaging
-- Content script injection timing may need `page.waitForFunction`
+- Content script injection timing: 2s `waitForTimeout` after navigation (content scripts run at `document_idle`)
+- Build fix: content.js and popup.js now use IIFE format (classic scripts); only background.js uses ESM (service worker with `"type": "module"`)
+- Test manifest is patched at runtime to add `*://localhost/*` and `*://127.0.0.1/*` to content_scripts matches, then restored after tests

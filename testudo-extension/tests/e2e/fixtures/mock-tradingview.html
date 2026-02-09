@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock TradingView</title>
+  <style>
+    body { background: #131722; color: #d1d4dc; font-family: sans-serif; }
+    .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .row .label { font-size: 12px; color: #888; }
+    .row input { background: #1e222d; border: 1px solid #363a45; color: #d1d4dc; padding: 4px 8px; }
+    #header-toolbar-symbol-search { padding: 8px; font-size: 16px; font-weight: bold; }
+    #header-toolbar-intervals button { background: #1e222d; border: 1px solid #363a45; color: #888; padding: 4px 8px; cursor: pointer; }
+    #header-toolbar-intervals button[aria-checked="true"] { color: #2962ff; border-color: #2962ff; }
+  </style>
+</head>
+<body>
+  <!-- Symbol search bar (scraper selector: #header-toolbar-symbol-search) -->
+  <div id="header-toolbar-symbol-search">BTCUSDT</div>
+
+  <!-- Timeframe bar (scraper selector: #header-toolbar-intervals button[data-value][aria-checked="true"]) -->
+  <div id="header-toolbar-intervals">
+    <button data-value="15" aria-checked="false">15m</button>
+    <button data-value="60" aria-checked="true">1H</button>
+    <button data-value="240" aria-checked="false">4H</button>
+    <button data-value="1D" aria-checked="false">1D</button>
+  </div>
+
+  <!-- Overlap manager root (scraper Strategy 1: properties panel with labeled inputs) -->
+  <div id="overlap-manager-root">
+    <!-- Position tool properties dialog — mimics TradingView's floating panel -->
+    <div class="property-dialog" data-name="properties-dialog">
+      <div class="property-row row">
+        <span class="label">Entry Price</span>
+        <input type="text" value="95000">
+      </div>
+      <div class="property-row row">
+        <span class="label">Stop Loss</span>
+        <input type="text" value="93000">
+      </div>
+      <div class="property-row row">
+        <span class="label">Take Profit</span>
+        <input type="text" value="99000">
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart overlay for Strategy 2 (data-name="long-position") -->
+  <div data-name="long-position" style="display:none;">
+    <span class="price">95000</span>
+    <span class="price">93000</span>
+    <span class="price">99000</span>
+  </div>
+
+  <script>
+    // Helper: update position tool values from test code
+    window.__setPositionTool = function(entry, stop, target, symbol, timeframe, side) {
+      if (symbol) {
+        document.getElementById("header-toolbar-symbol-search").textContent = symbol;
+      }
+      if (timeframe) {
+        document.querySelectorAll("#header-toolbar-intervals button").forEach(b => {
+          b.setAttribute("aria-checked", b.getAttribute("data-value") === timeframe ? "true" : "false");
+        });
+      }
+      const inputs = document.querySelectorAll("#overlap-manager-root input");
+      if (inputs.length >= 3) {
+        inputs[0].value = String(entry);
+        inputs[1].value = String(stop);
+        inputs[2].value = String(target);
+      }
+      // Also update strategy 2 overlay
+      const overlay = document.querySelector('[data-name="long-position"]');
+      if (overlay && side === "SHORT") {
+        overlay.setAttribute("data-name", "short-position");
+      }
+    };
+  </script>
+</body>
+</html>
