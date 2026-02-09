@@ -102,15 +102,117 @@ function normalizeTimeframe(raw: string): string {
 }
 
 // --- Position Tool Detection ---
-// TradingView's Long/Short Position tools are canvas-rendered. Price values are only
-// available in the properties dialog (opened by double-clicking the drawing tool).
-// The dialog uses data-name attributes like "Risk/RewardlongEntryPrice".
+// TradingView's Long/Short Position tools are canvas-rendered. Price values are
+// accessible via the internal chart API (window.TradingViewApi) or the properties
+// dialog (opened by double-clicking the drawing tool).
 
 interface PositionToolData {
   entry: number;
   stop: number;
   target: number;
   side: "LONG" | "SHORT";
+}
+
+// --- Strategy 0: Zero-flash — TradingView internal chart API ---
+// Reads position tool data directly from window.TradingViewApi.activeChart()
+// No dialog needed, no UI flash. Uses getAllShapes() + getShapeById().
+
+function getChartApi(): any | null {
+  const w = window as any;
+  const widget = w.TradingViewApi || w.ChartApiInstance;
+  if (!widget || typeof widget.activeChart !== "function") return null;
+  return widget.activeChart();
+}
+
+function getTickSize(chart: any, entryPrice: number): number {
+  // Try 1: Price formatter internals
+  try {
+    if (typeof chart.priceFormatter === "function") {
+      const fmt = chart.priceFormatter();
+      // Walk own + prototype properties for _minMove/_priceScale
+      if (fmt) {
+        const minMove = fmt._minMove ?? fmt.minMove;
+        const priceScale = fmt._priceScale ?? fmt.priceScale;
+        if (typeof minMove === "number" && typeof priceScale === "number" && priceScale > 0) {
+          return minMove / priceScale;
+        }
+      }
+    }
+  } catch { /* continue */ }
+
+  // Try 2: Series symbol info
+  try {
+    if (typeof chart.getSeries === "function") {
+      const series = chart.getSeries();
+      if (series) {
+        const info = typeof series.symbolInfo === "function"
+          ? series.symbolInfo()
+          : series._symbolInfo || series.symbolInfo;
+        if (info) {
+          const mm = info.minmov ?? info.minmovement ?? info.min_move;
+          const ps = info.pricescale ?? info.price_scale;
+          if (typeof mm === "number" && typeof ps === "number" && ps > 0) {
+            return mm / ps;
+          }
+        }
+      }
+    }
+  } catch { /* continue */ }
+
+  // Fallback: derive from entry price decimal places
+  const str = entryPrice.toString();
+  const dot = str.indexOf(".");
+  if (dot >= 0) {
+    return Math.pow(10, -(str.length - dot - 1));
+  }
+  return 0.01;
+}
+
+function findPositionToolByChartApi(): PositionToolData | null {
+  const chart = getChartApi();
+  if (!chart || typeof chart.getAllShapes !== "function") return null;
+
+  const shapes: Array<{ id: string; name: string }> = chart.getAllShapes();
+  if (!Array.isArray(shapes) || shapes.length === 0) return null;
+
+  // Find position tools — prefer last one (most recently drawn)
+  const positionTool = [...shapes]
+    .reverse()
+    .find((s) => s.name === "long_position" || s.name === "short_position");
+  if (!positionTool) return null;
+
+  if (typeof chart.getShapeById !== "function") return null;
+  const api = chart.getShapeById(positionTool.id);
+  if (!api) return null;
+
+  const side: "LONG" | "SHORT" = positionTool.name === "long_position" ? "LONG" : "SHORT";
+
+  // Get entry price from anchor points
+  if (typeof api.getPoints !== "function") return null;
+  const points = api.getPoints();
+  if (!Array.isArray(points) || points.length === 0) return null;
+
+  const entry = points[0]?.price;
+  if (typeof entry !== "number" || entry <= 0) return null;
+
+  // Get stop/target levels from properties
+  if (typeof api.getProperties !== "function") return null;
+  const props = api.getProperties();
+  if (!props || typeof props.stopLevel !== "number" || typeof props.profitLevel !== "number") return null;
+
+  const tickSize = getTickSize(chart, entry);
+  const stopDist = props.stopLevel * tickSize;
+  const profitDist = props.profitLevel * tickSize;
+
+  const stop = side === "LONG" ? entry - stopDist : entry + stopDist;
+  const target = side === "LONG" ? entry + profitDist : entry - profitDist;
+
+  // Validate prices
+  if (stop <= 0 || target <= 0) return null;
+  if (side === "LONG" && (stop >= entry || target <= entry)) return null;
+  if (side === "SHORT" && (stop <= entry || target >= entry)) return null;
+
+  return { entry, stop, target, side };
 }
 
 // Data-name patterns for the properties dialog inputs (Feb 2026)
@@ -336,11 +438,12 @@ function inferSideFromPrices(entry: number, stop: number, target: number): Posit
 export function scrapeTradeSetup(): TradeSetup | null {
   // Try each strategy in order of reliability
   const strategies = [
-    findPositionToolByDataName,
-    findPositionToolByPropertiesDialog,
-    findPositionToolByPropertiesPanel,
-    findPositionToolByChartOverlay,
-    findPositionToolByPriceScan,
+    findPositionToolByChartApi,       // Strategy 0: zero-flash, internal API
+    findPositionToolByDataName,       // Strategy 1: properties dialog data-name
+    findPositionToolByPropertiesDialog, // Strategy 2: dialog by role
+    findPositionToolByPropertiesPanel,  // Strategy 3: legacy overlay panel
+    findPositionToolByChartOverlay,     // Strategy 4: chart overlay elements
+    findPositionToolByPriceScan,        // Strategy 5: floating panel scan
   ];
 
   for (const strategy of strategies) {

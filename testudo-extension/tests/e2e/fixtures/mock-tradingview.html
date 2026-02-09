@@ -46,6 +46,33 @@
   <div id="overlap-manager-root"></div>
 
   <script>
+    // --- Mock TradingView API (Strategy 0 support) ---
+    // Simulates window.TradingViewApi.activeChart().getAllShapes() / getShapeById()
+
+    var _mockShapes = [];
+    var _mockShapeData = {};
+    var _mockTickSize = 1; // default: integer prices
+
+    window.TradingViewApi = {
+      activeChart: function() {
+        return {
+          getAllShapes: function() { return _mockShapes; },
+          getShapeById: function(id) {
+            var data = _mockShapeData[id];
+            if (!data) return null;
+            return {
+              getPoints: function() { return data.points; },
+              getProperties: function() { return data.properties; },
+            };
+          },
+          priceFormatter: function() {
+            return { _minMove: _mockTickSize * 100, _priceScale: 100 };
+          },
+          getSeries: function() { return null; },
+        };
+      }
+    };
+
     // Helper: update position tool values from test code
     window.__setPositionTool = function(entry, stop, target, symbol, timeframe, side) {
       if (symbol) {
@@ -60,7 +87,28 @@
       var s = (side || "long").toLowerCase();
       var prefix = "Risk/Reward" + s;
 
-      // Update or create the correct data-name inputs
+      // --- Update mock TradingView API ---
+      var shapeName = s === "short" ? "short_position" : "long_position";
+      var shapeId = "mock-shape-1";
+
+      // Calculate tick-based stop/profit levels from prices
+      var tickSize = _mockTickSize;
+      var stopLevel = Math.round(Math.abs(entry - stop) / tickSize);
+      var profitLevel = Math.round(Math.abs(target - entry) / tickSize);
+
+      _mockShapes = [{ id: shapeId, name: shapeName }];
+      _mockShapeData[shapeId] = {
+        points: [{ price: entry, time: Date.now() / 1000 }],
+        properties: {
+          stopLevel: stopLevel,
+          profitLevel: profitLevel,
+          qty: 1,
+          amountStop: Math.abs(entry - stop),
+          amountTarget: Math.abs(target - entry),
+        },
+      };
+
+      // --- Update dialog DOM (Strategy 1 fallback) ---
       var dialog = document.querySelector('[data-name="source-properties-editor"]');
 
       // Update title
@@ -85,6 +133,9 @@
       if (targetInput) targetInput.value = String(target);
       if (stopInput) stopInput.value = String(stop);
     };
+
+    // Initialize default shape data matching the dialog defaults
+    window.__setPositionTool(95000, 93000, 99000, null, null, "long");
   </script>
 </body>
 </html>

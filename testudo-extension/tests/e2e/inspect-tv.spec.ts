@@ -1,17 +1,18 @@
 /**
- * DOM inspector for TradingView position tool.
+ * TradingView API inspector for position tool data extraction.
  *
  * Usage: npx playwright test inspect-tv --headed
  *
  * 1. Browser opens to TradingView SOLUSDT chart
- * 2. Draw a Long/Short Position tool on the chart
- * 3. Double-click it to open properties dialog
- * 4. Click "Resume" in the Playwright Inspector window to run DOM queries
- * 5. Results print to terminal
+ * 2. API detection runs automatically on load
+ * 3. Draw a Long/Short Position tool on the chart
+ * 4. Single-click to SELECT it (blue handles visible)
+ * 5. Click "Resume" in the Playwright Inspector window
+ * 6. API queries extract shape data → results print to terminal
  */
 import { test } from "@playwright/test";
 
-test("inspect TradingView position tool DOM", async ({ browser }) => {
+test("inspect TradingView position tool API", async ({ browser }) => {
   test.setTimeout(300_000); // 5 min
 
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -20,102 +21,237 @@ test("inspect TradingView position tool DOM", async ({ browser }) => {
   await page.goto("https://www.tradingview.com/chart/?symbol=BINANCE:SOLUSDT");
   await page.waitForLoadState("networkidle");
 
-  console.log("\n=== TradingView loaded ===");
+  // --- Phase 1: API detection (runs immediately on load) ---
+
+  const apiDetection = await page.evaluate(() => {
+    const w = window as any;
+    const result: Record<string, any> = {};
+
+    // Find widget with activeChart
+    result.windowKeys = Object.keys(w).filter((k) =>
+      /chart|trading|widget|tv/i.test(k)
+    );
+
+    // Get chart via TradingViewApi
+    try {
+      const widget = w.TradingViewApi || w.ChartApiInstance;
+      if (!widget || typeof widget.activeChart !== "function") {
+        result.error = "No widget with activeChart found";
+        return result;
+      }
+      result.widgetSource = w.TradingViewApi ? "TradingViewApi" : "ChartApiInstance";
+
+      const chart = widget.activeChart();
+      result.hasChart = !!chart;
+
+      // Get ALL chart methods (walk prototype chain)
+      const allMethods: string[] = [];
+      let proto = chart;
+      let depth = 0;
+      while (proto && depth < 5) {
+        proto = Object.getPrototypeOf(proto);
+        if (!proto) break;
+        const methods = Object.getOwnPropertyNames(proto).filter(
+          (m) => typeof chart[m] === "function" && m !== "constructor"
+        );
+        allMethods.push(...methods);
+        depth++;
+      }
+      result.allChartMethods = [...new Set(allMethods)].sort();
+      result.hasGetAllShapes = typeof chart.getAllShapes === "function";
+      result.hasGetShapeById = typeof chart.getShapeById === "function";
+      result.hasChartModel = typeof chart.chartModel === "function";
+
+      // Pre-draw: shapes should be empty
+      if (result.hasGetAllShapes) {
+        result.shapesOnLoad = chart.getAllShapes();
+      }
+    } catch (e) {
+      result.error = String(e);
+    }
+
+    return result;
+  });
+  console.log("\n=== Phase 1: API Detection (on load) ===");
+  console.log(JSON.stringify(apiDetection, null, 2));
+
+  console.log("\n--- Instructions ---");
   console.log("1. Draw a Long Position tool on the chart");
-  console.log("2. Double-click it to open the properties dialog");
+  console.log("2. Single-click to SELECT it (blue handles visible)");
   console.log("3. Click RESUME in the Playwright Inspector window\n");
 
-  // Pause — opens Playwright Inspector. Click Resume when ready.
   await page.pause();
 
-  console.log("\n=== Running DOM queries ===\n");
+  // --- Phase 2: Read position tool data via API ---
 
-  // Query 1: All input elements
-  const inputs = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll("input")).map((el) => ({
-      type: el.type,
-      value: el.value,
-      placeholder: el.placeholder,
-      parentClass: el.parentElement?.className?.substring(0, 80),
-      grandparentClass: el.parentElement?.parentElement?.className?.substring(0, 80),
-    }));
-  });
-  console.log(`--- Inputs (${inputs.length}) ---`);
-  inputs.forEach((i) => console.log(JSON.stringify(i)));
+  console.log("\n=== Phase 2: Reading Shape Data ===\n");
 
-  // Query 2: Elements with data-name containing relevant keywords
-  const dataNames = await page.evaluate(() => {
-    const selectors = [
-      '[data-name*="risk"]', '[data-name*="reward"]',
-      '[data-name*="position"]', '[data-name*="long"]', '[data-name*="short"]',
-      '[data-name*="dialog"]', '[data-name*="properties"]', '[data-name*="setting"]',
-    ];
-    return Array.from(document.querySelectorAll(selectors.join(","))).map((el) => ({
-      tag: el.tagName,
-      dataName: el.getAttribute("data-name"),
-      cls: (el.className || "").substring(0, 80),
-      childCount: el.children.length,
-    }));
-  });
-  console.log(`\n--- data-name matches (${dataNames.length}) ---`);
-  dataNames.forEach((d) => console.log(JSON.stringify(d)));
+  const shapeData = await page.evaluate(() => {
+    const w = window as any;
+    const result: Record<string, any> = {};
 
-  // Query 3: Floating/dialog/popup elements
-  const dialogs = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll(
-      '[class*="floating"], [class*="dialog"], [class*="popup"], [class*="modal"], [class*="properties"], [role="dialog"]'
-    )).map((el) => ({
-      tag: el.tagName,
-      role: el.getAttribute("role"),
-      cls: (el.className || "").substring(0, 100),
-      childCount: el.children.length,
-      textPreview: el.textContent?.substring(0, 120)?.replace(/\s+/g, " "),
-    }));
-  });
-  console.log(`\n--- Dialogs/floating panels (${dialogs.length}) ---`);
-  dialogs.forEach((d) => console.log(JSON.stringify(d)));
+    try {
+      const chart = w.TradingViewApi.activeChart();
 
-  // Query 4: overlay-manager-root contents
-  const overlay = await page.evaluate(() => {
-    const root = document.getElementById("overlap-manager-root");
-    if (!root) return "NOT FOUND";
-    return root.innerHTML.substring(0, 2000);
-  });
-  console.log(`\n--- #overlap-manager-root ---`);
-  console.log(overlay);
+      // Get all shapes
+      const shapes = chart.getAllShapes();
+      result.shapes = shapes;
+      result.shapeCount = shapes.length;
 
-  // Query 5: Search for price-like values in leaf elements
-  const priceElements = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll("*"))
-      .filter((el) => {
-        if (el.children.length > 0) return false;
-        const t = el.textContent?.trim() || "";
-        return /^\d[\d,.]*$/.test(t) && parseFloat(t.replace(",", "")) > 10;
-      })
-      .map((el) => ({
-        tag: el.tagName,
-        cls: (el.className || "").substring(0, 60),
-        text: el.textContent?.trim(),
-        parentCls: el.parentElement?.className?.substring(0, 60),
-        gpCls: el.parentElement?.parentElement?.className?.substring(0, 60),
-      }));
-  });
-  console.log(`\n--- Price-like leaf elements (${priceElements.length}) ---`);
-  priceElements.forEach((p) => console.log(JSON.stringify(p)));
+      // Find position tools specifically
+      const positionTools = shapes.filter((s: any) =>
+        /risk|reward|position/i.test(s.name || "")
+      );
+      result.positionTools = positionTools;
 
-  // Query 6: Any shadow roots
-  const shadows = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll("*"))
-      .filter((el) => el.shadowRoot)
-      .map((el) => `${el.tagName}#${el.id}.${(el.className || "").substring(0, 40)}`);
+      // For each shape, try getShapeById → getProperties
+      result.shapeDetails = shapes.map((s: any) => {
+        const detail: Record<string, any> = { id: s.id, name: s.name };
+
+        try {
+          if (typeof chart.getShapeById !== "function") {
+            detail.error = "getShapeById not available";
+            return detail;
+          }
+
+          const api = chart.getShapeById(s.id);
+          if (!api) {
+            detail.error = "getShapeById returned null";
+            return detail;
+          }
+
+          // Dump all methods on the shape API
+          const methods: string[] = [];
+          let proto = api;
+          let depth = 0;
+          while (proto && depth < 5) {
+            proto = Object.getPrototypeOf(proto);
+            if (!proto) break;
+            methods.push(...Object.getOwnPropertyNames(proto).filter(
+              (m) => typeof api[m] === "function" && m !== "constructor"
+            ));
+            depth++;
+          }
+          detail.methods = [...new Set(methods)].sort();
+
+          // Try getProperties
+          if (typeof api.getProperties === "function") {
+            const props = api.getProperties();
+            // Serialize, handling any non-serializable values
+            detail.properties = JSON.parse(JSON.stringify(props, (_, v) => {
+              if (typeof v === "function") return "[function]";
+              if (typeof v === "bigint") return v.toString();
+              return v;
+            }));
+          }
+
+          // Try getPoints
+          if (typeof api.getPoints === "function") {
+            detail.points = api.getPoints();
+          }
+
+        } catch (e) {
+          detail.error = String(e);
+        }
+
+        return detail;
+      });
+
+    } catch (e) {
+      result.error = String(e);
+    }
+
+    return result;
   });
-  console.log(`\n--- Shadow roots (${shadows.length}) ---`);
-  shadows.forEach((s) => console.log(s));
+  console.log("--- Shape Data ---");
+  console.log(JSON.stringify(shapeData, null, 2));
+
+  // Also try chartModel() for deeper access
+  const modelData = await page.evaluate(() => {
+    const w = window as any;
+    const result: Record<string, any> = {};
+
+    try {
+      const chart = w.TradingViewApi.activeChart();
+
+      if (typeof chart.chartModel !== "function") {
+        result.error = "chartModel not available";
+        return result;
+      }
+
+      const model = chart.chartModel();
+      if (!model) {
+        result.error = "chartModel returned null";
+        return result;
+      }
+
+      // Get model methods
+      const methods: string[] = [];
+      let proto = model;
+      let depth = 0;
+      while (proto && depth < 3) {
+        proto = Object.getPrototypeOf(proto);
+        if (!proto) break;
+        methods.push(...Object.getOwnPropertyNames(proto).filter(
+          (m) => typeof model[m] === "function" && m !== "constructor"
+        ));
+        depth++;
+      }
+
+      // Filter for drawing/shape related methods
+      result.drawingMethods = methods.filter((m) =>
+        /draw|shape|line|tool|source|entity|selection/i.test(m)
+      );
+
+      // Try to get data sources (drawings are data sources in TradingView)
+      if (typeof model.dataSources === "function") {
+        const sources = model.dataSources();
+        result.dataSourceCount = sources?.length;
+        result.dataSourceTypes = sources?.map((s: any) => ({
+          type: s?.constructor?.name,
+          toolName: s?.toolname?.(),
+          hasProperties: typeof s?.properties === "function",
+        })).filter((s: any) => s.toolName);
+      }
+
+      // Try selection
+      if (typeof model.selection === "function") {
+        const sel = model.selection();
+        result.selectionType = typeof sel;
+        if (sel) {
+          const selMethods = Object.getOwnPropertyNames(
+            Object.getPrototypeOf(sel) || {}
+          ).filter((m) => typeof sel[m] === "function");
+          result.selectionMethods = selMethods;
+        }
+      }
+
+    } catch (e) {
+      result.error = String(e);
+    }
+
+    return result;
+  });
+  console.log("\n--- Chart Model Data ---");
+  console.log(JSON.stringify(modelData, null, 2));
+
+  // Check floating toolbar for auto-click fallback
+  const toolbar = await page.evaluate(() => {
+    const tb = document.querySelector('[data-name="floating-toolbar"], .tv-floating-toolbar');
+    if (!tb) return { found: false };
+    return {
+      found: true,
+      buttons: Array.from(tb.querySelectorAll("button, [role='button']")).map((b) => ({
+        dataName: b.getAttribute("data-name"),
+        title: b.getAttribute("title") || b.getAttribute("aria-label"),
+      })),
+    };
+  });
+  console.log("\n--- Floating Toolbar ---");
+  console.log(JSON.stringify(toolbar, null, 2));
 
   console.log("\n=== Inspection complete ===\n");
 
-  // Pause again so you can review results before browser closes
   await page.pause();
-
   await context.close();
 });
