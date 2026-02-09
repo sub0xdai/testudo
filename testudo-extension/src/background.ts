@@ -1,21 +1,11 @@
 import browser from "webextension-polyfill";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState } from "./types";
+import {
+  DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
+  normalizeSymbol, calculateQuantity, mapSide, calculateRefreshDelay, nextReconnectDelay,
+} from "./utils";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
-
-interface Settings {
-  backendUrl: string;
-  wsUrl: string;
-  executionMode: "paper" | "live";
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  backendUrl: "http://localhost:8080",
-  wsUrl: "ws://localhost:4000",
-  executionMode: "paper",
-};
-
-// Default paper trading user ID (auto-initialized by backend)
-const PAPER_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 async function getSettings(): Promise<Settings> {
   const stored = await browser.storage.local.get(["backendUrl", "wsUrl", "executionMode"]);
@@ -33,17 +23,6 @@ browser.runtime.onInstalled.addListener(async () => {
 });
 
 // --- Auth Token Management (EXT-05 FR-2, FR-3, FR-7) ---
-
-interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
-
-interface LoginResponse {
-  user: { id: string; email: string };
-  tokens: AuthTokens;
-}
 
 async function getTokens(): Promise<AuthTokens | null> {
   const stored = await browser.storage.local.get(["accessToken", "refreshToken", "tokenExpiry"]);
@@ -121,8 +100,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleTokenRefresh(expiresIn: number): void {
   if (refreshTimer) clearTimeout(refreshTimer);
-  // Refresh 60 seconds before expiry, minimum 10 seconds
-  const refreshDelay = Math.max(10, expiresIn - 60) * 1000;
+  const refreshDelay = calculateRefreshDelay(expiresIn);
   refreshTimer = setTimeout(() => {
     refreshAccessToken();
   }, refreshDelay);
@@ -133,7 +111,6 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
   if (!tokens || tokens.expires_in <= 0) {
     return { authenticated: false };
   }
-  // Decode email from access token (JWT payload)
   try {
     const payload = JSON.parse(atob(tokens.access_token.split(".")[1])) as { email?: string };
     return { authenticated: true, email: payload.email };
@@ -142,58 +119,16 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
   }
 }
 
-// --- Symbol Normalization (EXT-04 FR-3) ---
-
-const QUOTE_CURRENCIES = [
-  "USDT", "USDC", "BUSD", "TUSD", "FDUSD",
-  "BTC", "ETH", "BNB", "DAI",
-  "EUR", "GBP", "USD",
-];
-
-function normalizeSymbol(tvSymbol: string): string {
-  const upper = tvSymbol.toUpperCase();
-  for (const quote of QUOTE_CURRENCIES) {
-    if (upper.endsWith(quote) && upper.length > quote.length) {
-      const base = upper.slice(0, -quote.length);
-      return `${base}_${quote}`;
-    }
-  }
-  return upper;
-}
-
 // --- Trade Execution (EXT-04 + EXT-05 FR-5, FR-7) ---
-
-interface TradePayload {
-  symbol: string;
-  side: "LONG" | "SHORT";
-  entry: number;
-  stop: number;
-  target: number;
-  timeframe: string;
-}
-
-interface BackendResponse {
-  success: boolean;
-  data?: unknown;
-  error?: string | null;
-}
 
 async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
-  const side = payload.side === "LONG" ? "buy" : "sell";
-
-  // Position size: risk_amount / stop_distance (1% of 10k default)
-  const stopDistance = Math.abs(payload.entry - payload.stop);
-  const riskAmount = 100;
-  const quantity = stopDistance > 0 ? riskAmount / stopDistance : 0.001;
-  const roundedQty = Math.round(quantity * 1e8) / 1e8;
-
   const body = {
     symbol: normalizeSymbol(payload.symbol),
-    side,
-    quantity: roundedQty.toString(),
+    side: mapSide(payload.side),
+    quantity: calculateQuantity(payload.entry, payload.stop).toString(),
     entry_price: payload.entry.toString(),
     stop_loss_price: payload.stop.toString(),
     take_profit_price: payload.target.toString(),
@@ -240,20 +175,14 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
 
 // --- WebSocket Connection (EXT-06) ---
 
-type WsState = "disconnected" | "connecting" | "connected";
-
 let ws: WebSocket | null = null;
 let wsState: WsState = "disconnected";
 let wsReconnectDelay = 1000;
 let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let wsSubscriptionId = 1;
 
-const WS_MAX_RECONNECT_DELAY = 30000;
-const WS_BASE_RECONNECT_DELAY = 1000;
-
 function setWsState(state: WsState): void {
   wsState = state;
-  // Broadcast state change to popup and any listeners
   browser.runtime.sendMessage({ type: "WS_STATE_CHANGED", state }).catch(() => {
     // No listeners — popup closed, ignore
   });
@@ -271,7 +200,6 @@ async function getUserId(): Promise<string> {
 }
 
 async function connectWebSocket(): Promise<void> {
-  // Clean up existing connection
   if (ws) {
     ws.onclose = null;
     ws.onerror = null;
@@ -306,7 +234,6 @@ async function connectWebSocket(): Promise<void> {
     wsReconnectDelay = WS_BASE_RECONNECT_DELAY;
     setWsState("connected");
 
-    // Subscribe to order updates for current user
     const userId = await getUserId();
     const subMsg = {
       method: "SUBSCRIBE",
@@ -337,7 +264,6 @@ async function connectWebSocket(): Promise<void> {
 
   ws.onerror = (event: Event) => {
     console.warn("WS error", event);
-    // onclose will fire after onerror, which handles reconnect
   };
 }
 
@@ -345,7 +271,7 @@ function scheduleReconnect(): void {
   if (wsReconnectTimer) return;
   wsReconnectTimer = setTimeout(() => {
     wsReconnectTimer = null;
-    wsReconnectDelay = Math.min(wsReconnectDelay * 2, WS_MAX_RECONNECT_DELAY);
+    wsReconnectDelay = nextReconnectDelay(wsReconnectDelay);
     connectWebSocket();
   }, wsReconnectDelay);
 }
@@ -364,16 +290,13 @@ function disconnectWebSocket(): void {
 }
 
 function forwardOrderUpdate(data: unknown): void {
-  // Send to all TradingView tabs
   browser.tabs.query({ url: "*://*.tradingview.com/*" }).then((tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
         browser.tabs.sendMessage(tab.id, {
           type: "WS_ORDER_UPDATE",
           data,
-        }).catch(() => {
-          // Tab may not have content script loaded
-        });
+        }).catch(() => {});
       }
     }
   });
@@ -444,3 +367,6 @@ browser.storage.onChanged.addListener((changes) => {
     connectWebSocket();
   }
 });
+
+// Export for testing — unused at runtime, tree-shaken by esbuild
+export { disconnectWebSocket as _disconnectWebSocket };

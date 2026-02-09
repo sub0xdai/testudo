@@ -9,6 +9,8 @@
     "build:firefox": "bun run build.ts --firefox",
     "dev": "bun run build.ts --watch",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
   "devDependencies": {
     "@types/webextension-polyfill": "^0.12.1",
     "esbuild": "^0.24.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
   }
 }
