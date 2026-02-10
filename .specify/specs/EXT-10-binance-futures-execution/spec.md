@@ -1,6 +1,6 @@
 # EXT-10: Binance Futures Live Execution
 
-**Status:** Draft
+**Status:** Completed
 **Date:** 2026-02-11
 **Depends on:** EXT-09 (backend trade manager), EXT-05 (auth/live mode)
 **Phase:** 6

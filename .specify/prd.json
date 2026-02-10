@@ -289,9 +289,10 @@
       "testudo-exchange/crates/router/src/main.rs"
     ],
     "acceptance_criteria": "BinanceFuturesExecutor mock tests pass, ExchangeApi implemented, mode-aware routing works, rate limiting tracks weight, testnet default, cargo clippy && cargo test pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P0",
     "phase": 6,
-    "depends_on": ["EXT-09", "EXT-05"]
+    "depends_on": ["EXT-09", "EXT-05"],
+    "completed_date": "2026-02-11"
   }
 ]

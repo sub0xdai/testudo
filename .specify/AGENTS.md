@@ -87,6 +87,21 @@ use std::time::Instant;
 - `tsconfig.json` needs `jsx: "preserve"` and `jsxImportSource: "solid-js"` for Solid JSX
 - Trade payload now sends `management` block instead of `quantity` — backend calculates position size
 
+### 2026-02-11 (EXT-10)
+- BinanceFuturesExecutor follows same `real-api` feature flag pattern as spot BinanceExecutor
+- Futures API uses `/fapi/v1` and `/fapi/v2` endpoints (not `/api/v3` like spot)
+- `positionSide=BOTH` required for one-way mode on Binance Futures
+- Rate limit tracking via `X-MBX-USED-WEIGHT-1M` response header, threshold at 90% of 2400
+- `AtomicU32` for lock-free rate limit weight tracking across async tasks
+- Order amend on Futures uses native `PUT /fapi/v1/order` with cancel+replace fallback
+- Mode-aware trade manager: `TradeManagementState` holds `trade_manager_shadow` + `trade_manager_live`
+- Route selection via `select_trade_manager(is_authenticated)`: JWT -> live, X-User-Id -> shadow
+- Both trade managers subscribe to same PriceFeedService broadcast for price ticks
+- Testnet default: `BINANCE_FUTURES_LIVE=true` env var required for production
+- `BINANCE_FUTURES_LEVERAGE` env var configures default leverage (default: 1)
+- Leverage is set lazily per symbol on first order (avoids unnecessary API calls)
+- Amend order IDs use `ORDER_ID:SYMBOL` convention for Binance Futures context passing
+
 ### 2026-01-26
 - Clippy warnings cleaned up across all crates
 - `rust_decimal` already in dependencies
