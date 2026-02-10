@@ -9,13 +9,9 @@ let serverPort: number;
 let capturedRequests: { body: string; headers: Record<string, string> }[] = [];
 
 test.beforeAll(async () => {
-  // Start a local HTTP server that:
-  // 1. Serves mock-tradingview.html at /
-  // 2. Captures POST /api/v1/trades from the background worker
   capturedRequests = [];
 
   httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
-    // CORS headers for extension requests
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Id, X-Execution-Mode");
@@ -73,7 +69,7 @@ test.describe("Trade Flow", () => {
     // Configure backend URL to point to our local server
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
-    const backendInput = popup.locator("#backend-url");
+    const backendInput = popup.locator('[data-testid="backend-url"]');
     await backendInput.fill(`http://localhost:${serverPort}`);
     await backendInput.dispatchEvent("change");
     await popup.close();
@@ -83,7 +79,6 @@ test.describe("Trade Flow", () => {
     await page.goto(`http://localhost:${serverPort}/`);
 
     // Wait for content script to inject and register its keydown listener.
-    // Content scripts run at document_idle; we poll for a side effect.
     await page.waitForTimeout(2000);
 
     // Press Alt+X to trigger modal
@@ -100,14 +95,14 @@ test.describe("Trade Flow", () => {
     await page.close();
   });
 
-  test("Enter confirms trade and sends POST to backend", async ({ context, extensionId }) => {
+  test("Enter confirms trade and sends POST with management block", async ({ context, extensionId }) => {
     // Configure backend URL
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
-    await popup.locator("#backend-url").fill(`http://localhost:${serverPort}`);
-    await popup.locator("#backend-url").dispatchEvent("change");
+    await popup.locator('[data-testid="backend-url"]').fill(`http://localhost:${serverPort}`);
+    await popup.locator('[data-testid="backend-url"]').dispatchEvent("change");
     // Ensure paper mode
-    await popup.locator('.toggle-btn[data-mode="paper"]').click();
+    await popup.locator('[data-testid="mode-paper"]').click();
     await popup.close();
 
     const page = await context.newPage();
@@ -146,6 +141,12 @@ test.describe("Trade Flow", () => {
     expect(tradeBody.entry_price).toBe("95000");
     expect(tradeBody.stop_loss_price).toBe("93000");
     expect(tradeBody.take_profit_price).toBe("99000");
+
+    // EXT-08: Management block present, quantity absent
+    expect(tradeBody.quantity).toBeUndefined();
+    expect(tradeBody.management).toBeDefined();
+    expect(tradeBody.management.risk_percent).toBe(1);
+    expect(tradeBody.management.break_even_at).toBe(50);
 
     // Verify execution mode header
     expect(tradeReq!.headers["x-execution-mode"]).toBe("paper");
@@ -213,6 +214,8 @@ test.describe("Trade Flow", () => {
       expect(body.entry_price).toBe("42000");
       expect(body.stop_loss_price).toBe("40000");
       expect(body.take_profit_price).toBe("46000");
+      // Management block included
+      expect(body.management).toBeDefined();
     }
 
     await page.close();

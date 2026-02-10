@@ -12,8 +12,11 @@
     "declaration": false,
     "sourceMap": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["webextension-polyfill"]
+    "types": ["webextension-polyfill"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "noEmit": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

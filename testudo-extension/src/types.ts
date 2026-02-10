@@ -15,6 +15,28 @@ export interface LoginResponse {
   tokens: AuthTokens;
 }
 
+export interface ManagementPreset {
+  name: string;
+  risk_percent: number;
+  break_even_at: number;
+  trailing_stop: {
+    enabled: boolean;
+    distance_percent: number;
+  };
+  partial_tp: {
+    enabled: boolean;
+    close_percent: number;
+  };
+}
+
+export const DEFAULT_MANAGEMENT_PRESET: ManagementPreset = {
+  name: "default",
+  risk_percent: 1.0,
+  break_even_at: 50,
+  trailing_stop: { enabled: false, distance_percent: 25 },
+  partial_tp: { enabled: false, close_percent: 50 },
+};
+
 export interface TradePayload {
   symbol: string;
   side: "LONG" | "SHORT";
@@ -22,6 +44,12 @@ export interface TradePayload {
   stop: number;
   target: number;
   timeframe: string;
+  management: {
+    risk_percent: number;
+    break_even_at: number;
+    trailing_stop: { enabled: boolean; distance_percent: number };
+    partial_tp: { enabled: boolean; close_percent: number };
+  };
 }
 
 export interface BackendResponse {
@@ -31,3 +59,22 @@ export interface BackendResponse {
 }
 
 export type WsState = "disconnected" | "connecting" | "connected";
+
+export type ToastType = "success" | "error" | "info";
+
+export type OrderEventType =
+  | "order.filled"
+  | "order.amended"
+  | "order.trailing"
+  | "order.partial_close"
+  | "order.stopped"
+  | "order.tp_hit";
+
+export const ORDER_EVENT_STYLES: Record<string, { color: string; type: ToastType }> = {
+  "order.filled": { color: "green", type: "success" },
+  "order.amended": { color: "blue", type: "info" },
+  "order.trailing": { color: "blue", type: "info" },
+  "order.partial_close": { color: "green", type: "success" },
+  "order.stopped": { color: "red", type: "error" },
+  "order.tp_hit": { color: "green", type: "success" },
+};

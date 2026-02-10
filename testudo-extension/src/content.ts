@@ -1,13 +1,21 @@
 import browser from "webextension-polyfill";
 import { scrapeTradeSetup } from "./scraper";
 import type { TradeSetup } from "./scraper";
-import { showModal, showToast, isVisible } from "./modal";
+import { showModal, showOrderToast, showToast, isVisible } from "./modal";
 import type { ModalResult } from "./modal";
+import type { ManagementPreset } from "./types";
+import { DEFAULT_MANAGEMENT_PRESET } from "./types";
 
 console.log("Testudo Sniper loaded");
 
+// --- Management Preset Loader ---
+
+async function getManagementPreset(): Promise<ManagementPreset> {
+  const stored = await browser.storage.local.get(["managementPreset"]);
+  return (stored.managementPreset as ManagementPreset) || { ...DEFAULT_MANAGEMENT_PRESET };
+}
+
 // --- Hotkey Listener ---
-// Default: Alt+X. EXT-03 FR-7 (configurable hotkey) is low priority, deferred.
 
 document.addEventListener("keydown", async (e: KeyboardEvent) => {
   if (e.altKey && e.key.toLowerCase() === "x" && !isVisible()) {
@@ -15,13 +23,12 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
     e.stopPropagation();
 
     const setup = scrapeTradeSetup();
-
-    // EXT-05: Check execution mode for LIVE warning
     const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as {
       executionMode: "paper" | "live";
     };
+    const management = await getManagementPreset();
 
-    showModal(setup, settings.executionMode === "live", handleModalResult);
+    showModal(setup, settings.executionMode === "live", management, handleModalResult);
   }
 }, true);
 
@@ -31,13 +38,23 @@ function handleModalResult(result: ModalResult, setup: TradeSetup | null): void 
   }
 }
 
-// --- Trade Execution (EXT-04 + EXT-05: REST dispatch via background worker) ---
+// --- Trade Execution ---
 
 async function executeTrade(setup: TradeSetup): Promise<void> {
+  const management = await getManagementPreset();
+
   try {
     const response = await browser.runtime.sendMessage({
       type: "EXECUTE_TRADE",
-      payload: setup,
+      payload: {
+        ...setup,
+        management: {
+          risk_percent: management.risk_percent,
+          break_even_at: management.break_even_at,
+          trailing_stop: management.trailing_stop,
+          partial_tp: management.partial_tp,
+        },
+      },
     }) as { success: boolean; data?: unknown; error?: string };
 
     if (response.success) {
@@ -62,13 +79,13 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     const setup = scrapeTradeSetup();
     return Promise.resolve(setup);
   }
-  // EXT-06 FR-6: Real-time order updates via WebSocket
   if (msg.type === "WS_ORDER_UPDATE" && msg.data) {
     const event = (msg.data.e as string) || "order";
     const symbol = (msg.data.s as string) || "";
     const status = (msg.data.status as string) || "";
+    const eventType = `order.${status || event}`;
     const label = status ? `${event}: ${symbol} ${status}` : `${event}: ${symbol}`;
-    showToast(label, "success");
+    showOrderToast(eventType, label);
   }
 });
 

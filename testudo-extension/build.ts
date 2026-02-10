@@ -1,6 +1,8 @@
 import * as esbuild from "esbuild";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { solidPlugin } from "esbuild-plugin-solid";
+import { cpSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { execSync } from "child_process";
 
 const args = process.argv.slice(2);
 const buildChrome = args.includes("--chrome") || (!args.includes("--firefox") && !args.includes("--chrome"));
@@ -13,13 +15,15 @@ const ESM_ENTRIES = [
 ];
 
 // Content scripts and popup are classic scripts — must use IIFE
+// Content script imports modal.tsx (Solid), popup uses Solid components
 const IIFE_ENTRIES = [
   { in: "src/content.ts", out: "content" },
-  { in: "src/popup/popup.ts", out: "popup/popup" },
+  { in: "src/popup/index.tsx", out: "popup/popup" },
 ];
 
 async function bundle(outdir: string): Promise<void> {
   await Promise.all([
+    // ESM build: background worker (no framework, no Solid plugin needed)
     esbuild.build({
       entryPoints: ESM_ENTRIES.map((e) => ({ in: e.in, out: e.out })),
       bundle: true,
@@ -30,6 +34,7 @@ async function bundle(outdir: string): Promise<void> {
       minify: !watch,
       logLevel: "info",
     }),
+    // IIFE build: content script + popup (Solid.js JSX compilation)
     esbuild.build({
       entryPoints: IIFE_ENTRIES.map((e) => ({ in: e.in, out: e.out })),
       bundle: true,
@@ -39,8 +44,27 @@ async function bundle(outdir: string): Promise<void> {
       sourcemap: true,
       minify: !watch,
       logLevel: "info",
+      plugins: [solidPlugin()],
+      jsx: "automatic",
     }),
   ]);
+}
+
+function buildTailwindCSS(outdir: string): void {
+  const inputCss = "src/popup/popup.css";
+  const outputCss = join(outdir, "popup/popup.css");
+  mkdirSync(join(outdir, "popup"), { recursive: true });
+
+  try {
+    execSync(
+      `npx @tailwindcss/cli -i ${inputCss} -o ${outputCss} --minify`,
+      { stdio: "pipe" },
+    );
+  } catch (err) {
+    const error = err as { stderr?: Buffer };
+    console.error("Tailwind CSS build failed:", error.stderr?.toString());
+    throw err;
+  }
 }
 
 function copyStaticFiles(outdir: string): void {
@@ -55,23 +79,21 @@ function copyStaticFiles(outdir: string): void {
     try {
       cpSync(iconPath, destPath);
     } catch {
-      // Create minimal placeholder PNG (1x1 green pixel)
       createPlaceholderIcon(destPath, size);
     }
   }
 }
 
 function createPlaceholderIcon(path: string, _size: number): void {
-  // Minimal valid PNG: 1x1 green pixel
   const png = Buffer.from([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
-    0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
-    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, // 8-bit RGB
-    0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, // IDAT chunk
-    0x54, 0x08, 0xd7, 0x63, 0x90, 0xc8, 0x60, 0x00, // compressed data
-    0x00, 0x00, 0x04, 0x00, 0x01, 0xa3, 0xb1, 0x96, //
-    0xa2, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, // IEND chunk
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41,
+    0x54, 0x08, 0xd7, 0x63, 0x90, 0xc8, 0x60, 0x00,
+    0x00, 0x00, 0x04, 0x00, 0x01, 0xa3, 0xb1, 0x96,
+    0xa2, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
     0x44, 0xae, 0x42, 0x60, 0x82,
   ]);
   writeFileSync(path, png);
@@ -81,14 +103,12 @@ function writeManifest(outdir: string, browser: "chrome" | "firefox"): void {
   const manifest = JSON.parse(readFileSync("manifest.json", "utf-8"));
 
   if (browser === "firefox") {
-    // Firefox uses browser_specific_settings instead of some MV3 Chrome features
     manifest.browser_specific_settings = {
       gecko: {
         id: "testudo-sniper@sub0xdai",
         strict_min_version: "109.0",
       },
     };
-    // Firefox MV3 uses "scripts" array in background, not service_worker
     manifest.background = {
       scripts: ["background.js"],
       type: "module",
@@ -103,6 +123,7 @@ async function build(): Promise<void> {
     const outdir = "dist/chrome";
     mkdirSync(outdir, { recursive: true });
     await bundle(outdir);
+    buildTailwindCSS(outdir);
     copyStaticFiles(outdir);
     writeManifest(outdir, "chrome");
     console.log("Chrome build complete → dist/chrome/");
@@ -112,6 +133,7 @@ async function build(): Promise<void> {
     const outdir = "dist/firefox";
     mkdirSync(outdir, { recursive: true });
     await bundle(outdir);
+    buildTailwindCSS(outdir);
     copyStaticFiles(outdir);
     writeManifest(outdir, "firefox");
     console.log("Firefox build complete → dist/firefox/");

@@ -2,7 +2,7 @@ import browser from "webextension-polyfill";
 import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState } from "./types";
 import {
   DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
-  normalizeSymbol, calculateQuantity, mapSide, calculateRefreshDelay, nextReconnectDelay,
+  normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
 } from "./utils";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
@@ -119,7 +119,7 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
   }
 }
 
-// --- Trade Execution (EXT-04 + EXT-05 FR-5, FR-7) ---
+// --- Trade Execution (EXT-08: management block, no client-side quantity) ---
 
 async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
   const settings = await getSettings();
@@ -128,13 +128,12 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
   const body = {
     symbol: normalizeSymbol(payload.symbol),
     side: mapSide(payload.side),
-    quantity: calculateQuantity(payload.entry, payload.stop).toString(),
     entry_price: payload.entry.toString(),
     stop_loss_price: payload.stop.toString(),
     take_profit_price: payload.target.toString(),
+    management: payload.management,
   };
 
-  // EXT-05 FR-7: Build headers — prefer JWT Bearer token, fall back to X-User-Id
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const tokens = await getTokens();
   if (tokens && tokens.expires_in > 0) {
@@ -143,7 +142,6 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
     headers["X-User-Id"] = PAPER_USER_ID;
   }
 
-  // EXT-05 FR-5: Send execution mode header
   headers["X-Execution-Mode"] = settings.executionMode;
 
   try {
@@ -156,7 +154,6 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
     const json = await response.json() as BackendResponse;
 
     if (!response.ok) {
-      // If 401, try refreshing token and retry once
       if (response.status === 401 && tokens) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -183,9 +180,7 @@ let wsSubscriptionId = 1;
 
 function setWsState(state: WsState): void {
   wsState = state;
-  browser.runtime.sendMessage({ type: "WS_STATE_CHANGED", state }).catch(() => {
-    // No listeners — popup closed, ignore
-  });
+  browser.runtime.sendMessage({ type: "WS_STATE_CHANGED", state }).catch(() => {});
 }
 
 async function getUserId(): Promise<string> {

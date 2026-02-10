@@ -245,6 +245,12 @@ describe("background message router", () => {
         payload: {
           symbol: "BTCUSDT", side: "LONG",
           entry: 50000, stop: 49000, target: 52000, timeframe: "15m",
+          management: {
+            risk_percent: 1.0,
+            break_even_at: 50,
+            trailing_stop: { enabled: false, distance_percent: 25 },
+            partial_tp: { enabled: false, close_percent: 50 },
+          },
         },
       });
 
@@ -257,7 +263,13 @@ describe("background message router", () => {
       expect(body.entry_price).toBe("50000");
       expect(body.stop_loss_price).toBe("49000");
       expect(body.take_profit_price).toBe("52000");
-      expect(Number(body.quantity)).toBe(0.1);
+      expect(body.quantity).toBeUndefined();
+      expect(body.management).toEqual({
+        risk_percent: 1.0,
+        break_even_at: 50,
+        trailing_stop: { enabled: false, distance_percent: 25 },
+        partial_tp: { enabled: false, close_percent: 50 },
+      });
     });
 
     it("sends X-User-Id header for paper trading (no JWT)", async () => {
@@ -270,6 +282,11 @@ describe("background message router", () => {
         payload: {
           symbol: "ETHUSDT", side: "SHORT",
           entry: 3000, stop: 3100, target: 2800, timeframe: "1h",
+          management: {
+            risk_percent: 1.0, break_even_at: 50,
+            trailing_stop: { enabled: false, distance_percent: 25 },
+            partial_tp: { enabled: false, close_percent: 50 },
+          },
         },
       });
 
@@ -289,6 +306,11 @@ describe("background message router", () => {
         payload: {
           symbol: "SOLUSDT", side: "SHORT",
           entry: 100, stop: 110, target: 80, timeframe: "4h",
+          management: {
+            risk_percent: 1.0, break_even_at: 50,
+            trailing_stop: { enabled: false, distance_percent: 25 },
+            partial_tp: { enabled: false, close_percent: 50 },
+          },
         },
       });
 

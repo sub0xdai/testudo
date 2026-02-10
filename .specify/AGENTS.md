@@ -14,12 +14,26 @@
 - **Lock pattern**: Use `lock_or_recover!` macro for mutex access
 - **Testing**: Tests live in same file or `tests/` directory
 
+### Browser Extension (testudo-extension)
+
+- **Framework**: Solid.js (popup + modal), vanilla TS (background worker)
+- **Styling**: Tailwind CSS for popup, inline CSS for Shadow DOM modal
+- **Build**: esbuild + esbuild-plugin-solid, Tailwind CLI
+- **Testing**: Vitest with vite-plugin-solid (unit), Playwright (E2E)
+- **Output**: ESM (background), IIFE (content + popup), Chrome + Firefox
+- **State**: chrome.storage.local for settings, management presets, auth tokens
+- **Selectors**: Use `data-testid` attributes for E2E test selectors
+
 ### File Locations
 
 - Execution types: `crates/common_utils/src/adapters/execution_types.rs`
 - Risk calculations: `crates/common_utils/src/risk/`
 - Router services: `crates/router/src/services/`
 - Shadow engine: `crates/engine/src/shadow/`
+- Extension popup: `testudo-extension/src/popup/`
+- Extension modal: `testudo-extension/src/modal.tsx`
+- Extension scraper: `testudo-extension/src/scraper.ts` (DO NOT MODIFY)
+- Extension types: `testudo-extension/src/types.ts`
 
 ### Import Patterns
 
@@ -59,6 +73,19 @@ use std::time::Instant;
 ## Discoveries Log
 
 <!-- Ralph adds discoveries here during implementation -->
+
+### 2026-02-10 (EXT-08)
+- Solid.js + Tailwind CSS extension rewrite completed
+- `esbuild-plugin-solid` handles JSX compilation for esbuild builds
+- `vite-plugin-solid` handles JSX compilation for vitest tests
+- Tailwind v4 uses `@import "tailwindcss"` in CSS, auto-detects content from project
+- `@tailwindcss/cli` for building CSS separately from JS bundle
+- When removing `.ts` file and replacing with `.tsx`, must delete the old `.ts` file to avoid TypeScript resolver conflicts
+- Background worker stays vanilla TS (no framework needed for service worker)
+- Shadow DOM modals require inline CSS styles (Tailwind utilities don't work inside Shadow DOM)
+- vitest environment set to `jsdom` for Solid component tests (was `node`)
+- `tsconfig.json` needs `jsx: "preserve"` and `jsxImportSource: "solid-js"` for Solid JSX
+- Trade payload now sends `management` block instead of `quantity` — backend calculates position size
 
 ### 2026-01-26
 - Clippy warnings cleaned up across all crates
