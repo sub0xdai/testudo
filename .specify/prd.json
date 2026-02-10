@@ -253,10 +253,11 @@
       "testudo-extension/tailwind.config.ts"
     ],
     "acceptance_criteria": "Solid.js popup and modal render, management config persists, payload includes management block, all tests pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P0",
     "phase": 5,
-    "depends_on": ["EXT-07"]
+    "depends_on": ["EXT-07"],
+    "completed_date": "2026-02-10"
   },
   {
     "id": "EXT-09",
@@ -270,9 +271,27 @@
       "testudo-exchange/crates/router/src/services/price_feed.rs"
     ],
     "acceptance_criteria": "Rules evaluate against price feed, orders amended on exchange, positions persist across restarts, cargo clippy && cargo test pass",
-    "status": "pending",
+    "status": "completed",
     "priority": "P0",
     "phase": 5,
-    "depends_on": ["EXT-08", "FILL-01"]
+    "depends_on": ["EXT-08", "FILL-01"],
+    "completed_date": "2026-02-10"
+  },
+  {
+    "id": "EXT-10",
+    "spec": "EXT-10-binance-futures-execution",
+    "description": "Binance USDT-M Futures live execution: BinanceFuturesExecutor, BinanceFuturesExchangeApi, mode-aware trade manager wiring",
+    "file_context": [
+      "testudo-exchange/crates/common_utils/src/adapters/binance_futures_executor.rs",
+      "testudo-exchange/crates/common_utils/src/adapters/futures_types.rs",
+      "testudo-exchange/crates/router/src/services/exchange_api.rs",
+      "testudo-exchange/crates/router/src/routes/trade_management.rs",
+      "testudo-exchange/crates/router/src/main.rs"
+    ],
+    "acceptance_criteria": "BinanceFuturesExecutor mock tests pass, ExchangeApi implemented, mode-aware routing works, rate limiting tracks weight, testnet default, cargo clippy && cargo test pass",
+    "status": "pending",
+    "priority": "P0",
+    "phase": 6,
+    "depends_on": ["EXT-09", "EXT-05"]
   }
 ]
