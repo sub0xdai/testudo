@@ -64,15 +64,34 @@ test.beforeEach(() => {
   capturedRequests = [];
 });
 
+/** Bypass auth gate and configure backend URL via settings view */
+async function setupExtension(
+  context: import("@playwright/test").BrowserContext,
+  extensionId: string,
+  backendUrl: string,
+) {
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+
+  // Bypass auth gate
+  const paperBtn = popup.locator('[data-testid="paper-mode-btn"]');
+  await paperBtn.waitFor({ state: "visible", timeout: 5000 });
+  await paperBtn.click();
+  await popup.locator('[data-testid="trade-management"]').waitFor({ state: "visible", timeout: 5000 });
+
+  // Open settings and set backend URL
+  await popup.locator('[data-testid="settings-btn"]').click();
+  const backendInput = popup.locator('[data-testid="backend-url"]');
+  await backendInput.waitFor({ state: "visible", timeout: 3000 });
+  await backendInput.fill(backendUrl);
+  await backendInput.dispatchEvent("change");
+
+  await popup.close();
+}
+
 test.describe("Trade Flow", () => {
   test("Alt+X opens modal with scraped trade data", async ({ context, extensionId }) => {
-    // Configure backend URL to point to our local server
-    const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
-    const backendInput = popup.locator('[data-testid="backend-url"]');
-    await backendInput.fill(`http://localhost:${serverPort}`);
-    await backendInput.dispatchEvent("change");
-    await popup.close();
+    await setupExtension(context, extensionId, `http://localhost:${serverPort}`);
 
     // Navigate to mock TradingView page
     const page = await context.newPage();
@@ -96,14 +115,7 @@ test.describe("Trade Flow", () => {
   });
 
   test("Enter confirms trade and sends POST with management block", async ({ context, extensionId }) => {
-    // Configure backend URL
-    const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
-    await popup.locator('[data-testid="backend-url"]').fill(`http://localhost:${serverPort}`);
-    await popup.locator('[data-testid="backend-url"]').dispatchEvent("change");
-    // Ensure paper mode
-    await popup.locator('[data-testid="mode-paper"]').click();
-    await popup.close();
+    await setupExtension(context, extensionId, `http://localhost:${serverPort}`);
 
     const page = await context.newPage();
     await page.goto(`http://localhost:${serverPort}/`);
@@ -135,7 +147,7 @@ test.describe("Trade Flow", () => {
     expect(tradeReq).toBeDefined();
 
     const tradeBody = JSON.parse(tradeReq!.body);
-    // Symbol should be normalized: BTCUSDT → BTC_USDT
+    // Symbol should be normalized: BTCUSDT -> BTC_USDT
     expect(tradeBody.symbol).toBe("BTC_USDT");
     expect(tradeBody.side).toBe("buy"); // LONG maps to buy
     expect(tradeBody.entry_price).toBe("95000");
