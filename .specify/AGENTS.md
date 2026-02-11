@@ -112,6 +112,13 @@ use std::time::Instant;
 - Signal-based view router (`"auth" | "main" | "settings"`) is simpler than importing a router library for 3 states
 - `browser.storage.local.remove("key")` properly clears individual keys without affecting other stored data
 
+### 2026-02-11 (EXT-12)
+- Solid.js `Show` with `fallback` prop is the idiomatic pattern for loading/error states — cleaner than nested conditionals
+- `toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })` handles comma separators and decimal places in one call
+- `browser.runtime.onMessage` listeners in multiple components (ActiveOrders + MainView) both receive the same `WS_ORDER_UPDATE` broadcast — no conflicts
+- Balance fetch reuses existing `GET_BALANCES` handler — zero backend changes needed
+- Font size bump across 6 files with zero structural changes — purely visual spec, no logic changes required
+
 ### 2026-01-26
 - Clippy warnings cleaned up across all crates
 - `rust_decimal` already in dependencies
