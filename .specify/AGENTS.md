@@ -102,6 +102,16 @@ use std::time::Instant;
 - Leverage is set lazily per symbol on first order (avoids unnecessary API calls)
 - Amend order IDs use `ORDER_ID:SYMBOL` convention for Binance Futures context passing
 
+### 2026-02-11 (EXT-11)
+- Tailwind v4 `@theme` works with custom `--color-*` and `--font-family-*` tokens — generates utilities like `bg-bg-core`, `text-signal-green`, `font-display`, `font-mono`
+- WOFF2 fonts from Google Fonts CDN can be downloaded via latin subset URL (smallest file size)
+- Chrome Manifest V3 CSP blocks external font loading — must bundle WOFF2 files and reference via relative URL in `@font-face`
+- `@font-face` URL paths in CSS are relative to CSS file location in dist, not source
+- Global `* { border-radius: 0 !important; }` enforces zero radius across all Tailwind utilities
+- Solid.js `createContext`/`useContext` pattern works well for shared auth state across popup views
+- Signal-based view router (`"auth" | "main" | "settings"`) is simpler than importing a router library for 3 states
+- `browser.storage.local.remove("key")` properly clears individual keys without affecting other stored data
+
 ### 2026-01-26
 - Clippy warnings cleaned up across all crates
 - `rust_decimal` already in dependencies

@@ -1,6 +1,6 @@
 # EXT-11: Popup UX Rework — Auth Gate + Roman Stoic Design System
 
-> Priority: P0 | Depends on: EXT-08 | Status: Draft
+> Priority: P0 | Depends on: EXT-08 | Status: Complete
 > Created: 2026-02-11
 
 ## Overview
