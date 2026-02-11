@@ -23,18 +23,20 @@ export default function TradeManagement() {
   }
 
   return (
-    <div class="space-y-3 pb-3 mb-3 border-b border-zinc-700" data-testid="trade-management">
-      <label class="block text-[11px] text-zinc-500 uppercase tracking-wide">Trade Management</label>
+    <div class="space-y-4" data-testid="trade-management">
+      <label class="block text-[11px] text-text-dim font-display uppercase tracking-widest">
+        Trade Management
+      </label>
 
       {/* Risk % */}
       <div class="flex items-center justify-between">
-        <span class="text-xs text-zinc-400">Risk %</span>
+        <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Risk %</span>
         <input
           type="number"
           step="0.1"
           min="0.1"
           max="10"
-          class="w-20 px-2 py-1 bg-[#16213e] border border-zinc-700 text-zinc-200 font-mono text-xs text-right focus:outline-none focus:border-emerald-400"
+          class="w-20 text-right"
           value={preset().risk_percent}
           onChange={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
           data-testid="risk-percent"
@@ -43,13 +45,13 @@ export default function TradeManagement() {
 
       {/* Break-even at % */}
       <div class="flex items-center justify-between">
-        <span class="text-xs text-zinc-400">Break-even at %</span>
+        <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Break-even %</span>
         <input
           type="number"
           step="5"
           min="10"
           max="100"
-          class="w-20 px-2 py-1 bg-[#16213e] border border-zinc-700 text-zinc-200 font-mono text-xs text-right focus:outline-none focus:border-emerald-400"
+          class="w-20 text-right"
           value={preset().break_even_at}
           onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
           data-testid="break-even-at"
@@ -57,14 +59,14 @@ export default function TradeManagement() {
       </div>
 
       {/* Trailing Stop */}
-      <div class="space-y-1.5">
+      <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-zinc-400">Trailing Stop</span>
+          <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Trailing Stop</span>
           <button
-            class={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide border ${
+            class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
               preset().trailing_stop.enabled
-                ? "bg-emerald-400/20 text-emerald-400 border-emerald-400/40"
-                : "bg-zinc-800 text-zinc-500 border-zinc-700"
+                ? "bg-signal-green/20 text-signal-green border-signal-green"
+                : "text-text-dim border-border-grid"
             }`}
             onClick={() =>
               updateField("trailing_stop", {
@@ -78,14 +80,14 @@ export default function TradeManagement() {
           </button>
         </div>
         {preset().trailing_stop.enabled && (
-          <div class="flex items-center justify-between pl-3">
-            <span class="text-[11px] text-zinc-500">Distance %</span>
+          <div class="flex items-center justify-between pl-4">
+            <span class="text-[11px] text-text-dim font-display uppercase tracking-wider">Distance %</span>
             <input
               type="number"
               step="5"
               min="5"
               max="100"
-              class="w-20 px-2 py-1 bg-[#16213e] border border-zinc-700 text-zinc-200 font-mono text-xs text-right focus:outline-none focus:border-emerald-400"
+              class="w-20 text-right"
               value={preset().trailing_stop.distance_percent}
               onChange={(e) =>
                 updateField("trailing_stop", {
@@ -100,14 +102,14 @@ export default function TradeManagement() {
       </div>
 
       {/* Partial TP */}
-      <div class="space-y-1.5">
+      <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-zinc-400">Partial TP</span>
+          <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Partial TP</span>
           <button
-            class={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide border ${
+            class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
               preset().partial_tp.enabled
-                ? "bg-emerald-400/20 text-emerald-400 border-emerald-400/40"
-                : "bg-zinc-800 text-zinc-500 border-zinc-700"
+                ? "bg-signal-green/20 text-signal-green border-signal-green"
+                : "text-text-dim border-border-grid"
             }`}
             onClick={() =>
               updateField("partial_tp", {
@@ -121,14 +123,14 @@ export default function TradeManagement() {
           </button>
         </div>
         {preset().partial_tp.enabled && (
-          <div class="flex items-center justify-between pl-3">
-            <span class="text-[11px] text-zinc-500">Close %</span>
+          <div class="flex items-center justify-between pl-4">
+            <span class="text-[11px] text-text-dim font-display uppercase tracking-wider">Close %</span>
             <input
               type="number"
               step="5"
               min="10"
               max="100"
-              class="w-20 px-2 py-1 bg-[#16213e] border border-zinc-700 text-zinc-200 font-mono text-xs text-right focus:outline-none focus:border-emerald-400"
+              class="w-20 text-right"
               value={preset().partial_tp.close_percent}
               onChange={(e) =>
                 updateField("partial_tp", {

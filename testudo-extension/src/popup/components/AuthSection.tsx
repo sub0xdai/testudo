@@ -1,41 +1,28 @@
-import { createSignal, onMount, Show } from "solid-js";
-import browser from "webextension-polyfill";
+import { createSignal, Show } from "solid-js";
+import { useAuth } from "../context/AuthContext";
 
-export default function AuthSection() {
-  const [authenticated, setAuthenticated] = createSignal(false);
-  const [email, setEmail] = createSignal("");
+export default function AuthSection(props: {
+  onAuthenticated: () => void;
+  onContinueWithoutAccount: () => void;
+}) {
+  const auth = useAuth();
   const [loginEmail, setLoginEmail] = createSignal("");
   const [loginPassword, setLoginPassword] = createSignal("");
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
-  async function checkAuth() {
-    const response = await browser.runtime.sendMessage({ type: "AUTH_STATUS" }) as {
-      authenticated: boolean;
-      email?: string;
-    };
-    setAuthenticated(response.authenticated);
-    if (response.email) setEmail(response.email);
-  }
-
-  onMount(checkAuth);
-
   async function handleLogin() {
     setError("");
     setLoading(true);
 
-    const response = await browser.runtime.sendMessage({
-      type: "LOGIN",
-      email: loginEmail().trim(),
-      password: loginPassword(),
-    }) as { success: boolean; error?: string };
+    const response = await auth.login(loginEmail(), loginPassword());
 
     setLoading(false);
 
     if (response.success) {
       setLoginPassword("");
       setError("");
-      checkAuth();
+      props.onAuthenticated();
     } else {
       setError(response.error || "Login failed");
     }
@@ -45,64 +32,73 @@ export default function AuthSection() {
     if (e.key === "Enter") handleLogin();
   }
 
-  async function handleLogout() {
-    await browser.runtime.sendMessage({ type: "LOGOUT" });
-    setAuthenticated(false);
-    setEmail("");
+  async function handlePaperMode() {
+    await auth.continueWithoutAccount();
+    props.onContinueWithoutAccount();
   }
 
   return (
-    <div class="space-y-2 pb-3 mb-3 border-b border-zinc-700" data-testid="auth-section">
-      <label class="block text-[11px] text-zinc-500 uppercase tracking-wide">Authentication</label>
+    <div class="flex flex-col items-center justify-center min-h-[300px] px-8 py-6" data-testid="auth-section">
+      {/* Logo */}
+      <h1 class="text-2xl font-display font-bold tracking-[0.3em] text-text-primary mb-1">
+        TESTUDO
+      </h1>
+      <p class="text-[11px] text-text-dim tracking-[0.2em] uppercase mb-8">
+        Trading Terminal
+      </p>
 
-      <Show
-        when={authenticated()}
-        fallback={
-          <div data-testid="auth-logged-out">
-            <Show when={error()}>
-              <div class="text-xs text-red-500 mb-2" data-testid="login-error">{error()}</div>
-            </Show>
-            <input
-              type="email"
-              class="w-full px-2.5 py-2 mb-2 bg-[#16213e] border border-zinc-700 text-zinc-200 font-mono text-sm focus:outline-none focus:border-emerald-400"
-              placeholder="email@example.com"
-              value={loginEmail()}
-              onInput={(e) => setLoginEmail(e.target.value)}
-              data-testid="login-email"
-            />
-            <input
-              type="password"
-              class="w-full px-2.5 py-2 mb-2 bg-[#16213e] border border-zinc-700 text-zinc-200 font-mono text-sm focus:outline-none focus:border-emerald-400"
-              placeholder="password"
-              value={loginPassword()}
-              onInput={(e) => setLoginPassword(e.target.value)}
-              onKeyDown={handleKeyDown}
-              data-testid="login-password"
-            />
-            <button
-              class="w-full py-2 text-xs font-medium uppercase tracking-wide bg-emerald-400 text-[#1a1a2e] border border-emerald-400 hover:bg-emerald-300"
-              onClick={handleLogin}
-              disabled={loading()}
-              data-testid="login-btn"
-            >
-              {loading() ? "Logging in..." : "Login"}
-            </button>
+      {/* Login Form */}
+      <div class="w-full space-y-4" data-testid="auth-logged-out">
+        <Show when={error()}>
+          <div class="text-xs text-signal-red font-mono py-2 border-b-2 border-signal-red" data-testid="login-error">
+            {error()}
           </div>
-        }
-      >
-        <div data-testid="auth-logged-in">
-          <div class="text-xs text-zinc-500 mb-2">
-            Logged in as <span class="text-emerald-400 font-mono" data-testid="auth-email">{email()}</span>
-          </div>
-          <button
-            class="w-full py-2 text-xs font-medium uppercase tracking-wide bg-transparent text-red-500 border border-red-500 hover:bg-red-500/10"
-            onClick={handleLogout}
-            data-testid="logout-btn"
-          >
-            Logout
-          </button>
+        </Show>
+
+        <div>
+          <label class="block text-[10px] text-text-dim font-display uppercase tracking-widest mb-1">
+            Email
+          </label>
+          <input
+            type="email"
+            placeholder="trader@testudo.io"
+            value={loginEmail()}
+            onInput={(e) => setLoginEmail(e.target.value)}
+            data-testid="login-email"
+          />
         </div>
-      </Show>
+
+        <div>
+          <label class="block text-[10px] text-text-dim font-display uppercase tracking-widest mb-1">
+            Password
+          </label>
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={loginPassword()}
+            onInput={(e) => setLoginPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            data-testid="login-password"
+          />
+        </div>
+
+        <button
+          class="w-full py-3 text-xs font-bold tracking-widest border-signal-green text-signal-green hover:bg-signal-green hover:text-bg-core mt-2"
+          onClick={handleLogin}
+          disabled={loading()}
+          data-testid="login-btn"
+        >
+          {loading() ? "AUTHENTICATING..." : "LOGIN"}
+        </button>
+
+        <button
+          class="w-full py-2 text-[11px] tracking-wider text-text-dim border-0 hover:text-text-secondary hover:bg-transparent"
+          onClick={handlePaperMode}
+          data-testid="paper-mode-btn"
+        >
+          continue without account
+        </button>
+      </div>
     </div>
   );
 }

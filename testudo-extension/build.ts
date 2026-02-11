@@ -71,6 +71,16 @@ function copyStaticFiles(outdir: string): void {
   // Copy popup HTML
   cpSync("src/popup/popup.html", join(outdir, "popup/popup.html"));
 
+  // Copy bundled fonts
+  const fontsDir = join(outdir, "popup/fonts");
+  mkdirSync(fontsDir, { recursive: true });
+  for (const font of ["cinzel-variable.woff2", "space-mono-regular.woff2", "space-mono-bold.woff2"]) {
+    const src = join("src", "fonts", font);
+    if (existsSync(src)) {
+      cpSync(src, join(fontsDir, font));
+    }
+  }
+
   // Copy icons (create placeholder SVGs if real icons don't exist)
   mkdirSync(join(outdir, "icons"), { recursive: true });
   for (const size of [16, 48, 128]) {

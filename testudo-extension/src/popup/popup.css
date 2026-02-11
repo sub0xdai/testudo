@@ -1,1 +1,120 @@
 @import "tailwindcss";
+
+/* --- Font Face Declarations --- */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('./fonts/cinzel-variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/space-mono-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/space-mono-bold.woff2') format('woff2');
+}
+
+/* --- Design Tokens (Tailwind v4 @theme) --- */
+@theme {
+  --color-bg-core: #0A0A0A;
+  --color-bg-panel: #121212;
+  --color-bg-elevated: #1A1A1A;
+  --color-bg-hover: #242424;
+  --color-border-grid: #333333;
+  --color-border-active: #FFFFFF;
+  --color-signal-green: #4E9F76;
+  --color-signal-red: #A64B4B;
+  --color-signal-orange: #B87333;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #888888;
+  --color-text-dim: #555555;
+  --font-family-display: 'Cinzel', 'Times New Roman', serif;
+  --font-family-mono: 'Space Mono', monospace;
+}
+
+/* --- Global Resets --- */
+* {
+  border-radius: 0 !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg-core);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Input Base Styles --- */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"] {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid var(--color-border-grid);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  padding: 0.5rem 0;
+  outline: none;
+  width: 100%;
+}
+
+input:focus {
+  border-bottom-color: var(--color-signal-green);
+}
+
+/* Remove number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* --- Button Base Styles --- */
+button {
+  background: transparent;
+  border: 2px solid var(--color-border-grid);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-display);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+
+button:hover {
+  background: var(--color-bg-elevated);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Status Dot Blink Animation --- */
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.status-blink {
+  animation: status-blink 1s step-end infinite;
+}
