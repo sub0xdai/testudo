@@ -24,13 +24,13 @@ export default function TradeManagement() {
 
   return (
     <div class="space-y-4" data-testid="trade-management">
-      <label class="block text-[11px] text-text-dim font-display uppercase tracking-widest">
+      <label class="block text-[11px] text-signal-orange font-display uppercase tracking-widest">
         Trade Management
       </label>
 
       {/* Risk % */}
       <div class="flex items-center justify-between">
-        <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Risk %</span>
+        <span class="text-xs text-text-secondary font-display uppercase tracking-wider whitespace-nowrap">Risk %</span>
         <input
           type="number"
           step="0.1"
@@ -45,7 +45,7 @@ export default function TradeManagement() {
 
       {/* Break-even at % */}
       <div class="flex items-center justify-between">
-        <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Break-even %</span>
+        <span class="text-xs text-text-secondary font-display uppercase tracking-wider whitespace-nowrap">Break-even %</span>
         <input
           type="number"
           step="5"
@@ -61,7 +61,7 @@ export default function TradeManagement() {
       {/* Trailing Stop */}
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Trailing Stop</span>
+          <span class="text-xs text-text-secondary font-display uppercase tracking-wider whitespace-nowrap">Trailing Stop</span>
           <button
             class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
               preset().trailing_stop.enabled
@@ -81,7 +81,7 @@ export default function TradeManagement() {
         </div>
         {preset().trailing_stop.enabled && (
           <div class="flex items-center justify-between pl-4">
-            <span class="text-[11px] text-text-dim font-display uppercase tracking-wider">Distance %</span>
+            <span class="text-[11px] text-text-dim font-display uppercase tracking-wider whitespace-nowrap">Distance %</span>
             <input
               type="number"
               step="5"
@@ -104,7 +104,7 @@ export default function TradeManagement() {
       {/* Partial TP */}
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-text-secondary font-display uppercase tracking-wider">Partial TP</span>
+          <span class="text-xs text-text-secondary font-display uppercase tracking-wider whitespace-nowrap">Partial TP</span>
           <button
             class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
               preset().partial_tp.enabled
@@ -124,7 +124,7 @@ export default function TradeManagement() {
         </div>
         {preset().partial_tp.enabled && (
           <div class="flex items-center justify-between pl-4">
-            <span class="text-[11px] text-text-dim font-display uppercase tracking-wider">Close %</span>
+            <span class="text-[11px] text-text-dim font-display uppercase tracking-wider whitespace-nowrap">Close %</span>
             <input
               type="number"
               step="5"

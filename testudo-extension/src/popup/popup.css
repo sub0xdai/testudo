@@ -37,8 +37,8 @@
   --color-signal-red: #A64B4B;
   --color-signal-orange: #B87333;
   --color-text-primary: #FFFFFF;
-  --color-text-secondary: #888888;
-  --color-text-dim: #555555;
+  --color-text-secondary: #B0B0B0;
+  --color-text-dim: #777777;
   --font-family-display: 'Cinzel', 'Times New Roman', serif;
   --font-family-mono: 'Space Mono', monospace;
 }
@@ -58,11 +58,12 @@ body {
 }
 
 /* --- Input Base Styles --- */
-input[type="text"],
+/* :where() zeroes specificity so Tailwind utilities (w-20, etc.) can override */
+:where(input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
-input[type="url"] {
+input[type="url"]) {
   background: transparent;
   border: none;
   border-bottom: 3px solid var(--color-border-grid);

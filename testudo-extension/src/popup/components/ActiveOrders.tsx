@@ -53,10 +53,10 @@ export default function ActiveOrders() {
   return (
     <div data-testid="active-orders">
       <div class="flex items-center justify-between mb-2">
-        <label class="text-[11px] text-text-dim font-display uppercase tracking-widest">
+        <label class="text-[11px] text-signal-orange font-display uppercase tracking-widest">
           Active Orders
           <Show when={activeTrades().length > 0}>
-            <span class="ml-1 text-text-secondary">({activeTrades().length})</span>
+            <span class="ml-1 text-text-primary">({activeTrades().length})</span>
           </Show>
         </label>
         <button

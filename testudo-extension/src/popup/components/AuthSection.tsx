@@ -56,7 +56,7 @@ export default function AuthSection(props: {
         </Show>
 
         <div>
-          <label class="block text-[10px] text-text-dim font-display uppercase tracking-widest mb-1">
+          <label class="block text-[10px] text-text-secondary font-display uppercase tracking-widest mb-1">
             Email
           </label>
           <input
@@ -69,7 +69,7 @@ export default function AuthSection(props: {
         </div>
 
         <div>
-          <label class="block text-[10px] text-text-dim font-display uppercase tracking-widest mb-1">
+          <label class="block text-[10px] text-text-secondary font-display uppercase tracking-widest mb-1">
             Password
           </label>
           <input
