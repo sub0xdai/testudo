@@ -1,4 +1,4 @@
-# Feature: Bounded Position Zones (Dexscreener Style)
+# Feature: Bounded Position Zones — testudo-web (Dexscreener Style)
 
 > Spec ID: 009-bounded-position-zones
 > Created: 2026-02-08
