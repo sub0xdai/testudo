@@ -24,13 +24,13 @@ export default function TradeManagement() {
 
   return (
     <div class="space-y-4" data-testid="trade-management">
-      <label class="block text-[11px] text-signal-orange uppercase tracking-widest font-bold">
+      <label class="block text-[13px] text-signal-orange uppercase tracking-widest font-bold">
         Trade Management
       </label>
 
       {/* Risk % */}
       <div class="flex items-center justify-between">
-        <span class="text-xs text-text-secondary uppercase tracking-wider whitespace-nowrap">Risk %</span>
+        <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Risk %</span>
         <input
           type="number"
           step="0.1"
@@ -45,7 +45,7 @@ export default function TradeManagement() {
 
       {/* Break-even at % */}
       <div class="flex items-center justify-between">
-        <span class="text-xs text-text-secondary uppercase tracking-wider whitespace-nowrap">Break-even %</span>
+        <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Break-even %</span>
         <input
           type="number"
           step="5"
@@ -61,9 +61,9 @@ export default function TradeManagement() {
       {/* Trailing Stop */}
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-text-secondary uppercase tracking-wider whitespace-nowrap">Trailing Stop</span>
+          <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Trailing Stop</span>
           <button
-            class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
+            class={`px-3 py-1 text-xs font-bold tracking-widest ${
               preset().trailing_stop.enabled
                 ? "bg-signal-green/20 text-signal-green border-signal-green"
                 : "text-text-secondary border-border-grid"
@@ -104,9 +104,9 @@ export default function TradeManagement() {
       {/* Partial TP */}
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-text-secondary uppercase tracking-wider whitespace-nowrap">Partial TP</span>
+          <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Partial TP</span>
           <button
-            class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
+            class={`px-3 py-1 text-xs font-bold tracking-widest ${
               preset().partial_tp.enabled
                 ? "bg-signal-green/20 text-signal-green border-signal-green"
                 : "text-text-secondary border-border-grid"

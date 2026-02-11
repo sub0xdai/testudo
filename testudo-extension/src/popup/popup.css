@@ -69,7 +69,7 @@ input[type="url"]) {
   border-bottom: 3px solid var(--color-border-grid);
   color: var(--color-text-primary);
   font-family: var(--font-family-mono);
-  font-size: 13px;
+  font-size: 15px;
   padding: 0.5rem 0;
   outline: none;
   width: 100%;

@@ -53,14 +53,14 @@ export default function ActiveOrders() {
   return (
     <div data-testid="active-orders">
       <div class="flex items-center justify-between mb-2">
-        <label class="text-[11px] text-signal-orange uppercase tracking-widest font-bold">
+        <label class="text-[13px] text-signal-orange uppercase tracking-widest font-bold">
           Active Orders
           <Show when={activeTrades().length > 0}>
             <span class="ml-1 text-text-primary">({activeTrades().length})</span>
           </Show>
         </label>
         <button
-          class="px-2 py-0.5 text-[10px] border-0 text-text-dim hover:text-text-secondary hover:bg-transparent"
+          class="px-2 py-0.5 text-xs border-0 text-text-dim hover:text-text-secondary hover:bg-transparent"
           onClick={fetchTrades}
           title="Refresh"
           data-testid="refresh-orders"
@@ -75,15 +75,15 @@ export default function ActiveOrders() {
       </div>
 
       <Show when={loading()}>
-        <p class="text-[11px] text-text-dim font-mono py-2">Loading...</p>
+        <p class="text-[13px] text-text-dim font-mono py-2">Loading...</p>
       </Show>
 
       <Show when={error() && !loading()}>
-        <p class="text-[11px] text-signal-red font-mono py-2" data-testid="orders-error">{error()}</p>
+        <p class="text-[13px] text-signal-red font-mono py-2" data-testid="orders-error">{error()}</p>
       </Show>
 
       <Show when={!loading() && !error() && activeTrades().length === 0}>
-        <p class="text-[11px] text-text-dim font-mono py-2">No active orders</p>
+        <p class="text-[13px] text-text-dim font-mono py-2">No active orders</p>
       </Show>
 
       <div class="space-y-1">
@@ -95,11 +95,11 @@ export default function ActiveOrders() {
             >
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs font-mono font-bold text-text-primary">
+                  <span class="text-sm font-mono font-bold text-text-primary">
                     {trade.symbol}
                   </span>
                   <span
-                    class={`text-[10px] font-bold tracking-wider ${
+                    class={`text-xs font-bold tracking-wider ${
                       trade.entry_quantity && parseFloat(trade.entry_quantity) > 0
                         ? "text-signal-green"
                         : "text-signal-red"
@@ -112,16 +112,16 @@ export default function ActiveOrders() {
                     trade.status === "Pending" ? "bg-signal-orange status-blink" :
                     "bg-text-dim"
                   }`} />
-                  <span class="text-[10px] text-text-dim font-mono">{trade.status}</span>
+                  <span class="text-xs text-text-dim font-mono">{trade.status}</span>
                 </div>
                 <div class="flex gap-3 mt-0.5">
                   <Show when={trade.entry_price}>
-                    <span class="text-[10px] text-text-dim font-mono">
+                    <span class="text-[11px] text-text-dim font-mono">
                       E: {trade.entry_price}
                     </span>
                   </Show>
                   <Show when={trade.stop_loss_price}>
-                    <span class="text-[10px] text-signal-red font-mono">
+                    <span class="text-[11px] text-signal-red font-mono">
                       SL: {trade.stop_loss_price}
                     </span>
                   </Show>

@@ -1,12 +1,51 @@
-import { Show } from "solid-js";
+import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
 import TradeManagement from "./TradeManagement";
 import ActiveOrders from "./ActiveOrders";
 import ModeToggle from "./ModeToggle";
 import StatusBar from "./StatusBar";
+import type { BalanceResponse } from "../../types";
+
+function formatBalance(value: number): string {
+  return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export default function MainView(props: { onOpenSettings: () => void }) {
   const auth = useAuth();
+  const [balance, setBalance] = createSignal<BalanceResponse[] | null>(null);
+  const [balanceLoading, setBalanceLoading] = createSignal(true);
+
+  async function fetchBalance() {
+    try {
+      const resp = await browser.runtime.sendMessage({ type: "GET_BALANCES" }) as {
+        success?: boolean;
+        data?: BalanceResponse[];
+      };
+      if (resp?.success && resp.data) setBalance(resp.data);
+    } catch { /* non-blocking */ }
+    setBalanceLoading(false);
+  }
+
+  const usdt = () => balance()?.find((b) => b.asset === "USDT");
+  const available = () => usdt() ? parseFloat(usdt()!.available) : null;
+  const locked = () => usdt() ? parseFloat(usdt()!.locked) : null;
+
+  function handleMessage(message: unknown) {
+    const msg = message as { type: string };
+    if (msg.type === "WS_ORDER_UPDATE") {
+      fetchBalance();
+    }
+  }
+
+  onMount(() => {
+    fetchBalance();
+    browser.runtime.onMessage.addListener(handleMessage);
+  });
+
+  onCleanup(() => {
+    browser.runtime.onMessage.removeListener(handleMessage);
+  });
 
   return (
     <div class="flex flex-col min-h-full">
@@ -34,6 +73,31 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         <div class="border-t-2 border-border-grid pt-3">
           <ActiveOrders />
         </div>
+        <div class="border-t-2 border-border-grid pt-3" data-testid="balance-section">
+          <label class="block text-[13px] text-signal-orange uppercase tracking-widest font-bold mb-2">
+            Account
+          </label>
+          <Show when={!balanceLoading()} fallback={
+            <p class="text-[13px] text-text-dim font-mono">...</p>
+          }>
+            <Show when={available() !== null} fallback={
+              <p class="text-[13px] text-text-dim italic font-mono">unavailable</p>
+            }>
+              <div class="flex items-center justify-between">
+                <span class="text-[13px] text-text-secondary">Available</span>
+                <span class="text-sm text-signal-green font-mono" data-testid="balance-available">
+                  {formatBalance(available()!)} USDT
+                </span>
+              </div>
+              <div class="flex items-center justify-between mt-1">
+                <span class="text-[13px] text-text-secondary">Locked</span>
+                <span class="text-sm text-signal-orange font-mono" data-testid="balance-locked">
+                  {formatBalance(locked()!)} USDT
+                </span>
+              </div>
+            </Show>
+          </Show>
+        </div>
         <ModeToggle />
       </div>
 
@@ -41,12 +105,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       <div class="px-4 py-2 border-t-2 border-border-grid flex items-center justify-between">
         <StatusBar />
         <Show when={auth.email()}>
-          <span class="text-[11px] text-text-secondary truncate max-w-[140px]" data-testid="footer-email">
+          <span class="text-[13px] text-text-secondary truncate max-w-[140px]" data-testid="footer-email">
             {auth.email()}
           </span>
         </Show>
         <Show when={auth.paperOnly()}>
-          <span class="text-[11px] text-text-secondary" data-testid="footer-paper">
+          <span class="text-[13px] text-text-secondary" data-testid="footer-paper">
             PAPER ONLY
           </span>
         </Show>
