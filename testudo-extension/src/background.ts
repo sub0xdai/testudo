@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState } from "./types";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse } from "./types";
 import {
   DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
@@ -170,6 +170,66 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
   }
 }
 
+// --- Trade Listing (Active Orders) ---
+
+async function listTrades(): Promise<{ success: boolean; data?: TradeGroupResponse[]; error?: string }> {
+  const settings = await getSettings();
+  const url = `${settings.backendUrl}/api/v1/trades`;
+
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  } else {
+    headers["X-User-Id"] = PAPER_USER_ID;
+  }
+
+  try {
+    const response = await fetch(url, { headers });
+    const json = await response.json() as { success: boolean; data?: TradeGroupResponse[]; error?: string };
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return listTrades();
+      }
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return json;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
+async function cancelTrade(tradeId: string): Promise<BackendResponse> {
+  const settings = await getSettings();
+  const url = `${settings.backendUrl}/api/v1/trades/${tradeId}`;
+
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  } else {
+    headers["X-User-Id"] = PAPER_USER_ID;
+  }
+
+  try {
+    const response = await fetch(url, { method: "DELETE", headers });
+    const json = await response.json() as BackendResponse;
+
+    if (!response.ok) {
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return json;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
 // --- WebSocket Connection (EXT-06) ---
 
 let ws: WebSocket | null = null;
@@ -285,6 +345,7 @@ function disconnectWebSocket(): void {
 }
 
 function forwardOrderUpdate(data: unknown): void {
+  // Forward to TradingView content scripts
   browser.tabs.query({ url: "*://*.tradingview.com/*" }).then((tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
@@ -295,6 +356,9 @@ function forwardOrderUpdate(data: unknown): void {
       }
     }
   });
+
+  // Broadcast to extension pages (popup) for real-time order updates
+  browser.runtime.sendMessage({ type: "WS_ORDER_UPDATE", data }).catch(() => {});
 }
 
 // --- Message Router ---
@@ -307,7 +371,9 @@ type Message =
   | { type: "AUTH_STATUS" }
   | { type: "REFRESH_TOKEN" }
   | { type: "WS_STATUS" }
-  | { type: "WS_RECONNECT" };
+  | { type: "WS_RECONNECT" }
+  | { type: "LIST_TRADES" }
+  | { type: "CANCEL_TRADE"; tradeId: string };
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as Message;
@@ -343,6 +409,14 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   if (msg.type === "WS_RECONNECT") {
     connectWebSocket();
     return Promise.resolve({ success: true });
+  }
+
+  if (msg.type === "LIST_TRADES") {
+    return listTrades();
+  }
+
+  if (msg.type === "CANCEL_TRADE" && "tradeId" in msg) {
+    return cancelTrade(msg.tradeId);
   }
 });
 

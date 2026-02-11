@@ -58,6 +58,27 @@ export interface BackendResponse {
   error?: string | null;
 }
 
+export interface TakeProfitTargetResponse {
+  price: string;
+  percent_to_close: string;
+  order_id: string | null;
+  filled: boolean;
+}
+
+export interface TradeGroupResponse {
+  id: string;
+  symbol: string;
+  entry_order_id: string;
+  entry_price: string | null;
+  entry_quantity: string;
+  stop_loss_price: string | null;
+  stop_loss_order_id: string | null;
+  take_profit_targets: TakeProfitTargetResponse[];
+  status: string;
+  break_even_enabled: boolean;
+  break_even_triggered: boolean;
+}
+
 export type WsState = "disconnected" | "connecting" | "connected";
 
 export type ToastType = "success" | "error" | "info";

@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 import { useAuth } from "../context/AuthContext";
 import TradeManagement from "./TradeManagement";
+import ActiveOrders from "./ActiveOrders";
 import ModeToggle from "./ModeToggle";
 import StatusBar from "./StatusBar";
 
@@ -30,6 +31,9 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       {/* Body */}
       <div class="flex-1 px-4 py-3 space-y-4">
         <TradeManagement />
+        <div class="border-t-2 border-border-grid pt-3">
+          <ActiveOrders />
+        </div>
         <ModeToggle />
       </div>
 
