@@ -41,12 +41,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       <div class="px-4 py-2 border-t-2 border-border-grid flex items-center justify-between">
         <StatusBar />
         <Show when={auth.email()}>
-          <span class="text-[11px] font-mono text-text-dim truncate max-w-[140px]" data-testid="footer-email">
+          <span class="text-[11px] text-text-secondary truncate max-w-[140px]" data-testid="footer-email">
             {auth.email()}
           </span>
         </Show>
         <Show when={auth.paperOnly()}>
-          <span class="text-[11px] font-mono text-text-dim" data-testid="footer-paper">
+          <span class="text-[11px] text-text-secondary" data-testid="footer-paper">
             PAPER ONLY
           </span>
         </Show>

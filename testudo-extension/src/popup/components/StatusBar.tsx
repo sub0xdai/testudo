@@ -41,7 +41,7 @@ export default function StatusBar() {
         data-testid="status-dot"
         data-state={wsState()}
       />
-      <span class="text-[11px] text-text-dim font-mono" data-testid="status-text">
+      <span class="text-[11px] text-text-secondary" data-testid="status-text">
         {WS_STATE_LABELS[wsState()]}
       </span>
     </div>

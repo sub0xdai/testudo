@@ -61,7 +61,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
       <div class="flex-1 px-4 py-4 space-y-5">
         {/* Backend URL */}
         <div>
-          <label class="block text-[11px] text-signal-orange font-display uppercase tracking-widest mb-2">
+          <label class="block text-[11px] text-signal-orange uppercase tracking-widest font-bold mb-2">
             Backend URL
           </label>
           <input
@@ -78,7 +78,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
 
         {/* WebSocket URL */}
         <div>
-          <label class="block text-[11px] text-signal-orange font-display uppercase tracking-widest mb-2">
+          <label class="block text-[11px] text-signal-orange uppercase tracking-widest font-bold mb-2">
             WebSocket URL
           </label>
           <input
@@ -95,7 +95,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
 
         {/* Account Section */}
         <div class="pt-4 border-t-2 border-border-grid">
-          <label class="block text-[11px] text-signal-orange font-display uppercase tracking-widest mb-3">
+          <label class="block text-[11px] text-signal-orange uppercase tracking-widest font-bold mb-3">
             Account
           </label>
           <Show

@@ -31,7 +31,7 @@
   --color-bg-panel: #121212;
   --color-bg-elevated: #1A1A1A;
   --color-bg-hover: #242424;
-  --color-border-grid: #333333;
+  --color-border-grid: #444444;
   --color-border-active: #FFFFFF;
   --color-signal-green: #4E9F76;
   --color-signal-red: #A64B4B;
@@ -53,7 +53,7 @@ body {
   padding: 0;
   background: var(--color-bg-core);
   color: var(--color-text-primary);
-  font-family: var(--font-family-display);
+  font-family: var(--font-family-mono);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -94,7 +94,7 @@ button {
   background: transparent;
   border: 2px solid var(--color-border-grid);
   color: var(--color-text-primary);
-  font-family: var(--font-family-display);
+  font-family: var(--font-family-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;

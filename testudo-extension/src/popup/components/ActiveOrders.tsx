@@ -53,7 +53,7 @@ export default function ActiveOrders() {
   return (
     <div data-testid="active-orders">
       <div class="flex items-center justify-between mb-2">
-        <label class="text-[11px] text-signal-orange font-display uppercase tracking-widest">
+        <label class="text-[11px] text-signal-orange uppercase tracking-widest font-bold">
           Active Orders
           <Show when={activeTrades().length > 0}>
             <span class="ml-1 text-text-primary">({activeTrades().length})</span>
@@ -99,7 +99,7 @@ export default function ActiveOrders() {
                     {trade.symbol}
                   </span>
                   <span
-                    class={`text-[10px] font-display font-bold tracking-wider ${
+                    class={`text-[10px] font-bold tracking-wider ${
                       trade.entry_quantity && parseFloat(trade.entry_quantity) > 0
                         ? "text-signal-green"
                         : "text-signal-red"

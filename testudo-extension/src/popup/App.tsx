@@ -18,7 +18,7 @@ export default function App() {
   }
 
   return (
-    <div class="w-[400px] min-h-[300px] bg-bg-core text-text-primary font-display">
+    <div class="w-[400px] min-h-[300px] bg-bg-core text-text-primary font-mono">
       <AuthProvider onReady={handleReady}>
         <Switch>
           <Match when={view() === "auth"}>
