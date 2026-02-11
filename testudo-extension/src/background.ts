@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse } from "./types";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse } from "./types";
 import {
   DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
@@ -203,6 +203,37 @@ async function listTrades(): Promise<{ success: boolean; data?: TradeGroupRespon
   }
 }
 
+async function getBalances(): Promise<{ success: boolean; data?: BalanceResponse[]; error?: string }> {
+  const settings = await getSettings();
+  const url = `${settings.backendUrl}/api/v1/paper/balances`;
+
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  } else {
+    headers["X-User-Id"] = PAPER_USER_ID;
+  }
+
+  try {
+    const response = await fetch(url, { headers });
+    const json = await response.json() as { success: boolean; data?: BalanceResponse[]; error?: string };
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return getBalances();
+      }
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return json;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
 async function cancelTrade(tradeId: string): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades/${tradeId}`;
@@ -373,7 +404,8 @@ type Message =
   | { type: "WS_STATUS" }
   | { type: "WS_RECONNECT" }
   | { type: "LIST_TRADES" }
-  | { type: "CANCEL_TRADE"; tradeId: string };
+  | { type: "CANCEL_TRADE"; tradeId: string }
+  | { type: "GET_BALANCES" };
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as Message;
@@ -417,6 +449,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "CANCEL_TRADE" && "tradeId" in msg) {
     return cancelTrade(msg.tradeId);
+  }
+
+  if (msg.type === "GET_BALANCES") {
+    return getBalances();
   }
 });
 

@@ -3,7 +3,7 @@ import { scrapeTradeSetup } from "./scraper";
 import type { TradeSetup } from "./scraper";
 import { showModal, showOrderToast, showToast, isVisible } from "./modal";
 import type { ModalResult } from "./modal";
-import type { ManagementPreset } from "./types";
+import type { ManagementPreset, BalanceResponse } from "./types";
 import { DEFAULT_MANAGEMENT_PRESET } from "./types";
 
 console.log("Testudo Sniper loaded");
@@ -28,7 +28,15 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
     };
     const management = await getManagementPreset();
 
-    showModal(setup, settings.executionMode === "live", management, handleModalResult);
+    let balance: BalanceResponse[] | null = null;
+    try {
+      const resp = await browser.runtime.sendMessage({ type: "GET_BALANCES" }) as {
+        success: boolean; data?: BalanceResponse[];
+      };
+      balance = resp?.success ? (resp.data ?? null) : null;
+    } catch { /* non-blocking */ }
+
+    showModal(setup, settings.executionMode === "live", management, handleModalResult, balance);
   }
 }, true);
 

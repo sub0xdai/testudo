@@ -52,6 +52,12 @@ export interface TradePayload {
   };
 }
 
+export interface BalanceResponse {
+  asset: string;
+  available: string;
+  locked: string;
+}
+
 export interface BackendResponse {
   success: boolean;
   data?: unknown;

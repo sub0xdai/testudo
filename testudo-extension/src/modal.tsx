@@ -1,7 +1,7 @@
 import { render } from "solid-js/web";
 import { Show, For } from "solid-js";
 import type { TradeSetup } from "./scraper";
-import type { ManagementPreset } from "./types";
+import type { ManagementPreset, BalanceResponse } from "./types";
 import { ORDER_EVENT_STYLES } from "./types";
 
 export type ModalResult = "confirm" | "dismiss";
@@ -66,6 +66,12 @@ const MODAL_STYLES = `
   .hint { font-size: 11px; color: #555; }
   kbd { display: inline-block; padding: 1px 5px; font-size: 11px; font-family: monospace; color: #aaa; background: #16213e; border: 1px solid #444; }
   .error-msg { color: #ff4757; font-size: 13px; text-align: center; padding: 20px 0; }
+  .balance-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #333; }
+  .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
+  .balance-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .balance-value { font-size: 14px; font-family: monospace; color: #00d4aa; }
+  .balance-value.margin { color: #ffa502; }
+  .balance-value.muted { color: #555; font-style: italic; font-size: 12px; }
   .toast { position: fixed; top: 20px; right: 20px; padding: 10px 16px; font-size: 13px; font-weight: 500; z-index: 100000; opacity: 0; transition: opacity 0.3s; }
   .toast.visible { opacity: 1; }
   .toast.success { background: #00d4aa; color: #1a1a2e; }
@@ -108,10 +114,44 @@ function ManagementSummary(props: { preset: ManagementPreset }) {
   );
 }
 
+function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent: number }) {
+  const usdt = () => props.balance?.find((b) => b.asset === "USDT");
+  const available = () => {
+    const b = usdt();
+    return b ? parseFloat(b.available) : null;
+  };
+  const margin = () => {
+    const avail = available();
+    if (avail === null) return null;
+    return (props.riskPercent / 100) * avail;
+  };
+
+  return (
+    <div class="balance-section">
+      <Show when={available() !== null} fallback={
+        <div class="balance-row">
+          <span class="balance-label">Balance</span>
+          <span class="balance-value muted">unavailable</span>
+        </div>
+      }>
+        <div class="balance-row">
+          <span class="balance-label">Available</span>
+          <span class="balance-value">{available()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+        </div>
+        <div class="balance-row">
+          <span class="balance-label">Margin</span>
+          <span class="balance-value margin">~{margin()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+        </div>
+      </Show>
+    </div>
+  );
+}
+
 function ConfirmationModal(props: {
   setup: TradeSetup | null;
   isLiveMode: boolean;
   management: ManagementPreset;
+  balance: BalanceResponse[] | null;
   onResult: (result: ModalResult) => void;
 }) {
   let enterCount = 0;
@@ -184,6 +224,7 @@ function ConfirmationModal(props: {
                 <span class={`rr-value ${rrClass}`}>1 : {rr.toFixed(2)}</span>
               </div>
               <ManagementSummary preset={props.management} />
+              <BalanceSummary balance={props.balance} riskPercent={props.management.risk_percent} />
               <div class="footer">
                 <span class="hint">
                   {props.isLiveMode
@@ -210,6 +251,7 @@ export function showModal(
   isLiveMode: boolean,
   management: ManagementPreset,
   onResult: (result: ModalResult, setup: TradeSetup | null) => void,
+  balance: BalanceResponse[] | null = null,
 ): void {
   dismiss();
 
@@ -230,6 +272,7 @@ export function showModal(
         setup={setup}
         isLiveMode={isLiveMode}
         management={management}
+        balance={balance}
         onResult={(result) => {
           dismiss();
           onResult(result, setup);
