@@ -31,7 +31,7 @@ export default function TradeManagement() {
     <div class="space-y-5 px-5 py-4" data-testid="trade-management">
       {/* Risk % Slider */}
       <div data-testid="risk-slider">
-        <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-3">
+        <label class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-3">
           Risk Per Trade
         </label>
         <div class="flex items-center gap-3">
@@ -51,12 +51,12 @@ export default function TradeManagement() {
               step="0.1"
               min="0.1"
               max="10"
-              class="w-12 text-right text-sm"
+              class="w-12 text-right text-[13px] font-mono"
               value={preset().risk_percent}
               onChange={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
               data-testid="risk-percent"
             />
-            <span class="text-[11px] text-text-dim ml-1">%</span>
+            <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
           </div>
         </div>
         <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1.5">
@@ -69,7 +69,7 @@ export default function TradeManagement() {
 
       {/* Break-even % Slider */}
       <div data-testid="be-slider">
-        <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-3">
+        <label class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-3">
           Break-Even Trigger
         </label>
         <div class="flex items-center gap-3">
@@ -89,12 +89,12 @@ export default function TradeManagement() {
               step="5"
               min="10"
               max="100"
-              class="w-12 text-right text-sm"
+              class="w-12 text-right text-[13px] font-mono"
               value={preset().break_even_at}
               onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
               data-testid="break-even-at"
             />
-            <span class="text-[11px] text-text-dim ml-1">%</span>
+            <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
           </div>
         </div>
         <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1.5">
@@ -113,13 +113,13 @@ export default function TradeManagement() {
         data-testid="trailing-card"
       >
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold">
+          <span class="text-[11px] text-text-secondary font-sans uppercase tracking-wider font-medium">
             Trailing Stop
           </span>
           <button
-            class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
+            class={`px-3 py-1 text-[10px] font-bold tracking-widest font-sans ${
               preset().trailing_stop.enabled
-                ? "bg-signal-green/20 text-signal-green border-signal-green"
+                ? "bg-signal-green/15 text-signal-green border-signal-green"
                 : "text-text-dim border-border-grid bg-bg-elevated"
             }`}
             onClick={() =>
@@ -157,7 +157,7 @@ export default function TradeManagement() {
                   step="5"
                   min="5"
                   max="100"
-                  class="w-12 text-right text-sm"
+                  class="w-12 text-right text-[13px] font-mono"
                   value={preset().trailing_stop.distance_percent}
                   onChange={(e) =>
                     updateField("trailing_stop", {
@@ -167,7 +167,7 @@ export default function TradeManagement() {
                   }
                   data-testid="trailing-distance"
                 />
-                <span class="text-[11px] text-text-dim ml-1">%</span>
+                <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
               </div>
             </div>
             <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1.5">
@@ -186,13 +186,13 @@ export default function TradeManagement() {
         data-testid="partial-tp-card"
       >
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold">
+          <span class="text-[11px] text-text-secondary font-sans uppercase tracking-wider font-medium">
             Partial Take Profit
           </span>
           <button
-            class={`px-3 py-1 text-[10px] font-bold tracking-widest ${
+            class={`px-3 py-1 text-[10px] font-bold tracking-widest font-sans ${
               preset().partial_tp.enabled
-                ? "bg-signal-green/20 text-signal-green border-signal-green"
+                ? "bg-signal-green/15 text-signal-green border-signal-green"
                 : "text-text-dim border-border-grid bg-bg-elevated"
             }`}
             onClick={() =>
@@ -230,7 +230,7 @@ export default function TradeManagement() {
                   step="5"
                   min="10"
                   max="100"
-                  class="w-12 text-right text-sm"
+                  class="w-12 text-right text-[13px] font-mono"
                   value={preset().partial_tp.close_percent}
                   onChange={(e) =>
                     updateField("partial_tp", {
@@ -240,7 +240,7 @@ export default function TradeManagement() {
                   }
                   data-testid="partial-tp-close"
                 />
-                <span class="text-[11px] text-text-dim ml-1">%</span>
+                <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
               </div>
             </div>
             <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1.5">

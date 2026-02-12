@@ -38,18 +38,18 @@ export default function PositionCard(props: PositionCardProps) {
       {/* Row 1: Symbol + Direction + Status */}
       <div class="flex items-center justify-between mb-2.5">
         <div class="flex items-center gap-2.5">
-          <span class="text-sm font-mono font-bold text-text-primary" data-testid="position-symbol">
+          <span class="text-[14px] font-mono font-bold text-text-primary" data-testid="position-symbol">
             {props.trade.symbol}
           </span>
           <span
-            class={`text-[10px] font-bold tracking-wider ${isLong() ? "text-signal-green" : "text-signal-red"}`}
+            class={`text-[10px] font-bold tracking-wider font-sans ${isLong() ? "text-signal-green" : "text-signal-red"}`}
             data-testid="position-direction"
           >
             {direction()}
           </span>
         </div>
         <span
-          class={`text-[9px] uppercase tracking-wider px-2 py-0.5 ${statusClass()}`}
+          class={`text-[9px] uppercase tracking-wider px-2 py-0.5 font-sans ${statusClass()}`}
           data-testid="position-status"
         >
           {props.trade.status}
@@ -59,15 +59,15 @@ export default function PositionCard(props: PositionCardProps) {
       {/* Row 2: Entry + SL */}
       <div class="flex gap-6 mb-1.5">
         <div data-testid="position-entry">
-          <span class="text-[10px] text-text-dim font-mono">Entry </span>
-          <span class="text-xs text-text-secondary font-mono">
+          <span class="text-[10px] text-text-dim font-sans">Entry </span>
+          <span class="text-[12px] text-text-secondary font-mono">
             {props.trade.entry_price || "--"}
           </span>
         </div>
         <Show when={props.trade.stop_loss_price}>
           <div data-testid="position-sl">
-            <span class="text-[10px] text-signal-red font-mono">SL </span>
-            <span class="text-xs text-signal-red font-mono">
+            <span class="text-[10px] text-signal-red font-sans">SL </span>
+            <span class="text-[12px] text-signal-red font-mono">
               {props.trade.stop_loss_price}
             </span>
           </div>
@@ -80,7 +80,7 @@ export default function PositionCard(props: PositionCardProps) {
           <For each={props.trade.take_profit_targets}>
             {(tp, i) => (
               <div class="flex items-center gap-2" data-testid="position-tp">
-                <span class="text-[10px] text-text-dim font-mono">TP{i() + 1}</span>
+                <span class="text-[10px] text-text-dim font-sans">TP{i() + 1}</span>
                 <span class="text-[11px] text-text-secondary font-mono">{tp.price}</span>
                 <span class="text-[9px] text-text-dim font-mono">({tp.percent_to_close}%)</span>
                 <span class={`text-[9px] font-mono ${tp.filled ? "text-signal-green" : "text-text-dim"}`}>
@@ -109,7 +109,7 @@ export default function PositionCard(props: PositionCardProps) {
           </span>
         </div>
         <button
-          class="px-2.5 py-1 text-[9px] font-bold tracking-wider border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary"
+          class="px-2.5 py-1 text-[9px] font-bold tracking-wider font-sans border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary"
           onClick={() => props.onCancel(props.trade.id)}
           data-testid="cancel-order"
           title="Cancel trade"

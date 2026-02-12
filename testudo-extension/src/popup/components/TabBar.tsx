@@ -17,7 +17,7 @@ export default function TabBar(props: TabBarProps) {
     <div class="flex bg-bg-core border-b border-border-grid" data-testid="tab-bar">
       {tabs.map((tab) => (
         <button
-          class={`flex-1 py-2.5 text-[11px] font-display font-bold tracking-[0.15em] border-0 tab-segment ${
+          class={`flex-1 py-2.5 text-[11px] font-sans font-bold tracking-[0.12em] border-0 ${
             props.activeTab === tab.id
               ? "tab-active"
               : "tab-inactive"

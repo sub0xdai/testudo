@@ -2,6 +2,7 @@ import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
 import HeaderBar from "./HeaderBar";
+import ArcGauge from "./ArcGauge";
 import TabBar, { type TabId } from "./TabBar";
 import TradeManagement from "./TradeManagement";
 import ActiveOrders from "./ActiveOrders";
@@ -39,6 +40,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     if (a === null && l === null) return null;
     return (a || 0) + (l || 0);
   };
+  const exposure = () => {
+    const t = total();
+    const l = locked();
+    if (!t || t === 0) return 0;
+    return ((l || 0) / t) * 100;
+  };
 
   function handleMessage(message: unknown) {
     const msg = message as { type: string };
@@ -57,13 +64,18 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   });
 
   return (
-    <div class="flex flex-col min-h-full">
-      {/* Persistent Header with Balance */}
-      <HeaderBar
-        balance={total()}
-        balanceLoading={balanceLoading()}
-        onOpenSettings={props.onOpenSettings}
-      />
+    <div class="flex flex-col h-full">
+      {/* Compact Header */}
+      <HeaderBar onOpenSettings={props.onOpenSettings} />
+
+      {/* Arc Gauge — hero visual */}
+      <div class="border-b border-border-subtle" data-testid="header-balance">
+        <ArcGauge
+          exposure={exposure()}
+          atRisk={locked() || 0}
+          totalBalance={total() || 0}
+        />
+      </div>
 
       {/* Tab Navigation */}
       <TabBar
@@ -83,55 +95,63 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         </Show>
 
         <Show when={activeTab() === "account"}>
-          <div class="px-5 py-4 space-y-5" data-testid="balance-section">
-            <div>
-              <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-3">
-                Balance
-              </label>
-              <Show when={!balanceLoading()} fallback={
-                <p class="text-[13px] text-text-dim font-mono">...</p>
+          <div class="px-5 py-4 space-y-4" data-testid="balance-section">
+            {/* Info Grid */}
+            <Show when={!balanceLoading()} fallback={
+              <p class="text-[13px] text-text-dim font-mono">Loading...</p>
+            }>
+              <Show when={available() !== null} fallback={
+                <p class="text-[13px] text-text-dim italic font-sans">Balance unavailable</p>
               }>
-                <Show when={available() !== null} fallback={
-                  <p class="text-[13px] text-text-dim italic font-mono">unavailable</p>
-                }>
-                  <div class="border border-border-grid card-depth">
-                    <div class="flex items-center justify-between px-4 py-3 border-b border-border-grid bg-bg-panel">
-                      <span class="text-[11px] text-text-dim uppercase tracking-wider">Available</span>
-                      <span class="text-sm text-signal-green font-mono font-bold" data-testid="balance-available">
-                        {formatBalance(available()!)}
-                      </span>
-                    </div>
-                    <div class="flex items-center justify-between px-4 py-3 bg-bg-panel">
-                      <span class="text-[11px] text-text-dim uppercase tracking-wider">Locked</span>
-                      <span class="text-sm text-signal-orange font-mono font-bold" data-testid="balance-locked">
-                        {formatBalance(locked()!)}
-                      </span>
-                    </div>
+                <div class="info-grid">
+                  <div class="info-grid-cell">
+                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Available</span>
+                    <span class="text-[15px] text-signal-green font-mono font-bold" data-testid="balance-available">
+                      {formatBalance(available()!)}
+                    </span>
                   </div>
-                </Show>
+                  <div class="info-grid-cell">
+                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Locked</span>
+                    <span class="text-[15px] text-signal-orange font-mono font-bold" data-testid="balance-locked">
+                      {formatBalance(locked()!)}
+                    </span>
+                  </div>
+                  <div class="info-grid-cell">
+                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Positions</span>
+                    <span class="text-[15px] text-text-primary font-mono font-bold">
+                      {positionCount()}
+                    </span>
+                  </div>
+                  <div class="info-grid-cell">
+                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Exposure</span>
+                    <span class={`text-[15px] font-mono font-bold ${
+                      exposure() > 50 ? "text-signal-red" : exposure() > 25 ? "text-signal-orange" : "text-signal-green"
+                    }`}>
+                      {exposure().toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
               </Show>
-            </div>
+            </Show>
 
             <div class="divider" />
 
+            {/* Connection */}
             <div>
-              <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-2">
-                Connection
-              </label>
+              <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-2">Connection</span>
               <StatusBar />
             </div>
 
             <div class="divider" />
 
+            {/* Account */}
             <div>
-              <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-2">
-                Account
-              </label>
+              <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-2">Account</span>
               <Show when={auth.email()}>
-                <p class="text-xs font-mono text-text-secondary">{auth.email()}</p>
+                <p class="text-[13px] font-mono text-text-secondary">{auth.email()}</p>
               </Show>
               <Show when={auth.paperOnly()}>
-                <p class="text-[11px] text-text-dim font-mono">Paper mode</p>
+                <p class="text-[11px] text-text-dim font-sans">Paper mode</p>
               </Show>
             </div>
           </div>
@@ -141,12 +161,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       {/* Minimal Footer */}
       <div class="px-5 py-1.5 border-t border-border-subtle flex items-center justify-between">
         <Show when={auth.email()}>
-          <span class="text-[10px] text-text-dim truncate max-w-[200px]" data-testid="footer-email">
+          <span class="text-[10px] text-text-dim font-sans truncate max-w-[200px]" data-testid="footer-email">
             {auth.email()}
           </span>
         </Show>
         <Show when={auth.paperOnly()}>
-          <span class="text-[10px] text-text-dim tracking-wider" data-testid="footer-paper">
+          <span class="text-[10px] text-text-dim font-sans tracking-wider" data-testid="footer-paper">
             PAPER ONLY
           </span>
         </Show>

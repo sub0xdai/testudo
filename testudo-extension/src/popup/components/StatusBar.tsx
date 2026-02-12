@@ -37,11 +37,11 @@ export default function StatusBar() {
   return (
     <div class="flex items-center gap-1.5" data-testid="status-bar">
       <span
-        class={`w-2.5 h-2.5 inline-block ${WS_DOT_CLASSES[wsState()]}`}
+        class={`w-2 h-2 inline-block ${WS_DOT_CLASSES[wsState()]}`}
         data-testid="status-dot"
         data-state={wsState()}
       />
-      <span class="text-[13px] text-text-secondary" data-testid="status-text">
+      <span class="text-[11px] text-text-secondary font-sans" data-testid="status-text">
         {WS_STATE_LABELS[wsState()]}
       </span>
     </div>

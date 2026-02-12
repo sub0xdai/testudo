@@ -62,11 +62,12 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   return (
     <div class="px-5 py-4" data-testid="active-orders">
       <div class="flex items-center justify-between mb-4">
-        <label class="text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold">
+        <span class="text-[10px] text-text-dim font-sans uppercase tracking-wider">
           <Show when={!loading() && activeTrades().length > 0} fallback="Active Positions">
-            <span class="text-text-primary">{activeTrades().length}</span> Active Positions
+            <span class="text-text-primary font-mono font-bold">{activeTrades().length}</span>
+            {" "}Active Positions
           </Show>
-        </label>
+        </span>
         <button
           class="px-2 py-0.5 text-xs border-0 text-text-dim hover:text-text-secondary hover:bg-transparent"
           onClick={fetchTrades}
@@ -92,8 +93,8 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
 
       <Show when={!loading() && !error() && activeTrades().length === 0}>
         <div class="flex flex-col items-center justify-center py-12" data-testid="empty-positions">
-          <p class="text-[13px] font-display text-text-dim tracking-[0.25em]">NO ACTIVE POSITIONS</p>
-          <p class="text-[11px] text-text-dim font-mono mt-3 text-center leading-relaxed">
+          <p class="text-[13px] font-sans font-medium text-text-dim tracking-[0.2em]">NO ACTIVE POSITIONS</p>
+          <p class="text-[11px] text-text-dim font-sans mt-3 text-center leading-relaxed">
             Trades placed via TradingView will<br />appear here automatically.
           </p>
         </div>

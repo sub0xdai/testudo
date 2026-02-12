@@ -20,11 +20,11 @@ export default function ModeToggle(props: { compact?: boolean }) {
 
   if (props.compact) {
     return (
-      <div class="flex border-2 border-border-grid" data-testid="mode-toggle">
+      <div class="flex border border-border-grid" data-testid="mode-toggle">
         <button
-          class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 ${
+          class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 font-sans ${
             mode() === "paper"
-              ? "bg-signal-green/20 text-signal-green"
+              ? "bg-signal-green/15 text-signal-green"
               : "text-text-dim"
           }`}
           onClick={() => selectMode("paper")}
@@ -35,9 +35,9 @@ export default function ModeToggle(props: { compact?: boolean }) {
         </button>
         <Show when={!auth.paperOnly()}>
           <button
-            class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 border-l-2 border-l-border-grid ${
+            class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 border-l border-l-border-grid font-sans ${
               mode() === "live"
-                ? "bg-signal-red/20 text-signal-red"
+                ? "bg-signal-red/15 text-signal-red"
                 : "text-text-dim"
             }`}
             onClick={() => selectMode("live")}
@@ -54,7 +54,7 @@ export default function ModeToggle(props: { compact?: boolean }) {
   return (
     <div class="flex gap-2" data-testid="mode-toggle">
       <button
-        class={`flex-1 py-2 text-xs font-bold tracking-widest ${
+        class={`flex-1 py-2 text-xs font-bold tracking-widest font-sans ${
           mode() === "paper"
             ? "bg-signal-green text-bg-core border-signal-green"
             : "text-text-secondary border-border-grid hover:bg-bg-elevated"
@@ -67,7 +67,7 @@ export default function ModeToggle(props: { compact?: boolean }) {
       </button>
       <Show when={!auth.paperOnly()}>
         <button
-          class={`flex-1 py-2 text-xs font-bold tracking-widest ${
+          class={`flex-1 py-2 text-xs font-bold tracking-widest font-sans ${
             mode() === "live"
               ? "bg-signal-red text-text-primary border-signal-red"
               : "text-text-secondary border-border-grid hover:bg-bg-elevated"
