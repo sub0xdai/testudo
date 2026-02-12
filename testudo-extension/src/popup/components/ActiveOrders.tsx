@@ -5,6 +5,7 @@ import PositionCard from "./PositionCard";
 
 interface ActiveOrdersProps {
   onCountChange?: (count: number) => void;
+  onBalanceRefresh?: () => void;
 }
 
 export default function ActiveOrders(props: ActiveOrdersProps) {
@@ -35,6 +36,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   async function handleCancel(tradeId: string) {
     await browser.runtime.sendMessage({ type: "CANCEL_TRADE", tradeId });
     fetchTrades();
+    props.onBalanceRefresh?.();
   }
 
   function handleMessage(message: unknown) {
@@ -62,7 +64,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   return (
     <div class="px-5 py-4" data-testid="active-orders">
       <div class="flex items-center justify-between mb-4">
-        <span class="text-[12px] text-text-secondary font-sans font-medium">
+        <span class="text-[13px] text-zinc-300 font-sans font-medium">
           <Show when={!loading() && activeTrades().length > 0} fallback="Active Positions">
             <span class="text-white font-mono font-bold">{activeTrades().length}</span>
             {" "}Active Positions
@@ -99,8 +101,8 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
               <path d="M3 9h18M9 21V9" />
             </svg>
           </div>
-          <p class="text-[13px] font-sans font-medium text-text-secondary" data-testid="empty-positions">No active positions</p>
-          <p class="text-[11px] text-text-dim font-sans mt-2 text-center leading-relaxed">
+          <p class="text-[14px] font-sans font-medium text-text-secondary" data-testid="empty-positions">No active positions</p>
+          <p class="text-[12px] text-zinc-500 font-sans mt-2 text-center leading-relaxed">
             Trades placed via TradingView will<br />appear here automatically.
           </p>
         </div>

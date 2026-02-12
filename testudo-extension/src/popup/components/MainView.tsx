@@ -72,7 +72,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       <div class="balance-panel" data-testid="header-balance">
         {/* Balance hero */}
         <div class="relative flex flex-col items-center pt-5 pb-2">
-          <span class="text-[11px] font-medium text-text-secondary tracking-widest uppercase mb-2">
+          <span class="text-[12px] font-medium text-text-secondary tracking-widest uppercase mb-2">
             Balance
           </span>
           <span class="text-[42px] font-bold text-white tracking-tight leading-none">
@@ -85,11 +85,11 @@ export default function MainView(props: { onOpenSettings: () => void }) {
           {/* Delta line: available / locked breakdown */}
           <Show when={!balanceLoading() && available() !== null}>
             <div class="flex items-center gap-2 mt-2">
-              <span class="text-[11px] text-signal-green font-medium">
+              <span class="text-[12px] text-signal-green font-medium">
                 ${formatBalance(available()!)} available
               </span>
               <span class="text-text-dim">·</span>
-              <span class="text-[11px] text-text-secondary">
+              <span class="text-[12px] text-text-secondary">
                 ${formatBalance(locked()!)} locked
               </span>
             </div>
@@ -118,39 +118,39 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         </Show>
 
         <Show when={activeTab() === "positions"}>
-          <ActiveOrders onCountChange={setPositionCount} />
+          <ActiveOrders onCountChange={setPositionCount} onBalanceRefresh={fetchBalance} />
         </Show>
 
         <Show when={activeTab() === "account"}>
           <div class="px-5 py-4 space-y-4" data-testid="balance-section">
             {/* Info Grid */}
             <Show when={!balanceLoading()} fallback={
-              <p class="text-[13px] text-text-dim font-sans">Loading...</p>
+              <p class="text-[14px] text-zinc-500 font-sans">Loading...</p>
             }>
               <Show when={available() !== null} fallback={
-                <p class="text-[13px] text-text-dim italic font-sans">Balance unavailable</p>
+                <p class="text-[14px] text-zinc-500 italic font-sans">Balance unavailable</p>
               }>
                 <div class="info-grid">
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Available</span>
+                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">Available</span>
                     <span class="text-[15px] text-signal-green font-mono font-bold" data-testid="balance-available">
                       {formatBalance(available()!)}
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Locked</span>
+                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">Locked</span>
                     <span class="text-[15px] text-signal-orange font-mono font-bold" data-testid="balance-locked">
                       {formatBalance(locked()!)}
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Positions</span>
+                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">Positions</span>
                     <span class="text-[15px] text-white font-mono font-bold">
                       {positionCount()}
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Exposure</span>
+                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">Exposure</span>
                     <span class={`text-[15px] font-mono font-bold ${
                       exposure() > 50 ? "text-signal-red" : exposure() > 25 ? "text-signal-orange" : "text-signal-green"
                     }`}>
@@ -165,7 +165,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
             {/* Connection */}
             <div>
-              <span class="block text-[11px] text-text-secondary font-sans font-medium mb-2">Connection</span>
+              <span class="block text-[12px] text-text-secondary font-sans font-medium mb-2">Connection</span>
               <StatusBar />
             </div>
 
@@ -173,12 +173,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
             {/* Account */}
             <div>
-              <span class="block text-[11px] text-text-secondary font-sans font-medium mb-2">Account</span>
+              <span class="block text-[12px] text-text-secondary font-sans font-medium mb-2">Account</span>
               <Show when={auth.email()}>
                 <p class="text-[13px] font-mono text-text-secondary">{auth.email()}</p>
               </Show>
               <Show when={auth.paperOnly()}>
-                <p class="text-[11px] text-text-dim font-sans">Paper mode</p>
+                <p class="text-[12px] text-zinc-500 font-sans">Paper mode</p>
               </Show>
             </div>
           </div>
@@ -188,12 +188,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       {/* Footer */}
       <div class="px-5 py-2 border-t border-border-subtle flex items-center justify-between">
         <Show when={auth.email()}>
-          <span class="text-[10px] text-text-dim font-sans truncate max-w-[200px]" data-testid="footer-email">
+          <span class="text-[11px] text-zinc-500 font-sans truncate max-w-[200px]" data-testid="footer-email">
             {auth.email()}
           </span>
         </Show>
         <Show when={auth.paperOnly()}>
-          <span class="text-[10px] text-text-dim font-sans tracking-wider" data-testid="footer-paper">
+          <span class="text-[11px] text-zinc-500 font-sans tracking-wider" data-testid="footer-paper">
             PAPER ONLY
           </span>
         </Show>

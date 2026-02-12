@@ -64,7 +64,7 @@ export default function ArcGauge(props: ArcGaugeProps) {
         <span class="text-4xl font-bold text-white tracking-tighter" style={{ "font-family": "var(--font-family-mono)" }}>
           {props.exposure.toFixed(1)}%
         </span>
-        <span class="text-[10px] uppercase tracking-widest text-text-secondary mt-1">
+        <span class="text-[11px] uppercase tracking-widest text-zinc-400 mt-1">
           Exposure
         </span>
       </div>

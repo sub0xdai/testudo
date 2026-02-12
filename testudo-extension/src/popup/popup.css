@@ -64,7 +64,7 @@ html, body {
   background: var(--color-bg-core);
   color: var(--color-text-primary);
   font-family: var(--font-family-sans);
-  font-size: 13px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -75,6 +75,7 @@ html, body {
   background: var(--color-bg-core);
   display: flex;
   flex-direction: column;
+  border-radius: 12px;
 }
 
 /* --- Input Base Styles --- */
@@ -88,7 +89,7 @@ input[type="url"]) {
   border-radius: 12px;
   color: var(--color-text-primary);
   font-family: var(--font-family-sans);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   padding: 10px 14px;
   outline: none;
@@ -246,7 +247,7 @@ input[type="range"]::-moz-range-track {
   background: transparent;
   border: none;
   border-radius: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-family: var(--font-family-mono);
   font-weight: 600;
   padding: 2px 0;
