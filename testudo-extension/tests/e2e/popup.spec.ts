@@ -5,7 +5,7 @@ async function bypassAuthGate(page: import("@playwright/test").Page) {
   const paperBtn = page.locator('[data-testid="paper-mode-btn"]');
   await paperBtn.waitFor({ state: "visible", timeout: 5000 });
   await paperBtn.click();
-  // Wait for main view to render
+  // Wait for main view to render (Trade tab is default)
   await page.locator('[data-testid="trade-management"]').waitFor({ state: "visible", timeout: 5000 });
 }
 
@@ -39,14 +39,27 @@ test.describe("Auth Gate", () => {
 
     await bypassAuthGate(page);
 
-    // Main view is now visible
+    // Trade tab (default) is visible
     await expect(page.locator('[data-testid="trade-management"]')).toBeVisible();
-    await expect(page.locator('[data-testid="active-orders"]')).toBeVisible();
+
+    // Tab bar is visible
+    await expect(page.locator('[data-testid="tab-bar"]')).toBeVisible();
+
+    // Header elements
+    await expect(page.locator('[data-testid="header-bar"]')).toBeVisible();
     await expect(page.locator('[data-testid="mode-toggle"]')).toBeVisible();
     await expect(page.locator('[data-testid="status-bar"]')).toBeVisible();
 
     // Footer shows PAPER ONLY
     await expect(page.locator('[data-testid="footer-paper"]')).toHaveText("PAPER ONLY");
+
+    // Navigate to Positions tab
+    await page.locator('[data-testid="tab-positions"]').click();
+    await expect(page.locator('[data-testid="active-orders"]')).toBeVisible();
+
+    // Navigate to Account tab
+    await page.locator('[data-testid="tab-account"]').click();
+    await expect(page.locator('[data-testid="balance-section"]')).toBeVisible();
 
     await page.close();
   });
@@ -101,6 +114,7 @@ test.describe("Main View", () => {
     await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
     await bypassAuthGate(page);
 
+    // Status bar is in the header now
     await expect(page.locator('[data-testid="status-text"]')).toHaveText("Disconnected");
     await expect(page.locator('[data-testid="status-dot"]')).toHaveAttribute("data-state", "disconnected");
 
@@ -111,6 +125,9 @@ test.describe("Main View", () => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
     await bypassAuthGate(page);
+
+    // Navigate to Account tab
+    await page.locator('[data-testid="tab-account"]').click();
 
     // Balance section exists
     const balanceSection = page.locator('[data-testid="balance-section"]');
@@ -128,13 +145,36 @@ test.describe("Main View", () => {
     await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
     await bypassAuthGate(page);
 
-    // Paper button is visible and active
+    // Paper button is visible and active (now in header)
     const paperBtn = page.locator('[data-testid="mode-paper"]');
     await expect(paperBtn).toBeVisible();
     await expect(paperBtn).toHaveText("PAPER");
 
     // Live button hidden in paper-only mode
     await expect(page.locator('[data-testid="mode-live"]')).not.toBeVisible();
+
+    await page.close();
+  });
+
+  test("tab navigation works", async ({ context, extensionId }) => {
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+    await bypassAuthGate(page);
+
+    // Default tab is Trade
+    await expect(page.locator('[data-testid="trade-management"]')).toBeVisible();
+
+    // Switch to Positions
+    await page.locator('[data-testid="tab-positions"]').click();
+    await expect(page.locator('[data-testid="active-orders"]')).toBeVisible();
+
+    // Switch to Account
+    await page.locator('[data-testid="tab-account"]').click();
+    await expect(page.locator('[data-testid="balance-section"]')).toBeVisible();
+
+    // Switch back to Trade
+    await page.locator('[data-testid="tab-trade"]').click();
+    await expect(page.locator('[data-testid="trade-management"]')).toBeVisible();
 
     await page.close();
   });

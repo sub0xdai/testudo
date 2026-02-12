@@ -119,3 +119,86 @@ button:disabled {
 .status-blink {
   animation: status-blink 1s step-end infinite;
 }
+
+/* --- Range Slider --- */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--color-bg-elevated);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--color-text-primary);
+  border: 2px solid var(--color-signal-green);
+  cursor: grab;
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--color-text-primary);
+  border: 2px solid var(--color-signal-green);
+  cursor: grab;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--color-bg-elevated);
+}
+
+/* --- Tab Bar --- */
+.tab-active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-text-primary);
+}
+
+.tab-inactive {
+  color: var(--color-text-dim);
+  border-bottom-color: transparent;
+}
+
+.tab-inactive:hover {
+  color: var(--color-text-secondary);
+}
+
+/* --- Position Card Accents --- */
+.accent-long {
+  border-left: 3px solid var(--color-signal-green);
+}
+
+.accent-short {
+  border-left: 3px solid var(--color-signal-red);
+}
+
+/* --- Toggle Card --- */
+.toggle-card-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 150ms ease-out;
+}
+
+.toggle-card-body.expanded {
+  max-height: 120px;
+}
+
+/* --- Refresh Spin --- */
+@keyframes refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.refresh-spinning {
+  animation: refresh-spin 300ms ease-out;
+}

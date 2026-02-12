@@ -313,5 +313,24 @@
     "phase": 7,
     "depends_on": ["INFRA-01", "FILL-01", "EXT-09", "EXT-10"],
     "completed_date": "2026-02-12"
+  },
+  {
+    "id": "EXT-13",
+    "spec": "011-popup-redesign",
+    "description": "Redesign extension popup: 3-tab layout (Trade/Positions/Account), persistent header balance, visual range sliders, rich PositionCards with accent borders and management badges",
+    "file_context": [
+      "testudo-extension/src/popup/components/MainView.tsx",
+      "testudo-extension/src/popup/components/TradeManagement.tsx",
+      "testudo-extension/src/popup/components/ActiveOrders.tsx",
+      "testudo-extension/src/popup/components/ModeToggle.tsx",
+      "testudo-extension/src/popup/popup.css",
+      "testudo-extension/tests/e2e/popup.spec.ts"
+    ],
+    "acceptance_criteria": "3-tab layout renders, header balance visible, range sliders functional, PositionCards display, all E2E tests pass, bun run build && bun run typecheck clean",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 8,
+    "depends_on": ["EXT-08", "EXT-12"],
+    "completed_date": "2026-02-12"
   }
 ]

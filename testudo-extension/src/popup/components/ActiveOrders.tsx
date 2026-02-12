@@ -1,8 +1,13 @@
 import { createSignal, onMount, onCleanup, For, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import type { TradeGroupResponse } from "../../types";
+import PositionCard from "./PositionCard";
 
-export default function ActiveOrders() {
+interface ActiveOrdersProps {
+  onCountChange?: (count: number) => void;
+}
+
+export default function ActiveOrders(props: ActiveOrdersProps) {
   const [trades, setTrades] = createSignal<TradeGroupResponse[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal("");
@@ -48,15 +53,18 @@ export default function ActiveOrders() {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
 
-  const activeTrades = () => trades().filter((t) => t.status !== "Completed");
+  const activeTrades = () => {
+    const active = trades().filter((t) => t.status !== "Completed");
+    props.onCountChange?.(active.length);
+    return active;
+  };
 
   return (
-    <div data-testid="active-orders">
-      <div class="flex items-center justify-between mb-2">
-        <label class="text-[13px] text-signal-orange uppercase tracking-widest font-bold">
-          Active Orders
-          <Show when={activeTrades().length > 0}>
-            <span class="ml-1 text-text-primary">({activeTrades().length})</span>
+    <div class="px-4 py-3" data-testid="active-orders">
+      <div class="flex items-center justify-between mb-3">
+        <label class="text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold">
+          <Show when={!loading() && activeTrades().length > 0} fallback="Active Positions">
+            <span class="text-text-primary">{activeTrades().length}</span> Active Positions
           </Show>
         </label>
         <button
@@ -65,7 +73,7 @@ export default function ActiveOrders() {
           title="Refresh"
           data-testid="refresh-orders"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
             <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
@@ -83,59 +91,24 @@ export default function ActiveOrders() {
       </Show>
 
       <Show when={!loading() && !error() && activeTrades().length === 0}>
-        <p class="text-[13px] text-text-dim font-mono py-2">No active orders</p>
+        <div class="flex flex-col items-center justify-center py-8" data-testid="empty-positions">
+          <p class="text-[13px] font-display text-text-dim tracking-[0.2em]">NO ACTIVE POSITIONS</p>
+          <p class="text-[11px] text-text-dim font-mono mt-2">
+            Trades placed via TradingView will
+          </p>
+          <p class="text-[11px] text-text-dim font-mono">
+            appear here automatically.
+          </p>
+        </div>
       </Show>
 
-      <div class="space-y-1">
+      <div class="space-y-2">
         <For each={activeTrades()}>
           {(trade) => (
-            <div
-              class="flex items-center justify-between py-1.5 border-b border-border-grid last:border-0"
-              data-testid="order-row"
-            >
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-mono font-bold text-text-primary">
-                    {trade.symbol}
-                  </span>
-                  <span
-                    class={`text-xs font-bold tracking-wider ${
-                      trade.entry_quantity && parseFloat(trade.entry_quantity) > 0
-                        ? "text-signal-green"
-                        : "text-signal-red"
-                    }`}
-                  >
-                    {trade.entry_quantity && parseFloat(trade.entry_quantity) > 0 ? "LONG" : "SHORT"}
-                  </span>
-                  <span class={`inline-block w-1.5 h-1.5 ${
-                    trade.status === "Active" ? "bg-signal-green" :
-                    trade.status === "Pending" ? "bg-signal-orange status-blink" :
-                    "bg-text-dim"
-                  }`} />
-                  <span class="text-xs text-text-dim font-mono">{trade.status}</span>
-                </div>
-                <div class="flex gap-3 mt-0.5">
-                  <Show when={trade.entry_price}>
-                    <span class="text-[11px] text-text-dim font-mono">
-                      E: {trade.entry_price}
-                    </span>
-                  </Show>
-                  <Show when={trade.stop_loss_price}>
-                    <span class="text-[11px] text-signal-red font-mono">
-                      SL: {trade.stop_loss_price}
-                    </span>
-                  </Show>
-                </div>
-              </div>
-              <button
-                class="px-2 py-1 text-[9px] font-bold tracking-wider border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary ml-2"
-                onClick={() => handleCancel(trade.id)}
-                data-testid="cancel-order"
-                title="Cancel trade"
-              >
-                X
-              </button>
-            </div>
+            <PositionCard
+              trade={trade}
+              onCancel={handleCancel}
+            />
           )}
         </For>
       </div>

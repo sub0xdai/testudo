@@ -131,6 +131,17 @@ use std::time::Instant;
 - `PgPool::connect_lazy()` requires Tokio runtime — use `#[tokio::test]` not `#[test]` for pool-dependent tests
 - `AccountStateAdapter` now supports `BalanceProvider` trait injection — backward compatible with no-provider fallback
 
+### 2026-02-12 (011-popup-redesign)
+- Solid.js `classList` directive works for conditional class toggling: `classList={{ "!border-signal-green": enabled() }}`
+- Native `<input type="range">` with inline `style` for dynamic fill gradient: `background: linear-gradient(to right, green X%, gray X%)`
+- Both `-webkit-slider-thumb` and `-moz-range-thumb` needed for cross-browser range slider styling
+- Tab navigation with Solid.js `Show` components — no router needed for 3 tabs, signal-based `activeTab` state
+- `onCountChange` callback prop pattern lets child component (ActiveOrders) push position count up to parent (MainView) for tab badge
+- Collapsible cards use `max-height` transition (0 -> 120px) with `overflow: hidden` — simpler than animating `height: auto`
+- HeaderBar extracts header concerns (logo, mode toggle, WS dot, settings gear, balance) from MainView cleanly
+- E2E tests must navigate to correct tab before asserting per-tab elements — `tab-positions` click before `active-orders` check
+- Playwright browser cache at `~/.cache/ms-playwright/` must match installed version — `npx playwright install chromium` to update
+
 ### 2026-01-26
 - Clippy warnings cleaned up across all crates
 - `rust_decimal` already in dependencies

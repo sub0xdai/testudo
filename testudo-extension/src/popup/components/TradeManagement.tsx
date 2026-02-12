@@ -1,4 +1,4 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import type { ManagementPreset } from "../../types";
 import { DEFAULT_MANAGEMENT_PRESET } from "../../types";
@@ -22,48 +22,96 @@ export default function TradeManagement() {
     save({ ...preset(), [key]: value });
   }
 
+  // Compute fill percentage for range slider background
+  function sliderStyle(value: number, min: number, max: number): string {
+    const pct = ((value - min) / (max - min)) * 100;
+    return `background: linear-gradient(to right, var(--color-signal-green) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
+  }
+
   return (
-    <div class="space-y-4" data-testid="trade-management">
-      <label class="block text-[13px] text-signal-orange uppercase tracking-widest font-bold">
-        Trade Management
-      </label>
-
-      {/* Risk % */}
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Risk %</span>
-        <input
-          type="number"
-          step="0.1"
-          min="0.1"
-          max="10"
-          class="w-20 text-right"
-          value={preset().risk_percent}
-          onChange={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
-          data-testid="risk-percent"
-        />
+    <div class="space-y-4 px-4 py-3" data-testid="trade-management">
+      {/* Risk % Slider */}
+      <div data-testid="risk-slider">
+        <label class="block text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold mb-2">
+          Risk Per Trade
+        </label>
+        <div class="flex items-center gap-3">
+          <input
+            type="range"
+            min="0.1"
+            max="10"
+            step="0.1"
+            value={preset().risk_percent}
+            onInput={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
+            style={sliderStyle(preset().risk_percent, 0.1, 10)}
+            class="flex-1"
+          />
+          <input
+            type="number"
+            step="0.1"
+            min="0.1"
+            max="10"
+            class="w-16 text-right text-sm"
+            value={preset().risk_percent}
+            onChange={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
+            data-testid="risk-percent"
+          />
+          <span class="text-[11px] text-text-dim">%</span>
+        </div>
+        <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1">
+          <span>0.1</span>
+          <span>10.0</span>
+        </div>
       </div>
 
-      {/* Break-even at % */}
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Break-even %</span>
-        <input
-          type="number"
-          step="5"
-          min="10"
-          max="100"
-          class="w-20 text-right"
-          value={preset().break_even_at}
-          onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
-          data-testid="break-even-at"
-        />
+      <div class="border-t border-dashed border-border-grid" />
+
+      {/* Break-even % Slider */}
+      <div data-testid="be-slider">
+        <label class="block text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold mb-2">
+          Break-Even Trigger
+        </label>
+        <div class="flex items-center gap-3">
+          <input
+            type="range"
+            min="10"
+            max="100"
+            step="5"
+            value={preset().break_even_at}
+            onInput={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
+            style={sliderStyle(preset().break_even_at, 10, 100)}
+            class="flex-1"
+          />
+          <input
+            type="number"
+            step="5"
+            min="10"
+            max="100"
+            class="w-16 text-right text-sm"
+            value={preset().break_even_at}
+            onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
+            data-testid="break-even-at"
+          />
+          <span class="text-[11px] text-text-dim">%</span>
+        </div>
+        <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1">
+          <span>10</span>
+          <span>100</span>
+        </div>
       </div>
 
-      {/* Trailing Stop */}
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Trailing Stop</span>
+      <div class="border-t border-dashed border-border-grid" />
+
+      {/* Trailing Stop Toggle Card */}
+      <div class="border border-border-grid bg-bg-panel" data-testid="trailing-card"
+        classList={{ "!border-signal-green": preset().trailing_stop.enabled }}
+      >
+        <div class="flex items-center justify-between px-3 py-2">
+          <span class="text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold">
+            Trailing Stop
+          </span>
           <button
-            class={`px-3 py-1 text-xs font-bold tracking-widest ${
+            class={`px-3 py-0.5 text-[10px] font-bold tracking-widest ${
               preset().trailing_stop.enabled
                 ? "bg-signal-green/20 text-signal-green border-signal-green"
                 : "text-text-secondary border-border-grid"
@@ -79,34 +127,59 @@ export default function TradeManagement() {
             {preset().trailing_stop.enabled ? "ON" : "OFF"}
           </button>
         </div>
-        {preset().trailing_stop.enabled && (
-          <div class="flex items-center justify-between pl-4">
-            <span class="text-[11px] text-text-dim uppercase tracking-wider whitespace-nowrap">Distance %</span>
-            <input
-              type="number"
-              step="5"
-              min="5"
-              max="100"
-              class="w-20 text-right"
-              value={preset().trailing_stop.distance_percent}
-              onChange={(e) =>
-                updateField("trailing_stop", {
-                  ...preset().trailing_stop,
-                  distance_percent: parseInt(e.target.value) || 25,
-                })
-              }
-              data-testid="trailing-distance"
-            />
+        <div class={`toggle-card-body ${preset().trailing_stop.enabled ? "expanded" : ""}`}>
+          <div class="px-3 pb-3">
+            <div class="flex items-center gap-3">
+              <input
+                type="range"
+                min="5"
+                max="100"
+                step="5"
+                value={preset().trailing_stop.distance_percent}
+                onInput={(e) =>
+                  updateField("trailing_stop", {
+                    ...preset().trailing_stop,
+                    distance_percent: parseInt(e.target.value) || 25,
+                  })
+                }
+                style={sliderStyle(preset().trailing_stop.distance_percent, 5, 100)}
+                class="flex-1"
+              />
+              <input
+                type="number"
+                step="5"
+                min="5"
+                max="100"
+                class="w-16 text-right text-sm"
+                value={preset().trailing_stop.distance_percent}
+                onChange={(e) =>
+                  updateField("trailing_stop", {
+                    ...preset().trailing_stop,
+                    distance_percent: parseInt(e.target.value) || 25,
+                  })
+                }
+                data-testid="trailing-distance"
+              />
+              <span class="text-[11px] text-text-dim">%</span>
+            </div>
+            <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1">
+              <span>5</span>
+              <span>100</span>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Partial TP */}
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-text-secondary uppercase tracking-wider whitespace-nowrap">Partial TP</span>
+      {/* Partial TP Toggle Card */}
+      <div class="border border-border-grid bg-bg-panel" data-testid="partial-tp-card"
+        classList={{ "!border-signal-green": preset().partial_tp.enabled }}
+      >
+        <div class="flex items-center justify-between px-3 py-2">
+          <span class="text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold">
+            Partial Take Profit
+          </span>
           <button
-            class={`px-3 py-1 text-xs font-bold tracking-widest ${
+            class={`px-3 py-0.5 text-[10px] font-bold tracking-widest ${
               preset().partial_tp.enabled
                 ? "bg-signal-green/20 text-signal-green border-signal-green"
                 : "text-text-secondary border-border-grid"
@@ -122,26 +195,47 @@ export default function TradeManagement() {
             {preset().partial_tp.enabled ? "ON" : "OFF"}
           </button>
         </div>
-        {preset().partial_tp.enabled && (
-          <div class="flex items-center justify-between pl-4">
-            <span class="text-[11px] text-text-dim uppercase tracking-wider whitespace-nowrap">Close %</span>
-            <input
-              type="number"
-              step="5"
-              min="10"
-              max="100"
-              class="w-20 text-right"
-              value={preset().partial_tp.close_percent}
-              onChange={(e) =>
-                updateField("partial_tp", {
-                  ...preset().partial_tp,
-                  close_percent: parseInt(e.target.value) || 50,
-                })
-              }
-              data-testid="partial-tp-close"
-            />
+        <div class={`toggle-card-body ${preset().partial_tp.enabled ? "expanded" : ""}`}>
+          <div class="px-3 pb-3">
+            <div class="flex items-center gap-3">
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="5"
+                value={preset().partial_tp.close_percent}
+                onInput={(e) =>
+                  updateField("partial_tp", {
+                    ...preset().partial_tp,
+                    close_percent: parseInt(e.target.value) || 50,
+                  })
+                }
+                style={sliderStyle(preset().partial_tp.close_percent, 10, 100)}
+                class="flex-1"
+              />
+              <input
+                type="number"
+                step="5"
+                min="10"
+                max="100"
+                class="w-16 text-right text-sm"
+                value={preset().partial_tp.close_percent}
+                onChange={(e) =>
+                  updateField("partial_tp", {
+                    ...preset().partial_tp,
+                    close_percent: parseInt(e.target.value) || 50,
+                  })
+                }
+                data-testid="partial-tp-close"
+              />
+              <span class="text-[11px] text-text-dim">%</span>
+            </div>
+            <div class="flex justify-between text-[9px] text-text-dim font-mono mt-1">
+              <span>10</span>
+              <span>100</span>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

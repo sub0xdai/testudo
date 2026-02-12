@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 type ExecutionMode = "paper" | "live";
 
-export default function ModeToggle() {
+export default function ModeToggle(props: { compact?: boolean }) {
   const auth = useAuth();
   const [mode, setMode] = createSignal<ExecutionMode>("paper");
 
@@ -16,6 +16,39 @@ export default function ModeToggle() {
   async function selectMode(m: ExecutionMode) {
     setMode(m);
     await browser.storage.local.set({ executionMode: m });
+  }
+
+  if (props.compact) {
+    return (
+      <div class="flex border-2 border-border-grid" data-testid="mode-toggle">
+        <button
+          class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 ${
+            mode() === "paper"
+              ? "bg-signal-green/20 text-signal-green"
+              : "text-text-dim"
+          }`}
+          onClick={() => selectMode("paper")}
+          data-testid="mode-paper"
+          data-mode="paper"
+        >
+          PAPER
+        </button>
+        <Show when={!auth.paperOnly()}>
+          <button
+            class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 border-l-2 border-l-border-grid ${
+              mode() === "live"
+                ? "bg-signal-red/20 text-signal-red"
+                : "text-text-dim"
+            }`}
+            onClick={() => selectMode("live")}
+            data-testid="mode-live"
+            data-mode="live"
+          >
+            LIVE
+          </button>
+        </Show>
+      </div>
+    );
   }
 
   return (
