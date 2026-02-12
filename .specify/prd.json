@@ -294,5 +294,24 @@
     "phase": 6,
     "depends_on": ["EXT-09", "EXT-05"],
     "completed_date": "2026-02-11"
+  },
+  {
+    "id": "HARDEN-01",
+    "spec": "010-backend-hardening",
+    "description": "Replace all Phase 1 placeholder stubs with real implementations: user repository SQLx, exchange account CRUD with AES-256-GCM, execution mode routing, market data pricing, order query/cancel, account state from shadow engine and Binance",
+    "file_context": [
+      "testudo-exchange/crates/router/src/repositories/user.rs",
+      "testudo-exchange/crates/router/src/repositories/exchange_account.rs",
+      "testudo-exchange/crates/router/src/routes/order.rs",
+      "testudo-exchange/crates/router/src/routes/exchanges.rs",
+      "testudo-exchange/crates/router/src/adapters/binance_adapter.rs",
+      "testudo-exchange/crates/common_utils/src/adapters/account_state.rs"
+    ],
+    "acceptance_criteria": "Zero Phase 2 TODO stubs remaining, user repository queries PostgreSQL, credentials encrypted at rest, execution mode header-derived, market orders use real prices, cargo clippy && cargo test pass",
+    "status": "draft",
+    "priority": "P1",
+    "phase": 7,
+    "depends_on": ["INFRA-01", "FILL-01", "EXT-09", "EXT-10"],
+    "completed_date": null
   }
 ]
