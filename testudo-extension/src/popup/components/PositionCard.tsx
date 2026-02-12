@@ -32,12 +32,12 @@ export default function PositionCard(props: PositionCardProps) {
 
   return (
     <div
-      class={`bg-bg-panel border border-border-grid p-3 ${isLong() ? "accent-long" : "accent-short"}`}
+      class={`bg-bg-panel border border-border-grid p-4 card-depth ${isLong() ? "accent-long" : "accent-short"}`}
       data-testid="position-card"
     >
       {/* Row 1: Symbol + Direction + Status */}
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
+      <div class="flex items-center justify-between mb-2.5">
+        <div class="flex items-center gap-2.5">
           <span class="text-sm font-mono font-bold text-text-primary" data-testid="position-symbol">
             {props.trade.symbol}
           </span>
@@ -57,7 +57,7 @@ export default function PositionCard(props: PositionCardProps) {
       </div>
 
       {/* Row 2: Entry + SL */}
-      <div class="flex gap-4 mb-1">
+      <div class="flex gap-6 mb-1.5">
         <div data-testid="position-entry">
           <span class="text-[10px] text-text-dim font-mono">Entry </span>
           <span class="text-xs text-text-secondary font-mono">
@@ -76,7 +76,7 @@ export default function PositionCard(props: PositionCardProps) {
 
       {/* Row 3: TP targets */}
       <Show when={props.trade.take_profit_targets.length > 0}>
-        <div class="mb-2">
+        <div class="mb-2.5">
           <For each={props.trade.take_profit_targets}>
             {(tp, i) => (
               <div class="flex items-center gap-2" data-testid="position-tp">
@@ -93,7 +93,7 @@ export default function PositionCard(props: PositionCardProps) {
       </Show>
 
       {/* Row 4: Management badges + Cancel */}
-      <div class="flex items-center justify-between mt-2">
+      <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-border-grid">
         <div class="flex gap-2">
           <span
             class={`text-[9px] uppercase font-mono px-1.5 py-0.5 border ${beClass()}`}
@@ -109,7 +109,7 @@ export default function PositionCard(props: PositionCardProps) {
           </span>
         </div>
         <button
-          class="px-2 py-1 text-[9px] font-bold tracking-wider border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary"
+          class="px-2.5 py-1 text-[9px] font-bold tracking-wider border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary"
           onClick={() => props.onCancel(props.trade.id)}
           data-testid="cancel-order"
           title="Cancel trade"

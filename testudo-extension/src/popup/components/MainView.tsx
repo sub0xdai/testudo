@@ -83,64 +83,70 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         </Show>
 
         <Show when={activeTab() === "account"}>
-          <div class="px-4 py-3 space-y-4" data-testid="balance-section">
-            <label class="block text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold">
-              Account
-            </label>
-            <Show when={!balanceLoading()} fallback={
-              <p class="text-[13px] text-text-dim font-mono">...</p>
-            }>
-              <Show when={available() !== null} fallback={
-                <p class="text-[13px] text-text-dim italic font-mono">unavailable</p>
+          <div class="px-5 py-4 space-y-5" data-testid="balance-section">
+            <div>
+              <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-3">
+                Balance
+              </label>
+              <Show when={!balanceLoading()} fallback={
+                <p class="text-[13px] text-text-dim font-mono">...</p>
               }>
-                <div class="border border-border-grid">
-                  <div class="flex items-center justify-between px-4 py-2.5 border-b border-border-grid">
-                    <span class="text-[11px] text-text-secondary uppercase tracking-wider">Available</span>
-                    <span class="text-sm text-signal-green font-mono font-bold" data-testid="balance-available">
-                      {formatBalance(available()!)}
-                    </span>
+                <Show when={available() !== null} fallback={
+                  <p class="text-[13px] text-text-dim italic font-mono">unavailable</p>
+                }>
+                  <div class="border border-border-grid card-depth">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-border-grid bg-bg-panel">
+                      <span class="text-[11px] text-text-dim uppercase tracking-wider">Available</span>
+                      <span class="text-sm text-signal-green font-mono font-bold" data-testid="balance-available">
+                        {formatBalance(available()!)}
+                      </span>
+                    </div>
+                    <div class="flex items-center justify-between px-4 py-3 bg-bg-panel">
+                      <span class="text-[11px] text-text-dim uppercase tracking-wider">Locked</span>
+                      <span class="text-sm text-signal-orange font-mono font-bold" data-testid="balance-locked">
+                        {formatBalance(locked()!)}
+                      </span>
+                    </div>
                   </div>
-                  <div class="flex items-center justify-between px-4 py-2.5">
-                    <span class="text-[11px] text-text-secondary uppercase tracking-wider">Locked</span>
-                    <span class="text-sm text-signal-orange font-mono font-bold" data-testid="balance-locked">
-                      {formatBalance(locked()!)}
-                    </span>
-                  </div>
-                </div>
+                </Show>
               </Show>
-            </Show>
+            </div>
 
-            <div class="border-t border-dashed border-border-grid pt-4">
-              <label class="block text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold mb-2">
+            <div class="divider" />
+
+            <div>
+              <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-2">
                 Connection
               </label>
               <StatusBar />
             </div>
 
-            <div class="border-t border-dashed border-border-grid pt-4">
-              <label class="block text-[11px] text-signal-orange uppercase tracking-[0.15em] font-bold mb-2">
+            <div class="divider" />
+
+            <div>
+              <label class="block text-[11px] text-text-secondary uppercase tracking-[0.15em] font-bold mb-2">
                 Account
               </label>
               <Show when={auth.email()}>
                 <p class="text-xs font-mono text-text-secondary">{auth.email()}</p>
               </Show>
               <Show when={auth.paperOnly()}>
-                <p class="text-[11px] text-text-dim font-mono italic">Paper mode -- no account linked</p>
+                <p class="text-[11px] text-text-dim font-mono">Paper mode</p>
               </Show>
             </div>
           </div>
         </Show>
       </div>
 
-      {/* Simplified Footer */}
-      <div class="px-4 py-2 border-t border-border-grid flex items-center justify-between">
+      {/* Minimal Footer */}
+      <div class="px-5 py-1.5 border-t border-border-subtle flex items-center justify-between">
         <Show when={auth.email()}>
-          <span class="text-[11px] text-text-dim truncate max-w-[200px]" data-testid="footer-email">
+          <span class="text-[10px] text-text-dim truncate max-w-[200px]" data-testid="footer-email">
             {auth.email()}
           </span>
         </Show>
         <Show when={auth.paperOnly()}>
-          <span class="text-[11px] text-text-dim" data-testid="footer-paper">
+          <span class="text-[10px] text-text-dim tracking-wider" data-testid="footer-paper">
             PAPER ONLY
           </span>
         </Show>

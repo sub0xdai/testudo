@@ -14,10 +14,10 @@ export default function TabBar(props: TabBarProps) {
   ];
 
   return (
-    <div class="flex bg-bg-panel" data-testid="tab-bar">
+    <div class="flex bg-bg-core border-b border-border-grid" data-testid="tab-bar">
       {tabs.map((tab) => (
         <button
-          class={`flex-1 py-2 text-[11px] font-display font-bold tracking-[0.15em] border-0 border-b-2 ${
+          class={`flex-1 py-2.5 text-[11px] font-display font-bold tracking-[0.15em] border-0 tab-segment ${
             props.activeTab === tab.id
               ? "tab-active"
               : "tab-inactive"
@@ -28,7 +28,7 @@ export default function TabBar(props: TabBarProps) {
           {tab.label}
           {tab.id === "positions" && props.positionCount > 0 && (
             <span
-              class="ml-1 text-[9px] font-mono text-text-primary bg-bg-elevated px-1"
+              class="ml-1.5 text-[9px] font-mono text-signal-green bg-signal-green/10 px-1.5 py-px"
               data-testid="tab-positions-count"
             >
               {props.positionCount}
