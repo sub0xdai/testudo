@@ -1,6 +1,6 @@
 # EXT-09: Backend Trade Management Engine
 
-> Priority: P0 | Depends on: EXT-08, FILL-01 | Status: pending
+> Priority: P0 | Depends on: EXT-08, FILL-01 | Status: Complete | Completed: 2026-02-10
 
 ## Overview
 **Current:** Backend receives trade orders via `POST /api/v1/trades` and places them on the exchange (or shadow engine). No post-placement management — orders sit until they hit stop or target. Position sizing uses a fixed quantity from the extension.
