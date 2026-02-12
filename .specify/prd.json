@@ -308,10 +308,10 @@
       "testudo-exchange/crates/common_utils/src/adapters/account_state.rs"
     ],
     "acceptance_criteria": "Zero Phase 2 TODO stubs remaining, user repository queries PostgreSQL, credentials encrypted at rest, execution mode header-derived, market orders use real prices, cargo clippy && cargo test pass",
-    "status": "draft",
+    "status": "completed",
     "priority": "P1",
     "phase": 7,
     "depends_on": ["INFRA-01", "FILL-01", "EXT-09", "EXT-10"],
-    "completed_date": null
+    "completed_date": "2026-02-12"
   }
 ]

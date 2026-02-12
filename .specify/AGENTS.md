@@ -119,6 +119,18 @@ use std::time::Instant;
 - Balance fetch reuses existing `GET_BALANCES` handler — zero backend changes needed
 - Font size bump across 6 files with zero structural changes — purely visual spec, no logic changes required
 
+### 2026-02-12 (010-backend-hardening)
+- SQLx `query_as!` macro requires DATABASE_URL at compile time; use runtime `query_as::<_, Row>()` with `#[derive(sqlx::FromRow)]` instead
+- When workspace sqlx has both `time` and `chrono` features, `FromRow` derives work with `chrono::DateTime<Utc>` directly
+- AES-256-GCM via `aes-gcm` crate: prepend 12-byte nonce to ciphertext, use `OsRng` for nonce generation
+- `CREDENTIAL_ENCRYPTION_KEY` env var: 64 hex chars = 32 bytes AES key; ephemeral fallback key for dev mode
+- actix-web handlers accept `HttpRequest` as extra parameter for header inspection (execution mode detection)
+- `reqwest` transitively available via common_utils but must be explicitly added to router/Cargo.toml
+- Binance ticker: `GET /fapi/v2/ticker/price?symbol=BTCUSDT` returns `{"symbol":"BTCUSDT","price":"97000.00","time":...}`
+- Shadow engine `get_open_orders(user_id)` returns `Vec<ShadowOrder>` with full order details for direct serialization
+- `PgPool::connect_lazy()` requires Tokio runtime — use `#[tokio::test]` not `#[test]` for pool-dependent tests
+- `AccountStateAdapter` now supports `BalanceProvider` trait injection — backward compatible with no-provider fallback
+
 ### 2026-01-26
 - Clippy warnings cleaned up across all crates
 - `rust_decimal` already in dependencies
