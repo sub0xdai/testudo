@@ -7,17 +7,14 @@ interface HeaderBarProps {
 
 export default function HeaderBar(props: HeaderBarProps) {
   return (
-    <div data-testid="header-bar" class="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
-      <div class="flex items-center gap-3">
+    <div data-testid="header-bar" class="flex items-center justify-between px-5 py-2.5">
+      <div class="flex items-center gap-2">
         <StatusBar />
-        <span class="text-[13px] font-sans font-bold tracking-[0.2em] text-text-primary">
-          TESTUDO
-        </span>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <ModeToggle compact />
         <button
-          class="p-1.5 border-0 text-text-dim hover:text-text-primary hover:bg-transparent"
+          class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
           onClick={props.onOpenSettings}
           data-testid="settings-btn"
           title="Settings"

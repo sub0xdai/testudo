@@ -11,7 +11,7 @@ const WS_STATE_LABELS: Record<WsState, string> = {
 const WS_DOT_CLASSES: Record<WsState, string> = {
   disconnected: "bg-signal-red",
   connecting: "bg-signal-orange status-blink",
-  connected: "bg-signal-green",
+  connected: "bg-accent-blue shadow-[0_0_8px_rgba(59,130,246,0.6)]",
 };
 
 export default function StatusBar() {
@@ -35,13 +35,13 @@ export default function StatusBar() {
   });
 
   return (
-    <div class="flex items-center gap-1.5" data-testid="status-bar">
+    <div class="flex items-center gap-2" data-testid="status-bar">
       <span
-        class={`w-2 h-2 inline-block ${WS_DOT_CLASSES[wsState()]}`}
+        class={`w-2 h-2 rounded-full inline-block ${WS_DOT_CLASSES[wsState()]}`}
         data-testid="status-dot"
         data-state={wsState()}
       />
-      <span class="text-[11px] text-text-secondary font-sans" data-testid="status-text">
+      <span class="text-[12px] text-text-secondary font-sans font-medium" data-testid="status-text">
         {WS_STATE_LABELS[wsState()]}
       </span>
     </div>

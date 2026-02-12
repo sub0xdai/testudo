@@ -20,12 +20,12 @@ export default function ModeToggle(props: { compact?: boolean }) {
 
   if (props.compact) {
     return (
-      <div class="flex border border-border-grid" data-testid="mode-toggle">
+      <div class="flex bg-bg-panel rounded-lg p-0.5" data-testid="mode-toggle">
         <button
-          class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 font-sans ${
+          class={`px-3 py-1 text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-all ${
             mode() === "paper"
               ? "bg-signal-green/15 text-signal-green"
-              : "text-text-dim"
+              : "text-text-dim hover:text-text-secondary"
           }`}
           onClick={() => selectMode("paper")}
           data-testid="mode-paper"
@@ -35,10 +35,10 @@ export default function ModeToggle(props: { compact?: boolean }) {
         </button>
         <Show when={!auth.paperOnly()}>
           <button
-            class={`px-3 py-0.5 text-[10px] font-bold tracking-wider border-0 border-l border-l-border-grid font-sans ${
+            class={`px-3 py-1 text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-all ${
               mode() === "live"
                 ? "bg-signal-red/15 text-signal-red"
-                : "text-text-dim"
+                : "text-text-dim hover:text-text-secondary"
             }`}
             onClick={() => selectMode("live")}
             data-testid="mode-live"
@@ -54,10 +54,10 @@ export default function ModeToggle(props: { compact?: boolean }) {
   return (
     <div class="flex gap-2" data-testid="mode-toggle">
       <button
-        class={`flex-1 py-2 text-xs font-bold tracking-widest font-sans ${
+        class={`flex-1 py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl ${
           mode() === "paper"
             ? "bg-signal-green text-bg-core border-signal-green"
-            : "text-text-secondary border-border-grid hover:bg-bg-elevated"
+            : "text-text-secondary border-border-subtle hover:bg-bg-elevated"
         }`}
         onClick={() => selectMode("paper")}
         data-testid="mode-paper"
@@ -67,10 +67,10 @@ export default function ModeToggle(props: { compact?: boolean }) {
       </button>
       <Show when={!auth.paperOnly()}>
         <button
-          class={`flex-1 py-2 text-xs font-bold tracking-widest font-sans ${
+          class={`flex-1 py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl ${
             mode() === "live"
               ? "bg-signal-red text-text-primary border-signal-red"
-              : "text-text-secondary border-border-grid hover:bg-bg-elevated"
+              : "text-text-secondary border-border-subtle hover:bg-bg-elevated"
           }`}
           onClick={() => selectMode("live")}
           data-testid="mode-live"

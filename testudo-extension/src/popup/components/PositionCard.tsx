@@ -25,20 +25,20 @@ export default function PositionCard(props: PositionCardProps) {
   };
 
   const beClass = () => {
-    if (!props.trade.break_even_enabled) return "text-text-dim border-border-grid";
-    if (props.trade.break_even_triggered) return "text-signal-green border-signal-green";
-    return "text-signal-orange border-signal-orange";
+    if (!props.trade.break_even_enabled) return "text-text-dim border-border-subtle";
+    if (props.trade.break_even_triggered) return "text-signal-green border-signal-green/30";
+    return "text-signal-orange border-signal-orange/30";
   };
 
   return (
     <div
-      class={`bg-bg-panel border border-border-grid p-4 card-depth ${isLong() ? "accent-long" : "accent-short"}`}
+      class={`bg-bg-panel border border-border-subtle rounded-xl p-4 card-depth ${isLong() ? "accent-long" : "accent-short"}`}
       data-testid="position-card"
     >
       {/* Row 1: Symbol + Direction + Status */}
       <div class="flex items-center justify-between mb-2.5">
         <div class="flex items-center gap-2.5">
-          <span class="text-[14px] font-mono font-bold text-text-primary" data-testid="position-symbol">
+          <span class="text-[14px] font-mono font-bold text-white" data-testid="position-symbol">
             {props.trade.symbol}
           </span>
           <span
@@ -49,7 +49,7 @@ export default function PositionCard(props: PositionCardProps) {
           </span>
         </div>
         <span
-          class={`text-[9px] uppercase tracking-wider px-2 py-0.5 font-sans ${statusClass()}`}
+          class={`text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-sans font-medium ${statusClass()}`}
           data-testid="position-status"
         >
           {props.trade.status}
@@ -83,8 +83,10 @@ export default function PositionCard(props: PositionCardProps) {
                 <span class="text-[10px] text-text-dim font-sans">TP{i() + 1}</span>
                 <span class="text-[11px] text-text-secondary font-mono">{tp.price}</span>
                 <span class="text-[9px] text-text-dim font-mono">({tp.percent_to_close}%)</span>
-                <span class={`text-[9px] font-mono ${tp.filled ? "text-signal-green" : "text-text-dim"}`}>
-                  [{tp.filled ? "filled" : "pending"}]
+                <span class={`text-[9px] font-sans font-medium px-1.5 py-px rounded-full ${
+                  tp.filled ? "text-signal-green bg-signal-green/10" : "text-text-dim bg-bg-elevated"
+                }`}>
+                  {tp.filled ? "filled" : "pending"}
                 </span>
               </div>
             )}
@@ -93,23 +95,23 @@ export default function PositionCard(props: PositionCardProps) {
       </Show>
 
       {/* Row 4: Management badges + Cancel */}
-      <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-border-grid">
+      <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-border-subtle">
         <div class="flex gap-2">
           <span
-            class={`text-[9px] uppercase font-mono px-1.5 py-0.5 border ${beClass()}`}
+            class={`text-[9px] uppercase font-sans font-medium px-2 py-0.5 rounded-full border ${beClass()}`}
             data-testid="position-be-badge"
           >
             {beLabel()}
           </span>
           <span
-            class="text-[9px] uppercase font-mono px-1.5 py-0.5 border text-text-dim border-border-grid"
+            class="text-[9px] uppercase font-sans font-medium px-2 py-0.5 rounded-full border text-text-dim border-border-subtle"
             data-testid="position-trail-badge"
           >
             Trail: OFF
           </span>
         </div>
         <button
-          class="px-2.5 py-1 text-[9px] font-bold tracking-wider font-sans border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary"
+          class="px-3 py-1 text-[9px] font-bold tracking-wider font-sans rounded-full border-signal-red text-signal-red hover:bg-signal-red hover:text-white"
           onClick={() => props.onCancel(props.trade.id)}
           data-testid="cancel-order"
           title="Cancel trade"

@@ -62,14 +62,14 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   return (
     <div class="px-5 py-4" data-testid="active-orders">
       <div class="flex items-center justify-between mb-4">
-        <span class="text-[10px] text-text-dim font-sans uppercase tracking-wider">
+        <span class="text-[12px] text-text-secondary font-sans font-medium">
           <Show when={!loading() && activeTrades().length > 0} fallback="Active Positions">
-            <span class="text-text-primary font-mono font-bold">{activeTrades().length}</span>
+            <span class="text-white font-mono font-bold">{activeTrades().length}</span>
             {" "}Active Positions
           </Show>
         </span>
         <button
-          class="px-2 py-0.5 text-xs border-0 text-text-dim hover:text-text-secondary hover:bg-transparent"
+          class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
           onClick={fetchTrades}
           title="Refresh"
           data-testid="refresh-orders"
@@ -84,17 +84,23 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       </div>
 
       <Show when={loading()}>
-        <p class="text-[13px] text-text-dim font-mono py-2">Loading...</p>
+        <p class="text-[13px] text-text-dim font-sans py-2">Loading...</p>
       </Show>
 
       <Show when={error() && !loading()}>
-        <p class="text-[13px] text-signal-red font-mono py-2" data-testid="orders-error">{error()}</p>
+        <p class="text-[13px] text-signal-red font-sans py-2" data-testid="orders-error">{error()}</p>
       </Show>
 
       <Show when={!loading() && !error() && activeTrades().length === 0}>
         <div class="flex flex-col items-center justify-center py-12" data-testid="empty-positions">
-          <p class="text-[13px] font-sans font-medium text-text-dim tracking-[0.2em]">NO ACTIVE POSITIONS</p>
-          <p class="text-[11px] text-text-dim font-sans mt-3 text-center leading-relaxed">
+          <div class="w-12 h-12 rounded-2xl bg-bg-panel border border-border-subtle flex items-center justify-center mb-4">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-text-dim">
+              <path d="M3 3h18v18H3z" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+          </div>
+          <p class="text-[13px] font-sans font-medium text-text-secondary" data-testid="empty-positions">No active positions</p>
+          <p class="text-[11px] text-text-dim font-sans mt-2 text-center leading-relaxed">
             Trades placed via TradingView will<br />appear here automatically.
           </p>
         </div>

@@ -65,11 +65,38 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
   return (
     <div class="flex flex-col h-full">
-      {/* Compact Header */}
+      {/* Slim toolbar */}
       <HeaderBar onOpenSettings={props.onOpenSettings} />
 
-      {/* Arc Gauge — hero visual */}
-      <div class="border-b border-border-subtle" data-testid="header-balance">
+      {/* Wallet-style balance panel */}
+      <div class="balance-panel" data-testid="header-balance">
+        {/* Balance hero */}
+        <div class="relative flex flex-col items-center pt-5 pb-2">
+          <span class="text-[11px] font-medium text-text-secondary tracking-widest uppercase mb-2">
+            Balance
+          </span>
+          <span class="text-[42px] font-bold text-white tracking-tight leading-none">
+            <Show when={!balanceLoading() && total() !== null} fallback={
+              <span class="text-text-dim">$--</span>
+            }>
+              ${formatBalance(total()!)}
+            </Show>
+          </span>
+          {/* Delta line: available / locked breakdown */}
+          <Show when={!balanceLoading() && available() !== null}>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-[11px] text-signal-green font-medium">
+                ${formatBalance(available()!)} available
+              </span>
+              <span class="text-text-dim">·</span>
+              <span class="text-[11px] text-text-secondary">
+                ${formatBalance(locked()!)} locked
+              </span>
+            </div>
+          </Show>
+        </div>
+
+        {/* Risk gauge */}
         <ArcGauge
           exposure={exposure()}
           atRisk={locked() || 0}
@@ -77,15 +104,15 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         />
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <TabBar
         activeTab={activeTab()}
         onTabChange={setActiveTab}
         positionCount={positionCount()}
       />
 
-      {/* Tab Content */}
-      <div class="flex-1 overflow-y-auto">
+      {/* Content */}
+      <div class="flex-1 scroll-area">
         <Show when={activeTab() === "trade"}>
           <TradeManagement />
         </Show>
@@ -98,32 +125,32 @@ export default function MainView(props: { onOpenSettings: () => void }) {
           <div class="px-5 py-4 space-y-4" data-testid="balance-section">
             {/* Info Grid */}
             <Show when={!balanceLoading()} fallback={
-              <p class="text-[13px] text-text-dim font-mono">Loading...</p>
+              <p class="text-[13px] text-text-dim font-sans">Loading...</p>
             }>
               <Show when={available() !== null} fallback={
                 <p class="text-[13px] text-text-dim italic font-sans">Balance unavailable</p>
               }>
                 <div class="info-grid">
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Available</span>
+                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Available</span>
                     <span class="text-[15px] text-signal-green font-mono font-bold" data-testid="balance-available">
                       {formatBalance(available()!)}
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Locked</span>
+                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Locked</span>
                     <span class="text-[15px] text-signal-orange font-mono font-bold" data-testid="balance-locked">
                       {formatBalance(locked()!)}
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Positions</span>
-                    <span class="text-[15px] text-text-primary font-mono font-bold">
+                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Positions</span>
+                    <span class="text-[15px] text-white font-mono font-bold">
                       {positionCount()}
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-1">Exposure</span>
+                    <span class="block text-[10px] text-text-dim font-sans font-medium mb-1">Exposure</span>
                     <span class={`text-[15px] font-mono font-bold ${
                       exposure() > 50 ? "text-signal-red" : exposure() > 25 ? "text-signal-orange" : "text-signal-green"
                     }`}>
@@ -138,7 +165,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
             {/* Connection */}
             <div>
-              <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-2">Connection</span>
+              <span class="block text-[11px] text-text-secondary font-sans font-medium mb-2">Connection</span>
               <StatusBar />
             </div>
 
@@ -146,7 +173,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
             {/* Account */}
             <div>
-              <span class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-2">Account</span>
+              <span class="block text-[11px] text-text-secondary font-sans font-medium mb-2">Account</span>
               <Show when={auth.email()}>
                 <p class="text-[13px] font-mono text-text-secondary">{auth.email()}</p>
               </Show>
@@ -158,8 +185,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         </Show>
       </div>
 
-      {/* Minimal Footer */}
-      <div class="px-5 py-1.5 border-t border-border-subtle flex items-center justify-between">
+      {/* Footer */}
+      <div class="px-5 py-2 border-t border-border-subtle flex items-center justify-between">
         <Show when={auth.email()}>
           <span class="text-[10px] text-text-dim font-sans truncate max-w-[200px]" data-testid="footer-email">
             {auth.email()}

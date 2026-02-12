@@ -41,9 +41,9 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
   return (
     <div class="flex flex-col h-full">
       {/* Header */}
-      <div class="flex items-center gap-3 px-5 py-3 border-b border-border-grid">
+      <div class="flex items-center gap-3 px-5 py-3.5">
         <button
-          class="p-1 border-0 text-text-dim hover:text-text-primary hover:bg-transparent"
+          class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
           onClick={props.onBack}
           data-testid="settings-back"
           title="Back"
@@ -52,8 +52,8 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
-        <span class="text-[13px] font-sans font-bold tracking-[0.2em] text-text-primary">
-          SETTINGS
+        <span class="text-[14px] font-sans font-bold tracking-[0.1em] text-white">
+          Settings
         </span>
       </div>
 
@@ -61,7 +61,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
       <div class="flex-1 px-5 py-4 space-y-5">
         {/* Backend URL */}
         <div>
-          <label class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-2">
+          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
             Backend URL
           </label>
           <input
@@ -72,13 +72,13 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             data-testid="backend-url"
           />
           <Show when={saved() === "backend"}>
-            <span class="text-[10px] text-signal-green font-sans mt-1 block" data-testid="save-status">SAVED</span>
+            <span class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
           </Show>
         </div>
 
         {/* WebSocket URL */}
         <div>
-          <label class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-2">
+          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
             WebSocket URL
           </label>
           <input
@@ -89,13 +89,13 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             data-testid="ws-url"
           />
           <Show when={saved() === "ws"}>
-            <span class="text-[10px] text-signal-green font-sans mt-1 block" data-testid="save-status">SAVED</span>
+            <span class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
           </Show>
         </div>
 
         {/* Account Section */}
-        <div class="pt-4 border-t border-border-grid">
-          <label class="block text-[10px] text-text-dim font-sans uppercase tracking-wider mb-3">
+        <div class="pt-4 border-t border-border-subtle">
+          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-3">
             Account
           </label>
           <Show
@@ -109,7 +109,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
                 {auth.email()}
               </p>
               <button
-                class="w-full py-2 text-xs font-bold tracking-widest font-sans border-signal-red text-signal-red hover:bg-signal-red hover:text-text-primary"
+                class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-signal-red text-signal-red hover:bg-signal-red hover:text-white"
                 onClick={handleLogout}
                 data-testid="logout-btn"
               >
