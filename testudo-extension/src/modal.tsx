@@ -82,7 +82,9 @@ const MODAL_STYLES = `
   .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
   .balance-label { font-size: 12px; color: #D4D4D8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
   .balance-value { font-size: 14px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #34D399; font-weight: 500; }
+  .balance-value.size { color: #fff; font-weight: 600; }
   .balance-value.margin { color: #FBBF24; }
+  .balance-value.risk { color: #F87171; }
   .balance-value.muted { color: #71717A; font-style: italic; font-size: 12px; }
   .toast { position: fixed; top: 20px; right: 20px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
   .toast.visible { opacity: 1; }
@@ -126,17 +128,30 @@ function ManagementSummary(props: { preset: ManagementPreset }) {
   );
 }
 
-function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent: number }) {
+function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent: number; setup: TradeSetup }) {
   const usdt = () => props.balance?.find((b) => b.asset === "USDT");
   const available = () => {
     const b = usdt();
     return b ? parseFloat(b.available) : null;
   };
-  const margin = () => {
+  const stopDistance = () => Math.abs(props.setup.entry - props.setup.stop);
+  const riskAmount = () => {
     const avail = available();
     if (avail === null) return null;
     return (props.riskPercent / 100) * avail;
   };
+  const positionSize = () => {
+    const risk = riskAmount();
+    const dist = stopDistance();
+    if (risk === null || dist === 0) return null;
+    return risk / dist;
+  };
+  const margin = () => {
+    const qty = positionSize();
+    if (qty === null) return null;
+    return qty * props.setup.entry;
+  };
+  const baseAsset = () => props.setup.symbol.replace(/USDT$|USD$|BUSD$/, "");
 
   return (
     <div class="balance-section">
@@ -147,12 +162,20 @@ function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent:
         </div>
       }>
         <div class="balance-row">
-          <span class="balance-label">Available</span>
-          <span class="balance-value">{available()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+          <span class="balance-label">Size</span>
+          <span class="balance-value size">{positionSize()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {baseAsset()}</span>
         </div>
         <div class="balance-row">
           <span class="balance-label">Margin</span>
-          <span class="balance-value margin">~{margin()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+          <span class="balance-value margin">{margin()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+        </div>
+        <div class="balance-row">
+          <span class="balance-label">Risk</span>
+          <span class="balance-value risk">{riskAmount()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+        </div>
+        <div class="balance-row">
+          <span class="balance-label">Available</span>
+          <span class="balance-value">{available()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
         </div>
       </Show>
     </div>
@@ -236,7 +259,7 @@ function ConfirmationModal(props: {
                 <span class={`rr-value ${rrClass}`}>1 : {rr.toFixed(2)}</span>
               </div>
               <ManagementSummary preset={props.management} />
-              <BalanceSummary balance={props.balance} riskPercent={props.management.risk_percent} />
+              <BalanceSummary balance={props.balance} riskPercent={props.management.risk_percent} setup={setup()} />
               <div class="footer">
                 <span class="hint">
                   {props.isLiveMode
