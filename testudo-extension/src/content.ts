@@ -22,21 +22,30 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const setup = scrapeTradeSetup();
-    const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as {
-      executionMode: "paper" | "live";
-    };
-    const management = await getManagementPreset();
-
-    let balance: BalanceResponse[] | null = null;
     try {
-      const resp = await browser.runtime.sendMessage({ type: "GET_BALANCES" }) as {
-        success: boolean; data?: BalanceResponse[];
+      const setup = scrapeTradeSetup();
+      const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as {
+        executionMode: "paper" | "live";
       };
-      balance = resp?.success ? (resp.data ?? null) : null;
-    } catch { /* non-blocking */ }
+      const management = await getManagementPreset();
 
-    showModal(setup, settings.executionMode === "live", management, handleModalResult, balance);
+      let balance: BalanceResponse[] | null = null;
+      try {
+        const resp = await browser.runtime.sendMessage({ type: "GET_BALANCES" }) as {
+          success: boolean; data?: BalanceResponse[];
+        };
+        balance = resp?.success ? (resp.data ?? null) : null;
+      } catch { /* non-blocking */ }
+
+      showModal(setup, settings.executionMode === "live", management, handleModalResult, balance);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Extension context invalidated")) {
+        showToast("Extension updated — refresh this page", "error");
+      } else {
+        showToast(`Error: ${msg}`, "error");
+      }
+    }
   }
 }, true);
 
