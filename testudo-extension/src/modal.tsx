@@ -83,6 +83,7 @@ const MODAL_STYLES = `
   .balance-label { font-size: 12px; color: #D4D4D8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
   .balance-value { font-size: 14px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #34D399; font-weight: 500; }
   .balance-value.size { color: #fff; font-weight: 600; }
+  .balance-value.leverage { color: #60A5FA; }
   .balance-value.margin { color: #FBBF24; }
   .balance-value.risk { color: #F87171; }
   .balance-value.muted { color: #71717A; font-style: italic; font-size: 12px; }
@@ -128,7 +129,7 @@ function ManagementSummary(props: { preset: ManagementPreset }) {
   );
 }
 
-function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent: number; setup: TradeSetup }) {
+function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent: number; leverage: number; setup: TradeSetup }) {
   const usdt = () => props.balance?.find((b) => b.asset === "USDT");
   const available = () => {
     const b = usdt();
@@ -149,7 +150,7 @@ function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent:
   const margin = () => {
     const qty = positionSize();
     if (qty === null) return null;
-    return qty * props.setup.entry;
+    return (qty * props.setup.entry) / props.leverage;
   };
   const baseAsset = () => props.setup.symbol.replace(/USDT$|USD$|BUSD$/, "");
 
@@ -164,6 +165,10 @@ function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent:
         <div class="balance-row">
           <span class="balance-label">Size</span>
           <span class="balance-value size">{positionSize()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {baseAsset()}</span>
+        </div>
+        <div class="balance-row">
+          <span class="balance-label">Leverage</span>
+          <span class="balance-value leverage">{props.leverage}x</span>
         </div>
         <div class="balance-row">
           <span class="balance-label">Margin</span>
@@ -259,7 +264,7 @@ function ConfirmationModal(props: {
                 <span class={`rr-value ${rrClass}`}>1 : {rr.toFixed(2)}</span>
               </div>
               <ManagementSummary preset={props.management} />
-              <BalanceSummary balance={props.balance} riskPercent={props.management.risk_percent} setup={setup()} />
+              <BalanceSummary balance={props.balance} riskPercent={props.management.risk_percent} leverage={props.management.leverage} setup={setup()} />
               <div class="footer">
                 <span class="hint">
                   {props.isLiveMode

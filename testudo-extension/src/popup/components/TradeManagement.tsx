@@ -95,6 +95,42 @@ export default function TradeManagement() {
 
       <div class="divider" />
 
+      {/* Leverage Slider — 1x to 125x (Binance Futures max) */}
+      <div data-testid="leverage-slider">
+        <label class="flex items-center justify-between mb-3">
+          <span class="text-[14px] text-zinc-200 font-sans font-semibold">Leverage</span>
+          <div class="value-input-box">
+            <input
+              type="number"
+              step="1"
+              min="1"
+              max="125"
+              class="w-14 text-right text-[14px]"
+              value={preset().leverage}
+              onChange={(e) => updateField("leverage", Math.max(1, Math.min(125, parseInt(e.target.value) || 1)))}
+              data-testid="leverage-value"
+            />
+            <span class="text-[13px] font-mono ml-1 text-accent-blue">x</span>
+          </div>
+        </label>
+        <input
+          type="range"
+          min="1"
+          max="125"
+          step="1"
+          value={preset().leverage}
+          onInput={(e) => updateField("leverage", parseInt(e.target.value) || 1)}
+          style={sliderStyle(preset().leverage, 1, 125)}
+          class="w-full"
+        />
+        <div class="flex justify-between text-[12px] text-zinc-500 font-sans mt-1.5">
+          <span>1x</span>
+          <span>125x</span>
+        </div>
+      </div>
+
+      <div class="divider" />
+
       {/* Break-even % Slider */}
       <div data-testid="be-slider">
         <label class="flex items-center justify-between mb-3">

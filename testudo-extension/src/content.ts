@@ -59,6 +59,7 @@ async function executeTrade(setup: TradeSetup): Promise<void> {
         management: {
           risk_percent: management.risk_percent,
           break_even_at: management.break_even_at,
+          leverage: management.leverage,
           trailing_stop: management.trailing_stop,
           partial_tp: management.partial_tp,
         },

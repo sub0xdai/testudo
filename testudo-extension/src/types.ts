@@ -19,6 +19,7 @@ export interface ManagementPreset {
   name: string;
   risk_percent: number;
   break_even_at: number;
+  leverage: number;
   trailing_stop: {
     enabled: boolean;
     distance_percent: number;
@@ -33,6 +34,7 @@ export const DEFAULT_MANAGEMENT_PRESET: ManagementPreset = {
   name: "default",
   risk_percent: 1.0,
   break_even_at: 50,
+  leverage: 1,
   trailing_stop: { enabled: false, distance_percent: 25 },
   partial_tp: { enabled: false, close_percent: 50 },
 };
@@ -47,6 +49,7 @@ export interface TradePayload {
   management: {
     risk_percent: number;
     break_even_at: number;
+    leverage: number;
     trailing_stop: { enabled: boolean; distance_percent: number };
     partial_tp: { enabled: boolean; close_percent: number };
   };

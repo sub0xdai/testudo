@@ -14,6 +14,7 @@ describe("ManagementPreset", () => {
     expect(DEFAULT_MANAGEMENT_PRESET.trailing_stop.distance_percent).toBe(25);
     expect(DEFAULT_MANAGEMENT_PRESET.partial_tp.enabled).toBe(false);
     expect(DEFAULT_MANAGEMENT_PRESET.partial_tp.close_percent).toBe(50);
+    expect(DEFAULT_MANAGEMENT_PRESET.leverage).toBe(1);
   });
 
   it("is a valid ManagementPreset shape", () => {
@@ -23,6 +24,7 @@ describe("ManagementPreset", () => {
     expect(typeof preset.break_even_at).toBe("number");
     expect(typeof preset.trailing_stop).toBe("object");
     expect(typeof preset.partial_tp).toBe("object");
+    expect(typeof preset.leverage).toBe("number");
   });
 });
 
@@ -40,6 +42,7 @@ describe("TradePayload", () => {
         break_even_at: 50,
         trailing_stop: { enabled: true, distance_percent: 25 },
         partial_tp: { enabled: true, close_percent: 50 },
+        leverage: 10,
       },
     };
 
