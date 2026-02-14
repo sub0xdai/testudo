@@ -376,8 +376,8 @@ function disconnectWebSocket(): void {
 }
 
 function forwardOrderUpdate(data: unknown): void {
-  // Forward to TradingView content scripts
-  browser.tabs.query({ url: "*://*.tradingview.com/*" }).then((tabs) => {
+  // Forward to all content script tabs
+  browser.tabs.query({ url: ["*://*.tradingview.com/*", "*://*.dexscreener.com/*", "*://*.gmx.io/*", "*://*.bybit.com/*"] }).then((tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
         browser.tabs.sendMessage(tab.id, {

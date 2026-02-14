@@ -2,6 +2,9 @@
 // Extracts trade setup data from TradingView's Long/Short Position drawing tools.
 // Uses multiple selector strategies with fallbacks for resilience.
 
+import browser from "webextension-polyfill";
+import type { ScraperHealthRecord, ChartApiHealth } from "./types";
+
 export interface TradeSetup {
   symbol: string;
   side: "LONG" | "SHORT";
@@ -10,6 +13,8 @@ export interface TradeSetup {
   target: number;
   timeframe: string;
 }
+
+const SCRAPER_HEALTH_MAX = 20;
 
 // --- Price Parsing ---
 
@@ -45,7 +50,7 @@ const SYMBOL_SELECTORS = [
   '[class*="paneTitle"]',
 ];
 
-function scrapeSymbol(): string | null {
+export function scrapeSymbol(): string | null {
   for (const selector of SYMBOL_SELECTORS) {
     const el = document.querySelector(selector);
     if (!el?.textContent) continue;
@@ -435,9 +440,9 @@ function inferSideFromPrices(entry: number, stop: number, target: number): Posit
 
 // --- Main Scraper Function ---
 
-export function scrapeTradeSetup(): TradeSetup | null {
+export function scrapeTradeSetup(strategiesOnly?: number[]): TradeSetup | null {
   // Try each strategy in order of reliability
-  const strategies = [
+  const allStrategies = [
     findPositionToolByChartApi,       // Strategy 0: zero-flash, internal API
     findPositionToolByDataName,       // Strategy 1: properties dialog data-name
     findPositionToolByPropertiesDialog, // Strategy 2: dialog by role
@@ -446,17 +451,23 @@ export function scrapeTradeSetup(): TradeSetup | null {
     findPositionToolByPriceScan,        // Strategy 5: floating panel scan
   ];
 
-  for (const strategy of strategies) {
+  const indicesToTry = strategiesOnly ?? allStrategies.map((_, i) => i);
+
+  for (const i of indicesToTry) {
+    const strategy = allStrategies[i];
+    if (!strategy) continue;
     try {
       const result = strategy();
       if (result) {
         const symbol = scrapeSymbol();
         if (!symbol) {
           console.warn("[Testudo] Found position tool but could not extract symbol");
+          recordScraperResult(null);
           return null;
         }
 
         const timeframe = scrapeTimeframe();
+        recordScraperResult(i);
 
         return {
           symbol,
@@ -472,7 +483,51 @@ export function scrapeTradeSetup(): TradeSetup | null {
     }
   }
 
+  recordScraperResult(null);
   return null;
+}
+
+// --- Chart API Health Detection (FR-11) ---
+
+export function getChartApiHealth(): ChartApiHealth {
+  const w = window as any;
+  const widget = w.TradingViewApi || w.ChartApiInstance;
+
+  if (!widget) {
+    return { available: false, hasActiveChart: false, hasGetAllShapes: false, hasGetShapeById: false };
+  }
+
+  const hasActiveChart = typeof widget.activeChart === "function";
+  let hasGetAllShapes = false;
+  let hasGetShapeById = false;
+
+  if (hasActiveChart) {
+    try {
+      const chart = widget.activeChart();
+      hasGetAllShapes = chart && typeof chart.getAllShapes === "function";
+      hasGetShapeById = chart && typeof chart.getShapeById === "function";
+    } catch { /* silent */ }
+  }
+
+  return { available: true, hasActiveChart, hasGetAllShapes, hasGetShapeById };
+}
+
+// --- Scraper Telemetry (FR-12) ---
+
+function recordScraperResult(strategyUsed: number | null): void {
+  const record: ScraperHealthRecord = {
+    timestamp: Date.now(),
+    strategyUsed,
+    success: strategyUsed !== null,
+  };
+
+  browser.storage.local.get(["scraperHealth"]).then((stored) => {
+    const history = (stored.scraperHealth as ScraperHealthRecord[]) || [];
+    history.push(record);
+    // Keep last N records
+    const trimmed = history.slice(-SCRAPER_HEALTH_MAX);
+    browser.storage.local.set({ scraperHealth: trimmed });
+  }).catch(() => { /* non-blocking */ });
 }
 
 // --- MutationObserver for Tool Detection ---

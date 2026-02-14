@@ -1,25 +1,10 @@
 import { render } from "solid-js/web";
-import { Show, For } from "solid-js";
+import TradeForm from "./components/TradeForm";
 import type { TradeSetup } from "./scraper";
 import type { ManagementPreset, BalanceResponse } from "./types";
 import { ORDER_EVENT_STYLES } from "./types";
 
 export type ModalResult = "confirm" | "dismiss";
-
-// --- Utility functions ---
-
-function formatPrice(price: number): string {
-  if (price >= 1000) return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (price >= 1) return price.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-  return price.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 8 });
-}
-
-function calculateRR(setup: TradeSetup): number {
-  const risk = Math.abs(setup.entry - setup.stop);
-  if (risk === 0) return 0;
-  const reward = Math.abs(setup.target - setup.entry);
-  return reward / risk;
-}
 
 // --- Styles (injected into Shadow DOM) ---
 
@@ -50,17 +35,46 @@ const MODAL_STYLES = `
     -webkit-backdrop-filter: blur(20px);
   }
   .panel.live-mode { border-color: rgba(239,68,68,0.3); box-shadow: 0 24px 48px rgba(239,68,68,0.15), 0 0 0 1px rgba(239,68,68,0.2); }
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-  .side { font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; }
-  .side.long { background: rgba(52,211,153,0.15); color: #34D399; }
-  .side.short { background: rgba(248,113,113,0.15); color: #F87171; }
-  .symbol { font-size: 14px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-  .timeframe { font-size: 11px; color: #6B7280; margin-left: 8px; }
-  .live-badge { display: inline-block; background: rgba(239,68,68,0.15); color: #EF4444; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 12px; }
-  .live-warning { font-size: 11px; color: rgba(239,68,68,0.8); margin-bottom: 12px; text-align: center; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
+  .side-toggle { display: flex; gap: 4px; }
+  .side-btn {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+    background: transparent; color: #71717A; cursor: pointer; transition: all 0.15s;
+  }
+  .side-btn:hover { border-color: rgba(255,255,255,0.2); color: #D4D4D8; }
+  .side-btn-active-long { background: rgba(52,211,153,0.15); color: #34D399; border-color: rgba(52,211,153,0.3); }
+  .side-btn-active-short { background: rgba(248,113,113,0.15); color: #F87171; border-color: rgba(248,113,113,0.3); }
+  .symbol-field { position: relative; flex: 1; }
+  .field-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .field-input-sm { font-size: 13px; padding: 6px 10px; }
+  .field-input:focus { border-color: rgba(59,130,246,0.5); }
+  .field-input.invalid { border-color: rgba(239,68,68,0.5); }
+  .field-input.auto-filled { border-color: rgba(52,211,153,0.3); }
+  .field-input::placeholder { color: #52525B; }
+  .auto-badge {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    color: #34D399; background: rgba(52,211,153,0.1); padding: 2px 6px; border-radius: 4px;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .auto-badge:hover { opacity: 0.6; }
   .rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
-  .row { display: flex; justify-content: space-between; align-items: center; }
-  .label { font-size: 12px; color: #D4D4D8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .field-wrapper { position: relative; flex: 1; }
+  .label { font-size: 12px; color: #D4D4D8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; min-width: 50px; }
   .value { font-size: 14px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #fff; font-weight: 500; }
   .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 14px 0; }
   .rr-row { display: flex; justify-content: space-between; align-items: center; }
@@ -77,7 +91,8 @@ const MODAL_STYLES = `
   .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
   .hint { font-size: 11px; color: #71717A; display: flex; align-items: center; gap: 4px; }
   kbd { display: inline-block; padding: 2px 7px; font-size: 10px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #D4D4D8; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; font-weight: 500; }
-  .error-msg { color: #EF4444; font-size: 13px; text-align: center; padding: 20px 0; }
+  .live-badge { display: inline-block; background: rgba(239,68,68,0.15); color: #EF4444; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 12px; }
+  .live-warning { font-size: 11px; color: rgba(239,68,68,0.8); margin-bottom: 12px; text-align: center; }
   .balance-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
   .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
   .balance-label { font-size: 12px; color: #D4D4D8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
@@ -93,193 +108,6 @@ const MODAL_STYLES = `
   .toast.error { background: rgba(239,68,68,0.15); color: #EF4444; border: 1px solid rgba(239,68,68,0.2); backdrop-filter: blur(12px); }
   .toast.info { background: rgba(59,130,246,0.15); color: #3B82F6; border: 1px solid rgba(59,130,246,0.2); backdrop-filter: blur(12px); }
 `;
-
-// --- Solid Components ---
-
-function ManagementSummary(props: { preset: ManagementPreset }) {
-  const rules = () => {
-    const items: { label: string; value: string; active: boolean }[] = [
-      { label: "Risk", value: `${props.preset.risk_percent}%`, active: true },
-      { label: "Break-even", value: `at ${props.preset.break_even_at}%`, active: true },
-      {
-        label: "Trailing",
-        value: props.preset.trailing_stop.enabled ? `${props.preset.trailing_stop.distance_percent}%` : "Off",
-        active: props.preset.trailing_stop.enabled,
-      },
-      {
-        label: "Partial TP",
-        value: props.preset.partial_tp.enabled ? `${props.preset.partial_tp.close_percent}%` : "Off",
-        active: props.preset.partial_tp.enabled,
-      },
-    ];
-    return items;
-  };
-
-  return (
-    <div class="mgmt-section">
-      <div class="mgmt-title">Management Rules</div>
-      <For each={rules()}>
-        {(rule) => (
-          <div class="mgmt-rule">
-            <span class={rule.active ? "on" : "off"}>{rule.label}: {rule.value}</span>
-          </div>
-        )}
-      </For>
-    </div>
-  );
-}
-
-function BalanceSummary(props: { balance: BalanceResponse[] | null; riskPercent: number; leverage: number; setup: TradeSetup }) {
-  const usdt = () => props.balance?.find((b) => b.asset === "USDT");
-  const available = () => {
-    const b = usdt();
-    return b ? parseFloat(b.available) : null;
-  };
-  const stopDistance = () => Math.abs(props.setup.entry - props.setup.stop);
-  const riskAmount = () => {
-    const avail = available();
-    if (avail === null) return null;
-    return (props.riskPercent / 100) * avail;
-  };
-  const positionSize = () => {
-    const risk = riskAmount();
-    const dist = stopDistance();
-    if (risk === null || dist === 0) return null;
-    return risk / dist;
-  };
-  const margin = () => {
-    const qty = positionSize();
-    if (qty === null) return null;
-    return (qty * props.setup.entry) / props.leverage;
-  };
-  const baseAsset = () => props.setup.symbol.replace(/USDT$|USD$|BUSD$/, "");
-
-  return (
-    <div class="balance-section">
-      <Show when={available() !== null} fallback={
-        <div class="balance-row">
-          <span class="balance-label">Balance</span>
-          <span class="balance-value muted">unavailable</span>
-        </div>
-      }>
-        <div class="balance-row">
-          <span class="balance-label">Size</span>
-          <span class="balance-value size">{positionSize()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {baseAsset()}</span>
-        </div>
-        <div class="balance-row">
-          <span class="balance-label">Leverage</span>
-          <span class="balance-value leverage">{props.leverage}x</span>
-        </div>
-        <div class="balance-row">
-          <span class="balance-label">Margin</span>
-          <span class="balance-value margin">{margin()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
-        </div>
-        <div class="balance-row">
-          <span class="balance-label">Risk</span>
-          <span class="balance-value risk">{riskAmount()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
-        </div>
-        <div class="balance-row">
-          <span class="balance-label">Available</span>
-          <span class="balance-value">{available()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
-        </div>
-      </Show>
-    </div>
-  );
-}
-
-function ConfirmationModal(props: {
-  setup: TradeSetup | null;
-  isLiveMode: boolean;
-  management: ManagementPreset;
-  balance: BalanceResponse[] | null;
-  onResult: (result: ModalResult) => void;
-}) {
-  let enterCount = 0;
-
-  function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      props.onResult("dismiss");
-    } else if (e.key === "Enter" && props.setup) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (props.isLiveMode) {
-        enterCount++;
-        if (enterCount < 2) return;
-      }
-      props.onResult("confirm");
-    }
-  }
-
-  document.addEventListener("keydown", handleKeyDown, true);
-
-  return (
-    <>
-      <div class="backdrop" onClick={() => props.onResult("dismiss")} />
-      <Show
-        when={props.setup}
-        fallback={
-          <div class="panel">
-            <div class="error-msg">No position tool detected</div>
-            <div class="footer">
-              <span class="hint"><kbd>Esc</kbd> dismiss</span>
-            </div>
-          </div>
-        }
-      >
-        {(setup) => {
-          const rr = calculateRR(setup());
-          const rrClass = rr >= 2 ? "good" : rr >= 1 ? "neutral" : "bad";
-          return (
-            <div class={props.isLiveMode ? "panel live-mode" : "panel"}>
-              <Show when={props.isLiveMode}>
-                <span class="live-badge">LIVE MODE</span>
-                <div class="live-warning">Real money trade. Press Enter twice to confirm.</div>
-              </Show>
-              <div class="header">
-                <span class={`side ${setup().side.toLowerCase()}`}>{setup().side}</span>
-                <span>
-                  <span class="symbol">{setup().symbol}</span>
-                  <span class="timeframe">{setup().timeframe}</span>
-                </span>
-              </div>
-              <div class="rows">
-                <div class="row">
-                  <span class="label">Entry</span>
-                  <span class="value">{formatPrice(setup().entry)}</span>
-                </div>
-                <div class="row">
-                  <span class="label">Stop</span>
-                  <span class="value">{formatPrice(setup().stop)}</span>
-                </div>
-                <div class="row">
-                  <span class="label">Target</span>
-                  <span class="value">{formatPrice(setup().target)}</span>
-                </div>
-              </div>
-              <hr class="divider" />
-              <div class="rr-row">
-                <span class="rr-label">Risk : Reward</span>
-                <span class={`rr-value ${rrClass}`}>1 : {rr.toFixed(2)}</span>
-              </div>
-              <ManagementSummary preset={props.management} />
-              <BalanceSummary balance={props.balance} riskPercent={props.management.risk_percent} leverage={props.management.leverage} setup={setup()} />
-              <div class="footer">
-                <span class="hint">
-                  {props.isLiveMode
-                    ? <><kbd>Enter</kbd> <kbd>Enter</kbd> confirm</>
-                    : <><kbd>Enter</kbd> execute</>}
-                </span>
-                <span class="hint"><kbd>Esc</kbd> dismiss</span>
-              </div>
-            </div>
-          );
-        }}
-      </Show>
-    </>
-  );
-}
 
 // --- Modal lifecycle ---
 
@@ -308,16 +136,23 @@ export function showModal(
 
   const dispose = render(
     () => (
-      <ConfirmationModal
-        setup={setup}
-        isLiveMode={isLiveMode}
-        management={management}
-        balance={balance}
-        onResult={(result) => {
-          dismiss();
-          onResult(result, setup);
-        }}
-      />
+      <>
+        <div class="backdrop" onClick={() => { dismiss(); onResult("dismiss", null); }} />
+        <TradeForm
+          initialSetup={setup}
+          isLiveMode={isLiveMode}
+          management={management}
+          balance={balance}
+          onConfirm={(editedSetup) => {
+            dismiss();
+            onResult("confirm", editedSetup);
+          }}
+          onDismiss={() => {
+            dismiss();
+            onResult("dismiss", null);
+          }}
+        />
+      </>
     ),
     container,
   );

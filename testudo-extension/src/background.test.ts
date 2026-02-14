@@ -403,7 +403,7 @@ describe("background message router", () => {
       });
       await new Promise((r) => setTimeout(r, 10));
 
-      expect(tabs().query).toHaveBeenCalledWith({ url: "*://*.tradingview.com/*" });
+      expect(tabs().query).toHaveBeenCalledWith({ url: ["*://*.tradingview.com/*", "*://*.dexscreener.com/*", "*://*.gmx.io/*", "*://*.bybit.com/*"] });
       expect(tabs().sendMessage).toHaveBeenCalledWith(1, {
         type: "WS_ORDER_UPDATE",
         data: { e: "order", s: "BTC_USDT", status: "filled" },

@@ -9,6 +9,9 @@
   ],
   "host_permissions": [
     "*://*.tradingview.com/*",
+    "*://*.dexscreener.com/*",
+    "*://*.gmx.io/*",
+    "*://*.bybit.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
@@ -18,7 +21,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.tradingview.com/*"],
+      "matches": [
+        "*://*.tradingview.com/*",
+        "*://*.dexscreener.com/*",
+        "*://*.gmx.io/*",
+        "*://*.bybit.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

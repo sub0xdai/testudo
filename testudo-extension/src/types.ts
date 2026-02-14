@@ -88,6 +88,19 @@ export interface TradeGroupResponse {
   break_even_triggered: boolean;
 }
 
+export interface ScraperHealthRecord {
+  timestamp: number;
+  strategyUsed: number | null; // 0-5 for strategy index, null = all failed
+  success: boolean;
+}
+
+export interface ChartApiHealth {
+  available: boolean;
+  hasActiveChart: boolean;
+  hasGetAllShapes: boolean;
+  hasGetShapeById: boolean;
+}
+
 export type WsState = "disconnected" | "connecting" | "connected";
 
 export type ToastType = "success" | "error" | "info";
