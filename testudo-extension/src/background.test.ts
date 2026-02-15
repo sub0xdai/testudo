@@ -347,6 +347,111 @@ describe("background message router", () => {
     });
   });
 
+  // --- Token Refresh Mutex (FR-2) ---
+
+  describe("token refresh mutex", () => {
+    function setValidTokens() {
+      const payload = btoa(JSON.stringify({ email: "test@example.com" }));
+      mockStorage.accessToken = `header.${payload}.signature`;
+      mockStorage.refreshToken = "refresh-token";
+      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
+    }
+
+    const tradePayload = {
+      symbol: "BTCUSDT", side: "LONG",
+      entry: 50000, stop: 49000, target: 52000, timeframe: "15m",
+      management: {
+        risk_percent: 1.0, break_even_at: 50,
+        trailing_stop: { enabled: false, distance_percent: 25 },
+        partial_tp: { enabled: false, close_percent: 50 },
+      },
+    };
+
+    it("shares a single refresh across concurrent 401 responses", async () => {
+      setValidTokens();
+
+      let refreshCallCount = 0;
+
+      mockFetch.mockImplementation(async (url: string, opts?: { headers?: Record<string, string> }) => {
+        if (url.includes("/auth/refresh")) {
+          refreshCallCount++;
+          // Small delay to ensure concurrency window
+          await new Promise((r) => setTimeout(r, 10));
+          return {
+            ok: true,
+            json: async () => ({
+              tokens: { access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 },
+            }),
+          };
+        }
+        // Trade endpoint: succeed on retry (new token), 401 on initial
+        if (opts?.headers?.Authorization === "Bearer new-access") {
+          return { ok: true, json: async () => ({ success: true, data: { id: "order-1" } }) };
+        }
+        return { ok: false, status: 401, json: async () => ({ error: "Unauthorized" }) };
+      });
+
+      const [r1, r2] = await Promise.all([
+        messageHandler({ type: "EXECUTE_TRADE", payload: tradePayload }),
+        messageHandler({ type: "EXECUTE_TRADE", payload: tradePayload }),
+      ]);
+
+      expect((r1 as { success: boolean }).success).toBe(true);
+      expect((r2 as { success: boolean }).success).toBe(true);
+      // Only ONE refresh call despite two concurrent 401s
+      expect(refreshCallCount).toBe(1);
+    });
+  });
+
+  // --- Retry Depth Limit (FR-3) ---
+
+  describe("retry depth limit", () => {
+    function setValidTokens() {
+      const payload = btoa(JSON.stringify({ email: "test@example.com" }));
+      mockStorage.accessToken = `header.${payload}.signature`;
+      mockStorage.refreshToken = "refresh-token";
+      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
+    }
+
+    it("does not infinite loop on persistent 401", async () => {
+      setValidTokens();
+
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes("/auth/refresh")) {
+          return {
+            ok: true,
+            json: async () => ({
+              tokens: { access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 },
+            }),
+          };
+        }
+        // Trade endpoint always 401
+        return { ok: false, status: 401, json: async () => ({ error: "Unauthorized" }) };
+      });
+
+      const result = await messageHandler({
+        type: "EXECUTE_TRADE",
+        payload: {
+          symbol: "BTCUSDT", side: "LONG",
+          entry: 50000, stop: 49000, target: 52000, timeframe: "15m",
+          management: {
+            risk_percent: 1.0, break_even_at: 50,
+            trailing_stop: { enabled: false, distance_percent: 25 },
+            partial_tp: { enabled: false, close_percent: 50 },
+          },
+        },
+      });
+
+      expect(result).toEqual({ success: false, error: "Unauthorized" });
+
+      // Trade endpoint called exactly 2 times (original + 1 retry), not more
+      const tradeCalls = mockFetch.mock.calls.filter((c: unknown[]) =>
+        (c[0] as string).includes("/trades")
+      );
+      expect(tradeCalls.length).toBe(2);
+    });
+  });
+
   // --- WebSocket lifecycle ---
 
   describe("WebSocket connection", () => {

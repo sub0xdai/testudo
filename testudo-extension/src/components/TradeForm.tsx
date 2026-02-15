@@ -183,7 +183,7 @@ export default function TradeForm(props: TradeFormProps) {
             placeholder="BTCUSDT"
             value={symbol()}
             onInput={(e) => handleFieldChange("symbol", setSymbol, e.currentTarget.value)}
-            onFocus={(e) => autoFilled() && e.currentTarget.select()}
+            onFocus={(e) => autoFilledFields().has("symbol") && e.currentTarget.select()}
             data-testid="field-symbol"
           />
           <Show when={autoFilledFields().has("symbol")}>
@@ -204,7 +204,7 @@ export default function TradeForm(props: TradeFormProps) {
               placeholder="0.00"
               value={entryStr()}
               onInput={(e) => handleFieldChange("entry", setEntryStr, e.currentTarget.value)}
-              onFocus={(e) => autoFilled() && e.currentTarget.select()}
+              onFocus={(e) => autoFilledFields().has("entry") && e.currentTarget.select()}
               data-testid="field-entry"
             />
             <Show when={autoFilledFields().has("entry")}>
@@ -222,7 +222,7 @@ export default function TradeForm(props: TradeFormProps) {
               placeholder="0.00"
               value={stopStr()}
               onInput={(e) => handleFieldChange("stop", setStopStr, e.currentTarget.value)}
-              onFocus={(e) => autoFilled() && e.currentTarget.select()}
+              onFocus={(e) => autoFilledFields().has("stop") && e.currentTarget.select()}
               data-testid="field-stop"
             />
             <Show when={autoFilledFields().has("stop")}>
@@ -240,7 +240,7 @@ export default function TradeForm(props: TradeFormProps) {
               placeholder="0.00"
               value={targetStr()}
               onInput={(e) => handleFieldChange("target", setTargetStr, e.currentTarget.value)}
-              onFocus={(e) => autoFilled() && e.currentTarget.select()}
+              onFocus={(e) => autoFilledFields().has("target") && e.currentTarget.select()}
               data-testid="field-target"
             />
             <Show when={autoFilledFields().has("target")}>

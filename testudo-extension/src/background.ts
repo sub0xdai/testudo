@@ -70,7 +70,20 @@ async function login(email: string, password: string): Promise<{ success: boolea
   }
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
 async function refreshAccessToken(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = doRefresh();
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+async function doRefresh(): Promise<boolean> {
   const tokens = await getTokens();
   if (!tokens) return false;
 
@@ -121,7 +134,7 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
 
 // --- Trade Execution (EXT-08: management block, no client-side quantity) ---
 
-async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
+async function executeTrade(payload: TradePayload, retried = false): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
@@ -154,10 +167,10 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
     const json = await response.json() as BackendResponse;
 
     if (!response.ok) {
-      if (response.status === 401 && tokens) {
+      if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
-          return executeTrade(payload);
+          return executeTrade(payload, true);
         }
       }
       return { success: false, error: json.error || `HTTP ${response.status}` };
@@ -172,7 +185,7 @@ async function executeTrade(payload: TradePayload): Promise<BackendResponse> {
 
 // --- Trade Listing (Active Orders) ---
 
-async function listTrades(): Promise<{ success: boolean; data?: TradeGroupResponse[]; error?: string }> {
+async function listTrades(retried = false): Promise<{ success: boolean; data?: TradeGroupResponse[]; error?: string }> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
@@ -189,9 +202,9 @@ async function listTrades(): Promise<{ success: boolean; data?: TradeGroupRespon
     const json = await response.json() as { success: boolean; data?: TradeGroupResponse[]; error?: string };
 
     if (!response.ok) {
-      if (response.status === 401 && tokens) {
+      if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
-        if (refreshed) return listTrades();
+        if (refreshed) return listTrades(true);
       }
       return { success: false, error: json.error || `HTTP ${response.status}` };
     }
@@ -203,7 +216,7 @@ async function listTrades(): Promise<{ success: boolean; data?: TradeGroupRespon
   }
 }
 
-async function getBalances(): Promise<{ success: boolean; data?: BalanceResponse[]; error?: string }> {
+async function getBalances(retried = false): Promise<{ success: boolean; data?: BalanceResponse[]; error?: string }> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/paper/balances`;
 
@@ -220,9 +233,9 @@ async function getBalances(): Promise<{ success: boolean; data?: BalanceResponse
     const json = await response.json() as { success: boolean; data?: BalanceResponse[]; error?: string };
 
     if (!response.ok) {
-      if (response.status === 401 && tokens) {
+      if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
-        if (refreshed) return getBalances();
+        if (refreshed) return getBalances(true);
       }
       return { success: false, error: json.error || `HTTP ${response.status}` };
     }
@@ -466,10 +479,20 @@ getTokens().then((tokens) => {
 // EXT-06: Connect WebSocket on startup
 connectWebSocket();
 
-// Reconnect WebSocket when settings change
+// Reconnect WebSocket when settings change (debounced to collapse rapid changes)
+let wsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedConnectWebSocket(): void {
+  if (wsDebounceTimer) clearTimeout(wsDebounceTimer);
+  wsDebounceTimer = setTimeout(() => {
+    wsDebounceTimer = null;
+    connectWebSocket();
+  }, 300);
+}
+
 browser.storage.onChanged.addListener((changes) => {
   if (changes.wsUrl) {
-    connectWebSocket();
+    debouncedConnectWebSocket();
   }
 });
 

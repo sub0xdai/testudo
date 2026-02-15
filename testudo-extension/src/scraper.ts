@@ -514,6 +514,8 @@ export function getChartApiHealth(): ChartApiHealth {
 
 // --- Scraper Telemetry (FR-12) ---
 
+let telemetryQueue: Promise<void> = Promise.resolve();
+
 function recordScraperResult(strategyUsed: number | null): void {
   const record: ScraperHealthRecord = {
     timestamp: Date.now(),
@@ -521,46 +523,12 @@ function recordScraperResult(strategyUsed: number | null): void {
     success: strategyUsed !== null,
   };
 
-  browser.storage.local.get(["scraperHealth"]).then((stored) => {
+  telemetryQueue = telemetryQueue.then(async () => {
+    const stored = await browser.storage.local.get(["scraperHealth"]);
     const history = (stored.scraperHealth as ScraperHealthRecord[]) || [];
     history.push(record);
-    // Keep last N records
     const trimmed = history.slice(-SCRAPER_HEALTH_MAX);
-    browser.storage.local.set({ scraperHealth: trimmed });
-  }).catch(() => { /* non-blocking */ });
+    await browser.storage.local.set({ scraperHealth: trimmed });
+  }).catch(() => {});
 }
 
-// --- MutationObserver for Tool Detection ---
-
-let observer: MutationObserver | null = null;
-let onToolDetected: ((setup: TradeSetup) => void) | null = null;
-
-export function startWatching(callback: (setup: TradeSetup) => void): void {
-  stopWatching();
-  onToolDetected = callback;
-
-  observer = new MutationObserver(() => {
-    const setup = scrapeTradeSetup();
-    if (setup && onToolDetected) {
-      onToolDetected(setup);
-    }
-  });
-
-  // Watch the overlay root for position tool dialogs
-  const overlayRoot = document.getElementById("overlap-manager-root");
-  if (overlayRoot) {
-    observer.observe(overlayRoot, { childList: true, subtree: true });
-  }
-
-  // Also watch the chart container for on-chart position tools
-  const chartContainer = document.querySelector('[class*="chart-container"], [class*="chartContainer"]');
-  if (chartContainer) {
-    observer.observe(chartContainer, { childList: true, subtree: true });
-  }
-}
-
-export function stopWatching(): void {
-  observer?.disconnect();
-  observer = null;
-  onToolDetected = null;
-}

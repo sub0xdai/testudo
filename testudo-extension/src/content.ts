@@ -23,8 +23,11 @@ async function getManagementPreset(): Promise<ManagementPreset> {
 
 // --- Hotkey Listener ---
 
+let altXPending = false;
+
 document.addEventListener("keydown", async (e: KeyboardEvent) => {
-  if (e.altKey && e.key.toLowerCase() === "x" && !isVisible()) {
+  if (e.altKey && e.key.toLowerCase() === "x" && !isVisible() && !altXPending) {
+    altXPending = true;
     e.preventDefault();
     e.stopPropagation();
 
@@ -82,6 +85,8 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
       } else {
         showToast(`Error: ${msg}`, "error");
       }
+    } finally {
+      altXPending = false;
     }
   }
 }, true);

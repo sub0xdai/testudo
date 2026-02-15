@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import type { TradeGroupResponse } from "../../types";
 import PositionCard from "./PositionCard";
@@ -55,11 +55,11 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
 
-  const activeTrades = () => {
-    const active = trades().filter((t) => t.status !== "Completed");
-    props.onCountChange?.(active.length);
-    return active;
-  };
+  const activeTrades = () => trades().filter((t) => t.status !== "Completed");
+
+  createEffect(() => {
+    props.onCountChange?.(activeTrades().length);
+  });
 
   return (
     <div class="px-5 py-4" data-testid="active-orders">

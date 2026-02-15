@@ -179,7 +179,16 @@ export function isVisible(): boolean {
 
 export type ToastStyle = "success" | "error" | "info";
 
+const activeToasts: HTMLElement[] = [];
+const MAX_TOASTS = 3;
+
 export function showToast(message: string, type: ToastStyle = "success"): void {
+  // Evict oldest if at cap
+  while (activeToasts.length >= MAX_TOASTS) {
+    const oldest = activeToasts.shift();
+    oldest?.remove();
+  }
+
   const host = document.createElement("div");
   host.id = "testudo-sniper-toast";
   const shadow = host.attachShadow({ mode: "closed" });
@@ -194,12 +203,17 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
   shadow.appendChild(toast);
 
   document.body.appendChild(host);
+  activeToasts.push(host);
 
   requestAnimationFrame(() => toast.classList.add("visible"));
 
   setTimeout(() => {
     toast.classList.remove("visible");
-    setTimeout(() => host.remove(), 300);
+    setTimeout(() => {
+      host.remove();
+      const idx = activeToasts.indexOf(host);
+      if (idx !== -1) activeToasts.splice(idx, 1);
+    }, 300);
   }, 2000);
 }
 
