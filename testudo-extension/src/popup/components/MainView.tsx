@@ -93,8 +93,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
       {/* Wallet-style balance panel */}
       <div class="balance-panel" data-testid="header-balance">
-        {/* Balance hero */}
-        <div class="relative flex flex-col items-center pt-5 pb-2">
+        <div class="balance-panel-overlay" aria-hidden="true" />
+        <div class="flex flex-col items-center pt-5 pb-2">
           <span class="text-[12px] font-medium text-text-secondary tracking-widest uppercase mb-2">
             Balance
           </span>
