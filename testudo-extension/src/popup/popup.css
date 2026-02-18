@@ -78,7 +78,6 @@ body {
     background: var(--color-bg-core);
     display: flex;
     flex-direction: column;
-    border-radius: 12px;
 }
 
 /* --- Input Base Styles --- */
