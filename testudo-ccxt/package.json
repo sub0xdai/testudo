@@ -1,0 +1,15 @@
+{
+  "name": "testudo-ccxt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CCXT sidecar service for multi-exchange trading",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test src/**/*.test.js"
+  },
+  "dependencies": {
+    "ccxt": "^4.4.0",
+    "express": "^4.21.0"
+  }
+}
