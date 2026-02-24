@@ -46,6 +46,7 @@ export interface TradePayload {
   stop: number;
   target: number;
   timeframe: string;
+  exchange_account_id?: string;
   management: {
     risk_percent: number;
     break_even_at: number;
@@ -150,7 +151,10 @@ export type OrderEventType =
   | "order.trailing"
   | "order.partial_close"
   | "order.stopped"
-  | "order.tp_hit";
+  | "order.tp_hit"
+  | "order.break_even"
+  | "order.trailing_moved"
+  | "order.partial_tp";
 
 export const ORDER_EVENT_STYLES: Record<string, { color: string; type: ToastType }> = {
   "order.filled": { color: "green", type: "success" },
@@ -159,4 +163,7 @@ export const ORDER_EVENT_STYLES: Record<string, { color: string; type: ToastType
   "order.partial_close": { color: "green", type: "success" },
   "order.stopped": { color: "red", type: "error" },
   "order.tp_hit": { color: "green", type: "success" },
+  "order.break_even": { color: "blue", type: "info" },
+  "order.trailing_moved": { color: "blue", type: "info" },
+  "order.partial_tp": { color: "green", type: "success" },
 };

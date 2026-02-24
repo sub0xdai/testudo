@@ -62,6 +62,21 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
         balance = resp?.success ? (resp.data ?? null) : null;
       } catch { /* non-blocking */ }
 
+      // EXT-16 FR-3.8: Fetch active exchange name for modal badge
+      let activeExchangeName: string | null = null;
+      if (settings.executionMode === "live") {
+        try {
+          const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
+          if (activeRes?.exchangeId) {
+            const accountsRes = await browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as { success: boolean; data?: Array<{ id: string; exchange_name: string; account_name: string }> };
+            if (accountsRes?.success && accountsRes.data) {
+              const active = accountsRes.data.find(a => a.id === activeRes.exchangeId);
+              activeExchangeName = active?.account_name || active?.exchange_name || null;
+            }
+          }
+        } catch { /* non-blocking */ }
+      }
+
       // Convert symbol-only setup to proper initialSetup for the form
       const modalSetup = setup && setup.entry > 0 ? setup : null;
       const symbolHint = setup?.symbol || null;
@@ -77,7 +92,7 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
       } : null);
 
       // showModal now always shows an editable form (never an error)
-      showModal(initialSetup, settings.executionMode === "live", management, handleModalResult, balance);
+      showModal(initialSetup, settings.executionMode === "live", management, handleModalResult, balance, activeExchangeName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("Extension context invalidated")) {

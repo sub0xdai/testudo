@@ -7,6 +7,7 @@ export interface TradeFormProps {
   management: ManagementPreset;
   balance?: BalanceResponse[] | null;
   isLiveMode: boolean;
+  activeExchange?: string | null;
   onConfirm: (setup: TradeSetup) => void;
   onDismiss?: () => void;
 }
@@ -158,7 +159,22 @@ export default function TradeForm(props: TradeFormProps) {
   return (
     <div class={props.isLiveMode ? "panel live-mode" : "panel"}>
       <Show when={props.isLiveMode}>
-        <span class="live-badge">LIVE MODE</span>
+        <div style={{ display: "flex", "align-items": "center", gap: "8px", "margin-bottom": "12px" }}>
+          <span class="live-badge" style={{ "margin-bottom": "0" }}>LIVE MODE</span>
+          <Show when={props.activeExchange}>
+            <span style={{
+              display: "inline-block",
+              background: "rgba(59,130,246,0.12)",
+              color: "#3B82F6",
+              "font-size": "10px",
+              "font-weight": "700",
+              "letter-spacing": "0.5px",
+              padding: "3px 10px",
+              "border-radius": "20px",
+              "text-transform": "uppercase",
+            }}>{props.activeExchange}</span>
+          </Show>
+        </div>
         <div class="live-warning">Real money trade. Press Enter twice to confirm.</div>
       </Show>
 

@@ -119,6 +119,7 @@ export function showModal(
   management: ManagementPreset,
   onResult: (result: ModalResult, setup: TradeSetup | null) => void,
   balance: BalanceResponse[] | null = null,
+  activeExchange: string | null = null,
 ): void {
   dismiss();
 
@@ -142,6 +143,7 @@ export function showModal(
           isLiveMode={isLiveMode}
           management={management}
           balance={balance}
+          activeExchange={activeExchange}
           onConfirm={(editedSetup) => {
             dismiss();
             onResult("confirm", editedSetup);

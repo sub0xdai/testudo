@@ -132,13 +132,31 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
   }
 }
 
+// --- Active Exchange Selection (EXT-16 FR-3) ---
+
+async function getActiveExchangeId(): Promise<string | null> {
+  const stored = await browser.storage.local.get(["activeExchangeId"]);
+  return (stored.activeExchangeId as string) || null;
+}
+
+async function setActiveExchangeId(id: string | null): Promise<void> {
+  if (id) {
+    await browser.storage.local.set({ activeExchangeId: id });
+  } else {
+    await browser.storage.local.remove(["activeExchangeId"]);
+  }
+}
+
 // --- Trade Execution (EXT-08: management block, no client-side quantity) ---
 
 async function executeTrade(payload: TradePayload, retried = false): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
-  const body = {
+  // EXT-16 FR-3.5: Attach active exchange account ID to trade payload
+  const activeExchangeId = payload.exchange_account_id || await getActiveExchangeId();
+
+  const body: Record<string, unknown> = {
     symbol: normalizeSymbol(payload.symbol),
     side: mapSide(payload.side),
     entry_price: payload.entry.toString(),
@@ -146,6 +164,10 @@ async function executeTrade(payload: TradePayload, retried = false): Promise<Bac
     take_profit_price: payload.target.toString(),
     management: payload.management,
   };
+
+  if (activeExchangeId) {
+    body.exchange_account_id = activeExchangeId;
+  }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const tokens = await getTokens();
@@ -447,6 +469,44 @@ async function testExchangeConnection(accountId: string, retried = false): Promi
   }
 }
 
+// --- Sidecar Health Polling (EXT-16 FR-2) ---
+
+export type SidecarStatus = "unknown" | "healthy" | "unreachable";
+let sidecarStatus: SidecarStatus = "unknown";
+
+function setSidecarStatus(status: SidecarStatus): void {
+  if (status === sidecarStatus) return;
+  sidecarStatus = status;
+  browser.runtime.sendMessage({ type: "SIDECAR_STATUS_CHANGED", status }).catch(() => {});
+}
+
+async function checkSidecarHealth(): Promise<void> {
+  const settings = await getSettings();
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/health/sidecar`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (response.ok) {
+      const json = await response.json() as { status?: string };
+      setSidecarStatus(json.status === "healthy" ? "healthy" : "unreachable");
+    } else {
+      setSidecarStatus("unreachable");
+    }
+  } catch {
+    setSidecarStatus("unreachable");
+  }
+}
+
+// Poll sidecar health every 30 seconds
+let sidecarHealthTimer: ReturnType<typeof setInterval> | null = null;
+
+function startSidecarHealthPolling(): void {
+  if (sidecarHealthTimer) return;
+  // Defer first check to avoid interfering with concurrent operations at startup
+  setTimeout(checkSidecarHealth, 5000);
+  sidecarHealthTimer = setInterval(checkSidecarHealth, 30000);
+}
+
 // --- WebSocket Connection (EXT-06) ---
 
 let ws: WebSocket | null = null;
@@ -521,6 +581,11 @@ async function connectWebSocket(): Promise<void> {
       const msg = JSON.parse(event.data as string) as { stream?: string; data?: unknown };
       if (msg.stream && msg.stream.startsWith("order.")) {
         forwardOrderUpdate(msg.data);
+      }
+      // EXT-16 FR-2.2: Listen for sidecar health events
+      if (msg.stream === "sidecar.health") {
+        const data = msg.data as { status?: string };
+        setSidecarStatus(data?.status === "healthy" ? "healthy" : "unreachable");
       }
     } catch {
       console.warn("WS: failed to parse message", event.data);
@@ -597,7 +662,10 @@ type Message =
   | { type: "LIST_EXCHANGE_ACCOUNTS" }
   | { type: "ADD_EXCHANGE_ACCOUNT"; payload: AddExchangeAccountPayload }
   | { type: "DELETE_EXCHANGE_ACCOUNT"; accountId: string }
-  | { type: "TEST_EXCHANGE_CONNECTION"; accountId: string };
+  | { type: "TEST_EXCHANGE_CONNECTION"; accountId: string }
+  | { type: "GET_ACTIVE_EXCHANGE" }
+  | { type: "SET_ACTIVE_EXCHANGE"; exchangeId: string | null }
+  | { type: "SIDECAR_STATUS" };
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as Message;
@@ -664,11 +732,34 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "DELETE_EXCHANGE_ACCOUNT" && "accountId" in msg) {
-    return deleteExchangeAccount(msg.accountId);
+    // EXT-16 FR-3: Clear activeExchangeId if deleted account was active
+    return deleteExchangeAccount(msg.accountId).then(async (result) => {
+      if (result.success) {
+        const activeId = await getActiveExchangeId();
+        if (activeId === msg.accountId) {
+          await setActiveExchangeId(null);
+        }
+      }
+      return result;
+    });
   }
 
   if (msg.type === "TEST_EXCHANGE_CONNECTION" && "accountId" in msg) {
     return testExchangeConnection(msg.accountId);
+  }
+
+  // EXT-16 FR-3: Active exchange selection
+  if (msg.type === "GET_ACTIVE_EXCHANGE") {
+    return getActiveExchangeId().then((id) => ({ exchangeId: id }));
+  }
+
+  if (msg.type === "SET_ACTIVE_EXCHANGE" && "exchangeId" in msg) {
+    return setActiveExchangeId(msg.exchangeId).then(() => ({ success: true }));
+  }
+
+  // EXT-16 FR-2: Sidecar health status
+  if (msg.type === "SIDECAR_STATUS") {
+    return Promise.resolve({ status: sidecarStatus });
   }
 });
 
@@ -681,6 +772,9 @@ getTokens().then((tokens) => {
 
 // EXT-06: Connect WebSocket on startup
 connectWebSocket();
+
+// EXT-16: Start sidecar health polling
+startSidecarHealthPolling();
 
 // Reconnect WebSocket when settings change (debounced to collapse rapid changes)
 let wsDebounceTimer: ReturnType<typeof setTimeout> | null = null;

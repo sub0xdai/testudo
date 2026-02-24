@@ -5,6 +5,7 @@ import type { ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConn
 export default function ExchangeManager() {
   const [exchanges, setExchanges] = createSignal<ExchangeInfo[]>([]);
   const [accounts, setAccounts] = createSignal<ExchangeAccount[]>([]);
+  const [activeExchangeId, setActiveExchangeId] = createSignal<string | null>(null);
   const [showForm, setShowForm] = createSignal(false);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -20,6 +21,9 @@ export default function ExchangeManager() {
   const [formSubmitting, setFormSubmitting] = createSignal(false);
 
   onMount(async () => {
+    // Load active exchange ID from background
+    const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
+    setActiveExchangeId(activeRes?.exchangeId || null);
     await fetchData();
   });
 
@@ -31,8 +35,19 @@ export default function ExchangeManager() {
     ]);
 
     if (exRes.success && exRes.data) setExchanges(exRes.data);
-    if (accRes.success && accRes.data) setAccounts(accRes.data);
+    if (accRes.success && accRes.data) {
+      setAccounts(accRes.data);
+      // Auto-select first account if none active
+      if (!activeExchangeId() && accRes.data.length > 0) {
+        await handleSetActive(accRes.data[0].id);
+      }
+    }
     setLoading(false);
+  }
+
+  async function handleSetActive(accountId: string) {
+    setActiveExchangeId(accountId);
+    await browser.runtime.sendMessage({ type: "SET_ACTIVE_EXCHANGE", exchangeId: accountId });
   }
 
   function availableExchanges(): ExchangeInfo[] {
@@ -137,15 +152,25 @@ export default function ExchangeManager() {
         {(account) => {
           const result = () => testResults()[account.id];
           return (
-            <div class="bg-bg-panel border border-border-subtle rounded-xl p-3 space-y-2" data-testid={`account-${account.exchange_name}`}>
+            <div
+              class={`bg-bg-panel border rounded-xl p-3 space-y-2 ${activeExchangeId() === account.id ? "border-accent-blue/40" : "border-border-subtle"}`}
+              data-testid={`account-${account.exchange_name}`}
+            >
               <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
+                <div
+                  class="flex items-center gap-2 cursor-pointer"
+                  onClick={() => handleSetActive(account.id)}
+                  title={activeExchangeId() === account.id ? "Active exchange" : "Set as active"}
+                >
                   <span
-                    class={`w-2 h-2 rounded-full ${account.is_active ? "bg-signal-green" : "bg-signal-red"}`}
+                    class={`w-2 h-2 rounded-full ${activeExchangeId() === account.id ? "bg-accent-blue shadow-[0_0_6px_rgba(59,130,246,0.5)]" : "bg-text-dim"}`}
                   />
                   <span class="text-[13px] font-sans font-medium text-white">
                     {account.account_name || account.exchange_name}
                   </span>
+                  <Show when={activeExchangeId() === account.id}>
+                    <span class="text-[9px] px-1.5 py-0.5 bg-accent-blue/15 text-accent-blue rounded-full font-bold tracking-wider">ACTIVE</span>
+                  </Show>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <button
