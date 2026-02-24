@@ -1,3 +1,5 @@
+import { For } from "solid-js";
+
 interface ArcGaugeProps {
   /** Exposure percentage 0-100 */
   exposure: number;
@@ -7,56 +9,90 @@ interface ArcGaugeProps {
   totalBalance: number;
 }
 
+const TICK_COUNT = 21;
+const RADIUS = 85;
+const CENTER = 100;
+const DOT_RADIUS = 3.5;
+
+/** Interpolate color along green → amber → red gradient at position t (0-1) */
+function tickColor(t: number): string {
+  if (t < 0.5) {
+    const p = t / 0.5;
+    const r = Math.round(16 + (245 - 16) * p);
+    const g = Math.round(185 + (158 - 185) * p);
+    const b = Math.round(129 + (11 - 129) * p);
+    return `rgb(${r},${g},${b})`;
+  }
+  const p = (t - 0.5) / 0.5;
+  const r = Math.round(245 + (239 - 245) * p);
+  const g = Math.round(158 + (68 - 158) * p);
+  const b = Math.round(11 + (68 - 11) * p);
+  return `rgb(${r},${g},${b})`;
+}
+
 /**
- * Semi-circle (180-degree) risk gauge with spaced tick nodes.
- * Green (low risk) → Amber (mid) → Red (high risk) gradient.
+ * Semi-circle (180-degree) risk gauge with individual dot ticks.
+ * The dot nearest the current exposure glows; other active dots are muted.
  */
 export default function ArcGauge(props: ArcGaugeProps) {
-  const radius = 85;
-  const strokeWidth = 5;
-  const center = 100;
+  const exposure = () => Math.min(100, Math.max(0, props.exposure || 0));
 
-  // Semi-circle circumference: PI * r
-  const circumference = Math.PI * radius;
+  // Which tick index is the exposure closest to?
+  const activeTickIndex = () => Math.round((exposure() / 100) * (TICK_COUNT - 1));
 
-  // Tight ticks: 3px dash, 10px gap = precision dial
-  const dashArray = "3 10";
-
-  // stroke-dashoffset: full circumference = 0%, 0 = 100%
-  const offset = () => circumference - ((Math.min(100, Math.max(0, props.exposure)) || 0) / 100) * circumference;
+  const ticks = Array.from({ length: TICK_COUNT }, (_, i) => i);
 
   return (
     <div class="relative flex flex-col items-center justify-end h-44 w-full px-10 overflow-hidden mt-2" data-testid="arc-gauge">
       <svg viewBox="0 0 200 110" class="w-full h-full overflow-visible">
         <defs>
-          <linearGradient id="risk-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#10B981" />
-            <stop offset="50%" stop-color="#F59E0B" />
-            <stop offset="100%" stop-color="#EF4444" />
-          </linearGradient>
+          <filter id="tick-glow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
-        {/* Background track (dark ticks) */}
-        <path
-          d={`M ${center - radius} ${center} A ${radius} ${radius} 0 0 1 ${center + radius} ${center}`}
-          fill="none"
-          stroke="#27272A"
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-dasharray={dashArray}
-        />
+        <For each={ticks}>
+          {(i) => {
+            const t = i / (TICK_COUNT - 1);
+            const angle = Math.PI * (1 - t);
+            const x = CENTER + RADIUS * Math.cos(angle);
+            const y = CENTER - RADIUS * Math.sin(angle);
 
-        {/* Active track (green → amber → red ticks) */}
-        <path
-          d={`M ${center - radius} ${center} A ${radius} ${radius} 0 0 1 ${center + radius} ${center}`}
-          fill="none"
-          stroke="url(#risk-gradient)"
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-dasharray={dashArray}
-          stroke-dashoffset={offset()}
-          class="transition-all duration-1000 ease-out"
-        />
+            const isActive = () => i <= activeTickIndex();
+            const isNeedle = () => i === activeTickIndex() && exposure() > 0;
+
+            // Distance from active tick (0 = at needle, higher = further away)
+            const dist = () => Math.abs(i - activeTickIndex());
+
+            // Active dots near needle: full opacity, far: muted
+            const opacity = () => {
+              if (!isActive()) return 1;
+              if (isNeedle()) return 1;
+              const d = dist();
+              if (d <= 2) return 0.9;
+              return 0.35;
+            };
+
+            const color = () => isActive() ? tickColor(t) : "#27272A";
+            const r = () => isNeedle() ? DOT_RADIUS + 1.5 : DOT_RADIUS;
+
+            return (
+              <circle
+                cx={x}
+                cy={y}
+                r={r()}
+                fill={color()}
+                opacity={opacity()}
+                filter={isNeedle() ? "url(#tick-glow)" : undefined}
+                class="transition-all duration-700 ease-out"
+              />
+            );
+          }}
+        </For>
       </svg>
 
       {/* Gauge center text */}
