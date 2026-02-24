@@ -62,22 +62,18 @@ export default function ArcGauge(props: ArcGaugeProps) {
             const x = CENTER + RADIUS * Math.cos(angle);
             const y = CENTER - RADIUS * Math.sin(angle);
 
-            const isActive = () => i <= activeTickIndex();
             const isNeedle = () => i === activeTickIndex() && exposure() > 0;
-
-            // Distance from active tick (0 = at needle, higher = further away)
             const dist = () => Math.abs(i - activeTickIndex());
 
-            // Active dots near needle: full opacity, far: muted
+            // All dots show gradient color; muted baseline, bright near needle
             const opacity = () => {
-              if (!isActive()) return 1;
               if (isNeedle()) return 1;
               const d = dist();
-              if (d <= 2) return 0.9;
-              return 0.35;
+              if (d <= 1) return 0.8;
+              if (d <= 3) return 0.5;
+              return 0.25;
             };
 
-            const color = () => isActive() ? tickColor(t) : "#27272A";
             const r = () => isNeedle() ? DOT_RADIUS + 1.5 : DOT_RADIUS;
 
             return (
@@ -85,7 +81,7 @@ export default function ArcGauge(props: ArcGaugeProps) {
                 cx={x}
                 cy={y}
                 r={r()}
-                fill={color()}
+                fill={tickColor(t)}
                 opacity={opacity()}
                 filter={isNeedle() ? "url(#tick-glow)" : undefined}
                 class="transition-all duration-700 ease-out"
