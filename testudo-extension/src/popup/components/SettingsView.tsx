@@ -102,7 +102,16 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
           <Show
             when={auth.authenticated()}
             fallback={
-              <p class="text-xs text-text-dim font-sans">Paper mode — no account</p>
+              <div class="space-y-3">
+                <p class="text-xs text-text-dim font-sans">Paper mode — no account</p>
+                <button
+                  class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-blue/40 text-accent-blue hover:bg-accent-blue/10"
+                  onClick={handleLogout}
+                  data-testid="sign-in-btn"
+                >
+                  SIGN IN
+                </button>
+              </div>
             }
           >
             <div class="space-y-3">
