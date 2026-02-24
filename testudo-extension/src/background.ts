@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse } from "./types";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult } from "./types";
 import {
   DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
@@ -274,6 +274,179 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
   }
 }
 
+// --- Registration (EXT-15 FR-2) ---
+
+async function register(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  const settings = await getSettings();
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const json = await response.json() as { error?: string; message?: string };
+      return { success: false, error: json.message || json.error || `HTTP ${response.status}` };
+    }
+
+    const json = await response.json() as LoginResponse;
+    await storeTokens(json.tokens);
+    scheduleTokenRefresh(json.tokens.expires_in);
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Registration failed";
+    return { success: false, error: msg };
+  }
+}
+
+// --- Exchange Account Management (EXT-15 FR-4) ---
+
+async function listExchanges(retried = false): Promise<{ success: boolean; data?: ExchangeInfo[]; error?: string }> {
+  const settings = await getSettings();
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  }
+
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges`, { headers });
+    const json = await response.json() as { exchanges?: ExchangeInfo[]; error?: string };
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return listExchanges(true);
+      }
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return { success: true, data: json.exchanges || [] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
+async function listExchangeAccounts(retried = false): Promise<{ success: boolean; data?: ExchangeAccount[]; error?: string }> {
+  const settings = await getSettings();
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  }
+
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts`, { headers });
+    const json = await response.json() as { success?: boolean; data?: ExchangeAccount[]; accounts?: ExchangeAccount[]; error?: string };
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return listExchangeAccounts(true);
+      }
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return { success: true, data: json.data || json.accounts || [] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
+async function addExchangeAccount(payload: AddExchangeAccountPayload, retried = false): Promise<{ success: boolean; data?: ExchangeAccount; error?: string }> {
+  const settings = await getSettings();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  }
+
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json() as { success?: boolean; data?: ExchangeAccount; error?: string };
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return addExchangeAccount(payload, true);
+      }
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return { success: true, data: json.data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
+async function deleteExchangeAccount(accountId: string, retried = false): Promise<{ success: boolean; error?: string }> {
+  const settings = await getSettings();
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  }
+
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts/${accountId}`, {
+      method: "DELETE",
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return deleteExchangeAccount(accountId, true);
+      }
+      const json = await response.json().catch(() => ({})) as { error?: string };
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
+async function testExchangeConnection(accountId: string, retried = false): Promise<{ success: boolean; data?: TestConnectionResult; error?: string }> {
+  const settings = await getSettings();
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  }
+
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts/${accountId}/test`, {
+      method: "POST",
+      headers,
+    });
+    const json = await response.json() as TestConnectionResult & { error?: string };
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return testExchangeConnection(accountId, true);
+      }
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+
+    return { success: true, data: json };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
 // --- WebSocket Connection (EXT-06) ---
 
 let ws: WebSocket | null = null;
@@ -411,6 +584,7 @@ type Message =
   | { type: "GET_SETTINGS" }
   | { type: "EXECUTE_TRADE"; payload: TradePayload }
   | { type: "LOGIN"; email: string; password: string }
+  | { type: "REGISTER"; email: string; password: string }
   | { type: "LOGOUT" }
   | { type: "AUTH_STATUS" }
   | { type: "REFRESH_TOKEN" }
@@ -418,7 +592,12 @@ type Message =
   | { type: "WS_RECONNECT" }
   | { type: "LIST_TRADES" }
   | { type: "CANCEL_TRADE"; tradeId: string }
-  | { type: "GET_BALANCES" };
+  | { type: "GET_BALANCES" }
+  | { type: "LIST_EXCHANGES" }
+  | { type: "LIST_EXCHANGE_ACCOUNTS" }
+  | { type: "ADD_EXCHANGE_ACCOUNT"; payload: AddExchangeAccountPayload }
+  | { type: "DELETE_EXCHANGE_ACCOUNT"; accountId: string }
+  | { type: "TEST_EXCHANGE_CONNECTION"; accountId: string };
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as Message;
@@ -466,6 +645,30 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "GET_BALANCES") {
     return getBalances();
+  }
+
+  if (msg.type === "REGISTER" && "email" in msg && "password" in msg) {
+    return register(msg.email, msg.password);
+  }
+
+  if (msg.type === "LIST_EXCHANGES") {
+    return listExchanges();
+  }
+
+  if (msg.type === "LIST_EXCHANGE_ACCOUNTS") {
+    return listExchangeAccounts();
+  }
+
+  if (msg.type === "ADD_EXCHANGE_ACCOUNT" && "payload" in msg) {
+    return addExchangeAccount(msg.payload);
+  }
+
+  if (msg.type === "DELETE_EXCHANGE_ACCOUNT" && "accountId" in msg) {
+    return deleteExchangeAccount(msg.accountId);
+  }
+
+  if (msg.type === "TEST_EXCHANGE_CONNECTION" && "accountId" in msg) {
+    return testExchangeConnection(msg.accountId);
   }
 });
 

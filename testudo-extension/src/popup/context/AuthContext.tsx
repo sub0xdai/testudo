@@ -6,6 +6,7 @@ export interface AuthState {
   email: () => string;
   paperOnly: () => boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   continueWithoutAccount: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -51,6 +52,21 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
     return response;
   }
 
+  async function register(regEmail: string, password: string): Promise<{ success: boolean; error?: string }> {
+    const response = await browser.runtime.sendMessage({
+      type: "REGISTER",
+      email: regEmail.trim(),
+      password,
+    }) as { success: boolean; error?: string };
+
+    if (response.success) {
+      await browser.storage.local.remove("paperOnly");
+      setPaperOnly(false);
+      await checkAuth();
+    }
+    return response;
+  }
+
   async function logout() {
     await browser.runtime.sendMessage({ type: "LOGOUT" });
     await browser.storage.local.remove("paperOnly");
@@ -72,6 +88,7 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
     email,
     paperOnly,
     login,
+    register,
     logout,
     continueWithoutAccount,
     checkAuth,

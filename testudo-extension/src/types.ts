@@ -101,6 +101,45 @@ export interface ChartApiHealth {
   hasGetShapeById: boolean;
 }
 
+// --- Exchange Account Types (EXT-15) ---
+
+export interface ExchangeInfo {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  supported_features: string[];
+  required_credentials: string[];
+  optional_credentials: string[];
+}
+
+export interface ExchangeAccount {
+  id: string;
+  exchange_name: string;
+  account_name: string;
+  is_active: boolean;
+  permissions: Record<string, unknown>;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface AddExchangeAccountPayload {
+  exchange_name: string;
+  account_name?: string;
+  api_key: string;
+  secret: string;
+  passphrase?: string;
+}
+
+export interface TestConnectionResult {
+  account_id: string;
+  exchange_name: string;
+  status: string;
+  message: string;
+  tested_at: string;
+  latency_ms: number | null;
+}
+
 export type WsState = "disconnected" | "connecting" | "connected";
 
 export type ToastType = "success" | "error" | "info";

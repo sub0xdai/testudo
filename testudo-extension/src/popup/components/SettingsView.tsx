@@ -1,6 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
+import ExchangeManager from "./ExchangeManager";
 
 export default function SettingsView(props: { onBack: () => void; onLogout: () => void }) {
   const auth = useAuth();
@@ -58,7 +59,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
       </div>
 
       {/* Body */}
-      <div class="flex-1 px-5 py-4 space-y-5">
+      <div class="flex-1 px-5 py-4 space-y-5 scroll-area">
         {/* Backend URL */}
         <div>
           <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
@@ -118,6 +119,13 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             </div>
           </Show>
         </div>
+
+        {/* Exchange Accounts (auth-gated) */}
+        <Show when={auth.authenticated()}>
+          <div class="pt-4 border-t border-border-subtle">
+            <ExchangeManager />
+          </div>
+        </Show>
       </div>
     </div>
   );
