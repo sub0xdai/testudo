@@ -8,6 +8,7 @@ type View = "auth" | "main" | "settings";
 
 export default function App() {
   const [view, setView] = createSignal<View>("auth");
+  const [cameFromMain, setCameFromMain] = createSignal(false);
 
   function handleReady(authed: boolean, paperOnly: boolean) {
     if (authed || paperOnly) {
@@ -17,14 +18,20 @@ export default function App() {
     }
   }
 
+  function goToAuth() {
+    setCameFromMain(true);
+    setView("auth");
+  }
+
   return (
     <div class="w-full h-full bg-bg-core text-text-primary font-mono">
       <AuthProvider onReady={handleReady}>
         <Switch>
           <Match when={view() === "auth"}>
             <AuthSection
-              onAuthenticated={() => setView("main")}
-              onContinueWithoutAccount={() => setView("main")}
+              onAuthenticated={() => { setCameFromMain(false); setView("main"); }}
+              onContinueWithoutAccount={() => { setCameFromMain(false); setView("main"); }}
+              onBack={cameFromMain() ? () => setView("main") : undefined}
             />
           </Match>
           <Match when={view() === "main"}>
@@ -33,7 +40,7 @@ export default function App() {
           <Match when={view() === "settings"}>
             <SettingsView
               onBack={() => setView("main")}
-              onLogout={() => setView("auth")}
+              onLogout={goToAuth}
             />
           </Match>
         </Switch>
