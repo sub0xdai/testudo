@@ -60,8 +60,15 @@ Modify `testudo-web/src/main.tsx` and `App.tsx`.
   - `/login` — Login page
   - `/register` — Registration page
   - `/account` — Protected account management page
+  - `/journal` — Placeholder page (future trading journal, not implemented in this spec)
 - **FR-1.4:** Landing page route (`/`) renders all existing sections (Hero, Problem, Solution, etc.) unchanged. SpotlightBackground only renders on the landing page.
-- **FR-1.5:** Header component updated: add "ACCOUNT" nav link (visible when authenticated) and "LOGIN" link (visible when not authenticated). Existing nav items preserved.
+- **FR-1.5:** Header component updated:
+  - Remove "BAGS.FM" external link
+  - Replace "JOIN WAITLIST" button with auth-aware links:
+    - Unauthenticated: "LOGIN" link → `/login`
+    - Authenticated: "ACCOUNT" link → `/account`
+  - Add "JOURNAL" nav link → `/journal` (disabled/dim styling with "COMING SOON" tooltip, visible to all users)
+  - Preserve: PRICING, FAQ, GitHub, X links
 
 ### FR-2: Auth Context Provider
 
@@ -157,6 +164,17 @@ New file: `src/types/index.ts`.
   - `AddExchangeAccountPayload { exchange_name, account_name?, api_key, secret, passphrase? }`
   - `TestConnectionResult { account_id, exchange_name, status, message, tested_at, latency_ms }`
 
+### FR-8: Landing Page CTA Conversion
+
+Convert dead-end waitlist CTAs into product registration funnel.
+
+- **FR-8.1:** `Hero.tsx` — Replace "JOIN WAITLIST" `<a href="#waitlist">` with `<Link to="/register">` labeled "GET STARTED". Keep "VIEW DOCS" GitHub link unchanged.
+- **FR-8.2:** `FinalCTA.tsx` — Remove Formspree waitlist form entirely. Replace with a direct call-to-action: heading "READY TO TRADE?", body text, and a "CREATE ACCOUNT" button linking to `/register`. Remove `useState` for form status and Formspree fetch logic.
+- **FR-8.3:** `Pricing.tsx` — Both tier CTA buttons ("GET STARTED" and "JOIN WAITLIST") change from `<a href="#waitlist">` to `<Link to="/register">`. Relabel both to "GET STARTED".
+- **FR-8.4:** `Footer.tsx` — Update copyright year from 2024 to 2025.
+- **FR-8.5:** `Exchanges.tsx` — No changes (informational section, no CTA).
+- **FR-8.6:** `/journal` placeholder page — minimal page with "JOURNAL" heading, "Coming soon — trade history, P&L analytics, and performance insights" body text, and a back link to `/`. Styled consistently with auth pages (centered card on dark background).
+
 ## 5. File Context
 
 ### New Files
@@ -169,6 +187,7 @@ New file: `src/types/index.ts`.
 | `testudo-web/src/pages/RegisterPage.tsx` | Registration form page |
 | `testudo-web/src/pages/AccountPage.tsx` | Protected exchange account management |
 | `testudo-web/src/pages/LandingPage.tsx` | Extracted landing sections (moved from App.tsx) |
+| `testudo-web/src/pages/JournalPage.tsx` | Placeholder page for future trading journal |
 | `testudo-web/src/types/index.ts` | Shared TypeScript interfaces |
 
 ### Modified Files
@@ -178,7 +197,11 @@ New file: `src/types/index.ts`.
 | `testudo-web/package.json` | Add `react-router-dom`, `axios` dependencies |
 | `testudo-web/src/main.tsx` | Wrap with `BrowserRouter` |
 | `testudo-web/src/App.tsx` | Replace single-page layout with `Routes` definition |
-| `testudo-web/src/components/ui/Header.tsx` | Add ACCOUNT/LOGIN nav links, use `Link` from react-router |
+| `testudo-web/src/components/ui/Header.tsx` | Remove BAGS.FM, replace JOIN WAITLIST with LOGIN/ACCOUNT, add JOURNAL link |
+| `testudo-web/src/components/sections/Hero.tsx` | Replace "JOIN WAITLIST" with "GET STARTED" → `/register` |
+| `testudo-web/src/components/sections/FinalCTA.tsx` | Remove Formspree form, replace with "CREATE ACCOUNT" → `/register` |
+| `testudo-web/src/components/sections/Pricing.tsx` | Both CTA buttons → `/register` |
+| `testudo-web/src/components/sections/Footer.tsx` | Update copyright year |
 | `testudo-web/vite.config.ts` | Add SPA fallback for client-side routing (if needed) |
 | `testudo-extension/src/popup/components/SettingsView.tsx` | Remove ExchangeManager, add "MANAGE ACCOUNTS" link |
 
@@ -194,7 +217,7 @@ New file: `src/types/index.ts`.
 ## 6. Acceptance Criteria
 
 1. `bun run build` in `testudo-web/` succeeds with zero TypeScript errors
-2. `/` route renders the full landing page unchanged (all sections, SpotlightBackground, header)
+2. `/` route renders the full landing page with all sections, SpotlightBackground, and updated header
 3. `/login` renders login form; submitting valid credentials stores JWT and redirects to `/account`
 4. `/register` renders register form; confirm password mismatch shows client-side error; valid submission creates account and redirects to `/account`
 5. `/account` without auth redirects to `/login`
@@ -206,8 +229,13 @@ New file: `src/types/index.ts`.
 11. 401 on any API call triggers token refresh; if refresh fails, redirects to `/login`
 12. Extension SettingsView shows "MANAGE ACCOUNTS" link that opens the web `/account` page in a new tab
 13. Extension still reads active exchange from backend for trade execution (no regression)
-14. Landing site header shows "ACCOUNT" when authenticated, "LOGIN" when not
+14. Header shows "ACCOUNT" when authenticated, "LOGIN" when not; no BAGS.FM link; JOURNAL link present with "coming soon" indicator
 15. All pages maintain the brutalist dark theme: `#050505` background, zero border-radius, Space Mono typography
+16. Hero "GET STARTED" button navigates to `/register` (no `#waitlist` anchor references remain)
+17. FinalCTA section has no Formspree integration — "CREATE ACCOUNT" button links to `/register`
+18. Pricing tier CTAs both link to `/register`
+19. `/journal` renders placeholder page with coming soon message
+20. `grep -rn "formspree\|#waitlist\|bags.fm" src/` returns zero matches
 
 ## 7. Risks
 
@@ -225,8 +253,9 @@ New file: `src/types/index.ts`.
 2. **FR-3** (API client) — enables all data fetching
 3. **FR-2** (Auth context) — enables protected routes
 4. **FR-4** (Auth pages) — login/register flows
-5. **FR-5** (Account page) — core feature
-6. **FR-6** (Extension simplification) — cleanup, done last
+5. **FR-8** (Landing page CTA conversion) — rewire all CTAs to registration funnel, add journal placeholder
+6. **FR-5** (Account page) — core feature
+7. **FR-6** (Extension simplification) — cleanup, done last
 
 ## 9. Completion Signal
 

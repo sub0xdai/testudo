@@ -11,7 +11,19 @@
 - [ ] `/register` renders register form
 - [ ] `/account` is protected — redirects to `/login` when unauthenticated
 - [ ] Direct URL navigation works (SPA fallback configured)
+- [ ] `/journal` renders placeholder page with coming soon message
 - [ ] Header nav links update based on auth state (LOGIN vs ACCOUNT)
+- [ ] Header contains JOURNAL link with "coming soon" styling
+
+## Landing Page CTAs
+
+- [ ] BAGS.FM link removed from header
+- [ ] "JOIN WAITLIST" button removed from header
+- [ ] Hero CTA: "GET STARTED" links to `/register`
+- [ ] FinalCTA: Formspree form removed, replaced with "CREATE ACCOUNT" → `/register`
+- [ ] Pricing: both tier CTAs link to `/register`
+- [ ] Footer: copyright year updated
+- [ ] `grep -rn "formspree\|#waitlist\|bags.fm" src/` returns zero matches
 
 ## Auth Context
 
@@ -86,4 +98,5 @@
 - [ ] Manual test: full auth flow (register → login → add exchange → test → delete → logout)
 - [ ] Manual test: token expiry triggers refresh and retries request
 - [ ] Manual test: extension "MANAGE ACCOUNTS" link opens correct URL
-- [ ] Landing page visual regression: all sections render identically to pre-change
+- [ ] Landing page sections render correctly with updated CTAs
+- [ ] All CTA buttons on landing page navigate to `/register`
