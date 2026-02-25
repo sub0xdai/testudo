@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a multi-component cryptocurrency exchange project with three main components:
 
 - **testudo-exchange/**: Rust backend - High-performance matching engine and API server
-- **testudo-web/**: TypeScript/React frontend - Trading interface using Turbo monorepo
+- **testudo-web/**: TypeScript/React frontend - Landing site and account management (Vite + Tailwind)
 - **testudo-ops/**: Kubernetes infrastructure - Production deployment configurations
 
 ## Development Commands
@@ -16,10 +16,9 @@ This is a multi-component cryptocurrency exchange project with three main compon
 ```bash
 cd testudo-web
 bun install            # Install dependencies
-bun run dev            # Start development server
-bun run build          # Build for production
-bun run lint           # Run ESLint
-bun run format         # Format code with Prettier
+bun run dev            # Start Vite dev server
+bun run build          # Build with TypeScript check
+bun run preview        # Preview production build
 ```
 
 ### Rust Backend (testudo-exchange/)
@@ -30,15 +29,6 @@ cargo run              # Run the exchange
 cargo test             # Run tests
 cargo fmt              # Format code
 cargo clippy           # Run linter
-```
-
-### Individual web app development:
-```bash
-cd testudo-web/apps/web
-bun run dev            # Start Vite dev server
-bun run build          # Build with TypeScript check
-bun run lint           # Run ESLint
-bun run preview        # Preview production build
 ```
 
 ## Architecture Overview
@@ -57,12 +47,10 @@ bun run preview        # Preview production build
   - `common_utils/`: Shared utilities
 
 ### Web Frontend (TypeScript/React)
-- **Turbo monorepo** with workspaces
 - **Vite** for fast development and building
-- **React Router** for navigation
-- **Lightweight Charts** for trading interface
-- **Axios** for API communication
+- **React 18** with TypeScript
 - **Tailwind CSS** for styling
+- Landing site with brutalist dark theme (Unbounded + Space Mono fonts)
 
 ### Infrastructure (Kubernetes)
 - **GKE deployment** with ArgoCD GitOps
@@ -73,8 +61,7 @@ bun run preview        # Preview production build
 ## Key Files to Understand
 
 - `testudo-exchange/crates/engine/src/engine/orderbook.rs`: Core order matching logic
-- `testudo-web/apps/web/src/pages/Trade.tsx`: Main trading interface
-- `testudo-web/apps/web/src/components/depth/OrderBook.tsx`: Order book display
+- `testudo-web/src/App.tsx`: Landing site entry point
 - `testudo-ops/postgres-db/`: Database configurations
 - `.synapse.yml`: Project metadata for Synapse System integration
 
