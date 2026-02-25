@@ -164,8 +164,8 @@ export default function TradeForm(props: TradeFormProps) {
           <Show when={props.activeExchange}>
             <span style={{
               display: "inline-block",
-              background: "rgba(142,192,124,0.12)",
-              color: "#8EC07C",
+              background: "rgba(148,163,184,0.12)",
+              color: "#94A3B8",
               "font-size": "10px",
               "font-weight": "700",
               "letter-spacing": "0.5px",

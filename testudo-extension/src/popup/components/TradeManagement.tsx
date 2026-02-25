@@ -24,7 +24,7 @@ export default function TradeManagement() {
 
   function sliderStyle(value: number, min: number, max: number): string {
     const pct = ((value - min) / (max - min)) * 100;
-    return `background: linear-gradient(to right, var(--color-accent-orange) 0%, var(--color-accent-orange) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
+    return `background: linear-gradient(to right, var(--color-accent-steel) 0%, var(--color-accent-steel) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
   }
 
   /** Traffic light gradient for risk: muted green → amber → red with smooth blending */
@@ -110,7 +110,7 @@ export default function TradeManagement() {
               onChange={(e) => updateField("leverage", Math.max(1, Math.min(125, parseInt(e.target.value) || 1)))}
               data-testid="leverage-value"
             />
-            <span class="text-[13px] font-mono ml-1 text-accent-orange">x</span>
+            <span class="text-[13px] font-mono ml-1 text-accent-steel">x</span>
           </div>
         </label>
         <input
@@ -170,7 +170,7 @@ export default function TradeManagement() {
       {/* Trailing Stop Toggle Card */}
       <div
         class={`bg-bg-panel rounded-xl border transition-all duration-200 ${
-          preset().trailing_stop.enabled ? "border-accent-orange/30 glow-orange" : "border-white/10"
+          preset().trailing_stop.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="trailing-card"
       >
@@ -181,7 +181,7 @@ export default function TradeManagement() {
           <button
             class={`px-3.5 py-1 text-[11px] font-bold tracking-wider font-sans rounded-full border ${
               preset().trailing_stop.enabled
-                ? "bg-accent-orange/15 text-accent-orange border-accent-orange/30"
+                ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"
             }`}
             onClick={() =>
@@ -243,7 +243,7 @@ export default function TradeManagement() {
       {/* Partial TP Toggle Card */}
       <div
         class={`bg-bg-panel rounded-xl border transition-all duration-200 ${
-          preset().partial_tp.enabled ? "border-accent-orange/30 glow-orange" : "border-white/10"
+          preset().partial_tp.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="partial-tp-card"
       >
@@ -254,7 +254,7 @@ export default function TradeManagement() {
           <button
             class={`px-3.5 py-1 text-[11px] font-bold tracking-wider font-sans rounded-full border ${
               preset().partial_tp.enabled
-                ? "bg-accent-orange/15 text-accent-orange border-accent-orange/30"
+                ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"
             }`}
             onClick={() =>

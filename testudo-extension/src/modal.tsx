@@ -59,7 +59,7 @@ const MODAL_STYLES = `
     box-sizing: border-box;
   }
   .field-input-sm { font-size: 13px; padding: 6px 10px; }
-  .field-input:focus { border-color: rgba(142,192,124,0.5); }
+  .field-input:focus { border-color: rgba(148,163,184,0.5); }
   .field-input.invalid { border-color: rgba(239,68,68,0.5); }
   .field-input.auto-filled { border-color: rgba(52,211,153,0.3); }
   .field-input::placeholder { color: #52525B; }
@@ -89,7 +89,7 @@ const MODAL_STYLES = `
   .mgmt-rule .off { color: #71717A; }
   .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
   .hint { font-size: 11px; color: #71717A; display: flex; align-items: center; gap: 4px; }
-  kbd { display: inline-block; padding: 2px 7px; font-size: 10px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #D4D4D8; background: rgba(142,192,124,0.12); border: 1px solid rgba(142,192,124,0.25); border-radius: 6px; font-weight: 500; }
+  kbd { display: inline-block; padding: 2px 7px; font-size: 10px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #D4D4D8; background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.25); border-radius: 6px; font-weight: 500; }
   .live-badge { display: inline-block; background: rgba(239,68,68,0.15); color: #EF4444; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 12px; }
   .live-warning { font-size: 11px; color: rgba(239,68,68,0.8); margin-bottom: 12px; text-align: center; }
   .balance-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
@@ -97,7 +97,7 @@ const MODAL_STYLES = `
   .balance-label { font-size: 12px; color: #D4D4D8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
   .balance-value { font-size: 14px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #34D399; font-weight: 500; }
   .balance-value.size { color: #fff; font-weight: 600; }
-  .balance-value.leverage { color: #FE8019; }
+  .balance-value.leverage { color: #94A3B8; }
   .balance-value.margin { color: #FBBF24; }
   .balance-value.risk { color: #F87171; }
   .balance-value.muted { color: #71717A; font-style: italic; font-size: 12px; }
@@ -105,7 +105,7 @@ const MODAL_STYLES = `
   .toast.visible { opacity: 1; }
   .toast.success { background: rgba(34,197,94,0.15); color: #22C55E; border: 1px solid rgba(34,197,94,0.2); backdrop-filter: blur(12px); }
   .toast.error { background: rgba(239,68,68,0.15); color: #EF4444; border: 1px solid rgba(239,68,68,0.2); backdrop-filter: blur(12px); }
-  .toast.info { background: rgba(142,192,124,0.15); color: #8EC07C; border: 1px solid rgba(142,192,124,0.2); backdrop-filter: blur(12px); }
+  .toast.info { background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.2); backdrop-filter: blur(12px); }
 `;
 
 // --- Modal lifecycle ---

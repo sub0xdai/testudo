@@ -105,7 +105,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
               <div class="space-y-3">
                 <p class="text-xs text-text-dim font-sans">Paper mode — no account</p>
                 <button
-                  class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-aqua/40 text-accent-aqua hover:bg-accent-aqua/10"
+                  class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
                   onClick={handleLogout}
                   data-testid="sign-in-btn"
                 >

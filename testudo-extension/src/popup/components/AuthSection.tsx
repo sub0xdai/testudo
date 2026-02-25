@@ -139,7 +139,7 @@ export default function AuthSection(props: {
 
           <button
             class="w-full py-3.5 text-[13px] font-bold tracking-widest font-sans rounded-xl border-0 text-white mt-2"
-            style={{ background: "var(--color-accent-aqua)" }}
+            style={{ background: "var(--color-accent-steel)" }}
             onClick={handleSubmit}
             disabled={loading()}
             data-testid="login-btn"
