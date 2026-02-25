@@ -27,7 +27,8 @@
     --color-border-subtle: rgba(255, 255, 255, 0.05);
     --color-border-active: rgba(255, 255, 255, 0.1);
     --color-border-grid: rgba(255, 255, 255, 0.06);
-    --color-accent-blue: #3b82f6;
+    --color-accent-aqua: #8ec07c;
+    --color-accent-orange: #fe8019;
     --color-signal-green: #22c55e;
     --color-signal-green-dim: rgba(34, 197, 94, 0.12);
     --color-signal-red: #ef4444;
@@ -104,8 +105,8 @@ body {
 }
 
 input:focus {
-    border-color: var(--color-accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: var(--color-accent-aqua);
+    box-shadow: 0 0 0 3px rgba(142, 192, 124, 0.15);
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -144,8 +145,8 @@ select {
 }
 
 select:focus {
-    border-color: var(--color-accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: var(--color-accent-aqua);
+    box-shadow: 0 0 0 3px rgba(142, 192, 124, 0.15);
 }
 
 select option {
@@ -211,18 +212,18 @@ input[type="range"]::-webkit-slider-thumb {
     appearance: none;
     width: 16px;
     height: 16px;
-    background: var(--color-accent-blue);
+    background: var(--color-accent-orange);
     border: none;
     border-radius: 50%;
     cursor: grab;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 2px 8px rgba(254, 128, 25, 0.3);
     transition:
         box-shadow 150ms ease,
         transform 150ms ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 2px 12px rgba(254, 128, 25, 0.5);
     transform: scale(1.1);
 }
 
@@ -234,11 +235,11 @@ input[type="range"]::-webkit-slider-thumb:active {
 input[type="range"]::-moz-range-thumb {
     width: 16px;
     height: 16px;
-    background: var(--color-accent-blue);
+    background: var(--color-accent-orange);
     border: none;
     border-radius: 50%;
     cursor: grab;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 2px 8px rgba(254, 128, 25, 0.3);
 }
 
 input[type="range"]::-moz-range-track {
@@ -326,10 +327,16 @@ input[type="range"]::-moz-range-track {
 }
 
 /* --- Glow Effects --- */
-.glow-blue {
+.glow-orange {
     box-shadow:
-        0 0 20px rgba(59, 130, 246, 0.1),
-        0 0 0 1px rgba(59, 130, 246, 0.2);
+        0 0 20px rgba(254, 128, 25, 0.1),
+        0 0 0 1px rgba(254, 128, 25, 0.2);
+}
+
+.glow-aqua {
+    box-shadow:
+        0 0 20px rgba(142, 192, 124, 0.1),
+        0 0 0 1px rgba(142, 192, 124, 0.2);
 }
 
 .glow-green {
@@ -383,7 +390,7 @@ input[type="range"]::-moz-range-track {
 
 /* --- Gradient Text Utility --- */
 .text-gradient {
-    color: var(--color-accent-blue);
+    color: var(--color-accent-aqua);
 }
 
 /* --- Balance Panel (Hadrian's Wall texture) --- */

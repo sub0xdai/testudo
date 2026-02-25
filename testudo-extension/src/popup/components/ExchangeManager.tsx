@@ -135,7 +135,7 @@ export default function ExchangeManager() {
           Exchange Accounts
         </label>
         <button
-          class="text-[10px] px-2.5 py-1 font-sans font-medium text-accent-blue border-accent-blue/30 hover:bg-accent-blue/10"
+          class="text-[10px] px-2.5 py-1 font-sans font-medium text-accent-aqua border-accent-aqua/30 hover:bg-accent-aqua/10"
           onClick={() => { setShowForm(!showForm()); if (!showForm()) clearForm(); }}
           data-testid="toggle-add-exchange"
         >
@@ -153,7 +153,7 @@ export default function ExchangeManager() {
           const result = () => testResults()[account.id];
           return (
             <div
-              class={`bg-bg-panel border rounded-xl p-3 space-y-2 ${activeExchangeId() === account.id ? "border-accent-blue/40" : "border-border-subtle"}`}
+              class={`bg-bg-panel border rounded-xl p-3 space-y-2 ${activeExchangeId() === account.id ? "border-accent-aqua/40" : "border-border-subtle"}`}
               data-testid={`account-${account.exchange_name}`}
             >
               <div class="flex items-center justify-between">
@@ -163,18 +163,18 @@ export default function ExchangeManager() {
                   title={activeExchangeId() === account.id ? "Active exchange" : "Set as active"}
                 >
                   <span
-                    class={`w-2 h-2 rounded-full ${activeExchangeId() === account.id ? "bg-accent-blue shadow-[0_0_6px_rgba(59,130,246,0.5)]" : "bg-text-dim"}`}
+                    class={`w-2 h-2 rounded-full ${activeExchangeId() === account.id ? "bg-accent-aqua shadow-[0_0_6px_rgba(142,192,124,0.5)]" : "bg-text-dim"}`}
                   />
                   <span class="text-[13px] font-sans font-medium text-white">
                     {account.account_name || account.exchange_name}
                   </span>
                   <Show when={activeExchangeId() === account.id}>
-                    <span class="text-[9px] px-1.5 py-0.5 bg-accent-blue/15 text-accent-blue rounded-full font-bold tracking-wider">ACTIVE</span>
+                    <span class="text-[9px] px-1.5 py-0.5 bg-accent-aqua/15 text-accent-aqua rounded-full font-bold tracking-wider">ACTIVE</span>
                   </Show>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <button
-                    class="text-[10px] px-2 py-0.5 font-sans text-text-secondary border-border-subtle hover:text-accent-blue hover:border-accent-blue/30"
+                    class="text-[10px] px-2 py-0.5 font-sans text-text-secondary border-border-subtle hover:text-accent-aqua hover:border-accent-aqua/30"
                     onClick={() => handleTest(account.id)}
                     disabled={testingId() === account.id}
                     data-testid={`test-${account.exchange_name}`}
@@ -298,7 +298,7 @@ export default function ExchangeManager() {
 
           <button
             class="w-full py-2.5 text-[11px] font-bold tracking-widest font-sans rounded-xl border-0 text-white"
-            style={{ background: "var(--color-accent-blue)" }}
+            style={{ background: "var(--color-accent-aqua)" }}
             onClick={handleAdd}
             disabled={formSubmitting()}
             data-testid="submit-exchange"
