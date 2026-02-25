@@ -6,7 +6,12 @@ export default function ExchangeManager() {
   const [exchanges, setExchanges] = createSignal<ExchangeInfo[]>([]);
   const [accounts, setAccounts] = createSignal<ExchangeAccount[]>([]);
   const [activeExchangeId, setActiveExchangeId] = createSignal<string | null>(null);
-  const [showForm, setShowForm] = createSignal(false);
+  const [showForm, setShowFormRaw] = createSignal(false);
+
+  function setShowForm(v: boolean) {
+    setShowFormRaw(v);
+    browser.storage.local.set({ popupShowExchangeForm: v });
+  }
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
   const [testResults, setTestResults] = createSignal<Record<string, TestConnectionResult>>({});
@@ -21,9 +26,12 @@ export default function ExchangeManager() {
   const [formSubmitting, setFormSubmitting] = createSignal(false);
 
   onMount(async () => {
-    // Load active exchange ID from background
-    const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
+    const [activeRes, stored] = await Promise.all([
+      browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as Promise<{ exchangeId: string | null }>,
+      browser.storage.local.get(["popupShowExchangeForm"]),
+    ]);
     setActiveExchangeId(activeRes?.exchangeId || null);
+    if (stored.popupShowExchangeForm) setShowFormRaw(true);
     await fetchData();
   });
 

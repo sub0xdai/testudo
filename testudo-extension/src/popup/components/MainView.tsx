@@ -19,7 +19,12 @@ function formatBalance(value: number): string {
 
 export default function MainView(props: { onOpenSettings: () => void }) {
   const auth = useAuth();
-  const [activeTab, setActiveTab] = createSignal<TabId>("trade");
+  const [activeTab, setActiveTabRaw] = createSignal<TabId>("trade");
+
+  function setActiveTab(tab: TabId) {
+    setActiveTabRaw(tab);
+    browser.storage.local.set({ popupActiveTab: tab });
+  }
   const [balance, setBalance] = createSignal<BalanceResponse[] | null>(null);
   const [balanceLoading, setBalanceLoading] = createSignal(true);
   const [positionCount, setPositionCount] = createSignal(0);
@@ -88,7 +93,9 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     return records[records.length - 1];
   };
 
-  onMount(() => {
+  onMount(async () => {
+    const stored = await browser.storage.local.get(["popupActiveTab"]);
+    if (stored.popupActiveTab) setActiveTabRaw(stored.popupActiveTab as TabId);
     fetchBalance();
     fetchScraperHealth();
     browser.runtime.onMessage.addListener(handleMessage);

@@ -1,4 +1,5 @@
 import { createSignal, Match, Switch } from "solid-js";
+import browser from "webextension-polyfill";
 import { AuthProvider } from "./context/AuthContext";
 import AuthSection from "./components/AuthSection";
 import MainView from "./components/MainView";
@@ -7,14 +8,21 @@ import SettingsView from "./components/SettingsView";
 type View = "auth" | "main" | "settings";
 
 export default function App() {
-  const [view, setView] = createSignal<View>("auth");
+  const [view, setViewRaw] = createSignal<View>("auth");
   const [cameFromMain, setCameFromMain] = createSignal(false);
 
-  function handleReady(authed: boolean, paperOnly: boolean) {
+  function setView(v: View) {
+    setViewRaw(v);
+    browser.storage.local.set({ popupView: v });
+  }
+
+  async function handleReady(authed: boolean, paperOnly: boolean) {
     if (authed || paperOnly) {
-      setView("main");
+      const stored = await browser.storage.local.get(["popupView"]);
+      const saved = stored.popupView as View | undefined;
+      setViewRaw(saved === "settings" ? "settings" : "main");
     } else {
-      setView("auth");
+      setViewRaw("auth");
     }
   }
 
