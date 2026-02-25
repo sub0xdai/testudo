@@ -298,7 +298,7 @@ export default function ExchangeManager() {
 
           <button
             class="w-full py-2.5 text-[11px] font-bold tracking-widest font-sans rounded-xl border-0 text-white"
-            style={{ background: "linear-gradient(135deg, #3B82F6, #8B5CF6)" }}
+            style={{ background: "var(--color-accent-blue)" }}
             onClick={handleAdd}
             disabled={formSubmitting()}
             data-testid="submit-exchange"

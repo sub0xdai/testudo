@@ -24,7 +24,7 @@ export default function TradeManagement() {
 
   function sliderStyle(value: number, min: number, max: number): string {
     const pct = ((value - min) / (max - min)) * 100;
-    return `background: linear-gradient(to right, #3B82F6 0%, #8B5CF6 ${pct}%, var(--color-bg-elevated) ${pct}%)`;
+    return `background: linear-gradient(to right, var(--color-accent-blue) 0%, var(--color-accent-blue) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
   }
 
   /** Traffic light gradient for risk: muted green → amber → red with smooth blending */
