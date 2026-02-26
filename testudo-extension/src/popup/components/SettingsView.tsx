@@ -1,7 +1,6 @@
 import { createSignal, onMount, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
-import ExchangeManager from "./ExchangeManager";
 
 export default function SettingsView(props: { onBack: () => void; onLogout: () => void }) {
   const auth = useAuth();
@@ -129,10 +128,25 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
           </Show>
         </div>
 
-        {/* Exchange Accounts (auth-gated) */}
+        {/* Exchange Accounts — managed on web */}
         <Show when={auth.authenticated()}>
           <div class="pt-4 border-t border-border-subtle">
-            <ExchangeManager />
+            <label class="block text-[11px] text-text-secondary font-sans font-medium mb-3">
+              Exchange Accounts
+            </label>
+            <button
+              class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
+              onClick={() => {
+                const base = backendUrl().replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+                window.open(`${base}/account`, '_blank');
+              }}
+              data-testid="manage-accounts-btn"
+            >
+              MANAGE ACCOUNTS
+            </button>
+            <p class="text-[10px] text-text-dim font-sans mt-2 text-center">
+              Opens account management in your browser
+            </p>
           </div>
         </Show>
       </div>
