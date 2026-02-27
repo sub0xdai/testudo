@@ -155,9 +155,10 @@ export default function AuthSection(props: {
 
           {/* Submit */}
           <button
-            class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 text-bg-core mt-6 flex items-center justify-center gap-2.5 rounded-md"
+            class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 mt-6 flex items-center justify-center gap-2.5 rounded-md"
             style={{
               background: "#00FF41",
+              color: "#000000",
               opacity: loading() ? "0.7" : "1",
             }}
             onClick={handleSubmit}
