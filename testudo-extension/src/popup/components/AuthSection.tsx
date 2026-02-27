@@ -116,7 +116,7 @@ export default function AuthSection(props: {
                 Password
               </label>
               <span
-                class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-accent-steel transition-colors"
+                class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-signal-green transition-colors"
                 onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
                 tabIndex={-1}
               >
@@ -157,7 +157,7 @@ export default function AuthSection(props: {
           <button
             class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 text-bg-core mt-6 flex items-center justify-center gap-2.5 rounded-md"
             style={{
-              background: "var(--color-accent-steel)",
+              background: "#00FF41",
               opacity: loading() ? "0.7" : "1",
             }}
             onClick={handleSubmit}
