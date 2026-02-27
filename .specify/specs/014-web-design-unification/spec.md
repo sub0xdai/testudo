@@ -1,6 +1,6 @@
 # 014 — Web Design Unification
 
-**Status:** Complete (Phase A)
+**Status:** Complete
 **Phase:** 10 — Visual Cohesion
 **Scope:** testudo-web (LoginPage, RegisterPage, LandingPage, Tailwind config)
 
