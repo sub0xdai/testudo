@@ -1,6 +1,6 @@
 # 014 — Web Design Unification
 
-**Status:** Draft
+**Status:** Complete (Phase A)
 **Phase:** 10 — Visual Cohesion
 **Scope:** testudo-web (LoginPage, RegisterPage, LandingPage, Tailwind config)
 
@@ -68,10 +68,10 @@ Unify the web app's visual language with the extension's V3 aesthetic:
 
 ## Verification
 
-- [ ] RegisterPage matches extension auth screen aesthetic
-- [ ] LoginPage matches RegisterPage
-- [ ] No neon green remaining on auth pages
-- [ ] Eye icon toggles work on all password fields
-- [ ] Error states render correctly
-- [ ] Card borders have rounded-lg
-- [ ] `bun run build` passes
+- [x] RegisterPage matches extension auth screen aesthetic
+- [x] LoginPage matches RegisterPage
+- [x] No neon green remaining on auth pages
+- [x] Eye icon toggles work on all password fields
+- [x] Error states render correctly
+- [x] Card borders have rounded-lg
+- [x] `bun run build` passes
