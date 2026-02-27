@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const PAPER_USER_ID = "00000000-0000-0000-0000-000000000001";
 
+export const WEB_APP_URL = "http://localhost:3001";
+
 export const WS_MAX_RECONNECT_DELAY = 30000;
 export const WS_BASE_RECONNECT_DELAY = 1000;
 

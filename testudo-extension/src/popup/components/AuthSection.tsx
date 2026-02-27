@@ -1,5 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { useAuth } from "../context/AuthContext";
+import { WEB_APP_URL } from "../../utils";
 
 export default function AuthSection(props: {
   onAuthenticated: () => void;
@@ -10,8 +11,6 @@ export default function AuthSection(props: {
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [showPassword, setShowPassword] = createSignal(false);
-  const [confirmPassword, setConfirmPassword] = createSignal("");
-  const [isRegister, setIsRegister] = createSignal(false);
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
@@ -23,35 +22,18 @@ export default function AuthSection(props: {
 
   async function handleSubmit() {
     setError("");
-
-    if (isRegister() && password() !== confirmPassword()) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (isRegister() && password().length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
     setLoading(true);
 
-    let response: { success: boolean; error?: string };
-    if (isRegister()) {
-      response = await auth.register(email(), password());
-    } else {
-      response = await auth.login(email(), password());
-    }
+    const response = await auth.login(email(), password());
 
     setLoading(false);
 
     if (response.success) {
       setPassword("");
-      setConfirmPassword("");
       setError("");
       props.onAuthenticated();
     } else {
-      setError(response.error || (isRegister() ? "Registration failed" : "Login failed"));
+      setError(response.error || "Login failed");
     }
   }
 
@@ -133,15 +115,13 @@ export default function AuthSection(props: {
               <label class="text-[11px] text-text-secondary font-mono font-medium tracking-wider uppercase">
                 Password
               </label>
-              <Show when={!isRegister()}>
-                <span
-                  class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-accent-steel transition-colors"
-                  onClick={() => {}}
-                  tabIndex={-1}
-                >
-                  FORGOT?
-                </span>
-              </Show>
+              <span
+                class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-accent-steel transition-colors"
+                onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
+                tabIndex={-1}
+              >
+                FORGOT?
+              </span>
             </div>
             <div class="relative">
               <input
@@ -173,25 +153,6 @@ export default function AuthSection(props: {
             </div>
           </div>
 
-          {/* Confirm password (register mode) */}
-          <Show when={isRegister()}>
-            <div class="mb-4">
-              <label class="block text-[11px] text-text-secondary font-mono font-medium mb-1 tracking-wider uppercase">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                placeholder=""
-                value={confirmPassword()}
-                onInput={(e) => setConfirmPassword(e.target.value)}
-                onKeyDown={handleKeyDown}
-                autocomplete="off"
-                style={inputStyle}
-                data-testid="confirm-password"
-              />
-            </div>
-          </Show>
-
           {/* Submit */}
           <button
             class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 text-bg-core mt-6 flex items-center justify-center gap-2.5 rounded-md"
@@ -213,7 +174,7 @@ export default function AuthSection(props: {
                 }}
               />
             </Show>
-            {loading() ? "CONNECTING..." : isRegister() ? "REGISTER" : "LOGIN"}
+            {loading() ? "CONNECTING..." : "LOGIN"}
           </button>
 
           {/* Divider */}
@@ -227,10 +188,10 @@ export default function AuthSection(props: {
           <div class="flex flex-col gap-2">
             <button
               class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-white rounded-md"
-              onClick={() => { setIsRegister(!isRegister()); setError(""); setShowPassword(false); }}
-              data-testid="toggle-register"
+              onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/register` })}
+              data-testid="create-account-btn"
             >
-              {isRegister() ? "ALREADY HAVE AN ACCOUNT?" : "CREATE ACCOUNT"}
+              CREATE ACCOUNT
             </button>
 
             <button
