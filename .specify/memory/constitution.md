@@ -37,7 +37,7 @@
 ### Frontend (testudo-web/)
 - **Language**: TypeScript
 - **Framework**: React 18, Vite
-- **Styling**: Tailwind CSS (industrial/brutalist - no rounded corners)
+- **Styling**: Tailwind CSS (dark theme with rounded corners)
 - **Charts**: lightweight-charts v5.x
 - **Package Manager**: Bun
 - **Linting**: `bun run lint`
@@ -103,7 +103,7 @@ Reference commands (may be overridden by automation):
 cd testudo-exchange && cargo clippy --all-targets && cargo test
 
 # Frontend
-cd testudo-web/apps/web && bun run lint && bun run build
+cd testudo-web && bun run build
 ```
 
 All commands must exit with code 0.

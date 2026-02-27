@@ -35,7 +35,7 @@ Gracefully stops all exchange services.
 ```
 
 **Options:**
-- `--keep-infra, -k`: Keep infrastructure (PostgreSQL, Redis) running
+- `--keep-infra, -k`: Keep infrastructure (PostgreSQL) running
 - `--force, -f`: Force shutdown (SIGKILL) if graceful fails
 - `--quiet, -q`: Suppress output messages
 - `--help, -h`: Show help
@@ -112,7 +112,6 @@ The scripts manage these services:
 
 ### Infrastructure
 - **PostgreSQL** (port 5000): Database for trade history
-- **Redis** (port 6380): Pub/sub and caching
 
 ### Backend Services
 - **Router** (port 8080): API Gateway for REST endpoints
@@ -134,7 +133,6 @@ cp .env.example .env
 
 Key variables:
 - `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string
 - `SERVER_ADDR`: API gateway address
 - `WS_STREAM_URL`: WebSocket server address
 
