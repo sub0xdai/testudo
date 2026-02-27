@@ -2,7 +2,7 @@
 
 | Field    | Value                                    |
 |----------|------------------------------------------|
-| Status   | Draft                                    |
+| Status   | Complete                                 |
 | Date     | 2026-02-26                               |
 | Depends  | 012-ccxt-multi-exchange, EXT-15          |
 | Phase    | Web — Account Management                 |
