@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import { createSignal, onMount, onCleanup } from "solid-js";
 import browser from "webextension-polyfill";
 import type { WsState } from "../../types";
 
@@ -19,7 +19,6 @@ const WS_DOT_CLASSES: Record<WsState, string> = {
 export default function StatusBar() {
   const [wsState, setWsState] = createSignal<WsState>("disconnected");
   const [sidecarStatus, setSidecarStatus] = createSignal<SidecarStatus>("unknown");
-  const [executionMode, setExecutionMode] = createSignal<string>("paper");
 
   function handleMessage(message: unknown) {
     const msg = message as { type: string; state?: WsState; status?: SidecarStatus };
@@ -32,14 +31,12 @@ export default function StatusBar() {
   }
 
   onMount(async () => {
-    const [wsRes, sidecarRes, stored] = await Promise.all([
+    const [wsRes, sidecarRes] = await Promise.all([
       browser.runtime.sendMessage({ type: "WS_STATUS" }) as Promise<{ state: WsState }>,
       browser.runtime.sendMessage({ type: "SIDECAR_STATUS" }) as Promise<{ status: SidecarStatus }>,
-      browser.storage.local.get(["executionMode"]),
     ]);
     setWsState(wsRes.state);
     setSidecarStatus(sidecarRes?.status || "unknown");
-    setExecutionMode((stored.executionMode as string) || "paper");
     browser.runtime.onMessage.addListener(handleMessage);
   });
 
@@ -47,18 +44,8 @@ export default function StatusBar() {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
 
-  // Listen for execution mode changes
-  const storageListener = (changes: Record<string, browser.Storage.StorageChange>) => {
-    if (changes.executionMode) {
-      setExecutionMode(changes.executionMode.newValue as string);
-    }
-  };
-  onMount(() => browser.storage.onChanged.addListener(storageListener));
-  onCleanup(() => browser.storage.onChanged.removeListener(storageListener));
-
-  // Compound status: in LIVE mode, sidecar unreachable overrides to orange
-  const isLive = () => executionMode() === "live";
-  const sidecarDown = () => isLive() && sidecarStatus() === "unreachable";
+  // Sidecar unreachable overrides to orange warning
+  const sidecarDown = () => sidecarStatus() === "unreachable";
 
   const dotClass = () => {
     if (sidecarDown()) return "bg-signal-orange status-blink";

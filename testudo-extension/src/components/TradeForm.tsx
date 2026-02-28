@@ -6,7 +6,6 @@ export interface TradeFormProps {
   initialSetup?: TradeSetup | null;
   management: ManagementPreset;
   balance?: BalanceResponse[] | null;
-  isLiveMode: boolean;
   activeExchange?: string | null;
   onConfirm: (setup: TradeSetup) => void;
   onDismiss?: () => void;
@@ -114,10 +113,9 @@ export default function TradeForm(props: TradeFormProps) {
 
   function handleConfirm() {
     if (!isValid()) return;
-    if (props.isLiveMode) {
-      enterCount++;
-      if (enterCount < 2) return;
-    }
+    // Always require double-Enter for live trading safety
+    enterCount++;
+    if (enterCount < 2) return;
     props.onConfirm(buildSetup());
   }
 
@@ -157,26 +155,24 @@ export default function TradeForm(props: TradeFormProps) {
   ];
 
   return (
-    <div class={props.isLiveMode ? "panel live-mode" : "panel"}>
-      <Show when={props.isLiveMode}>
-        <div style={{ display: "flex", "align-items": "center", gap: "8px", "margin-bottom": "12px" }}>
-          <span class="live-badge" style={{ "margin-bottom": "0" }}>LIVE MODE</span>
-          <Show when={props.activeExchange}>
-            <span style={{
-              display: "inline-block",
-              background: "rgba(148,163,184,0.12)",
-              color: "#94A3B8",
-              "font-size": "10px",
-              "font-weight": "700",
-              "letter-spacing": "0.5px",
-              padding: "3px 10px",
-              "border-radius": "20px",
-              "text-transform": "uppercase",
-            }}>{props.activeExchange}</span>
-          </Show>
-        </div>
-        <div class="live-warning">Real money trade. Press Enter twice to confirm.</div>
-      </Show>
+    <div class="panel live-mode">
+      <div style={{ display: "flex", "align-items": "center", gap: "8px", "margin-bottom": "12px" }}>
+        <span class="live-badge" style={{ "margin-bottom": "0" }}>LIVE MODE</span>
+        <Show when={props.activeExchange}>
+          <span style={{
+            display: "inline-block",
+            background: "rgba(148,163,184,0.12)",
+            color: "#94A3B8",
+            "font-size": "10px",
+            "font-weight": "700",
+            "letter-spacing": "0.5px",
+            padding: "3px 10px",
+            "border-radius": "20px",
+            "text-transform": "uppercase",
+          }}>{props.activeExchange}</span>
+        </Show>
+      </div>
+      <div class="live-warning">Real money trade. Press Enter twice to confirm.</div>
 
       {/* Header: Side toggle + Symbol */}
       <div class="header">
@@ -323,11 +319,7 @@ export default function TradeForm(props: TradeFormProps) {
       {/* Footer */}
       <div class="footer">
         <span class="hint">
-          {props.isLiveMode
-            ? <><kbd>Enter</kbd> <kbd>Enter</kbd> confirm</>
-            : isValid()
-              ? <><kbd>Enter</kbd> execute</>
-              : <span>fill all fields</span>}
+          <kbd>Enter</kbd> <kbd>Enter</kbd> confirm
         </span>
         <span class="hint"><kbd>Esc</kbd> dismiss</span>
       </div>

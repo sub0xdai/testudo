@@ -6,7 +6,6 @@ import {
   calculateRefreshDelay,
   nextReconnectDelay,
   DEFAULT_SETTINGS,
-  PAPER_USER_ID,
   QUOTE_CURRENCIES,
   WS_MAX_RECONNECT_DELAY,
   WS_BASE_RECONNECT_DELAY,
@@ -170,13 +169,6 @@ describe("constants", () => {
   it("has correct default settings", () => {
     expect(DEFAULT_SETTINGS.backendUrl).toBe("http://localhost:8080");
     expect(DEFAULT_SETTINGS.wsUrl).toBe("ws://localhost:4000");
-    expect(DEFAULT_SETTINGS.executionMode).toBe("paper");
-  });
-
-  it("has valid paper user ID format", () => {
-    expect(PAPER_USER_ID).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-    );
   });
 
   it("has quote currencies list", () => {

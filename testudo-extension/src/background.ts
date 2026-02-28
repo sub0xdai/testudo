@@ -1,23 +1,24 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, SmartBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult } from "./types";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult } from "./types";
 import {
-  DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
+  DEFAULT_SETTINGS, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
 } from "./utils";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
 async function getSettings(): Promise<Settings> {
-  const stored = await browser.storage.local.get(["backendUrl", "wsUrl", "executionMode"]);
+  const stored = await browser.storage.local.get(["backendUrl", "wsUrl"]);
   return {
     backendUrl: (stored.backendUrl as string) || DEFAULT_SETTINGS.backendUrl,
     wsUrl: (stored.wsUrl as string) || DEFAULT_SETTINGS.wsUrl,
-    executionMode: (stored.executionMode as Settings["executionMode"]) || DEFAULT_SETTINGS.executionMode,
   };
 }
 
 browser.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings();
+  // EXT-19: Clean up legacy paper trading storage keys
+  await browser.storage.local.remove(["executionMode", "paperOnly"]);
   await browser.storage.local.set({ ...settings });
   console.log("Testudo Sniper installed", settings);
 });
@@ -147,13 +148,12 @@ async function setActiveExchangeId(id: string | null): Promise<void> {
   }
 }
 
-// --- Trade Execution (EXT-08: management block, no client-side quantity) ---
+// --- Trade Execution (EXT-19: live only, JWT required) ---
 
 async function executeTrade(payload: TradePayload, retried = false): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
-  // EXT-16 FR-3.5: Attach active exchange account ID to trade payload
   const activeExchangeId = payload.exchange_account_id || await getActiveExchangeId();
 
   const body: Record<string, unknown> = {
@@ -169,15 +169,15 @@ async function executeTrade(payload: TradePayload, retried = false): Promise<Bac
     body.exchange_account_id = activeExchangeId;
   }
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
   const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  } else {
-    headers["X-User-Id"] = PAPER_USER_ID;
+  if (!tokens || tokens.expires_in <= 0) {
+    return { success: false, error: "Authentication required — please log in" };
   }
 
-  headers["X-Execution-Mode"] = settings.executionMode;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${tokens.access_token}`,
+  };
 
   try {
     const response = await fetch(url, {
@@ -189,7 +189,7 @@ async function executeTrade(payload: TradePayload, retried = false): Promise<Bac
     const json = await response.json() as BackendResponse;
 
     if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
+      if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
           return executeTrade(payload, true);
@@ -211,56 +211,23 @@ async function listTrades(retried = false): Promise<{ success: boolean; data?: T
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
-  const headers: Record<string, string> = {};
   const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  } else {
-    headers["X-User-Id"] = PAPER_USER_ID;
+  if (!tokens || tokens.expires_in <= 0) {
+    return { success: false, error: "Authentication required" };
   }
+
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${tokens.access_token}`,
+  };
 
   try {
     const response = await fetch(url, { headers });
     const json = await response.json() as { success: boolean; data?: TradeGroupResponse[]; error?: string };
 
     if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
+      if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return listTrades(true);
-      }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
-    }
-
-    return json;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
-}
-
-async function getBalances(retried = false): Promise<{ success: boolean; data?: BalanceResponse[]; error?: string }> {
-  const settings = await getSettings();
-  const url = `${settings.backendUrl}/api/v1/paper/balances`;
-
-  const headers: Record<string, string> = {};
-  const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-    // Paper balance endpoint requires X-User-Id — extract from JWT
-    const userId = await getUserId();
-    headers["X-User-Id"] = userId;
-  } else {
-    headers["X-User-Id"] = PAPER_USER_ID;
-  }
-
-  try {
-    const response = await fetch(url, { headers });
-    const json = await response.json() as { success: boolean; data?: BalanceResponse[]; error?: string };
-
-    if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return getBalances(true);
       }
       return { success: false, error: json.error || `HTTP ${response.status}` };
     }
@@ -276,13 +243,14 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades/${tradeId}`;
 
-  const headers: Record<string, string> = {};
   const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  } else {
-    headers["X-User-Id"] = PAPER_USER_ID;
+  if (!tokens || tokens.expires_in <= 0) {
+    return { success: false, error: "Authentication required" };
   }
+
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${tokens.access_token}`,
+  };
 
   try {
     const response = await fetch(url, { method: "DELETE", headers });
@@ -472,7 +440,7 @@ async function testExchangeConnection(accountId: string, retried = false): Promi
   }
 }
 
-// --- EXT-17: Live Exchange Balance ---
+// --- EXT-19: Live Exchange Balance (always from active exchange) ---
 
 interface ExchangeBalanceApiResponse {
   account_id: string;
@@ -481,20 +449,21 @@ interface ExchangeBalanceApiResponse {
   fetched_at: string;
 }
 
-async function getLiveBalance(retried = false): Promise<{ success: boolean; data?: SmartBalanceResponse; error?: string }> {
+async function getLiveBalance(retried = false): Promise<{ success: boolean; data?: LiveBalanceResponse; error?: string }> {
   const activeId = await getActiveExchangeId();
   if (!activeId) {
     return { success: false, error: "No active exchange selected" };
   }
 
   const settings = await getSettings();
-  const headers: Record<string, string> = {};
   const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  } else {
+  if (!tokens || tokens.expires_in <= 0) {
     return { success: false, error: "Authentication required for live balance" };
   }
+
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${tokens.access_token}`,
+  };
 
   try {
     const response = await fetch(
@@ -503,7 +472,7 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
     );
 
     if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
+      if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return getLiveBalance(true);
       }
@@ -513,7 +482,6 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
 
     const json = await response.json() as ExchangeBalanceApiResponse;
 
-    // Convert to BalanceResponse[] format for UI compatibility
     const balances: BalanceResponse[] = json.balances.map((b) => ({
       asset: b.asset,
       available: b.free,
@@ -523,7 +491,6 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
     return {
       success: true,
       data: {
-        source: "live",
         exchange_name: json.exchange_name,
         balances,
       },
@@ -532,31 +499,6 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
   }
-}
-
-async function getSmartBalance(): Promise<{ success: boolean; data?: SmartBalanceResponse; error?: string }> {
-  const settings = await getSettings();
-
-  if (settings.executionMode === "live") {
-    const activeId = await getActiveExchangeId();
-    if (activeId) {
-      return getLiveBalance();
-    }
-    // Live mode but no active exchange — fall through to paper
-  }
-
-  // Paper mode or live without active exchange
-  const result = await getBalances();
-  if (!result.success) {
-    return { success: false, error: result.error };
-  }
-  return {
-    success: true,
-    data: {
-      source: "paper",
-      balances: result.data || [],
-    },
-  };
 }
 
 // --- Sidecar Health Polling (EXT-16 FR-2) ---
@@ -587,12 +529,10 @@ async function checkSidecarHealth(): Promise<void> {
   }
 }
 
-// Poll sidecar health every 30 seconds
 let sidecarHealthTimer: ReturnType<typeof setInterval> | null = null;
 
 function startSidecarHealthPolling(): void {
   if (sidecarHealthTimer) return;
-  // Defer first check to avoid interfering with concurrent operations at startup
   setTimeout(checkSidecarHealth, 5000);
   sidecarHealthTimer = setInterval(checkSidecarHealth, 30000);
 }
@@ -610,7 +550,7 @@ function setWsState(state: WsState): void {
   browser.runtime.sendMessage({ type: "WS_STATE_CHANGED", state }).catch(() => {});
 }
 
-async function getUserId(): Promise<string> {
+async function getUserId(): Promise<string | null> {
   const tokens = await getTokens();
   if (tokens && tokens.expires_in > 0) {
     try {
@@ -618,7 +558,7 @@ async function getUserId(): Promise<string> {
       if (payload.sub) return payload.sub;
     } catch { /* fall through */ }
   }
-  return PAPER_USER_ID;
+  return null;
 }
 
 async function connectWebSocket(): Promise<void> {
@@ -657,13 +597,15 @@ async function connectWebSocket(): Promise<void> {
     setWsState("connected");
 
     const userId = await getUserId();
-    const subMsg = {
-      method: "SUBSCRIBE",
-      params: [`order.${userId}`],
-      id: wsSubscriptionId++,
-    };
-    ws?.send(JSON.stringify(subMsg));
-    console.log("WS subscribed to order." + userId);
+    if (userId) {
+      const subMsg = {
+        method: "SUBSCRIBE",
+        params: [`order.${userId}`],
+        id: wsSubscriptionId++,
+      };
+      ws?.send(JSON.stringify(subMsg));
+      console.log("WS subscribed to order." + userId);
+    }
   };
 
   ws.onmessage = (event: MessageEvent) => {
@@ -672,7 +614,6 @@ async function connectWebSocket(): Promise<void> {
       if (msg.stream && msg.stream.startsWith("order.")) {
         forwardOrderUpdate(msg.data);
       }
-      // EXT-16 FR-2.2: Listen for sidecar health events
       if (msg.stream === "sidecar.health") {
         const data = msg.data as { status?: string };
         setSidecarStatus(data?.status === "healthy" ? "healthy" : "unreachable");
@@ -717,7 +658,6 @@ function disconnectWebSocket(): void {
 }
 
 function forwardOrderUpdate(data: unknown): void {
-  // Forward to all content script tabs
   browser.tabs.query({ url: ["*://*.tradingview.com/*", "*://*.dexscreener.com/*", "*://*.gmx.io/*", "*://*.bybit.com/*"] }).then((tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
@@ -729,7 +669,6 @@ function forwardOrderUpdate(data: unknown): void {
     }
   });
 
-  // Broadcast to extension pages (popup) for real-time order updates
   browser.runtime.sendMessage({ type: "WS_ORDER_UPDATE", data }).catch(() => {});
 }
 
@@ -747,9 +686,7 @@ type Message =
   | { type: "WS_RECONNECT" }
   | { type: "LIST_TRADES" }
   | { type: "CANCEL_TRADE"; tradeId: string }
-  | { type: "GET_BALANCES" }
-  | { type: "GET_SMART_BALANCE" }
-  | { type: "GET_LIVE_BALANCE" }
+  | { type: "GET_BALANCE" }
   | { type: "LIST_EXCHANGES" }
   | { type: "LIST_EXCHANGE_ACCOUNTS" }
   | { type: "ADD_EXCHANGE_ACCOUNT"; payload: AddExchangeAccountPayload }
@@ -803,16 +740,8 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return cancelTrade(msg.tradeId);
   }
 
-  if (msg.type === "GET_BALANCES") {
-    return getBalances();
-  }
-
-  // EXT-17: Smart balance routing (paper vs live)
-  if (msg.type === "GET_SMART_BALANCE") {
-    return getSmartBalance();
-  }
-
-  if (msg.type === "GET_LIVE_BALANCE") {
+  // EXT-19: GET_BALANCE always fetches live balance from active exchange
+  if (msg.type === "GET_BALANCE") {
     return getLiveBalance();
   }
 
@@ -833,7 +762,6 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "DELETE_EXCHANGE_ACCOUNT" && "accountId" in msg) {
-    // EXT-16 FR-3: Clear activeExchangeId if deleted account was active
     return deleteExchangeAccount(msg.accountId).then(async (result) => {
       if (result.success) {
         const activeId = await getActiveExchangeId();
@@ -849,7 +777,6 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return testExchangeConnection(msg.accountId);
   }
 
-  // EXT-16 FR-3: Active exchange selection
   if (msg.type === "GET_ACTIVE_EXCHANGE") {
     return getActiveExchangeId().then((id) => ({ exchangeId: id }));
   }
@@ -858,7 +785,6 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return setActiveExchangeId(msg.exchangeId).then(() => ({ success: true }));
   }
 
-  // EXT-16 FR-2: Sidecar health status
   if (msg.type === "SIDECAR_STATUS") {
     return Promise.resolve({ status: sidecarStatus });
   }

@@ -115,7 +115,6 @@ let activeDispose: (() => void) | null = null;
 
 export function showModal(
   setup: TradeSetup | null,
-  isLiveMode: boolean,
   management: ManagementPreset,
   onResult: (result: ModalResult, setup: TradeSetup | null) => void,
   balance: BalanceResponse[] | null = null,
@@ -140,7 +139,6 @@ export function showModal(
         <div class="backdrop" onClick={() => { dismiss(); onResult("dismiss", null); }} />
         <TradeForm
           initialSetup={setup}
-          isLiveMode={isLiveMode}
           management={management}
           balance={balance}
           activeExchange={activeExchange}

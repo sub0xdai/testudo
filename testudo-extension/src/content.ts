@@ -3,7 +3,7 @@ import { scrapeTradeSetup, scrapeSymbol } from "./scraper";
 import type { TradeSetup } from "./scraper";
 import { showModal, showOrderToast, showToast, isVisible } from "./modal";
 import type { ModalResult } from "./modal";
-import type { ManagementPreset, BalanceResponse } from "./types";
+import type { ManagementPreset, BalanceResponse, LiveBalanceResponse } from "./types";
 import { DEFAULT_MANAGEMENT_PRESET } from "./types";
 
 console.log("Testudo Sniper loaded");
@@ -40,42 +40,33 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
       if (!setup && isTradingView()) {
         const symbol = scrapeSymbol();
         if (symbol) {
-          // Pass a partial setup with just the symbol pre-filled
           setup = { symbol, side: "LONG", entry: 0, stop: 0, target: 0, timeframe: "manual" } as TradeSetup;
-          // Mark it as symbol-only so we pass null to modal (fields empty except symbol)
-          // Actually, we pass setup=null and let the modal handle it with empty fields
-          // But we want to pre-fill symbol. Let's use a special approach:
-          // We'll set entry/stop/target to 0 which TradeForm will treat as empty strings
         }
       }
 
-      const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as {
-        executionMode: "paper" | "live";
-      };
       const management = await getManagementPreset();
 
+      // Fetch live balance from active exchange
       let balance: BalanceResponse[] | null = null;
       try {
-        const resp = await browser.runtime.sendMessage({ type: "GET_BALANCES" }) as {
-          success: boolean; data?: BalanceResponse[];
+        const resp = await browser.runtime.sendMessage({ type: "GET_BALANCE" }) as {
+          success: boolean; data?: LiveBalanceResponse;
         };
-        balance = resp?.success ? (resp.data ?? null) : null;
+        balance = resp?.success && resp.data ? resp.data.balances : null;
       } catch { /* non-blocking */ }
 
-      // EXT-16 FR-3.8: Fetch active exchange name for modal badge
+      // Fetch active exchange name for modal badge
       let activeExchangeName: string | null = null;
-      if (settings.executionMode === "live") {
-        try {
-          const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
-          if (activeRes?.exchangeId) {
-            const accountsRes = await browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as { success: boolean; data?: Array<{ id: string; exchange_name: string; account_name: string }> };
-            if (accountsRes?.success && accountsRes.data) {
-              const active = accountsRes.data.find(a => a.id === activeRes.exchangeId);
-              activeExchangeName = active?.account_name || active?.exchange_name || null;
-            }
+      try {
+        const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
+        if (activeRes?.exchangeId) {
+          const accountsRes = await browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as { success: boolean; data?: Array<{ id: string; exchange_name: string; account_name: string }> };
+          if (accountsRes?.success && accountsRes.data) {
+            const active = accountsRes.data.find(a => a.id === activeRes.exchangeId);
+            activeExchangeName = active?.account_name || active?.exchange_name || null;
           }
-        } catch { /* non-blocking */ }
-      }
+        }
+      } catch { /* non-blocking */ }
 
       // Convert symbol-only setup to proper initialSetup for the form
       const modalSetup = setup && setup.entry > 0 ? setup : null;
@@ -91,8 +82,7 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
         timeframe: "manual",
       } : null);
 
-      // showModal now always shows an editable form (never an error)
-      showModal(initialSetup, settings.executionMode === "live", management, handleModalResult, balance, activeExchangeName);
+      showModal(initialSetup, management, handleModalResult, balance, activeExchangeName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("Extension context invalidated")) {

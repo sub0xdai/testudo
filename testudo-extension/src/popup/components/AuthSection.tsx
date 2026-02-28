@@ -4,7 +4,6 @@ import { WEB_APP_URL } from "../../utils";
 
 export default function AuthSection(props: {
   onAuthenticated: () => void;
-  onContinueWithoutAccount: () => void;
   onBack?: () => void;
 }) {
   const auth = useAuth();
@@ -39,11 +38,6 @@ export default function AuthSection(props: {
 
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === "Enter") handleSubmit();
-  }
-
-  async function handlePaperMode() {
-    await auth.continueWithoutAccount();
-    props.onContinueWithoutAccount();
   }
 
   return (
@@ -178,29 +172,14 @@ export default function AuthSection(props: {
             {loading() ? "CONNECTING..." : "LOGIN"}
           </button>
 
-          {/* Divider */}
-          <div class="flex items-center gap-4 my-5">
-            <div class="flex-1 h-px bg-border-subtle" />
-            <span class="text-[10px] font-mono text-text-dim tracking-[0.25em] px-2">OR</span>
-            <div class="flex-1 h-px bg-border-subtle" />
-          </div>
-
-          {/* Secondary actions */}
-          <div class="flex flex-col gap-2">
+          {/* Register link */}
+          <div class="flex flex-col gap-2 mt-5">
             <button
               class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-white rounded-md"
               onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/register` })}
               data-testid="create-account-btn"
             >
               CREATE ACCOUNT
-            </button>
-
-            <button
-              class="w-full py-2.5 text-[10px] tracking-[0.15em] font-mono text-text-dim border-0 hover:text-text-secondary hover:bg-transparent rounded-md"
-              onClick={handlePaperMode}
-              data-testid="paper-mode-btn"
-            >
-              CONTINUE WITHOUT ACCOUNT
             </button>
           </div>
         </div>

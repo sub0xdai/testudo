@@ -5,10 +5,7 @@ import type { Settings } from "./types";
 export const DEFAULT_SETTINGS: Settings = {
   backendUrl: "http://localhost:8080",
   wsUrl: "ws://localhost:4000",
-  executionMode: "paper",
 };
-
-export const PAPER_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export const WEB_APP_URL = "http://localhost:3001";
 

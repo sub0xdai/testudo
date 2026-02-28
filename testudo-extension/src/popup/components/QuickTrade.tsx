@@ -1,6 +1,6 @@
 import { createSignal, createMemo, Show, For, onMount } from "solid-js";
 import browser from "webextension-polyfill";
-import type { ManagementPreset, BalanceResponse } from "../../types";
+import type { ManagementPreset, BalanceResponse, LiveBalanceResponse } from "../../types";
 import { DEFAULT_MANAGEMENT_PRESET } from "../../types";
 
 export default function QuickTrade() {
@@ -11,7 +11,6 @@ export default function QuickTrade() {
   const [targetStr, setTargetStr] = createSignal("");
   const [management, setManagement] = createSignal<ManagementPreset>({ ...DEFAULT_MANAGEMENT_PRESET });
   const [balance, setBalance] = createSignal<BalanceResponse[] | null>(null);
-  const [isLiveMode, setIsLiveMode] = createSignal(false);
   const [submitting, setSubmitting] = createSignal(false);
   const [status, setStatus] = createSignal<{ type: "success" | "error"; msg: string } | null>(null);
 
@@ -19,14 +18,12 @@ export default function QuickTrade() {
 
   onMount(async () => {
     try {
-      const [stored, settings, balResp] = await Promise.all([
+      const [stored, balResp] = await Promise.all([
         browser.storage.local.get(["managementPreset"]),
-        browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as Promise<{ executionMode: "paper" | "live" }>,
-        browser.runtime.sendMessage({ type: "GET_BALANCES" }) as Promise<{ success: boolean; data?: BalanceResponse[] }>,
+        browser.runtime.sendMessage({ type: "GET_BALANCE" }) as Promise<{ success: boolean; data?: LiveBalanceResponse }>,
       ]);
       if (stored.managementPreset) setManagement(stored.managementPreset as ManagementPreset);
-      setIsLiveMode(settings.executionMode === "live");
-      if (balResp?.success && balResp.data) setBalance(balResp.data);
+      if (balResp?.success && balResp.data) setBalance(balResp.data.balances);
     } catch { /* non-blocking */ }
   });
 
@@ -77,10 +74,9 @@ export default function QuickTrade() {
 
   async function handleConfirm() {
     if (!isValid() || submitting()) return;
-    if (isLiveMode()) {
-      enterCount++;
-      if (enterCount < 2) return;
-    }
+    // Always require double-Enter for live trading safety
+    enterCount++;
+    if (enterCount < 2) return;
 
     setSubmitting(true);
     setStatus(null);
@@ -251,14 +247,12 @@ export default function QuickTrade() {
         disabled={!isValid() || submitting()}
         data-testid="qt-confirm"
       >
-        {submitting() ? "SENDING..." : isLiveMode() ? `${side()} (2x ENTER)` : side()}
+        {submitting() ? "SENDING..." : `${side()} (2x ENTER)`}
       </button>
 
-      <Show when={isLiveMode()}>
-        <div class="text-[10px] text-signal-red/70 text-center font-sans">
-          LIVE MODE — Press confirm twice
-        </div>
-      </Show>
+      <div class="text-[10px] text-signal-red/70 text-center font-sans">
+        LIVE MODE — Press confirm twice
+      </div>
     </div>
   );
 }

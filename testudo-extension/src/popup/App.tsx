@@ -16,8 +16,8 @@ export default function App() {
     browser.storage.local.set({ popupView: v });
   }
 
-  async function handleReady(authed: boolean, paperOnly: boolean) {
-    if (authed || paperOnly) {
+  async function handleReady(authed: boolean) {
+    if (authed) {
       const stored = await browser.storage.local.get(["popupView"]);
       const saved = stored.popupView as View | undefined;
       setViewRaw(saved === "settings" ? "settings" : "main");
@@ -38,7 +38,6 @@ export default function App() {
           <Match when={view() === "auth"}>
             <AuthSection
               onAuthenticated={() => { setCameFromMain(false); setView("main"); }}
-              onContinueWithoutAccount={() => { setCameFromMain(false); setView("main"); }}
               onBack={cameFromMain() ? () => setView("main") : undefined}
             />
           </Match>

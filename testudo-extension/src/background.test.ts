@@ -121,20 +121,17 @@ describe("background message router", () => {
       expect(result).toEqual({
         backendUrl: "http://localhost:8080",
         wsUrl: "ws://localhost:4000",
-        executionMode: "paper",
       });
     });
 
     it("returns stored settings when available", async () => {
       mockStorage.backendUrl = "http://myserver:9090";
       mockStorage.wsUrl = "ws://myserver:5000";
-      mockStorage.executionMode = "live";
 
       const result = await messageHandler({ type: "GET_SETTINGS" });
       expect(result).toEqual({
         backendUrl: "http://myserver:9090",
         wsUrl: "ws://myserver:5000",
-        executionMode: "live",
       });
     });
   });
@@ -234,7 +231,26 @@ describe("background message router", () => {
   // --- EXECUTE_TRADE ---
 
   describe("EXECUTE_TRADE", () => {
-    it("sends correctly formatted trade request", async () => {
+    function setValidTokens() {
+      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      mockStorage.accessToken = `header.${payload}.signature`;
+      mockStorage.refreshToken = "refresh-token";
+      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
+    }
+
+    const tradePayload = {
+      symbol: "BTCUSDT", side: "LONG",
+      entry: 50000, stop: 49000, target: 52000, timeframe: "15m",
+      management: {
+        risk_percent: 1.0,
+        break_even_at: 50,
+        trailing_stop: { enabled: false, distance_percent: 25 },
+        partial_tp: { enabled: false, close_percent: 50 },
+      },
+    };
+
+    it("sends correctly formatted trade request with JWT", async () => {
+      setValidTokens();
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true, data: { id: "order-1" } }),
@@ -242,16 +258,7 @@ describe("background message router", () => {
 
       const result = await messageHandler({
         type: "EXECUTE_TRADE",
-        payload: {
-          symbol: "BTCUSDT", side: "LONG",
-          entry: 50000, stop: 49000, target: 52000, timeframe: "15m",
-          management: {
-            risk_percent: 1.0,
-            break_even_at: 50,
-            trailing_stop: { enabled: false, distance_percent: 25 },
-            partial_tp: { enabled: false, close_percent: 50 },
-          },
-        },
+        payload: tradePayload,
       });
 
       expect(result).toEqual({ success: true, data: { id: "order-1" } });
@@ -270,33 +277,31 @@ describe("background message router", () => {
         trailing_stop: { enabled: false, distance_percent: 25 },
         partial_tp: { enabled: false, close_percent: 50 },
       });
+      // Verify JWT auth header is present
+      const headers = options.headers;
+      expect(headers["Authorization"]).toMatch(/^Bearer /);
+      // No X-User-Id or X-Execution-Mode headers
+      expect(headers["X-User-Id"]).toBeUndefined();
+      expect(headers["X-Execution-Mode"]).toBeUndefined();
     });
 
-    it("sends X-User-Id header for paper trading (no JWT)", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true, json: async () => ({ success: true }),
-      });
-
-      await messageHandler({
+    it("returns error when not authenticated", async () => {
+      // No tokens stored
+      const result = await messageHandler({
         type: "EXECUTE_TRADE",
-        payload: {
-          symbol: "ETHUSDT", side: "SHORT",
-          entry: 3000, stop: 3100, target: 2800, timeframe: "1h",
-          management: {
-            risk_percent: 1.0, break_even_at: 50,
-            trailing_stop: { enabled: false, distance_percent: 25 },
-            partial_tp: { enabled: false, close_percent: 50 },
-          },
-        },
+        payload: tradePayload,
       });
 
-      const headers = mockFetch.mock.calls[0][1].headers;
-      expect(headers["X-User-Id"]).toBe("00000000-0000-0000-0000-000000000001");
-      expect(headers["X-Execution-Mode"]).toBe("paper");
-      expect(headers["Authorization"]).toBeUndefined();
+      expect(result).toEqual({
+        success: false,
+        error: "Authentication required — please log in",
+      });
+      // No fetch call should be made
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("maps SHORT to sell", async () => {
+      setValidTokens();
       mockFetch.mockResolvedValueOnce({
         ok: true, json: async () => ({ success: true }),
       });
@@ -351,7 +356,7 @@ describe("background message router", () => {
 
   describe("token refresh mutex", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com" }));
+      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
@@ -407,7 +412,7 @@ describe("background message router", () => {
 
   describe("retry depth limit", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com" }));
+      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
@@ -459,17 +464,6 @@ describe("background message router", () => {
       expect(MockWebSocket.instances.length).toBeGreaterThan(0);
     });
 
-    it("subscribes to order channel on open", async () => {
-      const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1];
-      ws.simulateOpen();
-      await new Promise((r) => setTimeout(r, 10));
-
-      expect(ws.send).toHaveBeenCalled();
-      const msg = JSON.parse(ws.send.mock.calls[0][0]);
-      expect(msg.method).toBe("SUBSCRIBE");
-      expect(msg.params[0]).toMatch(/^order\./);
-    });
-
     it("broadcasts connected state on open", async () => {
       const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1];
       ws.simulateOpen();
@@ -503,7 +497,7 @@ describe("background message router", () => {
       await new Promise((r) => setTimeout(r, 10));
 
       ws.simulateMessage({
-        stream: "order.00000000-0000-0000-0000-000000000001",
+        stream: "order.user-123",
         data: { e: "order", s: "BTC_USDT", status: "filled" },
       });
       await new Promise((r) => setTimeout(r, 10));

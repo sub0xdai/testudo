@@ -8,7 +8,7 @@ import TradeManagement from "./TradeManagement";
 import QuickTrade from "./QuickTrade";
 import ActiveOrders from "./ActiveOrders";
 import StatusBar from "./StatusBar";
-import type { BalanceResponse, SmartBalanceResponse, ScraperHealthRecord } from "../../types";
+import type { BalanceResponse, LiveBalanceResponse, ScraperHealthRecord } from "../../types";
 
 function formatBalance(value: number): string {
   return value.toLocaleString("en-US", {
@@ -26,8 +26,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     browser.storage.local.set({ popupActiveTab: tab });
   }
   const [balance, setBalance] = createSignal<BalanceResponse[] | null>(null);
-  const [balanceSource, setBalanceSource] = createSignal<"paper" | "live">("paper");
   const [exchangeName, setExchangeName] = createSignal<string | undefined>();
+  const [noExchange, setNoExchange] = createSignal(false);
   const [balanceLoading, setBalanceLoading] = createSignal(true);
   const [positionCount, setPositionCount] = createSignal(0);
   const [scraperHealth, setScraperHealth] = createSignal<ScraperHealthRecord[]>(
@@ -37,15 +37,18 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   async function fetchBalance() {
     try {
       const resp = (await browser.runtime.sendMessage({
-        type: "GET_SMART_BALANCE",
+        type: "GET_BALANCE",
       })) as {
         success?: boolean;
-        data?: SmartBalanceResponse;
+        data?: LiveBalanceResponse;
+        error?: string;
       };
       if (resp?.success && resp.data) {
         setBalance(resp.data.balances);
-        setBalanceSource(resp.data.source);
         setExchangeName(resp.data.exchange_name);
+        setNoExchange(false);
+      } else if (resp?.error === "No active exchange selected") {
+        setNoExchange(true);
       }
     } catch {
       /* non-blocking */
@@ -76,9 +79,9 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     }
   }
 
-  // Re-fetch balance when execution mode or active exchange changes
+  // Re-fetch balance when active exchange changes
   function handleStorageChange(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) {
-    if (changes.executionMode || changes.activeExchangeId) {
+    if (changes.activeExchangeId) {
       setBalanceLoading(true);
       fetchBalance();
     }
@@ -134,14 +137,9 @@ export default function MainView(props: { onOpenSettings: () => void }) {
             <span class="text-[12px] font-medium text-white/70 tracking-widest uppercase">
               Balance
             </span>
-            <Show when={balanceSource() === "live" && exchangeName()}>
+            <Show when={exchangeName()}>
               <span class="text-[10px] font-bold text-accent-green bg-accent-green/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
                 {exchangeName()}
-              </span>
-            </Show>
-            <Show when={balanceSource() === "paper"}>
-              <span class="text-[10px] font-medium text-zinc-500 bg-zinc-500/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
-                Paper
               </span>
             </Show>
           </div>
@@ -151,7 +149,16 @@ export default function MainView(props: { onOpenSettings: () => void }) {
           >
             <Show
               when={!balanceLoading() && total() !== null}
-              fallback={<span class="text-white/60">$--</span>}
+              fallback={
+                <Show
+                  when={!balanceLoading() && noExchange()}
+                  fallback={<span class="text-white/60">$--</span>}
+                >
+                  <span class="text-[18px] text-text-dim font-sans font-medium">
+                    Connect an exchange in Settings
+                  </span>
+                </Show>
+              }
             >
               ${formatBalance(total()!)}
             </Show>
@@ -215,7 +222,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                 when={available() !== null}
                 fallback={
                   <p class="text-[14px] text-zinc-500 italic font-sans">
-                    Balance unavailable
+                    {noExchange() ? "Connect an exchange to view balance" : "Balance unavailable"}
                   </p>
                 }
               >
@@ -343,9 +350,6 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                   {auth.email()}
                 </p>
               </Show>
-              <Show when={auth.paperOnly()}>
-                <p class="text-[12px] text-zinc-500 font-sans">Paper mode</p>
-              </Show>
             </div>
           </div>
         </Show>
@@ -359,14 +363,6 @@ export default function MainView(props: { onOpenSettings: () => void }) {
             data-testid="footer-email"
           >
             {auth.email()}
-          </span>
-        </Show>
-        <Show when={auth.paperOnly()}>
-          <span
-            class="text-[11px] text-zinc-500 font-sans tracking-wider"
-            data-testid="footer-paper"
-          >
-            PAPER ONLY
           </span>
         </Show>
       </div>

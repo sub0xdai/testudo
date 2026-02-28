@@ -1,7 +1,5 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import browser from "webextension-polyfill";
-import { useAuth } from "../context/AuthContext";
-import ModeToggle from "./ModeToggle";
 import StatusBar from "./StatusBar";
 import ExchangeSelector from "./ExchangeSelector";
 
@@ -12,9 +10,7 @@ interface HeaderBarProps {
 }
 
 export default function HeaderBar(props: HeaderBarProps) {
-  const auth = useAuth();
   const [sidecarStatus, setSidecarStatus] = createSignal<SidecarStatus>("unknown");
-  const [executionMode, setExecutionMode] = createSignal<string>("paper");
 
   function handleMessage(message: unknown) {
     const msg = message as { type: string; status?: SidecarStatus };
@@ -24,28 +20,14 @@ export default function HeaderBar(props: HeaderBarProps) {
   }
 
   onMount(async () => {
-    const [sidecarRes, stored] = await Promise.all([
-      browser.runtime.sendMessage({ type: "SIDECAR_STATUS" }) as Promise<{ status: SidecarStatus }>,
-      browser.storage.local.get(["executionMode"]),
-    ]);
+    const sidecarRes = await browser.runtime.sendMessage({ type: "SIDECAR_STATUS" }) as { status: SidecarStatus };
     setSidecarStatus(sidecarRes?.status || "unknown");
-    setExecutionMode((stored.executionMode as string) || "paper");
     browser.runtime.onMessage.addListener(handleMessage);
   });
 
   onCleanup(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
-
-  const storageListener = (changes: Record<string, browser.Storage.StorageChange>) => {
-    if (changes.executionMode) {
-      setExecutionMode(changes.executionMode.newValue as string);
-    }
-  };
-  onMount(() => browser.storage.onChanged.addListener(storageListener));
-  onCleanup(() => browser.storage.onChanged.removeListener(storageListener));
-
-  const showBanner = () => executionMode() === "live" && sidecarStatus() === "unreachable";
 
   return (
     <>
@@ -54,10 +36,7 @@ export default function HeaderBar(props: HeaderBarProps) {
           <StatusBar />
         </div>
         <div class="flex items-center gap-2">
-          <Show when={!auth.paperOnly()}>
-            <ExchangeSelector />
-          </Show>
-          <ModeToggle compact />
+          <ExchangeSelector />
           <button
             class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
             onClick={props.onOpenSettings}
@@ -71,7 +50,7 @@ export default function HeaderBar(props: HeaderBarProps) {
           </button>
         </div>
       </div>
-      <Show when={showBanner()}>
+      <Show when={sidecarStatus() === "unreachable"}>
         <div
           class="mx-5 mb-2 px-3 py-2 rounded-lg text-[11px] font-sans font-medium text-signal-orange bg-signal-orange/10 border border-signal-orange/20"
           data-testid="sidecar-warning-banner"

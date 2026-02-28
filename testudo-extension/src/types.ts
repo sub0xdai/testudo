@@ -1,7 +1,6 @@
 export interface Settings {
   backendUrl: string;
   wsUrl: string;
-  executionMode: "paper" | "live";
 }
 
 export interface AuthTokens {
@@ -143,8 +142,7 @@ export interface TestConnectionResult {
 
 // --- EXT-17: Live Balance Types ---
 
-export interface SmartBalanceResponse {
-  source: "paper" | "live";
+export interface LiveBalanceResponse {
   exchange_name?: string;
   balances: BalanceResponse[];
 }
