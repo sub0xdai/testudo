@@ -25,7 +25,18 @@ export default function ExchangeSelector() {
       if (accountsRes?.success && accountsRes.data) {
         setAccounts(accountsRes.data);
       }
-      setActiveId(activeRes?.exchangeId || null);
+      const currentActiveId = activeRes?.exchangeId || null;
+      setActiveId(currentActiveId);
+
+      // Auto-select first account if none active (safety net for background miss)
+      if (!currentActiveId && accountsRes?.data?.length) {
+        const firstId = accountsRes.data[0].id;
+        setActiveId(firstId);
+        await browser.runtime.sendMessage({
+          type: "SET_ACTIVE_EXCHANGE",
+          exchangeId: firstId,
+        });
+      }
     } catch {
       /* non-blocking */
     }

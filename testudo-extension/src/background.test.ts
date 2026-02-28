@@ -457,6 +457,144 @@ describe("background message router", () => {
     });
   });
 
+  // --- ensureActiveExchange ---
+
+  describe("ensureActiveExchange", () => {
+    function setValidTokens() {
+      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      mockStorage.accessToken = `header.${payload}.signature`;
+      mockStorage.refreshToken = "refresh-token";
+      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
+    }
+
+    it("returns null when not authenticated", async () => {
+      // Trigger ensureActiveExchange via GET_BALANCE (which calls it when no activeId)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [] }),
+      });
+
+      const result = await messageHandler({ type: "GET_BALANCE" });
+      expect((result as { success: boolean }).success).toBe(false);
+      expect((result as { error: string }).error).toBe("No active exchange selected");
+    });
+
+    it("auto-selects first account when accounts exist but no active", async () => {
+      setValidTokens();
+
+      // First call: listExchangeAccounts (from ensureActiveExchange inside getLiveBalance)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            { id: "acct-1", exchange_name: "binance", account_name: "main", is_active: true, permissions: {}, created_at: "2026-01-01", last_used_at: null },
+            { id: "acct-2", exchange_name: "bybit", account_name: "alt", is_active: true, permissions: {}, created_at: "2026-01-02", last_used_at: null },
+          ],
+        }),
+      });
+      // Second call: getLiveBalance fetch
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          account_id: "acct-1",
+          exchange_name: "binance",
+          balances: [{ asset: "USDT", total: "1000", free: "900", used: "100" }],
+          fetched_at: "2026-01-01T00:00:00Z",
+        }),
+      });
+
+      const result = await messageHandler({ type: "GET_BALANCE" });
+      expect((result as { success: boolean }).success).toBe(true);
+      expect(mockStorage.activeExchangeId).toBe("acct-1");
+    });
+
+    it("clears stale active ID when no accounts exist (via token sync)", async () => {
+      setValidTokens();
+      mockStorage.activeExchangeId = "deleted-acct";
+
+      // listExchangeAccounts returns empty
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [] }),
+      });
+
+      await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(mockStorage.activeExchangeId).toBeUndefined();
+    });
+
+    it("replaces stale active ID with first remaining account (via token sync)", async () => {
+      setValidTokens();
+      mockStorage.activeExchangeId = "deleted-acct";
+
+      // listExchangeAccounts: stale ID not in list
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            { id: "acct-3", exchange_name: "binance", account_name: "main", is_active: true, permissions: {}, created_at: "2026-01-01", last_used_at: null },
+          ],
+        }),
+      });
+
+      await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(mockStorage.activeExchangeId).toBe("acct-3");
+    });
+
+    it("keeps valid active ID unchanged", async () => {
+      setValidTokens();
+      mockStorage.activeExchangeId = "acct-1";
+
+      // getLiveBalance goes straight to balance fetch (activeId already set)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          account_id: "acct-1",
+          exchange_name: "binance",
+          balances: [{ asset: "USDT", total: "1000", free: "1000", used: "0" }],
+          fetched_at: "2026-01-01T00:00:00Z",
+        }),
+      });
+
+      const result = await messageHandler({ type: "GET_BALANCE" });
+      expect((result as { success: boolean }).success).toBe(true);
+      expect(mockStorage.activeExchangeId).toBe("acct-1");
+    });
+  });
+
+  // --- TOKEN_SYNCED_FROM_WEB ---
+
+  describe("TOKEN_SYNCED_FROM_WEB", () => {
+    it("triggers ensureActiveExchange when tokens are valid", async () => {
+      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      mockStorage.accessToken = `header.${payload}.signature`;
+      mockStorage.refreshToken = "refresh-token";
+      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
+
+      // ensureActiveExchange will call listExchangeAccounts
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            { id: "acct-web", exchange_name: "binance", account_name: "web", is_active: true, permissions: {}, created_at: "2026-01-01", last_used_at: null },
+          ],
+        }),
+      });
+
+      const result = await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
+      expect((result as { success: boolean }).success).toBe(true);
+      // Wait for async ensureActiveExchange
+      await new Promise((r) => setTimeout(r, 50));
+      expect(mockStorage.activeExchangeId).toBe("acct-web");
+    });
+
+    it("succeeds even when no tokens present", async () => {
+      const result = await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
+      expect((result as { success: boolean }).success).toBe(true);
+    });
+  });
+
   // --- WebSocket lifecycle ---
 
   describe("WebSocket connection", () => {

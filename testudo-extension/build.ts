@@ -18,6 +18,7 @@ const ESM_ENTRIES = [
 // Content script imports modal.tsx (Solid), popup uses Solid components
 const IIFE_ENTRIES = [
   { in: "src/content.ts", out: "content" },
+  { in: "src/token-sync.ts", out: "token-sync" },
   { in: "src/popup/index.tsx", out: "popup/popup" },
 ];
 

@@ -148,6 +148,28 @@ async function setActiveExchangeId(id: string | null): Promise<void> {
   }
 }
 
+async function ensureActiveExchange(): Promise<string | null> {
+  const tokens = await getTokens();
+  if (!tokens || tokens.expires_in <= 0) return null;
+
+  const currentId = await getActiveExchangeId();
+  const result = await listExchangeAccounts();
+  const accounts = result.success ? (result.data || []) : [];
+
+  if (accounts.length === 0) {
+    if (currentId) await setActiveExchangeId(null);
+    return null;
+  }
+
+  if (currentId && accounts.some((a) => a.id === currentId)) {
+    return currentId;
+  }
+
+  const firstId = accounts[0].id;
+  await setActiveExchangeId(firstId);
+  return firstId;
+}
+
 // --- Trade Execution (EXT-19: live only, JWT required) ---
 
 async function executeTrade(payload: TradePayload, retried = false): Promise<BackendResponse> {
@@ -450,9 +472,12 @@ interface ExchangeBalanceApiResponse {
 }
 
 async function getLiveBalance(retried = false): Promise<{ success: boolean; data?: LiveBalanceResponse; error?: string }> {
-  const activeId = await getActiveExchangeId();
+  let activeId = await getActiveExchangeId();
   if (!activeId) {
-    return { success: false, error: "No active exchange selected" };
+    activeId = await ensureActiveExchange();
+    if (!activeId) {
+      return { success: false, error: "No active exchange selected" };
+    }
   }
 
   const settings = await getSettings();
@@ -694,7 +719,8 @@ type Message =
   | { type: "TEST_EXCHANGE_CONNECTION"; accountId: string }
   | { type: "GET_ACTIVE_EXCHANGE" }
   | { type: "SET_ACTIVE_EXCHANGE"; exchangeId: string | null }
-  | { type: "SIDECAR_STATUS" };
+  | { type: "SIDECAR_STATUS" }
+  | { type: "TOKEN_SYNCED_FROM_WEB" };
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as Message;
@@ -708,7 +734,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "LOGIN" && "email" in msg && "password" in msg) {
-    return login(msg.email, msg.password);
+    return login(msg.email, msg.password).then((result) => {
+      if (result.success) ensureActiveExchange();
+      return result;
+    });
   }
 
   if (msg.type === "LOGOUT") {
@@ -746,7 +775,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "REGISTER" && "email" in msg && "password" in msg) {
-    return register(msg.email, msg.password);
+    return register(msg.email, msg.password).then((result) => {
+      if (result.success) ensureActiveExchange();
+      return result;
+    });
   }
 
   if (msg.type === "LIST_EXCHANGES") {
@@ -758,17 +790,15 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "ADD_EXCHANGE_ACCOUNT" && "payload" in msg) {
-    return addExchangeAccount(msg.payload);
+    return addExchangeAccount(msg.payload).then((result) => {
+      if (result.success) ensureActiveExchange();
+      return result;
+    });
   }
 
   if (msg.type === "DELETE_EXCHANGE_ACCOUNT" && "accountId" in msg) {
     return deleteExchangeAccount(msg.accountId).then(async (result) => {
-      if (result.success) {
-        const activeId = await getActiveExchangeId();
-        if (activeId === msg.accountId) {
-          await setActiveExchangeId(null);
-        }
-      }
+      if (result.success) await ensureActiveExchange();
       return result;
     });
   }
@@ -785,6 +815,17 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return setActiveExchangeId(msg.exchangeId).then(() => ({ success: true }));
   }
 
+  if (msg.type === "TOKEN_SYNCED_FROM_WEB") {
+    return getTokens().then((tokens) => {
+      if (tokens && tokens.expires_in > 0) {
+        scheduleTokenRefresh(tokens.expires_in);
+        ensureActiveExchange();
+        debouncedConnectWebSocket();
+      }
+      return { success: true };
+    });
+  }
+
   if (msg.type === "SIDECAR_STATUS") {
     return Promise.resolve({ status: sidecarStatus });
   }
@@ -794,6 +835,7 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 getTokens().then((tokens) => {
   if (tokens && tokens.expires_in > 0) {
     scheduleTokenRefresh(tokens.expires_in);
+    ensureActiveExchange();
   }
 });
 

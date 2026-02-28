@@ -29,6 +29,14 @@
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:3001/*",
+        "http://127.0.0.1:3001/*"
+      ],
+      "js": ["token-sync.js"],
+      "run_at": "document_idle"
     }
   ],
   "action": {
