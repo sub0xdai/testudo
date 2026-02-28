@@ -246,6 +246,9 @@ async function getBalances(retried = false): Promise<{ success: boolean; data?: 
   const tokens = await getTokens();
   if (tokens && tokens.expires_in > 0) {
     headers["Authorization"] = `Bearer ${tokens.access_token}`;
+    // Paper balance endpoint requires X-User-Id — extract from JWT
+    const userId = await getUserId();
+    headers["X-User-Id"] = userId;
   } else {
     headers["X-User-Id"] = PAPER_USER_ID;
   }
