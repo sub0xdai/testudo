@@ -354,17 +354,18 @@ async function listExchangeAccounts(retried = false): Promise<{ success: boolean
 
   try {
     const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts`, { headers });
-    const json = await response.json() as { success?: boolean; data?: ExchangeAccount[]; accounts?: ExchangeAccount[]; error?: string };
-
     if (!response.ok) {
       if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return listExchangeAccounts(true);
       }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      const errJson = await response.json().catch(() => ({})) as { error?: string };
+      return { success: false, error: errJson.error || `HTTP ${response.status}` };
     }
 
-    return { success: true, data: json.data || json.accounts || [] };
+    const json = await response.json() as ExchangeAccount[] | { data?: ExchangeAccount[]; accounts?: ExchangeAccount[] };
+    const accounts = Array.isArray(json) ? json : (json.data || json.accounts || []);
+    return { success: true, data: accounts };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
