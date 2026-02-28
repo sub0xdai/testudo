@@ -25,7 +25,9 @@ export function normalizeSymbol(tvSymbol: string): string {
   for (const quote of QUOTE_CURRENCIES) {
     if (upper.endsWith(quote) && upper.length > quote.length) {
       const base = upper.slice(0, -quote.length);
-      return `${base}_${quote}`;
+      // No crypto exchange trades raw USD perps — upgrade to USDT
+      const normalizedQuote = quote === "USD" ? "USDT" : quote;
+      return `${base}_${normalizedQuote}`;
     }
   }
   return upper;

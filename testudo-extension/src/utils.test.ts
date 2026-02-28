@@ -38,6 +38,18 @@ describe("normalizeSymbol", () => {
     expect(normalizeSymbol("ETHBTC")).toBe("ETH_BTC");
   });
 
+  it("converts BTCUSD to BTC_USDT (USD -> USDT upgrade)", () => {
+    expect(normalizeSymbol("BTCUSD")).toBe("BTC_USDT");
+  });
+
+  it("converts ETHUSD to ETH_USDT (USD -> USDT upgrade)", () => {
+    expect(normalizeSymbol("ETHUSD")).toBe("ETH_USDT");
+  });
+
+  it("converts SOLUSD to SOL_USDT (USD -> USDT upgrade)", () => {
+    expect(normalizeSymbol("SOLUSD")).toBe("SOL_USDT");
+  });
+
   it("converts EUR-quote pairs", () => {
     expect(normalizeSymbol("BTCEUR")).toBe("BTC_EUR");
   });
