@@ -85,7 +85,7 @@ async function handleBalance(req, res) {
 async function handleOrder(req, res) {
   try {
     const { exchange, params } = getExchangeAndParams(req.body);
-    const { symbol, type, side, amount, price, stopPrice, leverage } = params;
+    const { symbol, type, side, amount, price, stopPrice, leverage, reduceOnly } = params;
 
     if (leverage && leverage > 0) {
       await exchange.setLeverage(leverage, symbol);
@@ -94,6 +94,9 @@ async function handleOrder(req, res) {
     const orderParams = {};
     if (stopPrice !== undefined && stopPrice !== null) {
       orderParams.stopPrice = stopPrice;
+    }
+    if (reduceOnly) {
+      orderParams.reduceOnly = true;
     }
 
     const order = await exchange.createOrder(symbol, type, side, amount, price, orderParams);
