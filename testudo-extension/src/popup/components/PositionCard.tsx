@@ -7,7 +7,13 @@ interface PositionCardProps {
 }
 
 export default function PositionCard(props: PositionCardProps) {
-  const isLong = () => props.trade.entry_quantity && parseFloat(props.trade.entry_quantity) > 0;
+  const isLong = () => {
+    const entry = parseFloat(props.trade.entry_price || "0");
+    const sl = parseFloat(props.trade.stop_loss_price || "0");
+    if (entry > 0 && sl > 0) return sl < entry;
+    // Fallback to quantity sign if prices unavailable
+    return parseFloat(props.trade.entry_quantity) > 0;
+  };
   const direction = () => isLong() ? "LONG" : "SHORT";
 
   const statusClass = () => {
