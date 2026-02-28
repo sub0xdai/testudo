@@ -1,7 +1,9 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import browser from "webextension-polyfill";
+import { useAuth } from "../context/AuthContext";
 import ModeToggle from "./ModeToggle";
 import StatusBar from "./StatusBar";
+import ExchangeSelector from "./ExchangeSelector";
 
 type SidecarStatus = "unknown" | "healthy" | "unreachable";
 
@@ -10,6 +12,7 @@ interface HeaderBarProps {
 }
 
 export default function HeaderBar(props: HeaderBarProps) {
+  const auth = useAuth();
   const [sidecarStatus, setSidecarStatus] = createSignal<SidecarStatus>("unknown");
   const [executionMode, setExecutionMode] = createSignal<string>("paper");
 
@@ -51,6 +54,9 @@ export default function HeaderBar(props: HeaderBarProps) {
           <StatusBar />
         </div>
         <div class="flex items-center gap-2">
+          <Show when={!auth.paperOnly()}>
+            <ExchangeSelector />
+          </Show>
           <ModeToggle compact />
           <button
             class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
