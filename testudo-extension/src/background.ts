@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult } from "./types";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, SmartBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult } from "./types";
 import {
   DEFAULT_SETTINGS, PAPER_USER_ID, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
@@ -469,6 +469,93 @@ async function testExchangeConnection(accountId: string, retried = false): Promi
   }
 }
 
+// --- EXT-17: Live Exchange Balance ---
+
+interface ExchangeBalanceApiResponse {
+  account_id: string;
+  exchange_name: string;
+  balances: Array<{ asset: string; total: string; free: string; used: string }>;
+  fetched_at: string;
+}
+
+async function getLiveBalance(retried = false): Promise<{ success: boolean; data?: SmartBalanceResponse; error?: string }> {
+  const activeId = await getActiveExchangeId();
+  if (!activeId) {
+    return { success: false, error: "No active exchange selected" };
+  }
+
+  const settings = await getSettings();
+  const headers: Record<string, string> = {};
+  const tokens = await getTokens();
+  if (tokens && tokens.expires_in > 0) {
+    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  } else {
+    return { success: false, error: "Authentication required for live balance" };
+  }
+
+  try {
+    const response = await fetch(
+      `${settings.backendUrl}/api/v1/exchanges/accounts/${activeId}/balance`,
+      { headers, signal: AbortSignal.timeout(10000) },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401 && tokens && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return getLiveBalance(true);
+      }
+      const json = await response.json().catch(() => ({})) as { error?: string; message?: string };
+      return { success: false, error: json.message || json.error || `HTTP ${response.status}` };
+    }
+
+    const json = await response.json() as ExchangeBalanceApiResponse;
+
+    // Convert to BalanceResponse[] format for UI compatibility
+    const balances: BalanceResponse[] = json.balances.map((b) => ({
+      asset: b.asset,
+      available: b.free,
+      locked: b.used,
+    }));
+
+    return {
+      success: true,
+      data: {
+        source: "live",
+        exchange_name: json.exchange_name,
+        balances,
+      },
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
+async function getSmartBalance(): Promise<{ success: boolean; data?: SmartBalanceResponse; error?: string }> {
+  const settings = await getSettings();
+
+  if (settings.executionMode === "live") {
+    const activeId = await getActiveExchangeId();
+    if (activeId) {
+      return getLiveBalance();
+    }
+    // Live mode but no active exchange — fall through to paper
+  }
+
+  // Paper mode or live without active exchange
+  const result = await getBalances();
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+  return {
+    success: true,
+    data: {
+      source: "paper",
+      balances: result.data || [],
+    },
+  };
+}
+
 // --- Sidecar Health Polling (EXT-16 FR-2) ---
 
 export type SidecarStatus = "unknown" | "healthy" | "unreachable";
@@ -658,6 +745,8 @@ type Message =
   | { type: "LIST_TRADES" }
   | { type: "CANCEL_TRADE"; tradeId: string }
   | { type: "GET_BALANCES" }
+  | { type: "GET_SMART_BALANCE" }
+  | { type: "GET_LIVE_BALANCE" }
   | { type: "LIST_EXCHANGES" }
   | { type: "LIST_EXCHANGE_ACCOUNTS" }
   | { type: "ADD_EXCHANGE_ACCOUNT"; payload: AddExchangeAccountPayload }
@@ -713,6 +802,15 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "GET_BALANCES") {
     return getBalances();
+  }
+
+  // EXT-17: Smart balance routing (paper vs live)
+  if (msg.type === "GET_SMART_BALANCE") {
+    return getSmartBalance();
+  }
+
+  if (msg.type === "GET_LIVE_BALANCE") {
+    return getLiveBalance();
   }
 
   if (msg.type === "REGISTER" && "email" in msg && "password" in msg) {

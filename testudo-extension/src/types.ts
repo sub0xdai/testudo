@@ -141,6 +141,14 @@ export interface TestConnectionResult {
   latency_ms: number | null;
 }
 
+// --- EXT-17: Live Balance Types ---
+
+export interface SmartBalanceResponse {
+  source: "paper" | "live";
+  exchange_name?: string;
+  balances: BalanceResponse[];
+}
+
 export type WsState = "disconnected" | "connecting" | "connected";
 
 export type ToastType = "success" | "error" | "info";

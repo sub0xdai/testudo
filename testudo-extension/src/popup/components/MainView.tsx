@@ -8,7 +8,7 @@ import TradeManagement from "./TradeManagement";
 import QuickTrade from "./QuickTrade";
 import ActiveOrders from "./ActiveOrders";
 import StatusBar from "./StatusBar";
-import type { BalanceResponse, ScraperHealthRecord } from "../../types";
+import type { BalanceResponse, SmartBalanceResponse, ScraperHealthRecord } from "../../types";
 
 function formatBalance(value: number): string {
   return value.toLocaleString("en-US", {
@@ -26,6 +26,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     browser.storage.local.set({ popupActiveTab: tab });
   }
   const [balance, setBalance] = createSignal<BalanceResponse[] | null>(null);
+  const [balanceSource, setBalanceSource] = createSignal<"paper" | "live">("paper");
+  const [exchangeName, setExchangeName] = createSignal<string | undefined>();
   const [balanceLoading, setBalanceLoading] = createSignal(true);
   const [positionCount, setPositionCount] = createSignal(0);
   const [scraperHealth, setScraperHealth] = createSignal<ScraperHealthRecord[]>(
@@ -35,12 +37,16 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   async function fetchBalance() {
     try {
       const resp = (await browser.runtime.sendMessage({
-        type: "GET_BALANCES",
+        type: "GET_SMART_BALANCE",
       })) as {
         success?: boolean;
-        data?: BalanceResponse[];
+        data?: SmartBalanceResponse;
       };
-      if (resp?.success && resp.data) setBalance(resp.data);
+      if (resp?.success && resp.data) {
+        setBalance(resp.data.balances);
+        setBalanceSource(resp.data.source);
+        setExchangeName(resp.data.exchange_name);
+      }
     } catch {
       /* non-blocking */
     }
@@ -66,6 +72,14 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   function handleMessage(message: unknown) {
     const msg = message as { type: string };
     if (msg.type === "WS_ORDER_UPDATE") {
+      fetchBalance();
+    }
+  }
+
+  // Re-fetch balance when execution mode or active exchange changes
+  function handleStorageChange(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) {
+    if (changes.executionMode || changes.activeExchangeId) {
+      setBalanceLoading(true);
       fetchBalance();
     }
   }
@@ -99,10 +113,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     fetchBalance();
     fetchScraperHealth();
     browser.runtime.onMessage.addListener(handleMessage);
+    browser.storage.onChanged.addListener(handleStorageChange);
   });
 
   onCleanup(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
+    browser.storage.onChanged.removeListener(handleStorageChange);
   });
 
   return (
@@ -114,9 +130,21 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       <div class="balance-panel" data-testid="header-balance">
         <div class="balance-panel-overlay" aria-hidden="true" />
         <div class="flex flex-col items-center pt-5 pb-2">
-          <span class="text-[12px] font-medium text-white/70 tracking-widest uppercase mb-2">
-            Balance
-          </span>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[12px] font-medium text-white/70 tracking-widest uppercase">
+              Balance
+            </span>
+            <Show when={balanceSource() === "live" && exchangeName()}>
+              <span class="text-[10px] font-bold text-accent-green bg-accent-green/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
+                {exchangeName()}
+              </span>
+            </Show>
+            <Show when={balanceSource() === "paper"}>
+              <span class="text-[10px] font-medium text-zinc-500 bg-zinc-500/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
+                Paper
+              </span>
+            </Show>
+          </div>
           <span
             class="text-[42px] font-bold text-white tracking-tight leading-none"
             style={{ "text-shadow": "0 1px 8px rgba(0,0,0,0.6)" }}
