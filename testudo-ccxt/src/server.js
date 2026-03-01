@@ -1,7 +1,9 @@
 'use strict';
 
+const http = require('node:http');
 const express = require('express');
 const ccxt = require('ccxt');
+const { WebSocketServer } = require('ws');
 const pool = require('./pool');
 const {
   handleBalance,
@@ -11,6 +13,7 @@ const {
   handlePosition,
   handleLeverage,
 } = require('./handlers');
+const { handleOrdersConnection } = require('./ws-orders');
 
 const PORT = parseInt(process.env.CCXT_PORT, 10) || 3100;
 const HOST = '127.0.0.1';
@@ -53,11 +56,20 @@ app.post('/leverage', handleLeverage);
 // Start eviction timer
 pool.startEviction();
 
+// EXT-22: Create HTTP server and attach WebSocket server for order streaming
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws/orders' });
+
+wss.on('connection', (ws) => {
+  console.log('WS client connected to /ws/orders');
+  handleOrdersConnection(ws);
+});
+
 // Only start listening if this file is run directly (not required by tests)
 if (require.main === module) {
-  app.listen(PORT, HOST, () => {
-    console.log(`CCXT sidecar listening on ${HOST}:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    console.log(`CCXT sidecar listening on ${HOST}:${PORT} (HTTP + WS)`);
   });
 }
 
-module.exports = app;
+module.exports = { app, server, wss };
