@@ -85,7 +85,7 @@ async function handleBalance(req, res) {
 async function handleOrder(req, res) {
   try {
     const { exchange, params } = getExchangeAndParams(req.body);
-    const { symbol, type, side, amount, price, stopPrice, leverage, reduceOnly } = params;
+    const { symbol, type, side, amount, price, stopPrice, leverage, reduceOnly, clientOrderId } = params;
 
     if (leverage && leverage > 0) {
       await exchange.setLeverage(leverage, symbol);
@@ -98,11 +98,16 @@ async function handleOrder(req, res) {
     if (reduceOnly) {
       orderParams.reduceOnly = true;
     }
+    // EXT-24 FR-5: Stamp clientOrderId for defense-in-depth identification
+    if (clientOrderId) {
+      orderParams.clientOrderId = clientOrderId;
+    }
 
     const order = await exchange.createOrder(symbol, type, side, amount, price, orderParams);
 
     res.json({
       id: stringify(order.id),
+      clientOrderId: order.clientOrderId || null,
       status: order.status,
       symbol: order.symbol,
       side: order.side,
@@ -208,6 +213,39 @@ async function handleLeverage(req, res) {
   }
 }
 
+/**
+ * POST /orders/open
+ * EXT-24 FR-3: Fetch open orders for a symbol (or all) from the exchange.
+ */
+async function handleOpenOrders(req, res) {
+  try {
+    const { exchange, params } = getExchangeAndParams(req.body);
+    const { symbol } = params;
+
+    const orders = await exchange.fetchOpenOrders(symbol || undefined);
+
+    const result = orders.map((o) => ({
+      id: stringify(o.id),
+      clientOrderId: o.clientOrderId || null,
+      symbol: o.symbol,
+      status: o.status,
+      side: o.side,
+      type: o.type,
+      price: stringify(o.price),
+      stopPrice: stringify(o.stopPrice),
+      amount: stringify(o.amount),
+      filled: stringify(o.filled),
+      remaining: stringify(o.remaining),
+      timestamp: o.timestamp,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    const mapped = mapError(err);
+    res.status(mapped.status).json(mapped.body);
+  }
+}
+
 module.exports = {
   handleBalance,
   handleOrder,
@@ -215,5 +253,6 @@ module.exports = {
   handleCancelOrder,
   handlePosition,
   handleLeverage,
+  handleOpenOrders,
   stringify,
 };

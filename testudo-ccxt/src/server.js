@@ -12,6 +12,7 @@ const {
   handleCancelOrder,
   handlePosition,
   handleLeverage,
+  handleOpenOrders,
 } = require('./handlers');
 const { handleOrdersConnection } = require('./ws-orders');
 
@@ -52,6 +53,7 @@ app.post('/order/edit', handleEditOrder);
 app.post('/order/cancel', handleCancelOrder);
 app.post('/position', handlePosition);
 app.post('/leverage', handleLeverage);
+app.post('/orders/open', handleOpenOrders);
 
 // Start eviction timer
 pool.startEviction();
