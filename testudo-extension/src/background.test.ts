@@ -261,7 +261,7 @@ describe("background message router", () => {
         payload: tradePayload,
       });
 
-      expect(result).toEqual({ success: true, data: { id: "order-1" } });
+      expect(result).toEqual({ success: true, data: { id: "order-1" }, error: null });
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toBe("http://localhost:8080/api/v1/trades");
       const body = JSON.parse(options.body);
@@ -321,6 +321,75 @@ describe("background message router", () => {
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.side).toBe("sell");
+    });
+  });
+
+  // --- LIST_TRADES normalization ---
+
+  describe("LIST_TRADES", () => {
+    function setValidTokens() {
+      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      mockStorage.accessToken = `header.${payload}.signature`;
+      mockStorage.refreshToken = "refresh-token";
+      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
+    }
+
+    const trade = {
+      id: "group-1",
+      symbol: "BTC_USDT",
+      entry_order_id: "entry-1",
+      entry_price: "50000",
+      entry_quantity: "0.1",
+      stop_loss_price: "49000",
+      stop_loss_order_id: "sl-1",
+      take_profit_targets: [],
+      status: "Pending",
+      break_even_enabled: false,
+      break_even_triggered: false,
+    };
+
+    it("accepts canonical wrapped response", async () => {
+      setValidTokens();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: [trade], error: null }),
+      });
+
+      const result = await messageHandler({ type: "LIST_TRADES" });
+      expect(result).toEqual({ success: true, data: [trade] });
+    });
+
+    it("accepts legacy bare array response", async () => {
+      setValidTokens();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ([trade]),
+      });
+
+      const result = await messageHandler({ type: "LIST_TRADES" });
+      expect(result).toEqual({ success: true, data: [trade] });
+    });
+
+    it("accepts legacy nested data.trades response", async () => {
+      setValidTokens();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { trades: [trade] } }),
+      });
+
+      const result = await messageHandler({ type: "LIST_TRADES" });
+      expect(result).toEqual({ success: true, data: [trade] });
+    });
+
+    it("returns deterministic malformed error for invalid payload", async () => {
+      setValidTokens();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: [{ bad: "shape" }] }),
+      });
+
+      const result = await messageHandler({ type: "LIST_TRADES" });
+      expect(result).toEqual({ success: false, error: "Malformed trade list response" });
     });
   });
 

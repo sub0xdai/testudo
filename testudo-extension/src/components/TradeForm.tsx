@@ -36,7 +36,7 @@ export default function TradeForm(props: TradeFormProps) {
   };
   const [autoFilledFields, setAutoFilledFields] = createSignal<Set<string>>(initialAutoFields());
 
-  let enterCount = 0;
+  const [confirmStep, setConfirmStep] = createSignal(0);
 
   const entry = createMemo(() => { const v = parseFloat(entryStr()); return isNaN(v) ? null : v; });
   const stop = createMemo(() => { const v = parseFloat(stopStr()); return isNaN(v) ? null : v; });
@@ -98,6 +98,7 @@ export default function TradeForm(props: TradeFormProps) {
   function handleFieldChange(field: string, setter: (v: string) => void, value: string) {
     setter(value);
     clearAutoFill(field);
+    setConfirmStep(0);
   }
 
   function buildSetup(): TradeSetup {
@@ -113,9 +114,10 @@ export default function TradeForm(props: TradeFormProps) {
 
   function handleConfirm() {
     if (!isValid()) return;
-    // Always require double-Enter for live trading safety
-    enterCount++;
-    if (enterCount < 2) return;
+    if (confirmStep() < 1) {
+      setConfirmStep(1);
+      return;
+    }
     props.onConfirm(buildSetup());
   }
 
@@ -321,7 +323,42 @@ export default function TradeForm(props: TradeFormProps) {
         <span class="hint">
           <kbd>Enter</kbd> <kbd>Enter</kbd> confirm
         </span>
-        <span class="hint"><kbd>Esc</kbd> dismiss</span>
+        <div style={{ display: "flex", gap: "8px", "align-items": "center" }}>
+          <button
+            type="button"
+            onClick={() => props.onDismiss?.()}
+            style={{
+              "font-size": "11px",
+              "font-weight": "700",
+              "letter-spacing": "0.6px",
+              "text-transform": "uppercase",
+              padding: "7px 12px",
+              border: "1px solid rgba(148,163,184,0.3)",
+              "border-radius": "8px",
+              background: "transparent",
+              color: "#94A3B8",
+              cursor: "pointer",
+            }}
+          >Cancel</button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!isValid()}
+            style={{
+              "font-size": "11px",
+              "font-weight": "700",
+              "letter-spacing": "0.6px",
+              "text-transform": "uppercase",
+              padding: "7px 12px",
+              border: confirmStep() > 0 ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(239,68,68,0.45)",
+              "border-radius": "8px",
+              background: !isValid() ? "rgba(63,63,70,0.45)" : (confirmStep() > 0 ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"),
+              color: !isValid() ? "#71717A" : (confirmStep() > 0 ? "#86EFAC" : "#FCA5A5"),
+              cursor: !isValid() ? "not-allowed" : "pointer",
+            }}
+          >{confirmStep() > 0 ? "Confirm Now" : "Arm Confirm"}</button>
+          <span class="hint"><kbd>Esc</kbd> dismiss</span>
+        </div>
       </div>
     </div>
   );

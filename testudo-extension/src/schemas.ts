@@ -103,8 +103,8 @@ export const TradeGroupResponseSchema = z.object({
 
 export const TradeListResponseSchema = z.object({
   success: z.boolean(),
-  data: z.array(TradeGroupResponseSchema).optional(),
-  error: z.string().optional(),
+  data: z.array(TradeGroupResponseSchema).nullable().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export const ExchangeInfoSchema = z.object({

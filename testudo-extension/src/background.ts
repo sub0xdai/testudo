@@ -35,17 +35,98 @@ type RuntimeTradePayload = Omit<TradePayload, "management"> & {
   management: Omit<TradePayload["management"], "leverage"> & { leverage?: number };
 };
 
-function coerceBackendSuccess(raw: unknown): BackendResponse {
-  const parsed = BackendResponseSchema.safeParse(raw);
-  if (parsed.success) {
-    return parsed.data;
+function normalizeBackendAck(raw: unknown): BackendResponse {
+  if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+
+    if (typeof obj.success === "boolean") {
+      return {
+        success: obj.success,
+        data: obj.data,
+        error: typeof obj.error === "string" || obj.error === null ? obj.error : null,
+      };
+    }
+
+    if (typeof obj.error === "string") {
+      return { success: false, data: null, error: obj.error };
+    }
+
+    if (typeof obj.message === "string") {
+      return { success: false, data: null, error: obj.message };
+    }
+
+    return { success: true, data: raw, error: null };
   }
+
+  return { success: true, data: raw, error: null };
+}
+
+function normalizeTradeListResponse(raw: unknown): BackendResponse {
+  const normalizeTradeArray = (value: unknown): TradeGroupResponse[] | null => {
+    if (!Array.isArray(value)) return null;
+    const parsed: TradeGroupResponse[] = [];
+    for (const item of value) {
+      const trade = TradeGroupResponseSchema.safeParse(item);
+      if (trade.success) parsed.push(trade.data);
+    }
+    if (value.length > 0 && parsed.length === 0) {
+      return null;
+    }
+    return parsed;
+  };
 
   if (raw && typeof raw === "object") {
-    return { success: true, data: raw };
+    const obj = raw as Record<string, unknown>;
+
+    if (typeof obj.success === "boolean") {
+      if (!obj.success) {
+        let error = "Trade list request failed";
+        if (typeof obj.error === "string") {
+          error = obj.error;
+        } else if (typeof obj.message === "string") {
+          error = obj.message;
+        }
+        return { success: false, data: null, error };
+      }
+
+      const direct = normalizeTradeArray(obj.data);
+      if (direct) return { success: true, data: direct, error: null };
+
+      if (obj.data && typeof obj.data === "object") {
+        const nested = normalizeTradeArray((obj.data as Record<string, unknown>).trades);
+        if (nested) return { success: true, data: nested, error: null };
+      }
+
+      const topLevel = normalizeTradeArray(obj.trades);
+      if (topLevel) return { success: true, data: topLevel, error: null };
+    }
+
+    const fromData = normalizeTradeArray(obj.data);
+    if (fromData) return { success: true, data: fromData, error: null };
+
+    const fromTrades = normalizeTradeArray(obj.trades);
+    if (fromTrades) return { success: true, data: fromTrades, error: null };
+
+    if (obj.data && typeof obj.data === "object") {
+      const nested = normalizeTradeArray((obj.data as Record<string, unknown>).trades);
+      if (nested) return { success: true, data: nested, error: null };
+    }
+
+    if (typeof obj.error === "string") {
+      return { success: false, data: null, error: obj.error };
+    }
+
+    if (typeof obj.message === "string") {
+      return { success: false, data: null, error: obj.message };
+    }
   }
 
-  return { success: true };
+  const direct = normalizeTradeArray(raw);
+  if (direct) {
+    return { success: true, data: direct, error: null };
+  }
+
+  return { success: false, data: null, error: "Malformed trade list response" };
 }
 
 async function getSettings(): Promise<Settings> {
@@ -291,7 +372,12 @@ async function executeTrade(payload: RuntimeTradePayload, retried = false): Prom
     }
 
     const raw = await response.json().catch(() => ({}));
-    return coerceBackendSuccess(raw);
+    const normalized = normalizeBackendAck(raw);
+    const validated = BackendResponseSchema.safeParse(normalized);
+    if (!validated.success) {
+      return { success: false, error: "Malformed trade response" };
+    }
+    return validated.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -316,55 +402,27 @@ async function listTrades(retried = false): Promise<{ success: boolean; data?: T
   try {
     const response = await fetch(url, { headers });
     const raw = await response.json().catch(() => ({}));
-    const normalizeTradeArray = (value: unknown): TradeGroupResponse[] | null => {
-      if (!Array.isArray(value)) return null;
-      const parsed: TradeGroupResponse[] = [];
-      for (const item of value) {
-        const trade = TradeGroupResponseSchema.safeParse(item);
-        if (trade.success) parsed.push(trade.data);
-      }
-      return parsed;
-    };
-
-    const extractTrades = (value: unknown): TradeGroupResponse[] | null => {
-      const direct = normalizeTradeArray(value);
-      if (direct) return direct;
-      if (!value || typeof value !== "object") return null;
-      const obj = value as Record<string, unknown>;
-      const dataDirect = normalizeTradeArray(obj.data);
-      if (dataDirect) return dataDirect;
-      const dataObj = obj.data;
-      if (dataObj && typeof dataObj === "object") {
-        const nested = normalizeTradeArray((dataObj as Record<string, unknown>).trades);
-        if (nested) return nested;
-      }
-      const topLevel = normalizeTradeArray(obj.trades);
-      if (topLevel) return topLevel;
-      return null;
-    };
-
-    const normalizedTrades = extractTrades(raw);
+    const normalized = normalizeTradeListResponse(raw);
 
     if (!response.ok) {
       if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return listTrades(true);
       }
-      const errorParsed = ErrorResponseSchema.safeParse(raw);
-      const msg = (errorParsed.success && (errorParsed.data.error || errorParsed.data.message)) || `HTTP ${response.status}`;
+      const msg = normalized.error || `HTTP ${response.status}`;
       return { success: false, error: msg };
     }
 
-    if (normalizedTrades) {
-      return { success: true, data: normalizedTrades };
+    const validated = TradeListResponseSchema.safeParse(normalized);
+    if (!validated.success) {
+      return { success: false, error: "Malformed trade list response" };
     }
 
-    const json = TradeListResponseSchema.safeParse(raw);
-    if (json.success) {
-      return { success: true, data: json.data.data || [] };
+    if (!validated.data.success) {
+      return { success: false, error: validated.data.error || "Trade list request failed" };
     }
 
-    return { success: false, error: "Malformed trade list response" };
+    return { success: true, data: validated.data.data || [] };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -393,7 +451,12 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
     }
 
     const raw = await response.json().catch(() => ({}));
-    return coerceBackendSuccess(raw);
+    const normalized = normalizeBackendAck(raw);
+    const validated = BackendResponseSchema.safeParse(normalized);
+    if (!validated.success) {
+      return { success: false, error: "Malformed cancel response" };
+    }
+    return validated.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
