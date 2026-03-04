@@ -103,9 +103,9 @@ const MODAL_STYLES = `
   .balance-value.muted { color: #71717A; font-style: italic; font-size: 12px; }
   .toast { position: fixed; top: 20px; right: 20px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
   .toast.visible { opacity: 1; }
-  .toast.success { background: rgba(34,197,94,0.15); color: #22C55E; border: 1px solid rgba(34,197,94,0.2); backdrop-filter: blur(12px); }
-  .toast.error { background: rgba(239,68,68,0.15); color: #EF4444; border: 1px solid rgba(239,68,68,0.2); backdrop-filter: blur(12px); }
-  .toast.info { background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.2); backdrop-filter: blur(12px); }
+  .toast.success { background: #052E16; color: #86EFAC; border: 1px solid #166534; }
+  .toast.error { background: #450A0A; color: #FCA5A5; border: 1px solid #7F1D1D; }
+  .toast.info { background: #0F172A; color: #CBD5E1; border: 1px solid #334155; }
 `;
 
 // --- Modal lifecycle ---

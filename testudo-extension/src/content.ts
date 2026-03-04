@@ -17,8 +17,16 @@ function isTradingView(): boolean {
 // --- Management Preset Loader ---
 
 async function getManagementPreset(): Promise<ManagementPreset> {
-  const stored = await browser.storage.local.get(["managementPreset"]);
-  return (stored.managementPreset as ManagementPreset) || { ...DEFAULT_MANAGEMENT_PRESET };
+  try {
+    const storage = browser?.storage?.local;
+    if (!storage) {
+      return { ...DEFAULT_MANAGEMENT_PRESET };
+    }
+    const stored = await storage.get(["managementPreset"]);
+    return (stored.managementPreset as ManagementPreset) || { ...DEFAULT_MANAGEMENT_PRESET };
+  } catch {
+    return { ...DEFAULT_MANAGEMENT_PRESET };
+  }
 }
 
 // --- Hotkey Listener ---

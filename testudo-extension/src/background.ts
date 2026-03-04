@@ -24,6 +24,7 @@ import {
   StoredSettingsSchema,
   StoredTokensSchema,
   TestConnectionResultSchema,
+  TradeGroupResponseSchema,
   TradeListResponseSchema,
   WebSocketMessageSchema,
 } from "./schemas";
@@ -33,6 +34,19 @@ import {
 type RuntimeTradePayload = Omit<TradePayload, "management"> & {
   management: Omit<TradePayload["management"], "leverage"> & { leverage?: number };
 };
+
+function coerceBackendSuccess(raw: unknown): BackendResponse {
+  const parsed = BackendResponseSchema.safeParse(raw);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  if (raw && typeof raw === "object") {
+    return { success: true, data: raw };
+  }
+
+  return { success: true };
+}
 
 async function getSettings(): Promise<Settings> {
   const stored = await browser.storage.local.get(["backendUrl", "wsUrl"]);
@@ -277,12 +291,7 @@ async function executeTrade(payload: RuntimeTradePayload, retried = false): Prom
     }
 
     const raw = await response.json().catch(() => ({}));
-    const json = BackendResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed backend response" };
-    }
-
-    return json.data;
+    return coerceBackendSuccess(raw);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -307,20 +316,55 @@ async function listTrades(retried = false): Promise<{ success: boolean; data?: T
   try {
     const response = await fetch(url, { headers });
     const raw = await response.json().catch(() => ({}));
-    const json = TradeListResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed trade list response" };
-    }
+    const normalizeTradeArray = (value: unknown): TradeGroupResponse[] | null => {
+      if (!Array.isArray(value)) return null;
+      const parsed: TradeGroupResponse[] = [];
+      for (const item of value) {
+        const trade = TradeGroupResponseSchema.safeParse(item);
+        if (trade.success) parsed.push(trade.data);
+      }
+      return parsed;
+    };
+
+    const extractTrades = (value: unknown): TradeGroupResponse[] | null => {
+      const direct = normalizeTradeArray(value);
+      if (direct) return direct;
+      if (!value || typeof value !== "object") return null;
+      const obj = value as Record<string, unknown>;
+      const dataDirect = normalizeTradeArray(obj.data);
+      if (dataDirect) return dataDirect;
+      const dataObj = obj.data;
+      if (dataObj && typeof dataObj === "object") {
+        const nested = normalizeTradeArray((dataObj as Record<string, unknown>).trades);
+        if (nested) return nested;
+      }
+      const topLevel = normalizeTradeArray(obj.trades);
+      if (topLevel) return topLevel;
+      return null;
+    };
+
+    const normalizedTrades = extractTrades(raw);
 
     if (!response.ok) {
       if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return listTrades(true);
       }
-      return { success: false, error: json.data.error || `HTTP ${response.status}` };
+      const errorParsed = ErrorResponseSchema.safeParse(raw);
+      const msg = (errorParsed.success && (errorParsed.data.error || errorParsed.data.message)) || `HTTP ${response.status}`;
+      return { success: false, error: msg };
     }
 
-    return json.data;
+    if (normalizedTrades) {
+      return { success: true, data: normalizedTrades };
+    }
+
+    const json = TradeListResponseSchema.safeParse(raw);
+    if (json.success) {
+      return { success: true, data: json.data.data || [] };
+    }
+
+    return { success: false, error: "Malformed trade list response" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -342,17 +386,14 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
 
   try {
     const response = await fetch(url, { method: "DELETE", headers });
-    const raw = await response.json().catch(() => ({}));
-    const json = BackendResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed cancel response" };
-    }
-
     if (!response.ok) {
-      return { success: false, error: json.data.error || `HTTP ${response.status}` };
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      return { success: false, error: (json.success && json.data.error) || `HTTP ${response.status}` };
     }
 
-    return json.data;
+    const raw = await response.json().catch(() => ({}));
+    return coerceBackendSuccess(raw);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };

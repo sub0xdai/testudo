@@ -80,23 +80,25 @@ export const ErrorResponseSchema = z.object({
   message: z.string().optional(),
 });
 
+const DecimalLikeStringSchema = z.union([z.string(), z.number()]).transform((v) => String(v));
+
 export const TradeGroupResponseSchema = z.object({
   id: z.string(),
   symbol: z.string(),
   entry_order_id: z.string(),
-  entry_price: z.string().nullable(),
-  entry_quantity: z.string(),
-  stop_loss_price: z.string().nullable(),
-  stop_loss_order_id: z.string().nullable(),
+  entry_price: DecimalLikeStringSchema.nullable().optional().default(null),
+  entry_quantity: DecimalLikeStringSchema,
+  stop_loss_price: DecimalLikeStringSchema.nullable().optional().default(null),
+  stop_loss_order_id: z.string().nullable().optional().default(null),
   take_profit_targets: z.array(z.object({
-    price: z.string(),
-    percent_to_close: z.string(),
-    order_id: z.string().nullable(),
+    price: DecimalLikeStringSchema,
+    percent_to_close: DecimalLikeStringSchema,
+    order_id: z.string().nullable().optional().default(null),
     filled: z.boolean(),
-  })),
+  })).optional().default([]),
   status: z.string(),
-  break_even_enabled: z.boolean(),
-  break_even_triggered: z.boolean(),
+  break_even_enabled: z.boolean().optional().default(false),
+  break_even_triggered: z.boolean().optional().default(false),
 });
 
 export const TradeListResponseSchema = z.object({
