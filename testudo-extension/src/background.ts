@@ -4,15 +4,55 @@ import {
   DEFAULT_SETTINGS, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
 } from "./utils";
+import {
+  ActiveExchangeStorageSchema,
+  AddExchangeAccountResponseSchema,
+  AuthTokensSchema,
+  BackendResponseSchema,
+  ErrorResponseSchema,
+  ExchangeAccountsResponseSchema,
+  ExchangeBalanceApiResponseSchema,
+  ListExchangesResponseSchema,
+  LoginResponseSchema,
+  JwtEmailPayloadSchema,
+  JwtSubPayloadSchema,
+  RefreshResponseSchema,
+  RuntimeMessageSchema,
+  SettingsSchema,
+  SidecarHealthResponseSchema,
+  SidecarStreamDataSchema,
+  StoredSettingsSchema,
+  StoredTokensSchema,
+  TestConnectionResultSchema,
+  TradeListResponseSchema,
+  WebSocketMessageSchema,
+} from "./schemas";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
+type RuntimeTradePayload = Omit<TradePayload, "management"> & {
+  management: Omit<TradePayload["management"], "leverage"> & { leverage?: number };
+};
+
 async function getSettings(): Promise<Settings> {
   const stored = await browser.storage.local.get(["backendUrl", "wsUrl"]);
-  return {
-    backendUrl: (stored.backendUrl as string) || DEFAULT_SETTINGS.backendUrl,
-    wsUrl: (stored.wsUrl as string) || DEFAULT_SETTINGS.wsUrl,
+  const parsed = StoredSettingsSchema.safeParse(stored);
+
+  if (!parsed.success) {
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  const candidate = {
+    backendUrl: parsed.data.backendUrl || DEFAULT_SETTINGS.backendUrl,
+    wsUrl: parsed.data.wsUrl || DEFAULT_SETTINGS.wsUrl,
   };
+
+  const validated = SettingsSchema.safeParse(candidate);
+  if (!validated.success) {
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  return validated.data;
 }
 
 browser.runtime.onInstalled.addListener(async () => {
@@ -27,12 +67,17 @@ browser.runtime.onInstalled.addListener(async () => {
 
 async function getTokens(): Promise<AuthTokens | null> {
   const stored = await browser.storage.local.get(["accessToken", "refreshToken", "tokenExpiry"]);
-  if (!stored.accessToken || !stored.refreshToken) return null;
-  return {
-    access_token: stored.accessToken as string,
-    refresh_token: stored.refreshToken as string,
-    expires_in: ((stored.tokenExpiry as number) || 0) - Math.floor(Date.now() / 1000),
+  const parsed = StoredTokensSchema.safeParse(stored);
+  if (!parsed.success) return null;
+
+  const tokens = {
+    access_token: parsed.data.accessToken,
+    refresh_token: parsed.data.refreshToken,
+    expires_in: (parsed.data.tokenExpiry || 0) - Math.floor(Date.now() / 1000),
   };
+
+  const validated = AuthTokensSchema.safeParse(tokens);
+  return validated.success ? validated.data : null;
 }
 
 async function storeTokens(tokens: AuthTokens): Promise<void> {
@@ -57,11 +102,15 @@ async function login(email: string, password: string): Promise<{ success: boolea
     });
 
     if (!response.ok) {
-      const json = await response.json() as { error?: string; message?: string };
-      return { success: false, error: json.message || json.error || `HTTP ${response.status}` };
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      if (!json.success) {
+        return { success: false, error: `HTTP ${response.status}` };
+      }
+      return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
     }
 
-    const json = await response.json() as LoginResponse;
+    const json = LoginResponseSchema.parse(await response.json());
     await storeTokens(json.tokens);
     scheduleTokenRefresh(json.tokens.expires_in);
     return { success: true };
@@ -101,7 +150,7 @@ async function doRefresh(): Promise<boolean> {
       return false;
     }
 
-    const json = await response.json() as { tokens: AuthTokens };
+    const json = RefreshResponseSchema.parse(await response.json());
     await storeTokens(json.tokens);
     scheduleTokenRefresh(json.tokens.expires_in);
     return true;
@@ -126,8 +175,12 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
     return { authenticated: false };
   }
   try {
-    const payload = JSON.parse(atob(tokens.access_token.split(".")[1])) as { email?: string };
-    return { authenticated: true, email: payload.email };
+    const payloadRaw = JSON.parse(atob(tokens.access_token.split(".")[1] || ""));
+    const payload = JwtEmailPayloadSchema.safeParse(payloadRaw);
+    if (!payload.success) {
+      return { authenticated: true };
+    }
+    return { authenticated: true, email: payload.data.email };
   } catch {
     return { authenticated: true };
   }
@@ -137,7 +190,9 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
 
 async function getActiveExchangeId(): Promise<string | null> {
   const stored = await browser.storage.local.get(["activeExchangeId"]);
-  return (stored.activeExchangeId as string) || null;
+  const parsed = ActiveExchangeStorageSchema.safeParse(stored);
+  if (!parsed.success) return null;
+  return parsed.data.activeExchangeId || null;
 }
 
 async function setActiveExchangeId(id: string | null): Promise<void> {
@@ -172,7 +227,7 @@ async function ensureActiveExchange(): Promise<string | null> {
 
 // --- Trade Execution (EXT-19: live only, JWT required) ---
 
-async function executeTrade(payload: TradePayload, retried = false): Promise<BackendResponse> {
+async function executeTrade(payload: RuntimeTradePayload, retried = false): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
@@ -208,19 +263,26 @@ async function executeTrade(payload: TradePayload, retried = false): Promise<Bac
       body: JSON.stringify(body),
     });
 
-    const json = await response.json() as BackendResponse;
-
     if (!response.ok) {
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+
       if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
           return executeTrade(payload, true);
         }
       }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      return { success: false, error: (json.success && (json.data.error || json.data.message)) || `HTTP ${response.status}` };
     }
 
-    return json;
+    const raw = await response.json().catch(() => ({}));
+    const json = BackendResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed backend response" };
+    }
+
+    return json.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -244,17 +306,21 @@ async function listTrades(retried = false): Promise<{ success: boolean; data?: T
 
   try {
     const response = await fetch(url, { headers });
-    const json = await response.json() as { success: boolean; data?: TradeGroupResponse[]; error?: string };
+    const raw = await response.json().catch(() => ({}));
+    const json = TradeListResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed trade list response" };
+    }
 
     if (!response.ok) {
       if (response.status === 401 && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return listTrades(true);
       }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      return { success: false, error: json.data.error || `HTTP ${response.status}` };
     }
 
-    return json;
+    return json.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -276,13 +342,17 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
 
   try {
     const response = await fetch(url, { method: "DELETE", headers });
-    const json = await response.json() as BackendResponse;
-
-    if (!response.ok) {
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+    const raw = await response.json().catch(() => ({}));
+    const json = BackendResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed cancel response" };
     }
 
-    return json;
+    if (!response.ok) {
+      return { success: false, error: json.data.error || `HTTP ${response.status}` };
+    }
+
+    return json.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -301,11 +371,15 @@ async function register(email: string, password: string): Promise<{ success: boo
     });
 
     if (!response.ok) {
-      const json = await response.json() as { error?: string; message?: string };
-      return { success: false, error: json.message || json.error || `HTTP ${response.status}` };
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      if (!json.success) {
+        return { success: false, error: `HTTP ${response.status}` };
+      }
+      return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
     }
 
-    const json = await response.json() as LoginResponse;
+    const json = LoginResponseSchema.parse(await response.json());
     await storeTokens(json.tokens);
     scheduleTokenRefresh(json.tokens.expires_in);
     return { success: true };
@@ -327,17 +401,21 @@ async function listExchanges(retried = false): Promise<{ success: boolean; data?
 
   try {
     const response = await fetch(`${settings.backendUrl}/api/v1/exchanges`, { headers });
-    const json = await response.json() as { exchanges?: ExchangeInfo[]; error?: string };
+    const raw = await response.json().catch(() => ({}));
+    const json = ListExchangesResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed exchanges response" };
+    }
 
     if (!response.ok) {
       if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return listExchanges(true);
       }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      return { success: false, error: json.data.error || `HTTP ${response.status}` };
     }
 
-    return { success: true, data: json.exchanges || [] };
+    return { success: true, data: json.data.exchanges || [] };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -359,12 +437,17 @@ async function listExchangeAccounts(retried = false): Promise<{ success: boolean
         const refreshed = await refreshAccessToken();
         if (refreshed) return listExchangeAccounts(true);
       }
-      const errJson = await response.json().catch(() => ({})) as { error?: string };
-      return { success: false, error: errJson.error || `HTTP ${response.status}` };
+      const errRaw = await response.json().catch(() => ({}));
+      const errJson = ErrorResponseSchema.safeParse(errRaw);
+      return { success: false, error: (errJson.success && errJson.data.error) || `HTTP ${response.status}` };
     }
 
-    const json = await response.json() as ExchangeAccount[] | { data?: ExchangeAccount[]; accounts?: ExchangeAccount[] };
-    const accounts = Array.isArray(json) ? json : (json.data || json.accounts || []);
+    const raw = await response.json().catch(() => ([]));
+    const json = ExchangeAccountsResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed exchange accounts response" };
+    }
+    const accounts = Array.isArray(json.data) ? json.data : (json.data.data || json.data.accounts || []);
     return { success: true, data: accounts };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
@@ -386,17 +469,21 @@ async function addExchangeAccount(payload: AddExchangeAccountPayload, retried = 
       headers,
       body: JSON.stringify(payload),
     });
-    const json = await response.json() as { success?: boolean; data?: ExchangeAccount; error?: string };
+    const raw = await response.json().catch(() => ({}));
+    const json = AddExchangeAccountResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed add account response" };
+    }
 
     if (!response.ok) {
       if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return addExchangeAccount(payload, true);
       }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      return { success: false, error: json.data.error || `HTTP ${response.status}` };
     }
 
-    return { success: true, data: json.data };
+    return { success: true, data: json.data.data };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -422,8 +509,9 @@ async function deleteExchangeAccount(accountId: string, retried = false): Promis
         const refreshed = await refreshAccessToken();
         if (refreshed) return deleteExchangeAccount(accountId, true);
       }
-      const json = await response.json().catch(() => ({})) as { error?: string };
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      return { success: false, error: (json.success && json.data.error) || `HTTP ${response.status}` };
     }
 
     return { success: true };
@@ -446,17 +534,23 @@ async function testExchangeConnection(accountId: string, retried = false): Promi
       method: "POST",
       headers,
     });
-    const json = await response.json() as TestConnectionResult & { error?: string };
+    const raw = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      const errJson = ErrorResponseSchema.safeParse(raw);
       if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return testExchangeConnection(accountId, true);
       }
-      return { success: false, error: json.error || `HTTP ${response.status}` };
+      return { success: false, error: (errJson.success && errJson.data.error) || `HTTP ${response.status}` };
     }
 
-    return { success: true, data: json };
+    const json = TestConnectionResultSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed connection test response" };
+    }
+
+    return { success: true, data: json.data };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
@@ -464,13 +558,6 @@ async function testExchangeConnection(accountId: string, retried = false): Promi
 }
 
 // --- EXT-19: Live Exchange Balance (always from active exchange) ---
-
-interface ExchangeBalanceApiResponse {
-  account_id: string;
-  exchange_name: string;
-  balances: Array<{ asset: string; total: string; free: string; used: string }>;
-  fetched_at: string;
-}
 
 async function getLiveBalance(retried = false): Promise<{ success: boolean; data?: LiveBalanceResponse; error?: string }> {
   let activeId = await getActiveExchangeId();
@@ -502,13 +589,18 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
         const refreshed = await refreshAccessToken();
         if (refreshed) return getLiveBalance(true);
       }
-      const json = await response.json().catch(() => ({})) as { error?: string; message?: string };
-      return { success: false, error: json.message || json.error || `HTTP ${response.status}` };
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      return { success: false, error: (json.success && (json.data.message || json.data.error)) || `HTTP ${response.status}` };
     }
 
-    const json = await response.json() as ExchangeBalanceApiResponse;
+    const raw = await response.json().catch(() => ({}));
+    const json = ExchangeBalanceApiResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed balance response" };
+    }
 
-    const balances: BalanceResponse[] = json.balances.map((b) => ({
+    const balances: BalanceResponse[] = json.data.balances.map((b) => ({
       asset: b.asset,
       available: b.free,
       locked: b.used,
@@ -517,7 +609,7 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
     return {
       success: true,
       data: {
-        exchange_name: json.exchange_name,
+        exchange_name: json.data.exchange_name,
         balances,
       },
     };
@@ -545,8 +637,9 @@ async function checkSidecarHealth(): Promise<void> {
       signal: AbortSignal.timeout(5000),
     });
     if (response.ok) {
-      const json = await response.json() as { status?: string };
-      setSidecarStatus(json.status === "healthy" ? "healthy" : "unreachable");
+      const raw = await response.json().catch(() => ({}));
+      const json = SidecarHealthResponseSchema.safeParse(raw);
+      setSidecarStatus(json.success && json.data.status === "healthy" ? "healthy" : "unreachable");
     } else {
       setSidecarStatus("unreachable");
     }
@@ -580,8 +673,9 @@ async function getUserId(): Promise<string | null> {
   const tokens = await getTokens();
   if (tokens && tokens.expires_in > 0) {
     try {
-      const payload = JSON.parse(atob(tokens.access_token.split(".")[1])) as { sub?: string };
-      if (payload.sub) return payload.sub;
+      const payloadRaw = JSON.parse(atob(tokens.access_token.split(".")[1] || ""));
+      const payload = JwtSubPayloadSchema.safeParse(payloadRaw);
+      if (payload.success && payload.data.sub) return payload.data.sub;
     } catch { /* fall through */ }
   }
   return null;
@@ -636,13 +730,19 @@ async function connectWebSocket(): Promise<void> {
 
   ws.onmessage = (event: MessageEvent) => {
     try {
-      const msg = JSON.parse(event.data as string) as { stream?: string; data?: unknown };
-      if (msg.stream && msg.stream.startsWith("order.")) {
-        forwardOrderUpdate(msg.data);
+      const msgRaw = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+      const msg = WebSocketMessageSchema.safeParse(msgRaw);
+      if (!msg.success) {
+        return;
       }
-      if (msg.stream === "sidecar.health") {
-        const data = msg.data as { status?: string };
-        setSidecarStatus(data?.status === "healthy" ? "healthy" : "unreachable");
+
+      const wsMsg = msg.data;
+      if (wsMsg.stream && wsMsg.stream.startsWith("order.")) {
+        forwardOrderUpdate(wsMsg.data);
+      }
+      if (wsMsg.stream === "sidecar.health") {
+        const data = SidecarStreamDataSchema.safeParse(wsMsg.data);
+        setSidecarStatus(data.success && data.data.status === "healthy" ? "healthy" : "unreachable");
       }
     } catch {
       console.warn("WS: failed to parse message", event.data);
@@ -700,41 +800,22 @@ function forwardOrderUpdate(data: unknown): void {
 
 // --- Message Router ---
 
-type Message =
-  | { type: "GET_SETTINGS" }
-  | { type: "EXECUTE_TRADE"; payload: TradePayload }
-  | { type: "LOGIN"; email: string; password: string }
-  | { type: "REGISTER"; email: string; password: string }
-  | { type: "LOGOUT" }
-  | { type: "AUTH_STATUS" }
-  | { type: "REFRESH_TOKEN" }
-  | { type: "WS_STATUS" }
-  | { type: "WS_RECONNECT" }
-  | { type: "LIST_TRADES" }
-  | { type: "CANCEL_TRADE"; tradeId: string }
-  | { type: "GET_BALANCE" }
-  | { type: "LIST_EXCHANGES" }
-  | { type: "LIST_EXCHANGE_ACCOUNTS" }
-  | { type: "ADD_EXCHANGE_ACCOUNT"; payload: AddExchangeAccountPayload }
-  | { type: "DELETE_EXCHANGE_ACCOUNT"; accountId: string }
-  | { type: "TEST_EXCHANGE_CONNECTION"; accountId: string }
-  | { type: "GET_ACTIVE_EXCHANGE" }
-  | { type: "SET_ACTIVE_EXCHANGE"; exchangeId: string | null }
-  | { type: "SIDECAR_STATUS" }
-  | { type: "TOKEN_SYNCED_FROM_WEB" };
-
 browser.runtime.onMessage.addListener((message: unknown) => {
-  const msg = message as Message;
+  const parsed = RuntimeMessageSchema.safeParse(message);
+  if (!parsed.success) {
+    return undefined;
+  }
+  const msg = parsed.data;
 
   if (msg.type === "GET_SETTINGS") {
     return getSettings();
   }
 
-  if (msg.type === "EXECUTE_TRADE" && "payload" in msg) {
+  if (msg.type === "EXECUTE_TRADE") {
     return executeTrade(msg.payload);
   }
 
-  if (msg.type === "LOGIN" && "email" in msg && "password" in msg) {
+  if (msg.type === "LOGIN") {
     return login(msg.email, msg.password).then((result) => {
       if (result.success) ensureActiveExchange();
       return result;
@@ -766,7 +847,7 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return listTrades();
   }
 
-  if (msg.type === "CANCEL_TRADE" && "tradeId" in msg) {
+  if (msg.type === "CANCEL_TRADE") {
     return cancelTrade(msg.tradeId);
   }
 
@@ -775,7 +856,7 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return getLiveBalance();
   }
 
-  if (msg.type === "REGISTER" && "email" in msg && "password" in msg) {
+  if (msg.type === "REGISTER") {
     return register(msg.email, msg.password).then((result) => {
       if (result.success) ensureActiveExchange();
       return result;
@@ -790,21 +871,21 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return listExchangeAccounts();
   }
 
-  if (msg.type === "ADD_EXCHANGE_ACCOUNT" && "payload" in msg) {
+  if (msg.type === "ADD_EXCHANGE_ACCOUNT") {
     return addExchangeAccount(msg.payload).then((result) => {
       if (result.success) ensureActiveExchange();
       return result;
     });
   }
 
-  if (msg.type === "DELETE_EXCHANGE_ACCOUNT" && "accountId" in msg) {
+  if (msg.type === "DELETE_EXCHANGE_ACCOUNT") {
     return deleteExchangeAccount(msg.accountId).then(async (result) => {
       if (result.success) await ensureActiveExchange();
       return result;
     });
   }
 
-  if (msg.type === "TEST_EXCHANGE_CONNECTION" && "accountId" in msg) {
+  if (msg.type === "TEST_EXCHANGE_CONNECTION") {
     return testExchangeConnection(msg.accountId);
   }
 
@@ -812,7 +893,7 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return getActiveExchangeId().then((id) => ({ exchangeId: id }));
   }
 
-  if (msg.type === "SET_ACTIVE_EXCHANGE" && "exchangeId" in msg) {
+  if (msg.type === "SET_ACTIVE_EXCHANGE") {
     return setActiveExchangeId(msg.exchangeId).then(() => ({ success: true }));
   }
 

@@ -1,4 +1,5 @@
 import { createSignal, Show } from "solid-js";
+import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
 import { WEB_APP_URL } from "../../utils";
 
@@ -111,7 +112,7 @@ export default function AuthSection(props: {
               </label>
               <span
                 class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-signal-green transition-colors"
-                onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
+                onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
                 tabIndex={-1}
               >
                 FORGOT?
@@ -176,7 +177,7 @@ export default function AuthSection(props: {
           <div class="flex flex-col gap-2 mt-5">
             <button
               class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-white rounded-md"
-              onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/register` })}
+              onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/register` })}
               data-testid="create-account-btn"
             >
               CREATE ACCOUNT

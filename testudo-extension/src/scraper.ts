@@ -3,6 +3,7 @@
 // Uses multiple selector strategies with fallbacks for resilience.
 
 import browser from "webextension-polyfill";
+import { z } from "zod";
 import type { ScraperHealthRecord, ChartApiHealth } from "./types";
 
 export interface TradeSetup {
@@ -117,6 +118,30 @@ interface PositionToolData {
   target: number;
   side: "LONG" | "SHORT";
 }
+
+const PositionToolDataSchema = z.object({
+  entry: z.number().positive(),
+  stop: z.number().positive(),
+  target: z.number().positive(),
+  side: z.enum(["LONG", "SHORT"]),
+});
+
+const TradeSetupSchema = z.object({
+  symbol: z.string().min(1),
+  side: z.enum(["LONG", "SHORT"]),
+  entry: z.number().positive(),
+  stop: z.number().positive(),
+  target: z.number().positive(),
+  timeframe: z.string().min(1),
+});
+
+const ScraperHealthRecordSchema = z.object({
+  timestamp: z.number(),
+  strategyUsed: z.number().int().min(0).max(5).nullable(),
+  success: z.boolean(),
+});
+
+const ScraperHealthHistorySchema = z.array(ScraperHealthRecordSchema);
 
 // --- Strategy 0: Zero-flash — TradingView internal chart API ---
 // Reads position tool data directly from window.TradingViewApi.activeChart()
@@ -458,7 +483,8 @@ export function scrapeTradeSetup(strategiesOnly?: number[]): TradeSetup | null {
     if (!strategy) continue;
     try {
       const result = strategy();
-      if (result) {
+      const parsedResult = PositionToolDataSchema.safeParse(result);
+      if (parsedResult.success) {
         const symbol = scrapeSymbol();
         if (!symbol) {
           console.warn("[Testudo] Found position tool but could not extract symbol");
@@ -469,14 +495,22 @@ export function scrapeTradeSetup(strategiesOnly?: number[]): TradeSetup | null {
         const timeframe = scrapeTimeframe();
         recordScraperResult(i);
 
-        return {
+        const tradeSetup = TradeSetupSchema.safeParse({
           symbol,
-          side: result.side,
-          entry: result.entry,
-          stop: result.stop,
-          target: result.target,
+          side: parsedResult.data.side,
+          entry: parsedResult.data.entry,
+          stop: parsedResult.data.stop,
+          target: parsedResult.data.target,
           timeframe,
-        };
+        });
+
+        if (!tradeSetup.success) {
+          console.warn("[Testudo] Dropped malformed trade setup", tradeSetup.error);
+          recordScraperResult(null);
+          return null;
+        }
+
+        return tradeSetup.data;
       }
     } catch (err) {
       console.warn("[Testudo] Scraper strategy failed:", err);
@@ -525,10 +559,10 @@ function recordScraperResult(strategyUsed: number | null): void {
 
   telemetryQueue = telemetryQueue.then(async () => {
     const stored = await browser.storage.local.get(["scraperHealth"]);
-    const history = (stored.scraperHealth as ScraperHealthRecord[]) || [];
+    const historyResult = ScraperHealthHistorySchema.safeParse(stored.scraperHealth);
+    const history = historyResult.success ? historyResult.data : [];
     history.push(record);
     const trimmed = history.slice(-SCRAPER_HEALTH_MAX);
     await browser.storage.local.set({ scraperHealth: trimmed });
   }).catch(() => {});
 }
-
