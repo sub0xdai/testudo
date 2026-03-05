@@ -55,7 +55,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
 
-  const activeTrades = () => trades().filter((t) => t.status !== "Completed" && t.status !== "Cancelled");
+  const activeTrades = () => trades().filter((t) => t.status === "Active" || t.status === "Pending");
 
   createEffect(() => {
     props.onCountChange?.(activeTrades().length);
