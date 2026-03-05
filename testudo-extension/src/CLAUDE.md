@@ -13,4 +13,11 @@
 | #1613 | " | 🟣 | Content script implements Alt+X hotkey for trade execution with symbol-only fallback | ~686 |
 | #1612 | " | 🔵 | Background worker implements comprehensive auth, trade execution, and WebSocket management | ~795 |
 | #1611 | 10:00 AM | 🟣 | TradingView DOM scraper implements six-strategy fallback system for resilient data extraction | ~771 |
+
+### Feb 28, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #2693 | 12:46 PM | 🔵 | Extension Registration Delegation and Token Architecture | ~785 |
+| #2689 | 12:44 PM | 🔵 | Browser Extension Configuration and Utilities | ~739 |
 </claude-mem-context>

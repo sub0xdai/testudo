@@ -33,6 +33,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   const [scraperHealth, setScraperHealth] = createSignal<ScraperHealthRecord[]>(
     [],
   );
+  let balanceRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function fetchBalance() {
     try {
@@ -73,9 +74,21 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   };
 
   function handleMessage(message: unknown) {
-    const msg = message as { type: string };
+    const msg = message as { type: string; data?: { status?: string; e?: string } };
     if (msg.type === "WS_ORDER_UPDATE") {
-      fetchBalance();
+      const status = msg.data?.status || msg.data?.e;
+      const shouldRefresh = !status
+        || status === "stopped_out"
+        || status === "took_profit"
+        || status === "entry_filled"
+        || status === "closed";
+      if (shouldRefresh) {
+        if (balanceRefreshTimer) clearTimeout(balanceRefreshTimer);
+        balanceRefreshTimer = setTimeout(() => {
+          balanceRefreshTimer = null;
+          fetchBalance();
+        }, 250);
+      }
     }
   }
 
@@ -122,6 +135,10 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   onCleanup(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
     browser.storage.onChanged.removeListener(handleStorageChange);
+    if (balanceRefreshTimer) {
+      clearTimeout(balanceRefreshTimer);
+      balanceRefreshTimer = null;
+    }
   });
 
   return (
