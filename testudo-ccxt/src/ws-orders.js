@@ -103,7 +103,7 @@ async function handleSubscribe(ws, msg, prevController) {
 async function watchOrdersLoop(ws, exchange, symbol, signal) {
   while (!signal.aborted) {
     try {
-      if (typeof exchange.watchOrders !== 'function') {
+      if (typeof exchange.watchOrders !== 'function' || !exchange.has['watchOrders']) {
         ws.send(JSON.stringify({
           event: 'error',
           message: `watchOrders not supported by ${exchange.id}`,
@@ -139,12 +139,21 @@ async function watchOrdersLoop(ws, exchange, symbol, signal) {
       if (signal.aborted) return;
       if (ws.readyState !== 1) return;
 
+      const msg = err.message || '';
+      const notSupported = msg.includes('not supported') || err.constructor?.name === 'NotSupported';
+
       ws.send(JSON.stringify({
-        event: 'error',
-        message: `watchOrders error for ${symbol}: ${err.message}`,
+        event: notSupported ? 'unsupported' : 'error',
+        message: `watchOrders ${notSupported ? 'not supported' : 'error'} for ${symbol}: ${msg}`,
       }));
 
-      // Brief pause before retry to avoid tight loop on persistent errors
+      // Permanent errors — close connection with 4000 (unsupported) code
+      if (notSupported) {
+        ws.close(4000, 'watchOrders not supported');
+        return;
+      }
+
+      // Transient errors — pause before retry
       await new Promise((r) => setTimeout(r, 1000));
     }
   }

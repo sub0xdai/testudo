@@ -939,6 +939,11 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "WS_STATUS") {
+    // Auto-reconnect if disconnected when popup queries status
+    if (wsState === "disconnected" && !wsReconnectTimer) {
+      wsReconnectDelay = WS_BASE_RECONNECT_DELAY;
+      connectWebSocket();
+    }
     return Promise.resolve({ state: wsState });
   }
 
