@@ -16,4 +16,11 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #2693 | 12:46 PM | 🔵 | Extension Registration Delegation and Token Architecture | ~785 |
+
+### Mar 6, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #2981 | 2:23 PM | 🟣 | Active orders component displays 124-line positions list with WebSocket updates and cancel actions | ~775 |
+| #2977 | 2:21 PM | 🟣 | Main popup view implements 389-line MainView.tsx with balance panel, risk gauge, and four-tab interface | ~382 |
 </claude-mem-context>

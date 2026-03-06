@@ -20,4 +20,13 @@
 |----|------|---|-------|------|
 | #2693 | 12:46 PM | 🔵 | Extension Registration Delegation and Token Architecture | ~785 |
 | #2689 | 12:44 PM | 🔵 | Browser Extension Configuration and Utilities | ~739 |
+
+### Mar 6, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #2976 | 2:20 PM | 🟣 | Content script implements Alt+X hotkey with 167-line content.ts handling scraping, balance, and execution | ~988 |
+| #2973 | 2:19 PM | 🟣 | Centralized 215-line schemas.ts implements comprehensive Zod validation for 21 message types and 30+ schemas | ~1145 |
+| #2972 | 2:18 PM | 🔵 | Modal system uses Shadow DOM with 223-line modal.tsx for isolated trade confirmation UI | ~405 |
+| #2971 | " | 🔵 | Extension service worker implements 1053-line background.ts with comprehensive auth, WebSocket, and exchange management | ~1155 |
 </claude-mem-context>

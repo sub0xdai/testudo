@@ -1,80 +1,52 @@
-# CLAUDE.md
+# Testudo — Project Router
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Initial Action
+Before any implementation: re-read the task plan and the relevant rule file below.
 
 ## Project Structure
+- **testudo-exchange/** — Rust backend (Actix-web, Tokio, PostgreSQL, 8 crates)
+- **testudo-extension/** — Browser extension (Solid.js, Manifest V3, esbuild)
+- **testudo-ccxt/** — CCXT sidecar (Node.js, Express, port 3100)
+- **testudo-web/** — Landing site + auth (React 18, Vite, Tailwind)
+- **testudo-ops/** — Kubernetes infrastructure (GKE, ArgoCD)
 
-This is a multi-component cryptocurrency exchange project with three main components:
+## Routing
 
-- **testudo-exchange/**: Rust backend - High-performance matching engine and API server
-- **testudo-web/**: TypeScript/React frontend - Landing site and account management (Vite + Tailwind)
-- **testudo-ops/**: Kubernetes infrastructure - Production deployment configurations
-
-## Development Commands
-
-### Web Frontend (testudo-web/)
+### When working on Rust backend
+Read `.claude/rules/rust-backend.md` — crate map, patterns, key files.
 ```bash
-cd testudo-web
-bun install            # Install dependencies
-bun run dev            # Start Vite dev server
-bun run build          # Build with TypeScript check
-bun run preview        # Preview production build
+cd testudo-exchange && cargo clippy --all-targets && cargo test
 ```
 
-### Rust Backend (testudo-exchange/)
+### When working on browser extension
+Read `.claude/rules/extension.md` — architecture, message types, key files.
 ```bash
-cd testudo-exchange
-cargo build             # Build the project
-cargo run              # Run the exchange
-cargo test             # Run tests
-cargo fmt              # Format code
-cargo clippy           # Run linter
+cd testudo-extension && bun run build
 ```
 
-## Architecture Overview
+### When working on trading/exchange logic
+Read `.claude/rules/trading.md` — order types, sizing, CCXT endpoints, exchange quirks.
 
-### Exchange Backend (Rust)
-- **In-memory order matching engine** with price-time priority
-- **WebSocket streams** for real-time market data
-- **Redis pub/sub** for message queuing and caching
-- **PostgreSQL** for persistent storage
-- **Modular crate structure**:
-  - `engine/`: Core matching engine and order book
-  - `ws-stream/`: WebSocket handling
-  - `db-processor/`: Database operations
-  - `redis/`: Redis client utilities
-  - `router/`: HTTP API routing
-  - `common_utils/`: Shared utilities
+### When working on web frontend
+```bash
+cd testudo-web && bun run build
+```
 
-### Web Frontend (TypeScript/React)
-- **Vite** for fast development and building
-- **React 18** with TypeScript
-- **Tailwind CSS** for styling
-- Landing site with brutalist dark theme (Unbounded + Space Mono fonts)
+### When implementing a specification
+Use `/ralph-loop [spec-name]` or `/speckit.implement [spec-name]`.
+Specs live in `.specify/specs/`. Constitution: `.specify/memory/constitution.md`.
 
-### Infrastructure (Kubernetes)
-- **GKE deployment** with ArgoCD GitOps
-- **NGINX Ingress** with TLS certificates
-- **Prometheus + Grafana** monitoring
-- **Sealed Secrets** for secure credential management
+### When creating a new feature
+Use `/speckit.specify [description]` first.
 
-## Key Files to Understand
+## Verification — Always Before Commit
+```bash
+# Backend
+cd testudo-exchange && cargo clippy --all-targets && cargo test
 
-- `testudo-exchange/crates/engine/src/engine/orderbook.rs`: Core order matching logic
-- `testudo-web/src/App.tsx`: Landing site entry point
-- `testudo-ops/postgres-db/`: Database configurations
-- `.synapse.yml`: Project metadata for Synapse System integration
+# Extension
+cd testudo-extension && bun run build
 
-## Testing
-
-The Rust backend uses standard `cargo test`. The web frontend uses the testing framework configured in each package. Always run tests before committing changes to ensure the matching engine and trading interface work correctly.
-
-## Environment Setup
-
-The exchange requires:
-- **Redis** for caching and pub/sub
-- **PostgreSQL** for persistent storage
-- **Bun** for web development (faster alternative to Node.js)
-- **Rust** with recent stable toolchain
-
-See individual README files in each component directory for detailed setup instructions.
+# Web
+cd testudo-web && bun run build
+```

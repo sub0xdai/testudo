@@ -1,6 +1,6 @@
 # AGENTS.md - AI Development Guidelines
 
-> This document provides instructions for AI agents working on the Testudo project using the OpenCode Architect/Executor dual-model workflow.
+> This document provides instructions for AI agents working on the Testudo project.
 
 ---
 
@@ -24,34 +24,29 @@ Testudo is a cryptocurrency exchange platform with:
 
 ---
 
-## 🏗️ OpenCode Dual-Agent Workflow
+## Agent Workflow
 
-This project utilizes a strict Architect (Plan Mode) to Executor (Build Mode) handoff. 
-
-### 1. The Architect (Plan Mode - DeepSeek)
-When analyzing a specification or bug, the Architect must output a strict blueprint for the Executor:
-- **Scope & Safety**: Define the exact file paths to be modified. For `testudo-exchange/`, explicitly map out memory safety and zero-allocation constraints to pre-empt the Rust borrow checker.
-- **The Blueprint**: Provide a numbered, atomic sequence of file actions (e.g., Create `src/network/listener.rs`) and logic signatures.
-- **Test Definition**: Specify the exact `cargo` or `bun` commands the Executor must run to verify that specific step.
-
-### 2. The Executor (Build Mode - Codex)
-The Executor must strictly follow the Architect's blueprint without hallucinating outside scope:
-- **Implement**: Write the code as defined in the blueprint.
-- **Verify**: Run the Architect's specified terminal commands in a tight loop to fix compiler/lint errors autonomously.
-- **Complete**: Commit the verified changes and signal completion.
+### Plan → Implement → Verify
+1. **Plan**: Analyze the specification. Define exact file paths, logic signatures, and test commands.
+2. **Implement**: Write code within the planned scope.
+3. **Verify**: Run verification commands in a tight loop to fix compiler/lint errors.
+4. **Complete**: Commit verified changes and signal completion.
 
 ---
 
 ## Verification Commands
 
-The Executor MUST run these commands autonomously before marking any work complete:
+Run these commands before marking any work complete:
 
 ```bash
 # Backend
 cd testudo-exchange && cargo clippy --all-targets && cargo test
 
-# Frontend
-cd testudo-web/apps/web && bun run lint && bun run build
+# Extension
+cd testudo-extension && bun run build
+
+# Web
+cd testudo-web && bun run build
 ```
 
 ---
@@ -107,7 +102,7 @@ AI agents on this project should:
 ```text
 type: description
 
-Co-Authored-By: OpenCode Agent <bot@opencode.dev>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
