@@ -4,6 +4,7 @@ import type { TradeGroupResponse } from "../../types";
 interface PositionCardProps {
   trade: TradeGroupResponse;
   onCancel: (tradeId: string) => void;
+  cancelling?: boolean;
 }
 
 export default function PositionCard(props: PositionCardProps) {
@@ -117,12 +118,15 @@ export default function PositionCard(props: PositionCardProps) {
           </span>
         </div>
         <button
-          class="px-3 py-1 text-[9px] font-bold tracking-wider font-sans rounded-full border-signal-red text-signal-red hover:bg-signal-red hover:text-white"
+          class={`px-3 py-1 text-[9px] font-bold tracking-wider font-sans rounded-full border-signal-red ${
+            props.cancelling ? "opacity-50 cursor-wait" : "text-signal-red hover:bg-signal-red hover:text-white"
+          }`}
           onClick={() => props.onCancel(props.trade.id)}
+          disabled={props.cancelling}
           data-testid="cancel-order"
           title="Cancel trade"
         >
-          CANCEL
+          {props.cancelling ? "..." : "CANCEL"}
         </button>
       </div>
     </div>

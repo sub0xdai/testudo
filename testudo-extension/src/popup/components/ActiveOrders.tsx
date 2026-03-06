@@ -12,6 +12,8 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   const [trades, setTrades] = createSignal<TradeGroupResponse[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal("");
+  const [cancelError, setCancelError] = createSignal("");
+  const [cancelling, setCancelling] = createSignal("");
 
   async function fetchTrades() {
     try {
@@ -34,9 +36,24 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   }
 
   async function handleCancel(tradeId: string) {
-    await browser.runtime.sendMessage({ type: "CANCEL_TRADE", tradeId });
-    fetchTrades();
-    props.onBalanceRefresh?.();
+    setCancelError("");
+    setCancelling(tradeId);
+    try {
+      const response = await browser.runtime.sendMessage({ type: "CANCEL_TRADE", tradeId }) as {
+        success: boolean;
+        error?: string;
+      };
+      if (response.success) {
+        fetchTrades();
+        props.onBalanceRefresh?.();
+      } else {
+        setCancelError(response.error || "Cancel failed");
+      }
+    } catch {
+      setCancelError("Failed to send cancel request");
+    } finally {
+      setCancelling("");
+    }
   }
 
   function handleMessage(message: unknown) {
@@ -93,6 +110,10 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <p class="text-[13px] text-signal-red font-sans py-2" data-testid="orders-error">{error()}</p>
       </Show>
 
+      <Show when={cancelError()}>
+        <p class="text-[13px] text-signal-red font-sans py-2" data-testid="cancel-error">{cancelError()}</p>
+      </Show>
+
       <Show when={!loading() && !error() && activeTrades().length === 0}>
         <div class="flex flex-col items-center justify-center py-12" data-testid="empty-positions">
           <div class="w-12 h-12 rounded-2xl bg-bg-panel border border-border-subtle flex items-center justify-center mb-4">
@@ -114,6 +135,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
             <PositionCard
               trade={trade}
               onCancel={handleCancel}
+              cancelling={cancelling() === trade.id}
             />
           )}
         </For>
