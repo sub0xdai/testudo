@@ -368,7 +368,8 @@ async function executeTrade(payload: RuntimeTradePayload, retried = false): Prom
           return executeTrade(payload, true);
         }
       }
-      return { success: false, error: (json.success && (json.data.error || json.data.message)) || `HTTP ${response.status}` };
+      const errorMsg = json.success ? (json.data.error || json.data.message) : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
     }
 
     const raw = await response.json().catch(() => ({}));
@@ -447,7 +448,8 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
     if (!response.ok) {
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
-      return { success: false, error: (json.success && json.data.error) || `HTTP ${response.status}` };
+      const errorMsg = json.success ? json.data.error : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
     }
 
     const raw = await response.json().catch(() => ({}));
@@ -573,20 +575,22 @@ async function addExchangeAccount(payload: AddExchangeAccountPayload, retried = 
       headers,
       body: JSON.stringify(payload),
     });
-    const raw = await response.json().catch(() => ({}));
-    const json = AddExchangeAccountResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed add account response" };
-    }
-
     if (!response.ok) {
       if (response.status === 401 && tokens && !retried) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return addExchangeAccount(payload, true);
       }
-      return { success: false, error: json.data.error || `HTTP ${response.status}` };
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      const errorMsg = json.success ? json.data.error : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
     }
 
+    const raw = await response.json().catch(() => ({}));
+    const json = AddExchangeAccountResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed add account response" };
+    }
     return { success: true, data: json.data.data };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
@@ -615,7 +619,8 @@ async function deleteExchangeAccount(accountId: string, retried = false): Promis
       }
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
-      return { success: false, error: (json.success && json.data.error) || `HTTP ${response.status}` };
+      const errorMsg = json.success ? json.data.error : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
     }
 
     return { success: true };
@@ -695,7 +700,8 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
       }
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
-      return { success: false, error: (json.success && (json.data.message || json.data.error)) || `HTTP ${response.status}` };
+      const errorMsg = json.success ? (json.data.message || json.data.error) : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
     }
 
     const raw = await response.json().catch(() => ({}));
