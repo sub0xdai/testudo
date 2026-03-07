@@ -522,6 +522,33 @@ async function register(email: string, password: string): Promise<{ success: boo
   }
 }
 
+// --- Password Reset (AUD-08 FR-5) ---
+
+async function forgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
+  const settings = await getSettings();
+  try {
+    const response = await fetch(`${settings.backendUrl}/api/v1/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      if (!json.success) {
+        return { success: false, error: `HTTP ${response.status}` };
+      }
+      return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Request failed";
+    return { success: false, error: msg };
+  }
+}
+
 // --- Exchange Account Management (EXT-15 FR-4) ---
 
 async function listExchanges(retried = false): Promise<{ success: boolean; data?: ExchangeInfo[]; error?: string }> {
@@ -1070,6 +1097,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "SIDECAR_STATUS") {
     return Promise.resolve({ status: sidecarStatus });
+  }
+
+  if (msg.type === "FORGOT_PASSWORD") {
+    return forgotPassword(msg.email);
   }
 });
 

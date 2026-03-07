@@ -61,7 +61,9 @@ export default function ExchangeSelector() {
 
   // Refresh when accounts change (add/delete in settings)
   function handleStorageChange(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) {
-    if (changes.activeExchangeId) {
+    if (changes.exchangeAccounts) {
+      fetchData();             // Re-fetch full list on account add/delete
+    } else if (changes.activeExchangeId) {
       setActiveId((changes.activeExchangeId.newValue as string) || null);
     }
   }

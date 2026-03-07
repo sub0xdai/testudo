@@ -56,10 +56,16 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
     }
   }
 
+  let fetchTradesTimer: ReturnType<typeof setTimeout> | null = null;
+
   function handleMessage(message: unknown) {
     const msg = message as { type: string };
     if (msg.type === "WS_ORDER_UPDATE") {
-      fetchTrades();
+      if (fetchTradesTimer) clearTimeout(fetchTradesTimer);
+      fetchTradesTimer = setTimeout(() => {
+        fetchTradesTimer = null;
+        fetchTrades();
+      }, 250);
     }
   }
 
@@ -70,6 +76,10 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
 
   onCleanup(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
+    if (fetchTradesTimer) {
+      clearTimeout(fetchTradesTimer);
+      fetchTradesTimer = null;
+    }
   });
 
   const activeTrades = () => trades().filter((t) => t.status === "Active" || t.status === "Pending");

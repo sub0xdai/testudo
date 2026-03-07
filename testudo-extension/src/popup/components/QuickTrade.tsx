@@ -113,6 +113,7 @@ export default function QuickTrade() {
     } catch (err) {
       setStatus({ type: "error", msg: err instanceof Error ? err.message : "Failed to send" });
     } finally {
+      enterCount = 0;          // Always reset safety guard
       setSubmitting(false);
     }
   }

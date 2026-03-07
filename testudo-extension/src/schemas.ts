@@ -211,4 +211,5 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("SET_ACTIVE_EXCHANGE"), exchangeId: z.string().nullable() }),
   z.object({ type: z.literal("SIDECAR_STATUS") }),
   z.object({ type: z.literal("TOKEN_SYNCED_FROM_WEB") }),
+  z.object({ type: z.literal("FORGOT_PASSWORD"), email: z.string().email() }),
 ]);

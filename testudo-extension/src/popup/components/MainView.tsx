@@ -95,6 +95,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   // Re-fetch balance when active exchange changes
   function handleStorageChange(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) {
     if (changes.activeExchangeId) {
+      setBalance(null);        // Clear stale balance before fetching
       setBalanceLoading(true);
       fetchBalance();
     }
