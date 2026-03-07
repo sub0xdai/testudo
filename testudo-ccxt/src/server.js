@@ -15,6 +15,7 @@ const {
   handleOpenOrders,
 } = require('./handlers');
 const { handleOrdersConnection } = require('./ws-orders');
+const { register, sidecarRequestsTotal, sidecarLatencySeconds, sidecarPoolSize } = require('./metrics');
 
 const PORT = parseInt(process.env.CCXT_PORT, 10) || 3100;
 const HOST = '127.0.0.1';
@@ -23,12 +24,18 @@ const app = express();
 
 app.use(express.json());
 
-// Request logging middleware - logs method, path, status. NEVER logs body.
+// Request logging + metrics middleware. NEVER logs body.
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
     console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+    // AUD-05 FR-6: Record request metrics
+    if (req.path !== '/metrics' && req.path !== '/health') {
+      const status = res.statusCode < 400 ? 'ok' : 'error';
+      sidecarRequestsTotal.labels(req.path, status).inc();
+      sidecarLatencySeconds.labels(req.path).observe(duration / 1000);
+    }
   });
   next();
 });
@@ -36,11 +43,19 @@ app.use((req, res, next) => {
 // --- Routes ---
 
 app.get('/health', (_req, res) => {
+  sidecarPoolSize.set(pool.size());
   res.json({
     ok: true,
     poolSize: pool.size(),
     uptime: process.uptime(),
   });
+});
+
+// AUD-05 FR-6: Prometheus metrics endpoint
+app.get('/metrics', async (_req, res) => {
+  sidecarPoolSize.set(pool.size());
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 app.get('/exchanges', (_req, res) => {
