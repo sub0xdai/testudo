@@ -6,12 +6,14 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
   const auth = useAuth();
   const [backendUrl, setBackendUrl] = createSignal("http://localhost:8080");
   const [wsUrl, setWsUrl] = createSignal("ws://localhost:4000");
+  const [webUrl, setWebUrl] = createSignal("http://localhost:3001");
   const [saved, setSaved] = createSignal("");
 
   onMount(async () => {
-    const stored = await browser.storage.local.get(["backendUrl", "wsUrl"]);
+    const stored = await browser.storage.local.get(["backendUrl", "wsUrl", "webUrl"]);
     if (stored.backendUrl) setBackendUrl(stored.backendUrl as string);
     if (stored.wsUrl) setWsUrl(stored.wsUrl as string);
+    if (stored.webUrl) setWebUrl(stored.webUrl as string);
   });
 
   function showSaved(field: string) {
@@ -93,6 +95,28 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
           </Show>
         </div>
 
+        {/* Web App URL */}
+        <div>
+          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
+            Web App URL
+          </label>
+          <input
+            type="url"
+            value={webUrl()}
+            onChange={async (e) => {
+              const value = (e.target as HTMLInputElement).value.trim();
+              setWebUrl(value);
+              await browser.storage.local.set({ webUrl: value });
+              showSaved("web");
+            }}
+            placeholder="http://localhost:3001"
+            data-testid="web-url"
+          />
+          <Show when={saved() === "web"}>
+            <span class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
+          </Show>
+        </div>
+
         {/* Account Section */}
         <div class="pt-4 border-t border-border-subtle">
           <label class="block text-[11px] text-text-secondary font-sans font-medium mb-3">
@@ -137,7 +161,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             <button
               class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
               onClick={() => {
-                const base = backendUrl().replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+                const base = webUrl().replace(/\/$/, '');
                 window.open(`${base}/account`, '_blank');
               }}
               data-testid="manage-accounts-btn"
