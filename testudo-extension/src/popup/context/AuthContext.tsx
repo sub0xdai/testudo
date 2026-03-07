@@ -17,13 +17,19 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
   const [email, setEmail] = createSignal("");
 
   async function checkAuth() {
-    const response = await browser.runtime.sendMessage({ type: "AUTH_STATUS" }) as {
-      authenticated: boolean;
-      email?: string;
-    };
-    setAuthenticated(response.authenticated);
-    if (response.email) setEmail(response.email);
-    props.onReady(response.authenticated);
+    try {
+      const response = await browser.runtime.sendMessage({ type: "AUTH_STATUS" }) as {
+        authenticated: boolean;
+        email?: string;
+      };
+      setAuthenticated(response.authenticated);
+      if (response.email) setEmail(response.email);
+      props.onReady(response.authenticated);
+    } catch (err) {
+      console.error("Auth check failed:", err);
+      setAuthenticated(false);
+      props.onReady(false);
+    }
   }
 
   async function login(loginEmail: string, password: string): Promise<{ success: boolean; error?: string }> {

@@ -31,6 +31,11 @@ import {
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
+// AUD-07 FR-8: Global error logging for unhandled promise rejections
+self.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+  console.error("Unhandled promise rejection:", event.reason);
+});
+
 type RuntimeTradePayload = Omit<TradePayload, "management"> & {
   management: Omit<TradePayload["management"], "leverage"> & { leverage?: number };
 };
@@ -205,9 +210,12 @@ async function login(email: string, password: string): Promise<{ success: boolea
       return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
     }
 
-    const json = LoginResponseSchema.parse(await response.json());
-    await storeTokens(json.tokens);
-    scheduleTokenRefresh(json.tokens.expires_in);
+    const parsed = LoginResponseSchema.safeParse(await response.json());
+    if (!parsed.success) {
+      return { success: false, error: "Unexpected server response" };
+    }
+    await storeTokens(parsed.data.tokens);
+    scheduleTokenRefresh(parsed.data.tokens.expires_in);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Login failed";
@@ -245,9 +253,10 @@ async function doRefresh(): Promise<boolean> {
       return false;
     }
 
-    const json = RefreshResponseSchema.parse(await response.json());
-    await storeTokens(json.tokens);
-    scheduleTokenRefresh(json.tokens.expires_in);
+    const parsed = RefreshResponseSchema.safeParse(await response.json());
+    if (!parsed.success) return false;
+    await storeTokens(parsed.data.tokens);
+    scheduleTokenRefresh(parsed.data.tokens.expires_in);
     return true;
   } catch {
     return false;
@@ -322,7 +331,15 @@ async function ensureActiveExchange(): Promise<string | null> {
 
 // --- Trade Execution (EXT-19: live only, JWT required) ---
 
+let tradeInFlight = false;
+
 async function executeTrade(payload: RuntimeTradePayload, retried = false): Promise<BackendResponse> {
+  if (tradeInFlight && !retried) {
+    return { success: false, error: "Trade already in progress" };
+  }
+  if (!retried) tradeInFlight = true;
+
+  try {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades`;
 
@@ -383,6 +400,9 @@ async function executeTrade(payload: RuntimeTradePayload, retried = false): Prom
     const msg = err instanceof Error ? err.message : "Network error";
     return { success: false, error: msg };
   }
+  } finally {
+    if (!retried) tradeInFlight = false;
+  }
 }
 
 // --- Trade Listing (Active Orders) ---
@@ -430,7 +450,7 @@ async function listTrades(retried = false): Promise<{ success: boolean; data?: T
   }
 }
 
-async function cancelTrade(tradeId: string): Promise<BackendResponse> {
+async function cancelTrade(tradeId: string, retried = false): Promise<BackendResponse> {
   const settings = await getSettings();
   const url = `${settings.backendUrl}/api/v1/trades/${tradeId}`;
 
@@ -446,6 +466,10 @@ async function cancelTrade(tradeId: string): Promise<BackendResponse> {
   try {
     const response = await fetch(url, { method: "DELETE", headers });
     if (!response.ok) {
+      if (response.status === 401 && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return cancelTrade(tradeId, true);
+      }
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
       const errorMsg = json.success ? json.data.error : undefined;
@@ -485,9 +509,12 @@ async function register(email: string, password: string): Promise<{ success: boo
       return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
     }
 
-    const json = LoginResponseSchema.parse(await response.json());
-    await storeTokens(json.tokens);
-    scheduleTokenRefresh(json.tokens.expires_in);
+    const parsed = LoginResponseSchema.safeParse(await response.json());
+    if (!parsed.success) {
+      return { success: false, error: "Unexpected server response" };
+    }
+    await storeTokens(parsed.data.tokens);
+    scheduleTokenRefresh(parsed.data.tokens.expires_in);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Registration failed";
@@ -759,11 +786,23 @@ async function checkSidecarHealth(): Promise<void> {
 }
 
 let sidecarHealthTimer: ReturnType<typeof setInterval> | null = null;
+let sidecarHealthInitialTimer: ReturnType<typeof setTimeout> | null = null;
 
 function startSidecarHealthPolling(): void {
   if (sidecarHealthTimer) return;
-  setTimeout(checkSidecarHealth, 5000);
+  sidecarHealthInitialTimer = setTimeout(checkSidecarHealth, 5000);
   sidecarHealthTimer = setInterval(checkSidecarHealth, 30000);
+}
+
+function stopSidecarHealthPolling(): void {
+  if (sidecarHealthInitialTimer) {
+    clearTimeout(sidecarHealthInitialTimer);
+    sidecarHealthInitialTimer = null;
+  }
+  if (sidecarHealthTimer) {
+    clearInterval(sidecarHealthTimer);
+    sidecarHealthTimer = null;
+  }
 }
 
 // --- WebSocket Connection (EXT-06) ---
@@ -926,13 +965,19 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "LOGIN") {
-    return login(msg.email, msg.password).then((result) => {
-      if (result.success) ensureActiveExchange();
+    return login(msg.email, msg.password).then(async (result) => {
+      if (result.success) await ensureActiveExchange();
       return result;
     });
   }
 
   if (msg.type === "LOGOUT") {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    disconnectWebSocket();
+    stopSidecarHealthPolling();
     return clearTokens().then(() => ({ success: true }));
   }
 
@@ -972,8 +1017,8 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   }
 
   if (msg.type === "REGISTER") {
-    return register(msg.email, msg.password).then((result) => {
-      if (result.success) ensureActiveExchange();
+    return register(msg.email, msg.password).then(async (result) => {
+      if (result.success) await ensureActiveExchange();
       return result;
     });
   }
