@@ -86,6 +86,8 @@ export interface TradeGroupResponse {
   status: string;
   break_even_enabled: boolean;
   break_even_triggered: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ScraperHealthRecord {

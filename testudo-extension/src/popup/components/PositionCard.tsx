@@ -7,6 +7,17 @@ interface PositionCardProps {
   cancelling?: boolean;
 }
 
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 export default function PositionCard(props: PositionCardProps) {
   const isLong = () => {
     const entry = parseFloat(props.trade.entry_price || "0");
@@ -62,6 +73,11 @@ export default function PositionCard(props: PositionCardProps) {
           {props.trade.status}
         </span>
       </div>
+
+      {/* Timestamp */}
+      <Show when={props.trade.created_at}>
+        <div class="text-[9px] text-text-dim font-sans mb-1.5">{formatRelativeTime(props.trade.created_at)}</div>
+      </Show>
 
       {/* Row 2: Entry + SL */}
       <div class="flex gap-6 mb-1.5">
