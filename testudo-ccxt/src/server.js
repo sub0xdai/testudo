@@ -10,6 +10,7 @@ const {
   handleOrder,
   handleEditOrder,
   handleCancelOrder,
+  handleCancelAllOrders,
   handlePosition,
   handleLeverage,
   handleOpenOrders,
@@ -69,6 +70,7 @@ app.post('/order/cancel', handleCancelOrder);
 app.post('/position', handlePosition);
 app.post('/leverage', handleLeverage);
 app.post('/orders/open', handleOpenOrders);
+app.post('/orders/cancel-all', handleCancelAllOrders);
 
 // Start eviction timer
 pool.startEviction();

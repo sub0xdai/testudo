@@ -246,11 +246,30 @@ async function handleOpenOrders(req, res) {
   }
 }
 
+/**
+ * POST /orders/cancel-all
+ * Defense-in-depth: cancel ALL open orders for a symbol in one API call.
+ */
+async function handleCancelAllOrders(req, res) {
+  try {
+    const { exchange, params } = getExchangeAndParams(req.body);
+    const { symbol } = params;
+
+    const result = await exchange.cancelAllOrders(symbol || undefined);
+
+    res.json({ success: true, cancelled: Array.isArray(result) ? result.length : 0 });
+  } catch (err) {
+    const mapped = mapError(err);
+    res.status(mapped.status).json(mapped.body);
+  }
+}
+
 module.exports = {
   handleBalance,
   handleOrder,
   handleEditOrder,
   handleCancelOrder,
+  handleCancelAllOrders,
   handlePosition,
   handleLeverage,
   handleOpenOrders,
