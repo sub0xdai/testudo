@@ -1,5 +1,7 @@
 # 018: Order Reconciliation Service
 
+
+**Status:** Complete
 ## Problem
 
 Testudo implements software OCO — when SL fills, the fill detector cancels the TP (and vice versa). This relies on a fragile WebSocket chain:

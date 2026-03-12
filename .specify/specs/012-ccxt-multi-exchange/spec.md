@@ -1,6 +1,6 @@
 # 012: CCXT Multi-Exchange Support
 
-**Status:** Draft
+**Status:** Complete
 **Date:** 2026-02-22
 **Depends on:** EXT-10 (Binance Futures execution), EXT-09 (backend trade manager)
 **Supersedes:** EXT-10 (BinanceFuturesExecutor replaced by CCXT sidecar)

@@ -2,7 +2,7 @@
 
 **Spec ID:** 016-ghost-position-cleanup
 **Date:** 2026-03-06
-**Status:** Draft
+**Status:** Complete
 
 ---
 
