@@ -1,0 +1,39 @@
+# Testudo Platform Audit Critique (Updated)
+Date: March 7, 2026
+Status: REPORT VERIFIED (IDENTIFIED RISKS ARE REAL, BUT SEVERAL P0s NOW FIXED)
+
+I have performed a deep-dive critique of the "Testudo Platform Audit — Race Conditions, Memory Leaks, Launch Readiness" report. 
+
+## 1. Executive Summary of Accuracy
+The audit report is a high-quality technical assessment. Its identification of race conditions, memory leaks, and architectural gaps is 100% accurate in terms of the *vulnerabilities* it found. However, as of Mar 7, 2026, 1:30 PM, the report is "stale" on several critical P0 blockers which have been addressed in the latest commits.
+
+## 2. Resolved P0 Blockers (Audit Inaccuracies vs. Current HEAD)
+The following items listed as "Missing" or "Unimplemented" in the audit (Section 4) are now FIXED:
+
+- **RC-1, RC-2, RC-3 (Trade Safety):** FIXED in commit `490267e` ("feat: AUD-01 trade execution safety"). 
+    - Verified: `trade_management.rs` now uses a per-user `Semaphore(1)` to prevent balance TOCTOU.
+    - Verified: `create_trade` now implements explicit rollback of entry orders if SL/TP placement fails.
+    - Verified: `update_stop_loss` and `update_entry_price` now re-validate group status under a write lock.
+- **EXT-25 (Live Fill Subscription Reliability):** IMPLEMENTED in commit `84ebd8f` ("chore: apply global formatting and add ws subscription manager").
+    - Verified: `WsSubscriptionManager` exists and handles per-account WebSocket order streaming.
+    - Verified: Rehydration service now correctly resubscribes to live symbols on startup.
+- **Spec 016 (Ghost Positions):** FIXED in commit `9483ce4` ("feat: implement 016 ghost position cleanup").
+    - Verified: Symbol normalization bug in rehydration (`BTC_USDT` vs `BTC/USDT:USDT`) is resolved.
+    - Verified: Price feed now polls live-only symbols.
+
+## 3. Still Valid (Unresolved) Blockers
+The following findings remain accurate and represent the current P0/P1 technical debt:
+
+- **Security (CORS):** STILL ACCURATE. `main.rs` still uses `Cors::permissive()`. This remains a P0 launch blocker.
+- **Infrastructure (Probes):** STILL ACCURATE. `testudo-ops/backend/deployment.yml` still lacks liveness/readiness probes.
+- **Memory Leaks (ML-1, ML-2, ML-3):** STILL ACCURATE. No `prune_terminal()` or garbage collection logic has been implemented for the Shadow Engine's in-memory HashMaps. Unbounded growth risk remains.
+- **Extension Bugs:** MOSTLY STILL ACCURATE. Critical async races (EX-4) and unhandled rejections (EX-21) are still present in the TypeScript code.
+- **CI/CD Pipeline:** STILL ACCURATE. No automated GitHub Actions or deployment scripts found in root.
+
+## 4. Discrepancies in Metrics
+- **Test Count:** The report claims 752 tests. The actual count is now **820** (743 Rust + 77 Extension), reflecting the 68 tests added during the AUD-01 and Spec 016 implementations.
+
+## Conclusion
+The audit report successfully identified the most critical paths to failure. While the "Phase 1: Safety-Critical" work is nearly 75% complete due to recent activity, the "NOT READY" verdict stands. The focus should now shift to the unresolved Security, Memory Management, and Infrastructure hardening items.
+
+Critique compiled by: Gemini CLI
