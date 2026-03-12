@@ -167,6 +167,32 @@ export const ExchangeBalanceApiResponseSchema = z.object({
   fetched_at: z.string(),
 });
 
+export const ExchangePositionSchema = z.object({
+  symbol: z.string(),
+  side: z.string(),
+  contracts: z.string(),
+  entry_price: z.string(),
+  unrealized_pnl: z.string(),
+});
+
+export const ExchangeOpenOrderSchema = z.object({
+  id: z.string(),
+  symbol: z.string(),
+  side: z.string(),
+  type: z.string(),
+  price: z.string().nullable().optional(),
+  stop_price: z.string().nullable().optional(),
+  amount: z.string(),
+});
+
+export const ExchangePositionsApiResponseSchema = z.object({
+  account_id: z.string(),
+  exchange_name: z.string(),
+  positions: z.array(ExchangePositionSchema),
+  open_orders: z.array(ExchangeOpenOrderSchema),
+  fetched_at: z.string(),
+});
+
 export const SidecarHealthResponseSchema = z.object({
   status: z.string().optional(),
 });
@@ -212,4 +238,5 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("SIDECAR_STATUS") }),
   z.object({ type: z.literal("TOKEN_SYNCED_FROM_WEB") }),
   z.object({ type: z.literal("FORGOT_PASSWORD"), email: z.string().email() }),
+  z.object({ type: z.literal("EXCHANGE_POSITIONS") }),
 ]);

@@ -4,6 +4,7 @@ interface TabBarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   positionCount: number;
+  pendingCount: number;
 }
 
 export default function TabBar(props: TabBarProps) {
@@ -29,10 +30,18 @@ export default function TabBar(props: TabBarProps) {
           {tab.label}
           {tab.id === "positions" && props.positionCount > 0 && (
             <span
-              class="ml-1.5 text-[11px] font-mono text-accent-steel bg-accent-steel/10 px-1.5 py-0.5 rounded-full"
+              class="ml-1.5 text-[11px] font-mono text-signal-green bg-signal-green/10 px-1.5 py-0.5 rounded-full"
               data-testid="tab-positions-count"
             >
               {props.positionCount}
+            </span>
+          )}
+          {tab.id === "positions" && props.pendingCount > 0 && (
+            <span
+              class="ml-1 text-[11px] font-mono text-signal-orange bg-signal-orange/10 px-1.5 py-0.5 rounded-full"
+              data-testid="tab-pending-count"
+            >
+              {props.pendingCount}
             </span>
           )}
         </button>

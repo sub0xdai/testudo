@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult } from "./types";
+import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult, ExchangePositionsResponse } from "./types";
 import {
   DEFAULT_SETTINGS, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
@@ -12,6 +12,7 @@ import {
   ErrorResponseSchema,
   ExchangeAccountsResponseSchema,
   ExchangeBalanceApiResponseSchema,
+  ExchangePositionsApiResponseSchema,
   ListExchangesResponseSchema,
   LoginResponseSchema,
   JwtEmailPayloadSchema,
@@ -783,6 +784,57 @@ async function getLiveBalance(retried = false): Promise<{ success: boolean; data
   }
 }
 
+// --- Exchange Positions (live fallback) ---
+
+async function fetchExchangePositions(retried = false): Promise<{ success: boolean; data?: ExchangePositionsResponse; error?: string }> {
+  let activeId = await getActiveExchangeId();
+  if (!activeId) {
+    activeId = await ensureActiveExchange();
+    if (!activeId) {
+      return { success: false, error: "No active exchange selected" };
+    }
+  }
+
+  const settings = await getSettings();
+  const tokens = await getTokens();
+  if (!tokens || tokens.expires_in <= 0) {
+    return { success: false, error: "Authentication required" };
+  }
+
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${tokens.access_token}`,
+  };
+
+  try {
+    const response = await fetch(
+      `${settings.backendUrl}/api/v1/exchanges/accounts/${activeId}/positions`,
+      { headers, signal: AbortSignal.timeout(15000) },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401 && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return fetchExchangePositions(true);
+      }
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      const errorMsg = json.success ? (json.data.message || json.data.error) : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
+    }
+
+    const raw = await response.json().catch(() => ({}));
+    const json = ExchangePositionsApiResponseSchema.safeParse(raw);
+    if (!json.success) {
+      return { success: false, error: "Malformed positions response" };
+    }
+
+    return { success: true, data: json.data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
 // --- Sidecar Health Polling (EXT-16 FR-2) ---
 
 export type SidecarStatus = "unknown" | "healthy" | "unreachable";
@@ -1097,6 +1149,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "SIDECAR_STATUS") {
     return Promise.resolve({ status: sidecarStatus });
+  }
+
+  if (msg.type === "EXCHANGE_POSITIONS") {
+    return fetchExchangePositions();
   }
 
   if (msg.type === "FORGOT_PASSWORD") {

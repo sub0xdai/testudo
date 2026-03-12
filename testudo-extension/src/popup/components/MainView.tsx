@@ -30,6 +30,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   const [noExchange, setNoExchange] = createSignal(false);
   const [balanceLoading, setBalanceLoading] = createSignal(true);
   const [positionCount, setPositionCount] = createSignal(0);
+  const [pendingCount, setPendingCount] = createSignal(0);
   const [scraperHealth, setScraperHealth] = createSignal<ScraperHealthRecord[]>(
     [],
   );
@@ -81,7 +82,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         || status === "stopped_out"
         || status === "took_profit"
         || status === "entry_filled"
-        || status === "closed";
+        || status === "closed"
+        || status === "cancelled";
       if (shouldRefresh) {
         if (balanceRefreshTimer) clearTimeout(balanceRefreshTimer);
         balanceRefreshTimer = setTimeout(() => {
@@ -208,6 +210,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         activeTab={activeTab()}
         onTabChange={setActiveTab}
         positionCount={positionCount()}
+        pendingCount={pendingCount()}
       />
 
       {/* Content */}
@@ -222,7 +225,10 @@ export default function MainView(props: { onOpenSettings: () => void }) {
 
         <Show when={activeTab() === "positions"}>
           <ActiveOrders
-            onCountChange={setPositionCount}
+            onCountChange={(active, pending) => {
+              setPositionCount(active);
+              setPendingCount(pending);
+            }}
             onBalanceRefresh={fetchBalance}
           />
         </Show>

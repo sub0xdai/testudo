@@ -149,6 +149,34 @@ export interface LiveBalanceResponse {
   balances: BalanceResponse[];
 }
 
+// --- Exchange Positions Types ---
+
+export interface ExchangePosition {
+  symbol: string;
+  side: string;
+  contracts: string;
+  entry_price: string;
+  unrealized_pnl: string;
+}
+
+export interface ExchangeOpenOrder {
+  id: string;
+  symbol: string;
+  side: string;
+  type: string;
+  price: string | null;
+  stop_price: string | null;
+  amount: string;
+}
+
+export interface ExchangePositionsResponse {
+  account_id: string;
+  exchange_name: string;
+  positions: ExchangePosition[];
+  open_orders: ExchangeOpenOrder[];
+  fetched_at: string;
+}
+
 export type WsState = "disconnected" | "connecting" | "connected";
 
 export type ToastType = "success" | "error" | "info";
