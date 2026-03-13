@@ -48,9 +48,9 @@ export default function TradeManagement() {
   }
 
   function riskColor(value: number): string {
-    if (value <= 2) return "#34D399";
-    if (value <= 5) return "#FBBF24";
-    return "#F87171";
+    if (value <= 2) return "var(--color-signal-green)";
+    if (value <= 5) return "var(--color-signal-orange)";
+    return "var(--color-signal-red)";
   }
 
   return (
@@ -58,7 +58,7 @@ export default function TradeManagement() {
       {/* Risk % Slider — traffic light: green ≤2, orange ≤5, red >5 */}
       <div data-testid="risk-slider">
         <label class="flex items-center justify-between mb-3">
-          <span class="text-[14px] text-zinc-200 font-sans font-semibold">Risk Per Trade</span>
+          <span class="text-[14px] text-text-primary font-sans font-semibold">Risk Per Trade</span>
           <div class="value-input-box" style={{ "border-color": riskColor(preset().risk_percent) + "40" }}>
             <input
               type="number"
@@ -84,11 +84,11 @@ export default function TradeManagement() {
           style={riskSliderStyle(preset().risk_percent)}
           class="w-full"
         />
-        <div class="flex justify-between text-[12px] text-zinc-500 font-sans mt-1.5">
+        <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
           <span>0.1%</span>
-          <span class="text-emerald-400">safe</span>
-          <span class="text-amber-400">caution</span>
-          <span class="text-red-400">danger</span>
+          <span class="text-signal-green">safe</span>
+          <span class="text-signal-orange">caution</span>
+          <span class="text-signal-red">danger</span>
           <span>10%</span>
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function TradeManagement() {
       {/* Leverage Slider — 1x to 125x (Binance Futures max) */}
       <div data-testid="leverage-slider">
         <label class="flex items-center justify-between mb-3">
-          <span class="text-[14px] text-zinc-200 font-sans font-semibold">Leverage</span>
+          <span class="text-[14px] text-text-primary font-sans font-semibold">Leverage</span>
           <div class="value-input-box">
             <input
               type="number"
@@ -123,7 +123,7 @@ export default function TradeManagement() {
           style={sliderStyle(preset().leverage, 1, 125)}
           class="w-full"
         />
-        <div class="flex justify-between text-[12px] text-zinc-500 font-sans mt-1.5">
+        <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
           <span>1x</span>
           <span>125x</span>
         </div>
@@ -134,7 +134,7 @@ export default function TradeManagement() {
       {/* Break-even % Slider */}
       <div data-testid="be-slider">
         <label class="flex items-center justify-between mb-3">
-          <span class="text-[14px] text-zinc-200 font-sans font-semibold">Break-Even Trigger</span>
+          <span class="text-[14px] text-text-primary font-sans font-semibold">Break-Even Trigger</span>
           <div class="value-input-box">
             <input
               type="number"
@@ -159,7 +159,7 @@ export default function TradeManagement() {
           style={sliderStyle(preset().break_even_at, 10, 100)}
           class="w-full"
         />
-        <div class="flex justify-between text-[12px] text-zinc-500 font-sans mt-1.5">
+        <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
           <span>10%</span>
           <span>100%</span>
         </div>
@@ -175,7 +175,7 @@ export default function TradeManagement() {
         data-testid="trailing-card"
       >
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[14px] text-zinc-200 font-sans font-semibold">
+          <span class="text-[14px] text-text-primary font-sans font-semibold">
             Trailing Stop
           </span>
           <button
@@ -232,7 +232,7 @@ export default function TradeManagement() {
                 <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
               </div>
             </div>
-            <div class="flex justify-between text-[12px] text-zinc-500 font-sans mt-1.5">
+            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
               <span>5%</span>
               <span>100%</span>
             </div>
@@ -248,7 +248,7 @@ export default function TradeManagement() {
         data-testid="partial-tp-card"
       >
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[14px] text-zinc-200 font-sans font-semibold">
+          <span class="text-[14px] text-text-primary font-sans font-semibold">
             Partial Take Profit
           </span>
           <button
@@ -305,7 +305,7 @@ export default function TradeManagement() {
                 <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
               </div>
             </div>
-            <div class="flex justify-between text-[12px] text-zinc-500 font-sans mt-1.5">
+            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
               <span>10%</span>
               <span>100%</span>
             </div>

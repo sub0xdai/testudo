@@ -163,8 +163,8 @@ export default function TradeForm(props: TradeFormProps) {
         <Show when={props.activeExchange}>
           <span style={{
             display: "inline-block",
-            background: "rgba(148,163,184,0.12)",
-            color: "#94A3B8",
+            background: "color-mix(in srgb, var(--color-accent-steel) 12%, transparent)",
+            color: "var(--color-accent-steel)",
             "font-size": "10px",
             "font-weight": "700",
             "letter-spacing": "0.5px",
@@ -333,10 +333,10 @@ export default function TradeForm(props: TradeFormProps) {
               "letter-spacing": "0.6px",
               "text-transform": "uppercase",
               padding: "7px 12px",
-              border: "1px solid rgba(148,163,184,0.3)",
+              border: "1px solid color-mix(in srgb, var(--color-accent-steel) 30%, transparent)",
               "border-radius": "8px",
               background: "transparent",
-              color: "#94A3B8",
+              color: "var(--color-accent-steel)",
               cursor: "pointer",
             }}
           >Cancel</button>
@@ -350,10 +350,10 @@ export default function TradeForm(props: TradeFormProps) {
               "letter-spacing": "0.6px",
               "text-transform": "uppercase",
               padding: "7px 12px",
-              border: confirmStep() > 0 ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(239,68,68,0.45)",
+              border: confirmStep() > 0 ? "1px solid color-mix(in srgb, var(--color-signal-green) 50%, transparent)" : "1px solid color-mix(in srgb, var(--color-signal-red) 45%, transparent)",
               "border-radius": "8px",
-              background: !isValid() ? "rgba(63,63,70,0.45)" : (confirmStep() > 0 ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"),
-              color: !isValid() ? "#71717A" : (confirmStep() > 0 ? "#86EFAC" : "#FCA5A5"),
+              background: !isValid() ? "rgba(63,63,70,0.45)" : (confirmStep() > 0 ? "color-mix(in srgb, var(--color-signal-green) 20%, transparent)" : "color-mix(in srgb, var(--color-signal-red) 20%, transparent)"),
+              color: !isValid() ? "var(--color-text-dim)" : (confirmStep() > 0 ? "var(--color-signal-green)" : "var(--color-signal-red)"),
               cursor: !isValid() ? "not-allowed" : "pointer",
             }}
           >{confirmStep() > 0 ? "Confirm Now" : "Arm Confirm"}</button>

@@ -117,7 +117,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   return (
     <div class="px-5 py-4" data-testid="active-orders">
       <div class="flex items-center justify-between mb-4">
-        <span class="text-[13px] text-zinc-300 font-sans font-medium">
+        <span class="text-[13px] text-text-primary font-sans font-medium">
           Positions
         </span>
         <button
@@ -157,14 +157,14 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
           <div class="mb-3">
             <div class="flex items-center gap-2 mb-3">
               <span class="w-2 h-2 rounded-full bg-signal-blue" />
-              <span class="text-[12px] text-zinc-400 font-sans font-medium uppercase tracking-wider">
+              <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
                 From Exchange
               </span>
-              <span class="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">
+              <span class="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded">
                 {exchangeData()!.exchange_name}
               </span>
             </div>
-            <p class="text-[11px] text-zinc-500 font-sans mb-3">
+            <p class="text-[11px] text-text-dim font-sans mb-3">
               These positions exist on the exchange but aren't tracked by Testudo.
             </p>
           </div>
@@ -172,7 +172,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
           <Show when={exchangeData()!.positions.length > 0}>
             <div class="mb-4">
               <div class="flex items-center gap-2 mb-2">
-                <span class="text-[11px] text-zinc-500 font-sans font-medium uppercase tracking-wider">
+                <span class="text-[11px] text-text-dim font-sans font-medium uppercase tracking-wider">
                   Positions
                 </span>
                 <span class="text-[11px] font-mono text-signal-blue bg-signal-blue/10 px-1.5 py-0.5 rounded-full">
@@ -191,15 +191,15 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                       </div>
                       <div class="grid grid-cols-3 gap-2 text-[11px] font-mono">
                         <div>
-                          <span class="text-zinc-500">Size</span>
+                          <span class="text-text-dim">Size</span>
                           <p class="text-text-secondary">{pos.contracts}</p>
                         </div>
                         <div>
-                          <span class="text-zinc-500">Entry</span>
+                          <span class="text-text-dim">Entry</span>
                           <p class="text-text-secondary">{pos.entry_price}</p>
                         </div>
                         <div>
-                          <span class="text-zinc-500">uPnL</span>
+                          <span class="text-text-dim">uPnL</span>
                           <p class={parseFloat(pos.unrealized_pnl) >= 0 ? "text-signal-green" : "text-signal-red"}>
                             {parseFloat(pos.unrealized_pnl) >= 0 ? "+" : ""}{parseFloat(pos.unrealized_pnl).toFixed(2)}
                           </p>
@@ -215,7 +215,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
           <Show when={exchangeData()!.open_orders.length > 0}>
             <div>
               <div class="flex items-center gap-2 mb-2">
-                <span class="text-[11px] text-zinc-500 font-sans font-medium uppercase tracking-wider">
+                <span class="text-[11px] text-text-dim font-sans font-medium uppercase tracking-wider">
                   Open Orders
                 </span>
                 <span class="text-[11px] font-mono text-signal-orange bg-signal-orange/10 px-1.5 py-0.5 rounded-full">
@@ -232,25 +232,25 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                           <span class={`text-[10px] font-mono px-1.5 py-0.5 rounded ${order.side.toLowerCase() === "buy" ? "text-signal-green bg-signal-green/10" : "text-signal-red bg-signal-red/10"}`}>
                             {order.side}
                           </span>
-                          <span class="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">
+                          <span class="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded">
                             {order.type}
                           </span>
                         </div>
                       </div>
                       <div class="flex gap-4 text-[11px] font-mono">
                         <div>
-                          <span class="text-zinc-500">Amt </span>
+                          <span class="text-text-dim">Amt </span>
                           <span class="text-text-secondary">{order.amount}</span>
                         </div>
                         <Show when={order.price}>
                           <div>
-                            <span class="text-zinc-500">Price </span>
+                            <span class="text-text-dim">Price </span>
                             <span class="text-text-secondary">{order.price}</span>
                           </div>
                         </Show>
                         <Show when={order.stop_price}>
                           <div>
-                            <span class="text-zinc-500">Stop </span>
+                            <span class="text-text-dim">Stop </span>
                             <span class="text-text-secondary">{order.stop_price}</span>
                           </div>
                         </Show>
@@ -273,7 +273,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
               </svg>
             </div>
             <p class="text-[14px] font-sans font-medium text-text-secondary">No active positions</p>
-            <p class="text-[12px] text-zinc-500 font-sans mt-2 text-center leading-relaxed">
+            <p class="text-[12px] text-text-dim font-sans mt-2 text-center leading-relaxed">
               Trades placed via TradingView will<br />appear here automatically.
             </p>
           </div>
@@ -285,7 +285,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <div class="mb-4">
           <div class="flex items-center gap-2 mb-3">
             <span class="w-2 h-2 rounded-full bg-signal-green" />
-            <span class="text-[12px] text-zinc-400 font-sans font-medium uppercase tracking-wider">
+            <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
               Active
             </span>
             <span class="text-[11px] font-mono text-signal-green bg-signal-green/10 px-1.5 py-0.5 rounded-full">
@@ -311,7 +311,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <div>
           <div class="flex items-center gap-2 mb-3">
             <span class="w-2 h-2 rounded-full bg-signal-orange animate-pulse" />
-            <span class="text-[12px] text-zinc-400 font-sans font-medium uppercase tracking-wider">
+            <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
               Pending
             </span>
             <span class="text-[11px] font-mono text-signal-orange bg-signal-orange/10 px-1.5 py-0.5 rounded-full">

@@ -239,20 +239,20 @@ export default function MainView(props: { onOpenSettings: () => void }) {
             <Show
               when={!balanceLoading()}
               fallback={
-                <p class="text-[14px] text-zinc-500 font-sans">Loading...</p>
+                <p class="text-[14px] text-text-dim font-sans">Loading...</p>
               }
             >
               <Show
                 when={available() !== null}
                 fallback={
-                  <p class="text-[14px] text-zinc-500 italic font-sans">
+                  <p class="text-[14px] text-text-dim italic font-sans">
                     {noExchange() ? "Connect an exchange to view balance" : "Balance unavailable"}
                   </p>
                 }
               >
                 <div class="info-grid">
                   <div class="info-grid-cell">
-                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">
+                    <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Available
                     </span>
                     <span
@@ -263,7 +263,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">
+                    <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Locked
                     </span>
                     <span
@@ -274,7 +274,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">
+                    <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Positions
                     </span>
                     <span class="text-[15px] text-white font-mono font-bold">
@@ -282,7 +282,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">
+                    <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Exposure
                     </span>
                     <span
@@ -321,7 +321,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                 </span>
                 <div class="info-grid">
                   <div class="info-grid-cell">
-                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">
+                    <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Success Rate
                     </span>
                     <span
@@ -337,7 +337,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                     </span>
                   </div>
                   <div class="info-grid-cell">
-                    <span class="block text-[11px] text-zinc-400 font-sans font-medium mb-1">
+                    <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Last Strategy
                     </span>
                     <span class="text-[15px] font-mono font-bold text-white">
@@ -383,7 +383,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       <div class="px-5 py-2 border-t border-border-subtle flex items-center justify-between">
         <Show when={auth.email()}>
           <span
-            class="text-[11px] text-zinc-500 font-sans truncate max-w-[200px]"
+            class="text-[11px] text-text-dim font-sans truncate max-w-[200px]"
             data-testid="footer-email"
           >
             {auth.email()}

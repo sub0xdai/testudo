@@ -13,7 +13,7 @@ const WS_STATE_LABELS: Record<WsState, string> = {
 const WS_DOT_CLASSES: Record<WsState, string> = {
   disconnected: "bg-signal-red",
   connecting: "bg-signal-orange status-blink",
-  connected: "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]",
+  connected: "bg-signal-green shadow-[0_0_8px_rgba(34,197,94,0.6)]",
 };
 
 export default function StatusBar() {

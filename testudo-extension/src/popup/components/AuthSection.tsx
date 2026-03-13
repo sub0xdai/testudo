@@ -15,7 +15,6 @@ export default function AuthSection(props: {
   const [loading, setLoading] = createSignal(false);
 
   const inputStyle = {
-    "border-radius": "6px",
     border: "1px solid rgba(255,255,255,0.08)",
     transition: "border-color 200ms ease, box-shadow 200ms ease",
   };
@@ -150,9 +149,8 @@ export default function AuthSection(props: {
 
           {/* Submit */}
           <button
-            class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 mt-6 flex items-center justify-center gap-2.5 rounded-md"
+            class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 mt-6 flex items-center justify-center gap-2.5 rounded-md bg-signal-green hover:bg-signal-green/90"
             style={{
-              background: "#00FF41",
               color: "#000000",
               opacity: loading() ? "0.7" : "1",
             }}
