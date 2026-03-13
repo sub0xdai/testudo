@@ -147,7 +147,9 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   return (
     <div class="flex flex-col h-full">
       {/* Slim toolbar */}
-      <HeaderBar onOpenSettings={props.onOpenSettings} />
+      <header>
+        <HeaderBar onOpenSettings={props.onOpenSettings} />
+      </header>
 
       {/* Wallet-style balance panel */}
       <div class="balance-panel" data-testid="header-balance">
@@ -214,16 +216,21 @@ export default function MainView(props: { onOpenSettings: () => void }) {
       />
 
       {/* Content */}
-      <div class="flex-1 scroll-area">
+      <main class="flex-1 scroll-area">
         <Show when={activeTab() === "trade"}>
-          <TradeManagement />
+          <div role="tabpanel" id="panel-trade" aria-labelledby="tab-trade">
+            <TradeManagement />
+          </div>
         </Show>
 
         <Show when={activeTab() === "quick"}>
-          <QuickTrade />
+          <div role="tabpanel" id="panel-quick" aria-labelledby="tab-quick">
+            <QuickTrade />
+          </div>
         </Show>
 
         <Show when={activeTab() === "positions"}>
+          <div role="tabpanel" id="panel-positions" aria-labelledby="tab-positions">
           <ActiveOrders
             onCountChange={(active, pending) => {
               setPositionCount(active);
@@ -231,10 +238,11 @@ export default function MainView(props: { onOpenSettings: () => void }) {
             }}
             onBalanceRefresh={fetchBalance}
           />
+          </div>
         </Show>
 
         <Show when={activeTab() === "account"}>
-          <div class="px-5 py-4 space-y-4" data-testid="balance-section">
+          <div role="tabpanel" id="panel-account" aria-labelledby="tab-account" class="px-5 py-4 space-y-4" data-testid="balance-section">
             {/* Info Grid */}
             <Show
               when={!balanceLoading()}
@@ -377,7 +385,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
             </div>
           </div>
         </Show>
-      </div>
+      </main>
 
       {/* Footer */}
       <div class="px-5 py-2 border-t border-border-subtle flex items-center justify-between">

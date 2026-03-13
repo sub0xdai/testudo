@@ -117,16 +117,16 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   return (
     <div class="px-5 py-4" data-testid="active-orders">
       <div class="flex items-center justify-between mb-4">
-        <span class="text-[13px] text-text-primary font-sans font-medium">
+        <h2 class="text-[13px] text-text-primary font-sans font-medium m-0">
           Positions
-        </span>
+        </h2>
         <button
-          class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
+          class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
           onClick={fetchTrades}
           title="Refresh"
           data-testid="refresh-orders"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
             <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
@@ -140,11 +140,11 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       </Show>
 
       <Show when={error() && !loading()}>
-        <p class="text-[13px] text-signal-red font-sans py-2" data-testid="orders-error">{error()}</p>
+        <p role="alert" class="text-[13px] text-signal-red font-sans py-2" data-testid="orders-error">{error()}</p>
       </Show>
 
       <Show when={cancelError()}>
-        <p class="text-[13px] text-signal-red font-sans py-2" data-testid="cancel-error">{cancelError()}</p>
+        <p role="alert" class="text-[13px] text-signal-red font-sans py-2" data-testid="cancel-error">{cancelError()}</p>
       </Show>
 
       <Show when={!loading() && !error() && positions().length === 0 && pendingOrders().length === 0}>

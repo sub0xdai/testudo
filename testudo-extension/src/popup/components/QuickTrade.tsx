@@ -122,36 +122,42 @@ export default function QuickTrade() {
     <div class="px-5 py-4 space-y-3" data-testid="quick-trade">
       {/* Symbol */}
       <div>
-        <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Symbol</label>
+        <label for="field-qt-symbol" class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Symbol</label>
         <input
+          id="field-qt-symbol"
           type="text"
           placeholder="BTCUSDT"
           value={symbol()}
           onInput={(e) => setSymbol(e.currentTarget.value)}
           class="font-mono"
+          required
           data-testid="qt-symbol"
         />
       </div>
 
       {/* Side Toggle */}
       <div>
-        <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Side</label>
-        <div class="flex gap-2">
+        <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5" id="qt-side-label">Side</label>
+        <div class="flex gap-2" role="radiogroup" aria-labelledby="qt-side-label">
           <button
-            class={`flex-1 py-2 text-[12px] font-bold tracking-wider rounded-xl ${
+            class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider rounded-xl ${
               side() === "LONG"
                 ? "bg-signal-green/15 text-signal-green border-signal-green/30"
                 : "text-text-dim"
             }`}
+            role="radio"
+            aria-checked={side() === "LONG"}
             onClick={() => setSide("LONG")}
             data-testid="qt-side-long"
           >LONG</button>
           <button
-            class={`flex-1 py-2 text-[12px] font-bold tracking-wider rounded-xl ${
+            class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider rounded-xl ${
               side() === "SHORT"
                 ? "bg-signal-red/15 text-signal-red border-signal-red/30"
                 : "text-text-dim"
             }`}
+            role="radio"
+            aria-checked={side() === "SHORT"}
             onClick={() => setSide("SHORT")}
             data-testid="qt-side-short"
           >SHORT</button>
@@ -161,38 +167,44 @@ export default function QuickTrade() {
       {/* Price Fields */}
       <div class="grid grid-cols-3 gap-2">
         <div>
-          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Entry</label>
+          <label for="field-qt-entry" class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Entry</label>
           <input
+            id="field-qt-entry"
             type="text"
             inputMode="decimal"
             placeholder="0.00"
             value={entryStr()}
             onInput={(e) => setEntryStr(e.currentTarget.value)}
             class="font-mono text-[13px]"
+            required
             data-testid="qt-entry"
           />
         </div>
         <div>
-          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Stop</label>
+          <label for="field-qt-stop" class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Stop</label>
           <input
+            id="field-qt-stop"
             type="text"
             inputMode="decimal"
             placeholder="0.00"
             value={stopStr()}
             onInput={(e) => setStopStr(e.currentTarget.value)}
             class="font-mono text-[13px]"
+            required
             data-testid="qt-stop"
           />
         </div>
         <div>
-          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Target</label>
+          <label for="field-qt-target" class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5">Target</label>
           <input
+            id="field-qt-target"
             type="text"
             inputMode="decimal"
             placeholder="0.00"
             value={targetStr()}
             onInput={(e) => setTargetStr(e.currentTarget.value)}
             class="font-mono text-[13px]"
+            required
             data-testid="qt-target"
           />
         </div>
@@ -227,7 +239,7 @@ export default function QuickTrade() {
       {/* Status message */}
       <Show when={status()}>
         {(s) => (
-          <div class={`text-[12px] font-sans font-semibold text-center py-1 ${
+          <div role="alert" class={`text-[12px] font-sans font-semibold text-center py-1 ${
             s().type === "success" ? "text-signal-green" : "text-signal-red"
           }`} data-testid="qt-status">
             {s().msg}

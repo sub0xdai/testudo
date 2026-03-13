@@ -57,10 +57,11 @@ export default function TradeManagement() {
     <div class="space-y-5 px-5 py-4" data-testid="trade-management">
       {/* Risk % Slider — traffic light: green ≤2, orange ≤5, red >5 */}
       <div data-testid="risk-slider">
-        <label class="flex items-center justify-between mb-3">
+        <label for="field-risk-percent" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Risk Per Trade</span>
           <div class="value-input-box" style={{ "border-color": riskColor(preset().risk_percent) + "40" }}>
             <input
+              id="field-risk-percent"
               type="number"
               step="0.1"
               min="0.1"
@@ -75,6 +76,7 @@ export default function TradeManagement() {
           </div>
         </label>
         <input
+          id="field-risk-range"
           type="range"
           min="0.1"
           max="10"
@@ -83,6 +85,7 @@ export default function TradeManagement() {
           onInput={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
           style={riskSliderStyle(preset().risk_percent)}
           class="w-full"
+          aria-label="Risk per trade"
         />
         <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
           <span>0.1%</span>
@@ -97,10 +100,11 @@ export default function TradeManagement() {
 
       {/* Leverage Slider — 1x to 125x (Binance Futures max) */}
       <div data-testid="leverage-slider">
-        <label class="flex items-center justify-between mb-3">
+        <label for="field-leverage" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Leverage</span>
           <div class="value-input-box">
             <input
+              id="field-leverage"
               type="number"
               step="1"
               min="1"
@@ -114,6 +118,7 @@ export default function TradeManagement() {
           </div>
         </label>
         <input
+          id="field-leverage-range"
           type="range"
           min="1"
           max="125"
@@ -122,6 +127,7 @@ export default function TradeManagement() {
           onInput={(e) => updateField("leverage", parseInt(e.target.value) || 1)}
           style={sliderStyle(preset().leverage, 1, 125)}
           class="w-full"
+          aria-label="Leverage"
         />
         <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
           <span>1x</span>
@@ -133,10 +139,11 @@ export default function TradeManagement() {
 
       {/* Break-even % Slider */}
       <div data-testid="be-slider">
-        <label class="flex items-center justify-between mb-3">
+        <label for="field-breakeven" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Break-Even Trigger</span>
           <div class="value-input-box">
             <input
+              id="field-breakeven"
               type="number"
               step="5"
               min="10"
@@ -150,6 +157,7 @@ export default function TradeManagement() {
           </div>
         </label>
         <input
+          id="field-breakeven-range"
           type="range"
           min="10"
           max="100"
@@ -158,6 +166,7 @@ export default function TradeManagement() {
           onInput={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
           style={sliderStyle(preset().break_even_at, 10, 100)}
           class="w-full"
+          aria-label="Break-even trigger"
         />
         <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
           <span>10%</span>
@@ -179,7 +188,7 @@ export default function TradeManagement() {
             Trailing Stop
           </span>
           <button
-            class={`px-3.5 py-1 text-[11px] font-bold tracking-wider font-sans rounded-full border ${
+            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans rounded-full border ${
               preset().trailing_stop.enabled
                 ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"
@@ -190,15 +199,17 @@ export default function TradeManagement() {
                 enabled: !preset().trailing_stop.enabled,
               })
             }
+            aria-pressed={preset().trailing_stop.enabled}
             data-testid="trailing-toggle"
           >
             {preset().trailing_stop.enabled ? "ON" : "OFF"}
           </button>
         </div>
-        <div class={`toggle-card-body ${preset().trailing_stop.enabled ? "expanded" : ""}`}>
+        <div class={`toggle-card-body ${preset().trailing_stop.enabled ? "expanded" : ""}`} aria-hidden={!preset().trailing_stop.enabled}>
           <div class="px-4 pb-3">
             <div class="flex items-center gap-3">
               <input
+                id="field-trail-range"
                 type="range"
                 min="5"
                 max="100"
@@ -212,9 +223,12 @@ export default function TradeManagement() {
                 }
                 style={sliderStyle(preset().trailing_stop.distance_percent, 5, 100)}
                 class="flex-1"
+                tabIndex={preset().trailing_stop.enabled ? 0 : -1}
+                aria-label="Trail distance"
               />
               <div class="value-input-box">
                 <input
+                  id="field-trail-distance"
                   type="number"
                   step="5"
                   min="5"
@@ -227,6 +241,7 @@ export default function TradeManagement() {
                       distance_percent: parseInt(e.target.value) || 25,
                     })
                   }
+                  tabIndex={preset().trailing_stop.enabled ? 0 : -1}
                   data-testid="trailing-distance"
                 />
                 <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
@@ -252,7 +267,7 @@ export default function TradeManagement() {
             Partial Take Profit
           </span>
           <button
-            class={`px-3.5 py-1 text-[11px] font-bold tracking-wider font-sans rounded-full border ${
+            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans rounded-full border ${
               preset().partial_tp.enabled
                 ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"
@@ -263,15 +278,17 @@ export default function TradeManagement() {
                 enabled: !preset().partial_tp.enabled,
               })
             }
+            aria-pressed={preset().partial_tp.enabled}
             data-testid="partial-tp-toggle"
           >
             {preset().partial_tp.enabled ? "ON" : "OFF"}
           </button>
         </div>
-        <div class={`toggle-card-body ${preset().partial_tp.enabled ? "expanded" : ""}`}>
+        <div class={`toggle-card-body ${preset().partial_tp.enabled ? "expanded" : ""}`} aria-hidden={!preset().partial_tp.enabled}>
           <div class="px-4 pb-3">
             <div class="flex items-center gap-3">
               <input
+                id="field-partial-range"
                 type="range"
                 min="10"
                 max="100"
@@ -285,9 +302,12 @@ export default function TradeManagement() {
                 }
                 style={sliderStyle(preset().partial_tp.close_percent, 10, 100)}
                 class="flex-1"
+                tabIndex={preset().partial_tp.enabled ? 0 : -1}
+                aria-label="Partial take profit"
               />
               <div class="value-input-box">
                 <input
+                  id="field-partial-percent"
                   type="number"
                   step="5"
                   min="10"
@@ -300,6 +320,7 @@ export default function TradeManagement() {
                       close_percent: parseInt(e.target.value) || 50,
                     })
                   }
+                  tabIndex={preset().partial_tp.enabled ? 0 : -1}
                   data-testid="partial-tp-close"
                 />
                 <span class="text-[11px] text-text-dim font-mono ml-1">%</span>

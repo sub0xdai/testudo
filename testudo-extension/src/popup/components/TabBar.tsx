@@ -16,9 +16,14 @@ export default function TabBar(props: TabBarProps) {
   ];
 
   return (
-    <div class="flex mx-5 my-2 bg-bg-panel rounded-xl p-1" data-testid="tab-bar">
+    <nav aria-label="Main navigation">
+    <div role="tablist" aria-label="Main navigation" class="flex mx-5 my-2 bg-bg-panel rounded-xl p-1" data-testid="tab-bar">
       {tabs.map((tab) => (
         <button
+          role="tab"
+          aria-selected={props.activeTab === tab.id}
+          aria-controls={`panel-${tab.id}`}
+          id={`tab-${tab.id}`}
           class={`flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide border-0 rounded-lg transition-all duration-150 ${
             props.activeTab === tab.id
               ? "tab-active"
@@ -47,5 +52,6 @@ export default function TabBar(props: TabBarProps) {
         </button>
       ))}
     </div>
+    </nav>
   );
 }

@@ -46,12 +46,12 @@ export default function AuthSection(props: {
       <Show when={props.onBack}>
         <div class="flex items-center gap-3 px-5 py-3.5">
           <button
-            class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
+            class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
             onClick={props.onBack}
             data-testid="auth-back"
             title="Back"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
@@ -80,6 +80,7 @@ export default function AuthSection(props: {
         <div class="w-full" data-testid="auth-logged-out">
           <Show when={error()}>
             <div
+              role="alert"
               class="text-[12px] text-signal-red font-mono py-2.5 px-3.5 mb-4 border border-signal-red/20 bg-signal-red/5 rounded-md"
               data-testid="login-error"
             >
@@ -89,16 +90,18 @@ export default function AuthSection(props: {
 
           {/* Email field */}
           <div class="mb-4">
-            <label class="block text-[11px] text-text-secondary font-mono font-medium mb-1 tracking-wider uppercase">
+            <label for="field-email" class="block text-[11px] text-text-secondary font-mono font-medium mb-1 tracking-wider uppercase">
               Email
             </label>
             <input
+              id="field-email"
               type="email"
               placeholder="trader@testudo.io"
               value={email()}
               onInput={(e) => setEmail(e.target.value)}
               onKeyDown={handleKeyDown}
               style={inputStyle}
+              required
               data-testid="login-email"
             />
           </div>
@@ -106,19 +109,20 @@ export default function AuthSection(props: {
           {/* Password field */}
           <div class="mb-4">
             <div class="flex items-baseline justify-between mb-1">
-              <label class="text-[11px] text-text-secondary font-mono font-medium tracking-wider uppercase">
+              <label for="field-password" class="text-[11px] text-text-secondary font-mono font-medium tracking-wider uppercase">
                 Password
               </label>
-              <span
-                class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-signal-green transition-colors"
+              <button
+                type="button"
+                class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-signal-green transition-colors border-0 bg-transparent p-0"
                 onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
-                tabIndex={-1}
               >
                 FORGOT?
-              </span>
+              </button>
             </div>
             <div class="relative">
               <input
+                id="field-password"
                 type={showPassword() ? "text" : "password"}
                 placeholder=""
                 value={password()}
@@ -126,12 +130,12 @@ export default function AuthSection(props: {
                 onKeyDown={handleKeyDown}
                 autocomplete="off"
                 style={{ ...inputStyle, "padding-right": "40px" }}
+                required
                 data-testid="login-password"
               />
               <button
                 class="absolute right-0 top-0 h-full w-10 flex items-center justify-center border-0 bg-transparent text-text-secondary hover:text-text-primary hover:bg-transparent p-0 transition-colors"
                 onClick={() => setShowPassword(!showPassword())}
-                tabIndex={-1}
                 type="button"
                 title={showPassword() ? "Hide password" : "Show password"}
               >

@@ -56,7 +56,7 @@ export default function PositionCard(props: PositionCardProps) {
       {/* Row 1: Symbol + Direction + Status */}
       <div class="flex items-center justify-between mb-2.5">
         <div class="flex items-center gap-2.5">
-          <span class="text-[14px] font-mono font-bold text-white" data-testid="position-symbol">
+          <span class="text-[14px] font-mono font-bold text-white truncate max-w-[120px]" data-testid="position-symbol">
             {props.trade.symbol}
           </span>
           <span
@@ -130,11 +130,11 @@ export default function PositionCard(props: PositionCardProps) {
             class="text-[9px] uppercase font-sans font-medium px-2 py-0.5 rounded-full border text-text-dim border-border-subtle"
             data-testid="position-trail-badge"
           >
-            Trail: OFF
+            Trail: {props.trade.trailing_stop_enabled === true ? "ON" : "OFF"}
           </span>
         </div>
         <button
-          class={`px-3 py-1 text-[9px] font-bold tracking-wider font-sans rounded-full border-signal-red ${
+          class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans rounded-full border-signal-red ${
             props.cancelling ? "opacity-50 cursor-wait" : "text-signal-red hover:bg-signal-red hover:text-white"
           }`}
           onClick={() => props.onCancel(props.trade.id)}

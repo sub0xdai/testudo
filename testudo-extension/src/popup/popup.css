@@ -43,16 +43,16 @@
     --font-family-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* --- Kill ALL scrollbars at every level --- */
-*,
-*::before,
-*::after {
-    scrollbar-width: none !important;
+/* --- Thin custom scrollbars --- */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148,163,184,0.3) transparent;
 }
-*::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
+*::-webkit-scrollbar { width: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+    background: rgba(148,163,184,0.3);
+    border-radius: 3px;
 }
 
 /* --- Global Resets --- */
@@ -178,6 +178,22 @@ button:hover {
 button:disabled {
     opacity: 0.35;
     cursor: not-allowed;
+}
+
+button:focus-visible,
+[role="tab"]:focus-visible,
+[role="button"]:focus-visible {
+    outline: 2px solid var(--color-accent-steel);
+    outline-offset: 2px;
+}
+
+/* --- Icon button base (44px minimum touch target) --- */
+.icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* --- Status Dot Blink Animation --- */

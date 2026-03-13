@@ -45,12 +45,12 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
       {/* Header */}
       <div class="flex items-center gap-3 px-5 py-3.5">
         <button
-          class="p-1.5 border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
+          class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
           onClick={props.onBack}
           data-testid="settings-back"
           title="Back"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
@@ -63,44 +63,49 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
       <div class="flex-1 px-5 py-4 space-y-5 scroll-area">
         {/* Backend URL */}
         <div>
-          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
+          <label for="field-backend-url" class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
             Backend URL
           </label>
           <input
+            id="field-backend-url"
             type="url"
             value={backendUrl()}
             onChange={handleBackendChange}
             placeholder="http://localhost:8080"
+            required
             data-testid="backend-url"
           />
           <Show when={saved() === "backend"}>
-            <span class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
+            <span aria-live="polite" class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
           </Show>
         </div>
 
         {/* WebSocket URL */}
         <div>
-          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
+          <label for="field-ws-url" class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
             WebSocket URL
           </label>
           <input
+            id="field-ws-url"
             type="url"
             value={wsUrl()}
             onChange={handleWsChange}
             placeholder="ws://localhost:4000"
+            required
             data-testid="ws-url"
           />
           <Show when={saved() === "ws"}>
-            <span class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
+            <span aria-live="polite" class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
           </Show>
         </div>
 
         {/* Web App URL */}
         <div>
-          <label class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
+          <label for="field-web-url" class="block text-[11px] text-text-secondary font-sans font-medium mb-2">
             Web App URL
           </label>
           <input
+            id="field-web-url"
             type="url"
             value={webUrl()}
             onChange={async (e) => {
@@ -113,7 +118,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             data-testid="web-url"
           />
           <Show when={saved() === "web"}>
-            <span class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
+            <span aria-live="polite" class="text-[10px] text-signal-green font-sans mt-1.5 block" data-testid="save-status">Saved</span>
           </Show>
         </div>
 

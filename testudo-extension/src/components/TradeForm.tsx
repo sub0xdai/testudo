@@ -178,14 +178,18 @@ export default function TradeForm(props: TradeFormProps) {
 
       {/* Header: Side toggle + Symbol */}
       <div class="header">
-        <div class="side-toggle">
+        <div class="side-toggle" role="radiogroup" aria-label="Trade direction">
           <button
             class={`side-btn ${side() === "LONG" ? "side-btn-active-long" : ""}`}
+            role="radio"
+            aria-checked={side() === "LONG"}
             onClick={() => setSide("LONG")}
             data-testid="side-long"
           >LONG</button>
           <button
             class={`side-btn ${side() === "SHORT" ? "side-btn-active-short" : ""}`}
+            role="radio"
+            aria-checked={side() === "SHORT"}
             onClick={() => setSide("SHORT")}
             data-testid="side-short"
           >SHORT</button>
@@ -198,10 +202,12 @@ export default function TradeForm(props: TradeFormProps) {
             value={symbol()}
             onInput={(e) => handleFieldChange("symbol", setSymbol, e.currentTarget.value)}
             onFocus={(e) => autoFilledFields().has("symbol") && e.currentTarget.select()}
+            id="field-tf-symbol"
+            required
             data-testid="field-symbol"
           />
           <Show when={autoFilledFields().has("symbol")}>
-            <span class="auto-badge" onClick={() => { clearAutoFill("symbol"); setSymbol(""); }} title="Auto-filled — click to clear">auto</span>
+            <button type="button" class="auto-badge" onClick={() => { clearAutoFill("symbol"); setSymbol(""); }} title="Auto-filled — click to clear">auto</button>
           </Show>
         </div>
       </div>
@@ -209,7 +215,7 @@ export default function TradeForm(props: TradeFormProps) {
       {/* Price fields */}
       <div class="rows">
         <div class="field-row">
-          <label class="label">Entry</label>
+          <label class="label" for="field-tf-entry">Entry</label>
           <div class="field-wrapper">
             <input
               class={`field-input ${!isValidEntry() && entryStr().length > 0 ? "invalid" : ""} ${autoFilledFields().has("entry") ? "auto-filled" : ""}`}
@@ -219,15 +225,17 @@ export default function TradeForm(props: TradeFormProps) {
               value={entryStr()}
               onInput={(e) => handleFieldChange("entry", setEntryStr, e.currentTarget.value)}
               onFocus={(e) => autoFilledFields().has("entry") && e.currentTarget.select()}
+              id="field-tf-entry"
+              required
               data-testid="field-entry"
             />
             <Show when={autoFilledFields().has("entry")}>
-              <span class="auto-badge" onClick={() => { clearAutoFill("entry"); setEntryStr(""); }} title="Auto-filled — click to clear">auto</span>
+              <button type="button" class="auto-badge" onClick={() => { clearAutoFill("entry"); setEntryStr(""); }} title="Auto-filled — click to clear">auto</button>
             </Show>
           </div>
         </div>
         <div class="field-row">
-          <label class="label">Stop</label>
+          <label class="label" for="field-tf-stop">Stop</label>
           <div class="field-wrapper">
             <input
               class={`field-input ${!isValidStop() && stopStr().length > 0 ? "invalid" : ""} ${autoFilledFields().has("stop") ? "auto-filled" : ""}`}
@@ -237,15 +245,17 @@ export default function TradeForm(props: TradeFormProps) {
               value={stopStr()}
               onInput={(e) => handleFieldChange("stop", setStopStr, e.currentTarget.value)}
               onFocus={(e) => autoFilledFields().has("stop") && e.currentTarget.select()}
+              id="field-tf-stop"
+              required
               data-testid="field-stop"
             />
             <Show when={autoFilledFields().has("stop")}>
-              <span class="auto-badge" onClick={() => { clearAutoFill("stop"); setStopStr(""); }} title="Auto-filled — click to clear">auto</span>
+              <button type="button" class="auto-badge" onClick={() => { clearAutoFill("stop"); setStopStr(""); }} title="Auto-filled — click to clear">auto</button>
             </Show>
           </div>
         </div>
         <div class="field-row">
-          <label class="label">Target</label>
+          <label class="label" for="field-tf-target">Target</label>
           <div class="field-wrapper">
             <input
               class={`field-input ${!isValidTarget() && targetStr().length > 0 ? "invalid" : ""} ${autoFilledFields().has("target") ? "auto-filled" : ""}`}
@@ -255,10 +265,12 @@ export default function TradeForm(props: TradeFormProps) {
               value={targetStr()}
               onInput={(e) => handleFieldChange("target", setTargetStr, e.currentTarget.value)}
               onFocus={(e) => autoFilledFields().has("target") && e.currentTarget.select()}
+              id="field-tf-target"
+              required
               data-testid="field-target"
             />
             <Show when={autoFilledFields().has("target")}>
-              <span class="auto-badge" onClick={() => { clearAutoFill("target"); setTargetStr(""); }} title="Auto-filled — click to clear">auto</span>
+              <button type="button" class="auto-badge" onClick={() => { clearAutoFill("target"); setTargetStr(""); }} title="Auto-filled — click to clear">auto</button>
             </Show>
           </div>
         </div>

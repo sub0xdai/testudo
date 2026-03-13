@@ -90,15 +90,18 @@ export default function ExchangeSelector() {
       <div class="relative" data-exchange-selector data-testid="exchange-selector">
         {/* Trigger pill */}
         <button
-          class={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-all ${
+          class={`flex items-center gap-1 px-2 py-1 min-h-[44px] text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-all ${
             activeAccount()
               ? "bg-accent-green/10 text-accent-green hover:bg-accent-green/20"
               : "bg-bg-panel text-text-dim hover:text-text-secondary"
           }`}
           onClick={() => setOpen(!open())}
+          onKeyDown={(e) => { if (e.key === "Escape" && open()) { e.preventDefault(); setOpen(false); } }}
           title="Switch exchange account"
+          aria-haspopup="listbox"
+          aria-expanded={open()}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M8 9l4-4 4 4" />
             <path d="M16 15l-4 4-4-4" />
           </svg>
@@ -107,10 +110,12 @@ export default function ExchangeSelector() {
 
         {/* Dropdown */}
         <Show when={open()}>
-          <div class="absolute top-full right-0 mt-1 min-w-[140px] bg-bg-elevated border border-border-subtle rounded-lg shadow-lg z-50 overflow-hidden">
+          <div role="listbox" aria-label="Exchange accounts" class="absolute top-full right-0 mt-1 min-w-[140px] bg-bg-elevated border border-border-subtle rounded-lg shadow-lg z-50 overflow-hidden">
             <For each={accounts()}>
               {(account) => (
                 <button
+                  role="option"
+                  aria-selected={account.id === activeId()}
                   class={`w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] font-sans border-0 transition-colors ${
                     account.id === activeId()
                       ? "bg-accent-green/10 text-accent-green font-bold"
@@ -119,6 +124,7 @@ export default function ExchangeSelector() {
                   onClick={() => selectAccount(account.id)}
                 >
                   <span
+                    aria-hidden="true"
                     class={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                       account.id === activeId() ? "bg-accent-green" : "bg-text-dim"
                     }`}

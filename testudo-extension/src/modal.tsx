@@ -8,7 +8,23 @@ export type ModalResult = "confirm" | "dismiss";
 
 // --- Styles (injected into Shadow DOM) ---
 
+const fontBaseUrl = typeof chrome !== "undefined" && chrome.runtime?.getURL
+  ? chrome.runtime.getURL("popup/fonts/")
+  : "./fonts/";
+
 const MODAL_STYLES = `
+  @font-face {
+    font-family: 'DM Sans';
+    src: url('${fontBaseUrl}dm-sans-variable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono';
+    src: url('${fontBaseUrl}jetbrains-mono-regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+  }
   :host {
     all: initial;
     position: fixed;
@@ -134,13 +150,16 @@ export function showModal(
 
   const host = document.createElement("div");
   host.id = "testudo-sniper-modal";
-  const shadow = host.attachShadow({ mode: "closed" });
+  const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
   style.textContent = MODAL_STYLES;
   shadow.appendChild(style);
 
   const container = document.createElement("div");
+  container.setAttribute("role", "dialog");
+  container.setAttribute("aria-modal", "true");
+  container.setAttribute("aria-label", "Trade Confirmation");
   shadow.appendChild(container);
 
   const dispose = render(
@@ -166,9 +185,33 @@ export function showModal(
     container,
   );
 
+  // Focus trap: Tab cycles within modal, Escape closes
+  function trapFocus(e: KeyboardEvent) {
+    if (e.key === "Escape") { dismiss(); onResult("dismiss", null); return; }
+    if (e.key !== "Tab") return;
+    const focusable = container.querySelectorAll(
+      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0] as HTMLElement;
+    const last = focusable[focusable.length - 1] as HTMLElement;
+    if (e.shiftKey && shadow.activeElement === first) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && shadow.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
+  }
+  container.addEventListener("keydown", trapFocus);
+
   document.body.appendChild(host);
   activeHost = host;
   activeDispose = dispose;
+
+  // Focus first focusable element
+  requestAnimationFrame(() => {
+    const first = container.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+    first?.focus();
+  });
 }
 
 export function dismiss(): void {
@@ -200,7 +243,7 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
 
   const host = document.createElement("div");
   host.id = "testudo-sniper-toast";
-  const shadow = host.attachShadow({ mode: "closed" });
+  const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
   style.textContent = MODAL_STYLES;
@@ -208,6 +251,8 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
 
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
+  toast.setAttribute("role", "alert");
+  toast.setAttribute("aria-live", "polite");
   toast.textContent = message;
   shadow.appendChild(toast);
 

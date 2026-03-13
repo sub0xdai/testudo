@@ -165,8 +165,9 @@ export default function ExchangeManager() {
               data-testid={`account-${account.exchange_name}`}
             >
               <div class="flex items-center justify-between">
-                <div
-                  class="flex items-center gap-2 cursor-pointer"
+                <button
+                  type="button"
+                  class="flex items-center gap-2 cursor-pointer border-0 bg-transparent p-0"
                   onClick={() => handleSetActive(account.id)}
                   title={activeExchangeId() === account.id ? "Active exchange" : "Set as active"}
                 >
@@ -179,7 +180,7 @@ export default function ExchangeManager() {
                   <Show when={activeExchangeId() === account.id}>
                     <span class="text-[9px] px-1.5 py-0.5 bg-accent-steel/15 text-accent-steel rounded-full font-bold tracking-wider">ACTIVE</span>
                   </Show>
-                </div>
+                </button>
                 <div class="flex items-center gap-1.5">
                   <button
                     class="text-[10px] px-2 py-0.5 font-sans text-text-secondary border-border-subtle hover:text-accent-steel hover:border-accent-steel/30"
@@ -239,18 +240,20 @@ export default function ExchangeManager() {
       <Show when={showForm()}>
         <div class="bg-bg-panel border border-border-subtle rounded-xl p-3 space-y-3" data-testid="add-exchange-form">
           <Show when={error()}>
-            <div class="text-[11px] text-signal-red font-sans py-2 px-2.5 bg-signal-red/10 rounded-lg">
+            <div role="alert" class="text-[11px] text-signal-red font-sans py-2 px-2.5 bg-signal-red/10 rounded-lg">
               {error()}
             </div>
           </Show>
 
           <div>
-            <label class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
+            <label for="field-exchange-select" class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
               Exchange
             </label>
             <select
+              id="field-exchange-select"
               value={formExchange()}
               onChange={(e) => setFormExchange(e.target.value)}
+              required
               data-testid="exchange-select"
             >
               <option value="">Select exchange...</option>
@@ -261,39 +264,44 @@ export default function ExchangeManager() {
           </div>
 
           <div>
-            <label class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
+            <label for="field-api-key" class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
               API Key
             </label>
             <input
+              id="field-api-key"
               type="password"
               value={formApiKey()}
               onInput={(e) => setFormApiKey(e.target.value)}
               autocomplete="off"
               placeholder="Enter API key"
+              required
               data-testid="api-key-input"
             />
           </div>
 
           <div>
-            <label class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
+            <label for="field-api-secret" class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
               Secret
             </label>
             <input
+              id="field-api-secret"
               type="password"
               value={formSecret()}
               onInput={(e) => setFormSecret(e.target.value)}
               autocomplete="off"
               placeholder="Enter API secret"
+              required
               data-testid="api-secret-input"
             />
           </div>
 
           <Show when={needsPassphrase()}>
             <div>
-              <label class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
+              <label for="field-api-passphrase" class="block text-[10px] text-text-secondary font-sans font-medium mb-1">
                 Passphrase
               </label>
               <input
+                id="field-api-passphrase"
                 type="password"
                 value={formPassphrase()}
                 onInput={(e) => setFormPassphrase(e.target.value)}

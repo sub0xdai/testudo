@@ -86,6 +86,7 @@ export interface TradeGroupResponse {
   status: string;
   break_even_enabled: boolean;
   break_even_triggered: boolean;
+  trailing_stop_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }
