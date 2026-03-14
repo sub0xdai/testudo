@@ -17,6 +17,7 @@ export interface LoginResponse {
 export interface ManagementPreset {
   name: string;
   risk_percent: number;
+  break_even_enabled: boolean;
   break_even_at: number;
   leverage: number;
   trailing_stop: {
@@ -32,6 +33,7 @@ export interface ManagementPreset {
 export const DEFAULT_MANAGEMENT_PRESET: ManagementPreset = {
   name: "default",
   risk_percent: 1.0,
+  break_even_enabled: true,
   break_even_at: 50,
   leverage: 1,
   trailing_stop: { enabled: false, distance_percent: 25 },
@@ -48,6 +50,7 @@ export interface TradePayload {
   exchange_account_id?: string;
   management: {
     risk_percent: number;
+    break_even_enabled: boolean;
     break_even_at: number;
     leverage: number;
     trailing_stop: { enabled: boolean; distance_percent: number };

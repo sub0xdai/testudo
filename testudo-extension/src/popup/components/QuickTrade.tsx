@@ -94,6 +94,7 @@ export default function QuickTrade() {
           timeframe: "manual",
           management: {
             risk_percent: mgmt.risk_percent,
+            break_even_enabled: mgmt.break_even_enabled,
             break_even_at: mgmt.break_even_at,
             leverage: mgmt.leverage,
             trailing_stop: mgmt.trailing_stop,

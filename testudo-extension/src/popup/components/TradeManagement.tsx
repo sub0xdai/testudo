@@ -56,7 +56,7 @@ export default function TradeManagement() {
     return "var(--color-signal-red)";
   }
 
-  const riskColorMemo = createMemo(() => riskColorMemo());
+  const riskColorMemo = createMemo(() => riskColor(preset().risk_percent));
 
   return (
     <div class="space-y-5 px-5 py-4" data-testid="trade-management">
@@ -64,7 +64,7 @@ export default function TradeManagement() {
       <div data-testid="risk-slider">
         <label for="field-risk-percent" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Risk Per Trade</span>
-          <div class="value-input-box" style={{ "border-color": riskColorMemo() + "40" }}>
+          <div class="value-input-box">
             <input
               id="field-risk-percent"
               type="number"
@@ -142,44 +142,69 @@ export default function TradeManagement() {
 
       <div class="divider" />
 
-      {/* Break-even % Slider */}
-      <div data-testid="be-slider">
-        <label for="field-breakeven" class="flex items-center justify-between mb-3">
-          <span class="text-[14px] text-text-primary font-sans font-semibold">Break-Even Trigger</span>
-          <div class="value-input-box">
-            <input
-              id="field-breakeven"
-              type="number"
-              step="5"
-              min="10"
-              max="100"
-              class="w-14 text-right text-[14px]"
-              value={preset().break_even_at}
-              onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
-              data-testid="break-even-at"
-            />
-            <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
+      {/* Break-even Toggle Card */}
+      <div
+        class={`bg-bg-panel rounded-xl border transition-colors duration-200 ${
+          preset().break_even_enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
+        }`}
+        data-testid="be-slider"
+      >
+        <div class="flex items-center justify-between px-4 py-3">
+          <span class="text-[14px] text-text-primary font-sans font-semibold">
+            Break-Even Trigger
+          </span>
+          <button
+            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans rounded-full border ${
+              preset().break_even_enabled
+                ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
+                : "text-text-dim border-border-subtle bg-bg-elevated"
+            }`}
+            onClick={() => updateField("break_even_enabled", !preset().break_even_enabled)}
+            aria-pressed={preset().break_even_enabled}
+            data-testid="be-toggle"
+          >
+            {preset().break_even_enabled ? "ON" : "OFF"}
+          </button>
+        </div>
+        <div class={`toggle-card-body ${preset().break_even_enabled ? "expanded" : ""}`} aria-hidden={!preset().break_even_enabled}>
+          <div>
+            <div class="flex items-center gap-3 px-4 pb-1">
+              <input
+                id="field-breakeven-range"
+                type="range"
+                min="10"
+                max="100"
+                step="5"
+                value={preset().break_even_at}
+                onInput={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
+                style={sliderStyle(preset().break_even_at, 10, 100)}
+                class="flex-1"
+                tabIndex={preset().break_even_enabled ? 0 : -1}
+                aria-label="Break-even trigger"
+              />
+              <div class="value-input-box">
+                <input
+                  id="field-breakeven"
+                  type="number"
+                  step="5"
+                  min="10"
+                  max="100"
+                  class="w-14 text-right text-[14px]"
+                  value={preset().break_even_at}
+                  onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
+                  tabIndex={preset().break_even_enabled ? 0 : -1}
+                  data-testid="break-even-at"
+                />
+                <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
+              </div>
+            </div>
+            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5 px-4 pb-3">
+              <span>10%</span>
+              <span>100%</span>
+            </div>
           </div>
-        </label>
-        <input
-          id="field-breakeven-range"
-          type="range"
-          min="10"
-          max="100"
-          step="5"
-          value={preset().break_even_at}
-          onInput={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
-          style={sliderStyle(preset().break_even_at, 10, 100)}
-          class="w-full"
-          aria-label="Break-even trigger"
-        />
-        <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
-          <span>10%</span>
-          <span>100%</span>
         </div>
       </div>
-
-      <div class="divider" />
 
       {/* Trailing Stop Toggle Card */}
       <div
@@ -211,8 +236,8 @@ export default function TradeManagement() {
           </button>
         </div>
         <div class={`toggle-card-body ${preset().trailing_stop.enabled ? "expanded" : ""}`} aria-hidden={!preset().trailing_stop.enabled}>
-          <div class="px-4 pb-3">
-            <div class="flex items-center gap-3">
+          <div>
+            <div class="flex items-center gap-3 px-4 pb-1">
               <input
                 id="field-trail-range"
                 type="range"
@@ -252,7 +277,7 @@ export default function TradeManagement() {
                 <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
               </div>
             </div>
-            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
+            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5 px-4 pb-3">
               <span>5%</span>
               <span>100%</span>
             </div>
@@ -290,8 +315,8 @@ export default function TradeManagement() {
           </button>
         </div>
         <div class={`toggle-card-body ${preset().partial_tp.enabled ? "expanded" : ""}`} aria-hidden={!preset().partial_tp.enabled}>
-          <div class="px-4 pb-3">
-            <div class="flex items-center gap-3">
+          <div>
+            <div class="flex items-center gap-3 px-4 pb-1">
               <input
                 id="field-partial-range"
                 type="range"
@@ -331,7 +356,7 @@ export default function TradeManagement() {
                 <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
               </div>
             </div>
-            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5">
+            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5 px-4 pb-3">
               <span>10%</span>
               <span>100%</span>
             </div>

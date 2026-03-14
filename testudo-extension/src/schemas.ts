@@ -56,6 +56,7 @@ export const TradePayloadSchema = z.object({
   exchange_account_id: z.string().min(1).optional(),
   management: z.object({
     risk_percent: z.number().min(0.1).max(100),
+    break_even_enabled: z.boolean().optional().default(true),
     break_even_at: z.number().min(0).max(100),
     leverage: z.number().min(1).max(100).optional(),
     trailing_stop: z.object({

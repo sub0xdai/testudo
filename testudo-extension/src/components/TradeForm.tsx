@@ -143,7 +143,7 @@ export default function TradeForm(props: TradeFormProps) {
 
   const mgmtRules = () => [
     { label: "Risk", value: `${props.management.risk_percent}%`, active: true },
-    { label: "Break-even", value: `at ${props.management.break_even_at}%`, active: true },
+    { label: "Break-even", value: props.management.break_even_enabled ? `at ${props.management.break_even_at}%` : "Off", active: props.management.break_even_enabled },
     {
       label: "Trailing",
       value: props.management.trailing_stop.enabled ? `${props.management.trailing_stop.distance_percent}%` : "Off",
