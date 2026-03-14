@@ -37,12 +37,17 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
       type: "LOGIN",
       email: loginEmail.trim(),
       password,
-    }) as { success: boolean; error?: string };
+    });
 
-    if (response.success) {
+    if (!response || typeof response !== "object") {
+      return { success: false, error: "No response from service worker — check chrome://extensions for errors" };
+    }
+
+    const result = response as { success: boolean; error?: string };
+    if (result.success) {
       await checkAuth();
     }
-    return response;
+    return result;
   }
 
   async function register(regEmail: string, password: string): Promise<{ success: boolean; error?: string }> {
@@ -50,12 +55,17 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
       type: "REGISTER",
       email: regEmail.trim(),
       password,
-    }) as { success: boolean; error?: string };
+    });
 
-    if (response.success) {
+    if (!response || typeof response !== "object") {
+      return { success: false, error: "No response from service worker — check chrome://extensions for errors" };
+    }
+
+    const result = response as { success: boolean; error?: string };
+    if (result.success) {
       await checkAuth();
     }
-    return response;
+    return result;
   }
 
   async function logout() {
