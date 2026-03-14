@@ -23,16 +23,20 @@ export default function AuthSection(props: {
     setError("");
     setLoading(true);
 
-    const response = await auth.login(email(), password());
+    try {
+      const response = await auth.login(email(), password());
 
-    setLoading(false);
-
-    if (response.success) {
-      setPassword("");
-      setError("");
-      props.onAuthenticated();
-    } else {
-      setError(response.error || "Login failed");
+      if (response.success) {
+        setPassword("");
+        setError("");
+        props.onAuthenticated();
+      } else {
+        setError(response.error || "Login failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Connection failed");
+    } finally {
+      setLoading(false);
     }
   }
 
