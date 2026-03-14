@@ -428,6 +428,25 @@
     .balance-loading {
         animation: shimmer 1.5s ease-in-out infinite;
     }
+
+    /* --- Login Glass Preview --- */
+    .login-preview-bg {
+        filter: blur(6px);
+        opacity: 0.4;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .login-glass-card {
+        background: rgba(11, 14, 17, 0.82);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
 }
 
 /* --- Keyframes (outside layers) --- */
