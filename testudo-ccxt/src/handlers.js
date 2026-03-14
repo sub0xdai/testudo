@@ -85,7 +85,8 @@ async function handleBalance(req, res) {
 async function handleOrder(req, res) {
   try {
     const { exchange, params } = getExchangeAndParams(req.body);
-    const { symbol, type, side, amount, price, stopPrice, leverage, reduceOnly, clientOrderId } = params;
+    const { symbol, type, side, amount, price, stopPrice, leverage,
+            reduceOnly, clientOrderId, stopLoss, takeProfit } = params;
 
     if (leverage && leverage > 0) {
       await exchange.setLeverage(leverage, symbol);
@@ -102,6 +103,13 @@ async function handleOrder(req, res) {
     if (clientOrderId) {
       orderParams.clientOrderId = clientOrderId;
     }
+    // EXT-31: Bracket order — attach SL/TP to entry (exchange activates on fill)
+    if (stopLoss && stopLoss.triggerPrice) {
+      orderParams.stopLoss = { triggerPrice: stopLoss.triggerPrice };
+    }
+    if (takeProfit && takeProfit.triggerPrice) {
+      orderParams.takeProfit = { triggerPrice: takeProfit.triggerPrice };
+    }
 
     const order = await exchange.createOrder(symbol, type, side, amount, price, orderParams);
 
@@ -117,6 +125,9 @@ async function handleOrder(req, res) {
       remaining: stringify(order.remaining),
       average: stringify(order.average),
       price: stringify(order.price),
+      // EXT-31: Bracket order child IDs (if exchange returns them)
+      stopLossOrderId: order.info?.stopLossOrderId || null,
+      takeProfitOrderId: order.info?.takeProfitOrderId || null,
     });
   } catch (err) {
     const mapped = mapError(err);
