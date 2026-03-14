@@ -260,7 +260,7 @@ export default function QuickTrade() {
         disabled={!isValid() || submitting()}
         data-testid="qt-confirm"
       >
-        {submitting() ? "SENDING..." : `${side()} (2x ENTER)`}
+        {submitting() ? <><span class="inline-block animate-spin mr-1">&#x27F3;</span> Executing...</> : `${side()} (2x ENTER)`}
       </button>
 
       <div class="text-[10px] text-signal-red/70 text-center font-sans">

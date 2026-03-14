@@ -433,3 +433,34 @@ input[type="range"]::-moz-range-track {
     position: relative;
     z-index: 1;
 }
+
+/* --- Shimmer Animation (balance loading) --- */
+@keyframes shimmer {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+.balance-loading {
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+    .status-blink {
+        animation: none;
+    }
+
+    .refresh-spinning {
+        animation: none;
+    }
+
+    .balance-loading {
+        animation: none;
+    }
+
+    * {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}

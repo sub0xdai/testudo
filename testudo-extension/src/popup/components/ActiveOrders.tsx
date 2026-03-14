@@ -136,7 +136,9 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       </div>
 
       <Show when={loading()}>
-        <p class="text-[13px] text-text-dim font-sans py-2">Loading...</p>
+        <div class="flex flex-col items-center py-8 gap-2">
+          <p class="text-[13px] text-text-dim font-sans balance-loading">Loading positions...</p>
+        </div>
       </Show>
 
       <Show when={error() && !loading()}>
@@ -274,7 +276,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
             </div>
             <p class="text-[14px] font-sans font-medium text-text-secondary">No active positions</p>
             <p class="text-[12px] text-text-dim font-sans mt-2 text-center leading-relaxed">
-              Trades placed via TradingView will<br />appear here automatically.
+              Place a trade from TradingView (<kbd class="text-[11px] font-mono text-text-secondary bg-bg-elevated px-1.5 py-0.5 rounded border border-border-subtle">Alt+X</kbd>)
             </p>
           </div>
         </Show>

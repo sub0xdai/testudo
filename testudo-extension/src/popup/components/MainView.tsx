@@ -174,10 +174,10 @@ export default function MainView(props: { onOpenSettings: () => void }) {
               fallback={
                 <Show
                   when={!balanceLoading() && noExchange()}
-                  fallback={<span class="text-white/60">$--</span>}
+                  fallback={<span class="balance-loading text-white/60">$--</span>}
                 >
                   <span class="text-[18px] text-text-dim font-sans font-medium">
-                    Connect an exchange in Settings
+                    Connect an exchange account in Settings to start trading
                   </span>
                 </Show>
               }
@@ -185,6 +185,10 @@ export default function MainView(props: { onOpenSettings: () => void }) {
               ${formatBalance(total()!)}
             </Show>
           </span>
+          {/* Loading hint */}
+          <Show when={balanceLoading()}>
+            <span class="text-[12px] text-text-dim font-sans mt-1">Fetching balance...</span>
+          </Show>
           {/* Delta line: available / locked breakdown */}
           <Show when={!balanceLoading() && available() !== null}>
             <div class="flex items-center gap-2 mt-2">
@@ -254,7 +258,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                 when={available() !== null}
                 fallback={
                   <p class="text-[14px] text-text-dim italic font-sans">
-                    {noExchange() ? "Connect an exchange to view balance" : "Balance unavailable"}
+                    {noExchange() ? "Connect an exchange account in Settings to view balance" : "Balance unavailable"}
                   </p>
                 }
               >
