@@ -1,4 +1,4 @@
-import { Show, For } from "solid-js";
+import { Show, For, createMemo } from "solid-js";
 import type { TradeGroupResponse } from "../../types";
 
 interface PositionCardProps {
@@ -19,13 +19,12 @@ function formatRelativeTime(iso: string): string {
 }
 
 export default function PositionCard(props: PositionCardProps) {
-  const isLong = () => {
+  const isLong = createMemo(() => {
     const entry = parseFloat(props.trade.entry_price || "0");
     const sl = parseFloat(props.trade.stop_loss_price || "0");
     if (entry > 0 && sl > 0) return sl < entry;
-    // Fallback to quantity sign if prices unavailable
     return parseFloat(props.trade.entry_quantity) > 0;
-  };
+  });
   const direction = () => isLong() ? "LONG" : "SHORT";
 
   const statusClass = () => {

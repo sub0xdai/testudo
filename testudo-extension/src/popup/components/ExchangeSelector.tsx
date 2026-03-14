@@ -90,7 +90,7 @@ export default function ExchangeSelector() {
       <div class="relative" data-exchange-selector data-testid="exchange-selector">
         {/* Trigger pill */}
         <button
-          class={`flex items-center gap-1 px-2 py-1 min-h-[44px] text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-all ${
+          class={`flex items-center gap-1 px-2 py-1 min-h-[44px] text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-colors ${
             activeAccount()
               ? "bg-accent-green/10 text-accent-green hover:bg-accent-green/20"
               : "bg-bg-panel text-text-dim hover:text-text-secondary"

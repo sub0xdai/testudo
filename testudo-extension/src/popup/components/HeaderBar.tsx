@@ -33,7 +33,7 @@ export default function HeaderBar(props: HeaderBarProps) {
     <>
       <div data-testid="header-bar" class="flex items-center justify-between px-5 py-2.5">
         <div class="flex items-center gap-2">
-          <StatusBar />
+          <StatusBar sidecarStatus={sidecarStatus()} />
         </div>
         <div class="flex items-center gap-2">
           <ExchangeSelector />

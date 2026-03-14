@@ -1,4 +1,4 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, createMemo, onMount } from "solid-js";
 import browser from "webextension-polyfill";
 import type { ManagementPreset } from "../../types";
 import { DEFAULT_MANAGEMENT_PRESET } from "../../types";
@@ -13,13 +13,16 @@ export default function TradeManagement() {
     }
   });
 
-  async function save(updated: ManagementPreset) {
-    setPreset(updated);
-    await browser.storage.local.set({ managementPreset: updated });
-  }
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   function updateField<K extends keyof ManagementPreset>(key: K, value: ManagementPreset[K]) {
-    save({ ...preset(), [key]: value });
+    const updated = { ...preset(), [key]: value };
+    setPreset(updated);
+
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      browser.storage.local.set({ managementPreset: preset() });
+    }, 200);
   }
 
   function sliderStyle(value: number, min: number, max: number): string {
@@ -53,13 +56,15 @@ export default function TradeManagement() {
     return "var(--color-signal-red)";
   }
 
+  const riskColorMemo = createMemo(() => riskColorMemo());
+
   return (
     <div class="space-y-5 px-5 py-4" data-testid="trade-management">
       {/* Risk % Slider — traffic light: green ≤2, orange ≤5, red >5 */}
       <div data-testid="risk-slider">
         <label for="field-risk-percent" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Risk Per Trade</span>
-          <div class="value-input-box" style={{ "border-color": riskColor(preset().risk_percent) + "40" }}>
+          <div class="value-input-box" style={{ "border-color": riskColorMemo() + "40" }}>
             <input
               id="field-risk-percent"
               type="number"
@@ -67,12 +72,12 @@ export default function TradeManagement() {
               min="0.1"
               max="10"
               class="w-14 text-right text-[14px]"
-              style={{ color: riskColor(preset().risk_percent) }}
+              style={{ color: riskColorMemo() }}
               value={preset().risk_percent}
               onChange={(e) => updateField("risk_percent", parseFloat(e.target.value) || 1.0)}
               data-testid="risk-percent"
             />
-            <span class="text-[13px] font-mono ml-1" style={{ color: riskColor(preset().risk_percent) }}>%</span>
+            <span class="text-[13px] font-mono ml-1" style={{ color: riskColorMemo() }}>%</span>
           </div>
         </label>
         <input
@@ -178,7 +183,7 @@ export default function TradeManagement() {
 
       {/* Trailing Stop Toggle Card */}
       <div
-        class={`bg-bg-panel rounded-xl border transition-all duration-200 ${
+        class={`bg-bg-panel rounded-xl border transition-colors duration-200 ${
           preset().trailing_stop.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="trailing-card"
@@ -257,7 +262,7 @@ export default function TradeManagement() {
 
       {/* Partial TP Toggle Card */}
       <div
-        class={`bg-bg-panel rounded-xl border transition-all duration-200 ${
+        class={`bg-bg-panel rounded-xl border transition-colors duration-200 ${
           preset().partial_tp.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="partial-tp-card"

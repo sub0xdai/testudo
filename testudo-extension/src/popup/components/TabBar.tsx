@@ -24,7 +24,7 @@ export default function TabBar(props: TabBarProps) {
           aria-selected={props.activeTab === tab.id}
           aria-controls={`panel-${tab.id}`}
           id={`tab-${tab.id}`}
-          class={`flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide border-0 rounded-lg transition-all duration-150 ${
+          class={`flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide border-0 rounded-lg transition-colors duration-150 ${
             props.activeTab === tab.id
               ? "tab-active"
               : "tab-inactive"

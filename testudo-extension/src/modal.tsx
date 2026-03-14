@@ -47,7 +47,7 @@ const MODAL_STYLES = `
     --color-bg-panel: #141920;
     --color-bg-elevated: #1c2128;
   }
-  .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   .panel {
     position: relative;
     overflow: hidden;
@@ -65,7 +65,7 @@ const MODAL_STYLES = `
   .side-btn {
     font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
     padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
-    background: transparent; color: var(--color-text-dim); cursor: pointer; transition: all 0.15s;
+    background: transparent; color: var(--color-text-dim); cursor: pointer; transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   }
   .side-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--color-text-secondary); }
   .side-btn-active-long { background: color-mix(in srgb, var(--color-signal-green) 15%, transparent); color: var(--color-signal-green); border-color: color-mix(in srgb, var(--color-signal-green) 30%, transparent); }
@@ -229,6 +229,21 @@ export function isVisible(): boolean {
 
 // --- Toast Notifications ---
 
+const TOAST_STYLES = `
+  .toast {
+    position: fixed; top: 20px; right: 20px;
+    padding: 12px 18px; border-radius: 12px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 13px; font-weight: 600; color: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    z-index: 100000; opacity: 0; transition: opacity 0.3s;
+  }
+  .toast.visible { opacity: 1; }
+  .toast.success { background: #052E16; color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+  .toast.error { background: #450A0A; color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+  .toast.info { background: #0F172A; color: #9ca3af; border: 1px solid #334155; }
+`;
+
 export type ToastStyle = "success" | "error" | "info";
 
 const activeToasts: HTMLElement[] = [];
@@ -246,7 +261,7 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
   const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
-  style.textContent = MODAL_STYLES;
+  style.textContent = TOAST_STYLES;
   shadow.appendChild(style);
 
   const toast = document.createElement("div");

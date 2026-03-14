@@ -8,6 +8,7 @@ const args = process.argv.slice(2);
 const buildChrome = args.includes("--chrome") || (!args.includes("--firefox") && !args.includes("--chrome"));
 const buildFirefox = args.includes("--firefox") || (!args.includes("--firefox") && !args.includes("--chrome"));
 const watch = args.includes("--watch");
+const isProduction = !watch;
 
 // Background service worker uses ESM (manifest declares "type": "module")
 const ESM_ENTRIES = [
@@ -33,6 +34,7 @@ async function bundle(outdir: string): Promise<void> {
       target: "es2022",
       sourcemap: true,
       minify: !watch,
+      drop: isProduction ? ["console"] : [],
       logLevel: "info",
     }),
     // IIFE build: content script + popup (Solid.js JSX compilation)
@@ -44,6 +46,7 @@ async function bundle(outdir: string): Promise<void> {
       target: "es2022",
       sourcemap: true,
       minify: !watch,
+      drop: isProduction ? ["console"] : [],
       logLevel: "info",
       plugins: [solidPlugin()],
       jsx: "automatic",
@@ -80,6 +83,14 @@ function copyStaticFiles(outdir: string): void {
     if (existsSync(src)) {
       cpSync(src, join(fontsDir, font));
     }
+  }
+
+  // Copy images
+  const imagesDir = join(outdir, "popup/images");
+  mkdirSync(imagesDir, { recursive: true });
+  const srcImagesDir = join("src", "popup", "images");
+  if (existsSync(srcImagesDir)) {
+    cpSync(srcImagesDir, imagesDir, { recursive: true });
   }
 
   // Copy icons (create placeholder SVGs if real icons don't exist)

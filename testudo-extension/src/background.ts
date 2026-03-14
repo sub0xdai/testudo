@@ -1011,8 +1011,22 @@ function disconnectWebSocket(): void {
   setWsState("disconnected");
 }
 
+// Cached content tabs — invalidated on tab create/remove
+let cachedContentTabs: browser.Tabs.Tab[] | null = null;
+const CONTENT_TAB_URLS = ["*://*.tradingview.com/*", "*://*.dexscreener.com/*", "*://*.gmx.io/*", "*://*.bybit.com/*"];
+
+browser.tabs.onCreated.addListener(() => { cachedContentTabs = null; });
+browser.tabs.onRemoved.addListener(() => { cachedContentTabs = null; });
+
+async function getContentTabs(): Promise<browser.Tabs.Tab[]> {
+  if (!cachedContentTabs) {
+    cachedContentTabs = await browser.tabs.query({ url: CONTENT_TAB_URLS });
+  }
+  return cachedContentTabs;
+}
+
 function forwardOrderUpdate(data: unknown): void {
-  browser.tabs.query({ url: ["*://*.tradingview.com/*", "*://*.dexscreener.com/*", "*://*.gmx.io/*", "*://*.bybit.com/*"] }).then((tabs) => {
+  getContentTabs().then((tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
         browser.tabs.sendMessage(tab.id, {

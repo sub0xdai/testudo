@@ -84,7 +84,7 @@ export default function ArcGauge(props: ArcGaugeProps) {
                 fill={tickColor(t)}
                 opacity={opacity()}
                 filter={isNeedle() ? "url(#tick-glow)" : undefined}
-                class="transition-all duration-700 ease-out"
+                style={{ transition: "r 700ms ease-out, opacity 700ms ease-out" }}
               />
             );
           }}

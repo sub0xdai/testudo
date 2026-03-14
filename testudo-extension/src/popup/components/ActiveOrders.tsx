@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import type { TradeGroupResponse, ExchangePositionsResponse } from "../../types";
 import PositionCard from "./PositionCard";
@@ -107,8 +107,8 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
     }
   });
 
-  const positions = () => trades().filter((t) => t.status === "Active");
-  const pendingOrders = () => trades().filter((t) => t.status === "Pending");
+  const positions = createMemo(() => trades().filter((t) => t.status === "Active"));
+  const pendingOrders = createMemo(() => trades().filter((t) => t.status === "Pending"));
 
   createEffect(() => {
     props.onCountChange?.(positions().length, pendingOrders().length);

@@ -249,7 +249,7 @@ export default function QuickTrade() {
 
       {/* Confirm Button */}
       <button
-        class={`w-full py-3 text-[13px] font-bold tracking-widest rounded-xl transition-all ${
+        class={`w-full py-3 text-[13px] font-bold tracking-widest rounded-xl transition-colors ${
           isValid() && !submitting()
             ? side() === "LONG"
               ? "bg-signal-green/15 text-signal-green border-signal-green/30 hover:bg-signal-green/25"

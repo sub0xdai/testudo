@@ -16,41 +16,32 @@ const WS_DOT_CLASSES: Record<WsState, string> = {
   connected: "bg-signal-green shadow-[0_0_8px_rgba(34,197,94,0.6)]",
 };
 
-export default function StatusBar() {
+interface StatusBarProps {
+  sidecarStatus: SidecarStatus;
+}
+
+export default function StatusBar(props: StatusBarProps) {
   const [wsState, setWsState] = createSignal<WsState>("disconnected");
-  const [sidecarStatus, setSidecarStatus] = createSignal<SidecarStatus>("unknown");
 
   function handleMessage(message: unknown) {
-    const msg = message as { type: string; state?: WsState; status?: SidecarStatus };
+    const msg = message as { type: string; state?: WsState };
     if (msg.type === "WS_STATE_CHANGED" && msg.state) {
       setWsState(msg.state);
-    }
-    if (msg.type === "SIDECAR_STATUS_CHANGED" && msg.status) {
-      setSidecarStatus(msg.status);
     }
   }
 
   onMount(async () => {
-    // Register listener BEFORE querying so we don't miss state changes
-    // that fire between the response and listener registration.
     browser.runtime.onMessage.addListener(handleMessage);
-
-    const [wsRes, sidecarRes] = await Promise.all([
-      browser.runtime.sendMessage({ type: "WS_STATUS" }) as Promise<{ state: WsState }>,
-      browser.runtime.sendMessage({ type: "SIDECAR_STATUS" }) as Promise<{ status: SidecarStatus }>,
-    ]);
+    const wsRes = await browser.runtime.sendMessage({ type: "WS_STATUS" }) as { state: WsState };
     setWsState(wsRes.state);
-    setSidecarStatus(sidecarRes?.status || "unknown");
   });
 
   onCleanup(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
   });
 
-  // Sidecar health is the primary exchange connectivity indicator.
-  // WS state is supplementary (real-time order streaming only).
-  const sidecarHealthy = () => sidecarStatus() === "healthy";
-  const sidecarDown = () => sidecarStatus() === "unreachable";
+  const sidecarHealthy = () => props.sidecarStatus === "healthy";
+  const sidecarDown = () => props.sidecarStatus === "unreachable";
 
   const dotClass = () => {
     if (sidecarHealthy()) return WS_DOT_CLASSES["connected"];
