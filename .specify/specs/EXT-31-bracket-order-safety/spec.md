@@ -1,8 +1,8 @@
-# Specification: Bracket Order Safety
+# Specification: Deferred SL/TP Placement (Bracket Order Safety)
 
 **Spec ID:** EXT-31-bracket-order-safety
-**Date:** 2026-03-14
-**Status:** Draft
+**Date:** 2026-03-14 (revised 2026-03-14)
+**Status:** Draft (Revision 2 — bracket approach failed, deferred placement)
 **Class:** Safety / Critical Bug Fix
 **Priority:** P0 — live trading safety
 **Depends on:** EXT-21 (live trade execution), EXT-22 (WebSocket fill detection)
@@ -21,20 +21,34 @@ This was observed in production: a short entry missed by a tick, price swept dow
 
 ---
 
-## Solution: Native Bracket Orders via CCXT
+## Revision History
 
-CCXT 4.5.39 (our installed version) supports the unified `createOrder` with attached `stopLoss` and `takeProfit` parameters. WOO X supports this on perpetual swap markets.
+### Rev 1 (bracket orders via CCXT) — FAILED
 
-```javascript
-exchange.createOrder('BTC/USDT:USDT', 'limit', 'sell', 0.01473, 71415, {
-  stopLoss: { triggerPrice: 72500 },
-  takeProfit: { triggerPrice: 70000 },
-})
-```
+Attempted to use CCXT's `createOrder` with attached `stopLoss`/`takeProfit` parameters. WOO X rejected the order — CCXT WOO driver has bracket order code but `attachedStopLossTakeProfit: undefined` (unverified feature). The request routes to WOO's `/v3/trade/algoOrder` with `algoType: 'BRACKET'` which the exchange rejects.
 
-Per CCXT docs: *"These attached orders are triggered automatically once the primary order is filled and the market price reaches their respective trigger prices."*
+Commit 1e2670d implemented this approach. The sidecar and backend changes work structurally but the exchange itself rejects the bracket format.
 
-The exchange handles the activation logic — SL/TP only become live after entry fills. Single API call, atomic, no race conditions.
+### Rev 2 (deferred placement) — CURRENT
+
+Place only entry order on trade submission. FillDetectorService places SL/TP **after** WebSocket entry fill confirmation. SL/TP cannot fire before entry because they don't exist on the exchange until entry fills.
+
+---
+
+## Solution: Deferred SL/TP Placement
+
+Instead of placing all orders upfront (broken) or using exchange-native bracket orders (rejected), defer SL/TP placement to the FillDetectorService:
+
+1. **Trade submission** → place ONLY the entry order on the exchange
+2. **Entry fills** → WebSocket event arrives at FillDetectorService
+3. **FillDetectorService** → reads SL/TP prices from OrderGroup, places them on the exchange
+4. **OCO logic** → existing fill detection handles SL/TP fills as before
+
+The infrastructure already exists:
+- `FillDetectorService` detects entry fills (`FillKind::Entry`, line 331 of fill_detector.rs)
+- `OrderGroup` stores `stop_loss_price` and `take_profit_targets`
+- `ExchangeApi` trait supports `place_order()` for SL/TP order types
+- `EngineHandle` supports `register_exchange_order_id()` for order tracking
 
 ---
 
@@ -42,157 +56,31 @@ The exchange handles the activation logic — SL/TP only become live after entry
 
 | ID | Requirement | Priority | Subsystem |
 |----|-------------|----------|-----------|
-| FR-1 | Extend sidecar `/order` handler to accept optional `stopLoss` and `takeProfit` params and pass them to `exchange.createOrder()` | High | testudo-ccxt |
-| FR-2 | Modify backend `create_trade` to send a single bracket order call instead of three sequential calls when live trading | High | router/routes |
-| FR-3 | Parse bracket order response to extract entry, SL, and TP exchange order IDs | High | router/ccxt_client |
-| FR-4 | Register all three exchange order IDs in the OrderGroup atomically | High | engine/order_group |
-| FR-5 | Remove the three-sequential-call code path for live trades (keep for shadow engine) | Medium | router/routes |
-| FR-6 | Stamp all three legs with `clientOrderId` convention: `testudo:{group_id}:{role}` | Medium | router/routes |
-| FR-7 | Ensure fill detector handles bracket order fills correctly (already idempotent — verify) | Medium | router/fill_detector |
+| FR-1 | `create_trade` places ONLY the entry order on the exchange (no SL/TP) | High | router/routes |
+| FR-2 | FillDetectorService places SL order on exchange after entry fill | High | router/fill_detector |
+| FR-3 | FillDetectorService places TP order on exchange after entry fill | High | router/fill_detector |
+| FR-4 | FillDetectorService registers SL/TP exchange order IDs with the OrderGroup | High | router/fill_detector |
+| FR-5 | Close side inferred from SL price vs entry fill price | Medium | router/fill_detector |
+| FR-6 | Stamp SL/TP with `clientOrderId` convention: `testudo:{group_id}:{sl|tp}` | Medium | router/fill_detector |
+| FR-7 | SL placement failure logs critical error (position live but unprotected) | Medium | router/fill_detector |
+| FR-8 | TP placement failure logs warning (non-critical, matches pre-EXT-31 behavior) | Medium | router/fill_detector |
+| FR-9 | Revert bracket params in sidecar handler (remove dead code) | Low | testudo-ccxt |
+| FR-10 | Revert bracket fields in ccxt_client.rs and exchange_api.rs | Low | router/ccxt_client |
 
 ---
 
 ## Technical Implementation
 
-### 1) CCXT Sidecar — Extend `/order` Handler (FR-1)
+### 1) Trade Route — Entry Only (FR-1)
 
-**File:** `testudo-ccxt/src/handlers.js`
+**File:** `testudo-exchange/crates/router/src/routes/trade_management.rs` (~line 821-870)
 
-**Current:** `handleOrder()` accepts `stopPrice`, `reduceOnly`, `clientOrderId` and makes a single `exchange.createOrder()` call per order.
-
-**Change:** Accept optional `stopLoss` and `takeProfit` objects in the request body and forward them to CCXT:
-
-```javascript
-async function handleOrder(req, res) {
-  const { exchange, params } = getExchangeAndParams(req.body);
-  const { symbol, type, side, amount, price, stopPrice, leverage,
-          reduceOnly, clientOrderId, stopLoss, takeProfit } = params;
-
-  if (leverage && leverage > 0) {
-    await exchange.setLeverage(leverage, symbol);
-  }
-
-  const orderParams = {};
-  if (stopPrice !== undefined && stopPrice !== null) {
-    orderParams.stopPrice = stopPrice;
-  }
-  if (reduceOnly) {
-    orderParams.reduceOnly = true;
-  }
-  if (clientOrderId) {
-    orderParams.clientOrderId = clientOrderId;
-  }
-
-  // Bracket order: attach SL/TP to entry (exchange activates on fill)
-  if (stopLoss && stopLoss.triggerPrice) {
-    orderParams.stopLoss = { triggerPrice: stopLoss.triggerPrice };
-  }
-  if (takeProfit && takeProfit.triggerPrice) {
-    orderParams.takeProfit = { triggerPrice: takeProfit.triggerPrice };
-  }
-
-  const order = await exchange.createOrder(symbol, type, side, amount, price, orderParams);
-
-  res.json({
-    id: stringify(order.id),
-    clientOrderId: order.clientOrderId || null,
-    status: order.status,
-    symbol: order.symbol,
-    side: order.side,
-    type: order.type,
-    amount: stringify(order.amount),
-    filled: stringify(order.filled),
-    remaining: stringify(order.remaining),
-    average: stringify(order.average),
-    price: stringify(order.price),
-    // Bracket order IDs (if exchange returns them)
-    stopLossOrderId: order.info?.stopLossOrderId || null,
-    takeProfitOrderId: order.info?.takeProfitOrderId || null,
-  });
-}
-```
-
-**Key:** The sidecar remains a thin proxy. No new endpoint needed — the existing `/order` endpoint gains optional bracket parameters.
-
-### 2) Backend — CCXT Client Request/Response (FR-3)
-
-**File:** `testudo-exchange/crates/router/src/services/ccxt_client.rs`
-
-Extend the request envelope to include optional bracket fields:
+Change the `place_order` call to pass `None` for bracket params:
 
 ```rust
-// In the request body builder:
-if let Some(sl_trigger) = req.stop_loss_trigger {
-    body["stopLoss"] = json!({ "triggerPrice": sl_trigger.to_string() });
-}
-if let Some(tp_trigger) = req.take_profit_trigger {
-    body["takeProfit"] = json!({ "triggerPrice": tp_trigger.to_string() });
-}
-```
-
-Extend `SidecarOrderResponse`:
-
-```rust
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SidecarOrderResponse {
-    pub id: String,
-    pub client_order_id: Option<String>,
-    pub status: Option<String>,
-    pub symbol: Option<String>,
-    pub side: Option<String>,
-    #[serde(rename = "type")]
-    pub order_type: Option<String>,
-    pub amount: Option<String>,
-    pub filled: Option<String>,
-    pub remaining: Option<String>,
-    pub average: Option<String>,
-    pub price: Option<String>,
-    // NEW: bracket order child IDs
-    pub stop_loss_order_id: Option<String>,
-    pub take_profit_order_id: Option<String>,
-}
-```
-
-### 3) Backend — Exchange API Trait Extension (FR-2)
-
-**File:** `testudo-exchange/crates/router/src/services/exchange_api.rs`
-
-Add optional bracket fields to `PlaceOrderRequest`:
-
-```rust
-pub struct PlaceOrderRequest {
-    pub user_id: Uuid,
-    pub symbol: String,
-    pub side: OrderSide,
-    pub order_type: ApiOrderType,
-    pub quantity: Decimal,
-    pub price: Option<Decimal>,
-    pub stop_price: Option<Decimal>,
-    pub leverage: u8,
-    pub exchange_account_id: Option<Uuid>,
-    pub reduce_only: bool,
-    pub client_order_id: Option<String>,
-    // NEW: bracket order fields
-    pub stop_loss_trigger: Option<Decimal>,
-    pub take_profit_trigger: Option<Decimal>,
-}
-```
-
-The `CcxtExchangeApi::place_order()` implementation passes these through to the sidecar.
-
-### 4) Backend — Trade Route Refactor (FR-2, FR-5, FR-6)
-
-**File:** `testudo-exchange/crates/router/src/routes/trade_management.rs`
-
-Replace the three sequential exchange calls (lines ~812-970) with a single bracket call:
-
-```rust
-// For live trades: single bracket order
-if is_authenticated {
-    let entry_client_id = format!("testudo:{}:entry", group_id);
-
-    let result = tm.place_order(ExchangePlaceOrderRequest {
+// EXT-31 FR-1: Entry-only placement — SL/TP deferred to FillDetectorService
+match tm
+    .place_order(ExchangePlaceOrderRequest {
         user_id,
         symbol: req.symbol.clone(),
         side: exchange_side,
@@ -204,121 +92,239 @@ if is_authenticated {
         exchange_account_id,
         reduce_only: false,
         client_order_id: Some(entry_client_id),
-        // Bracket: attach SL/TP
-        stop_loss_trigger: Some(sl_price),
-        take_profit_trigger: tp_price,
-    }).await;
-
-    match result {
-        Ok(resp) => {
-            // Register entry ID
-            engine_handle.set_exchange_order_id(group_id, "entry", &resp.id).await;
-
-            // Register SL/TP IDs if returned
-            if let Some(sl_id) = &resp.stop_loss_order_id {
-                engine_handle.set_exchange_order_id(group_id, "sl", sl_id).await;
-            }
-            if let Some(tp_id) = &resp.take_profit_order_id {
-                engine_handle.set_exchange_order_id(group_id, "tp", tp_id).await;
-            }
-        }
-        Err(e) => {
-            // Rollback shadow order and return error
-            engine_handle.cancel_order(user_id, placed_order.id).await;
-            return Err(e);
-        }
-    }
-}
+        stop_loss_trigger: None,    // Deferred to fill detector
+        take_profit_trigger: None,  // Deferred to fill detector
+    })
+    .await
 ```
 
-**Rollback simplification:** One call to rollback instead of cascading rollbacks across three calls.
+The existing `if let Some(sl_id)` and `if let Some(tp_id)` registration blocks become harmless no-ops since the bracket result always returns `None` for those fields.
 
-### 5) Fill Detector — Verification (FR-7)
+### 2) Fill Detector — Deferred SL/TP Placement (FR-2 through FR-8)
 
 **File:** `testudo-exchange/crates/router/src/services/fill_detector.rs`
 
-The fill detector already handles fills idempotently:
-- Entry fill → marks group Active
-- SL fill → marks StoppedOut, cancels TP
-- TP fill → marks TookProfit, cancels SL
-- Terminal state fills → no-op
+**a) Extend FillAction struct** with fields needed for deferred placement:
 
-**Verify:** With bracket orders, the exchange may auto-cancel the opposite leg when SL/TP fills. The cancel attempt in fill_detector should handle "order not found" / "already cancelled" gracefully. Check that `cancel_order` errors are logged but don't crash.
+```rust
+struct FillAction {
+    group_id: Uuid,
+    user_id: Uuid,
+    symbol: String,
+    exchange_account_id: Option<Uuid>,
+    exchange_sl_order_id: Option<String>,
+    exchange_tp_order_id: Option<String>,
+    event_timestamp: Option<i64>,
+    kind: FillKind,
+    // EXT-31: Deferred placement fields
+    stop_loss_price: Option<Decimal>,
+    take_profit_price: Option<Decimal>,
+    entry_fill_price: Decimal,
+    entry_quantity: Decimal,
+}
+```
 
-### 6) OrderGroup Registration (FR-4)
+**b) Populate deferred fields** in the `is_entry` branch (~line 243):
 
-**File:** `testudo-exchange/crates/engine/src/shadow/order_group.rs`
+```rust
+} else if is_entry {
+    let fill_price = event.average.or(event.price).unwrap_or(0.0);
+    let fill_dec = rust_decimal::Decimal::from_f64_retain(fill_price).unwrap_or_default();
+    if let Err(e) = self.engine_handle.on_entry_filled(group_id, fill_dec).await {
+        tracing::error!("...");
+        return;
+    }
+    FillAction {
+        group_id,
+        user_id,
+        symbol,
+        exchange_account_id,
+        exchange_sl_order_id,
+        exchange_tp_order_id,
+        event_timestamp: event.timestamp,
+        kind: FillKind::Entry,
+        // EXT-31: Capture group prices for deferred placement
+        stop_loss_price: group.stop_loss_price,
+        take_profit_price: group.take_profit_targets.first().map(|t| t.price),
+        entry_fill_price: fill_dec,
+        entry_quantity: group.entry_quantity,
+    }
+```
 
-Verify the group can store all three exchange order IDs. The current fields:
-- `exchange_order_id` (entry)
-- `exchange_sl_order_id`
-- `exchange_tp_order_id`
+**c) Add deferred SL/TP placement** in the `FillKind::Entry` handler (~line 331):
 
-These are already present. The only change is populating them from a single response instead of three.
+```rust
+FillKind::Entry => {
+    tracing::info!(...);
+
+    // EXT-31 FR-5: Determine close side from SL price vs entry fill price
+    let close_side = if let Some(sl) = action.stop_loss_price {
+        if sl < action.entry_fill_price { OrderSide::Sell } else { OrderSide::Buy }
+    } else if let Some(tp) = action.take_profit_price {
+        if tp > action.entry_fill_price { OrderSide::Sell } else { OrderSide::Buy }
+    } else {
+        // No SL or TP — just broadcast and continue
+        self.broadcast_fill_event(...);
+        tracing::info!(...);
+        return; // or use a labeled block
+    };
+
+    // EXT-31 FR-2: Place SL (stop-market, reduce-only)
+    if let Some(sl_price) = action.stop_loss_price {
+        let sl_client_id = format!("testudo:{}:sl", action.group_id);
+        match self.exchange_api.place_order(PlaceOrderRequest {
+            user_id: action.user_id,
+            symbol: action.symbol.clone(),
+            side: close_side.clone(),
+            order_type: ApiOrderType::StopLoss,
+            quantity: action.entry_quantity,
+            price: None,
+            stop_price: Some(sl_price),
+            leverage: 0,
+            exchange_account_id: action.exchange_account_id,
+            reduce_only: true,
+            client_order_id: Some(sl_client_id),
+            stop_loss_trigger: None,
+            take_profit_trigger: None,
+        }).await {
+            Ok(result) => {
+                tracing::info!(
+                    "FillDetector: deferred SL placed: order_id={}, sl_price={}, group={}",
+                    result.id, sl_price, action.group_id
+                );
+                let _ = self.engine_handle
+                    .register_exchange_order_id(action.group_id, OrderRole::StopLoss, result.id)
+                    .await;
+            }
+            Err(e) => {
+                // FR-7: Critical — position is live but unprotected
+                tracing::error!(
+                    "FillDetector: CRITICAL — deferred SL placement failed for group {}: {}. Position is UNPROTECTED.",
+                    action.group_id, e
+                );
+            }
+        }
+    }
+
+    // EXT-31 FR-3: Place TP (limit, NOT reduce-only per trading.md convention)
+    if let Some(tp_price) = action.take_profit_price {
+        let tp_client_id = format!("testudo:{}:tp", action.group_id);
+        match self.exchange_api.place_order(PlaceOrderRequest {
+            user_id: action.user_id,
+            symbol: action.symbol.clone(),
+            side: close_side,
+            order_type: ApiOrderType::Limit,
+            quantity: action.entry_quantity,
+            price: Some(tp_price),
+            stop_price: None,
+            leverage: 0,
+            exchange_account_id: action.exchange_account_id,
+            reduce_only: false,
+            client_order_id: Some(tp_client_id),
+            stop_loss_trigger: None,
+            take_profit_trigger: None,
+        }).await {
+            Ok(result) => {
+                tracing::info!(
+                    "FillDetector: deferred TP placed: order_id={}, tp_price={}, group={}",
+                    result.id, tp_price, action.group_id
+                );
+                let _ = self.engine_handle
+                    .register_exchange_order_id(action.group_id, OrderRole::TakeProfit, result.id)
+                    .await;
+            }
+            Err(e) => {
+                // FR-8: Non-critical — proceed without TP
+                tracing::warn!(
+                    "FillDetector: deferred TP placement failed for group {} (non-critical): {}",
+                    action.group_id, e
+                );
+            }
+        }
+    }
+
+    self.broadcast_fill_event(...);
+    tracing::info!(...);
+}
+```
+
+**New imports needed in fill_detector.rs:**
+```rust
+use crate::services::exchange_api::{PlaceOrderRequest, ApiOrderType, OrderSide};
+use engine::OrderRole;
+use rust_decimal::Decimal;
+```
+
+### 3) Revert Bracket Code (FR-9, FR-10) — LOW PRIORITY
+
+These are optional cleanup tasks. The bracket fields (`stop_loss_trigger`, `take_profit_trigger` on `PlaceOrderRequest`; bracket forwarding in `handlers.js`) are harmless dead code when always set to `None`. Can be cleaned up in a separate commit.
 
 ---
 
-## Migration Strategy
+## Side Inference Logic (FR-5)
 
-1. **Add bracket fields as `Option`** — existing sequential path still works
-2. **Deploy sidecar first** (backward compatible — new fields are optional)
-3. **Deploy backend** with bracket order logic
-4. **Test on WOO testnet** with a limit order that won't fill — verify SL/TP don't exist on exchange
-5. **Remove sequential path** for live trades once bracket orders are verified
+Determine close side from SL/TP prices relative to entry fill price:
+- `sl_price < entry_price` → long position → close side = Sell
+- `sl_price > entry_price` → short position → close side = Buy
+- Fallback to TP comparison if no SL: `tp_price > entry_price` → long → Sell
+
+This is 100% reliable because a long SL is always below entry, short SL always above.
+
+---
+
+## Failure Modes
+
+| Scenario | Behavior |
+|----------|----------|
+| SL placement fails after entry fill | Log CRITICAL error. Position is live but unprotected. User must manually manage. |
+| TP placement fails after entry fill | Log warning (non-critical), proceed. Matches pre-EXT-31 behavior. |
+| Entry cancelled before fill | Existing `handle_cancelled_event` cleans up group (line 405-470). No SL/TP to place. |
+| Shadow-only trade (not authenticated) | No exchange orders placed. Deferred placement doesn't trigger — no WebSocket events for shadow trades. |
+| Partial fill (entry partially filled) | FillDetectorService only acts on `status == "closed"` (fully filled). Partial fills ignored. |
+| Network partition during SL/TP placement | `exchange_api.place_order()` returns timeout error. SL/TP not placed. Same as SL failure mode. |
 
 ---
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `testudo-ccxt/src/handlers.js` | Accept & forward `stopLoss`/`takeProfit` params, return child order IDs |
-| `testudo-exchange/crates/router/src/services/ccxt_client.rs` | Add bracket fields to request builder, extend response struct |
-| `testudo-exchange/crates/router/src/services/exchange_api.rs` | Add `stop_loss_trigger`/`take_profit_trigger` to `PlaceOrderRequest` |
-| `testudo-exchange/crates/router/src/routes/trade_management.rs` | Single bracket call replaces three sequential calls for live trades |
-| `testudo-exchange/crates/router/src/services/fill_detector.rs` | Verify graceful handling of "order already cancelled" on OCO cancel |
+| File | Change | Lines |
+|------|--------|-------|
+| `testudo-exchange/crates/router/src/routes/trade_management.rs` | Set bracket params to `None` (entry-only) | ~2 lines |
+| `testudo-exchange/crates/router/src/services/fill_detector.rs` | Add deferred SL/TP placement on entry fill | ~60 lines |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Live trade places entry+SL+TP in a single `createOrder` call with attached params
-- [ ] SL and TP do NOT exist on the exchange as independent orders before entry fills
-- [ ] If entry never fills and is cancelled, no SL/TP orders remain on exchange
-- [ ] If entry fills, SL and TP activate and OCO logic works (one fills → other cancels)
-- [ ] Sidecar `/order` endpoint is backward compatible (bracket fields are optional)
-- [ ] Fill detector handles bracket fills without errors
+- [ ] Live trade places ONLY entry order on the exchange (no SL/TP until fill)
+- [ ] SL and TP do NOT exist on the exchange before entry fills
+- [ ] After entry fill via WebSocket, SL is placed as stop-market reduce-only
+- [ ] After entry fill via WebSocket, TP is placed as limit (non-reduce-only)
+- [ ] SL/TP exchange order IDs are registered in OrderGroup for OCO tracking
+- [ ] If entry never fills and is cancelled, no SL/TP orders exist on exchange
+- [ ] If entry fills, OCO logic works (SL fills → TP cancelled, TP fills → SL cancelled)
+- [ ] SL failure logs CRITICAL error with group ID
+- [ ] TP failure logs warning (non-critical)
+- [ ] Shadow engine (paper trading) continues to work unaffected
 - [ ] `cargo clippy --all-targets && cargo test` passes
-- [ ] Shadow engine (paper trading) continues to work via existing path
+- [ ] `cd testudo-extension && bun run build` passes (no extension changes)
 
 ---
 
 ## Testing Plan
 
-1. **Unit test:** Sidecar handler correctly forwards `stopLoss`/`takeProfit` to CCXT
-2. **Unit test:** Backend builds correct request body with bracket fields
-3. **Integration test (testnet):** Place bracket order on WOO testnet, verify:
+1. **Unit test:** `test_entry_fill_places_deferred_sl_tp` — verify SL/TP placement on entry fill using MockExchangeApi
+2. **Unit test:** `test_entry_fill_no_sl_tp_when_prices_absent` — verify no SL/TP placed when group has no prices
+3. **Unit test:** `test_deferred_sl_failure_logs_critical` — verify critical log on SL failure
+4. **Regression:** All existing fill_detector tests pass (OCO, idempotency, entry cancel)
+5. **Regression:** `cargo test` across all crates passes
+6. **Manual (testnet):** Place live trade on WOO, verify:
    - Only entry order visible in open orders before fill
-   - After entry fills, SL/TP appear
-   - Cancelling entry also cancels SL/TP
-4. **Regression test:** Paper trading (shadow engine) still works with sequential path
+   - After entry fills, SL and TP appear as separate orders
+   - Cancel/fill one → other is cancelled via OCO
 
 ---
 
-## Risk Assessment
+## Completion Signal
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| WOO doesn't return SL/TP order IDs in response | Medium | Fall back to fetching open orders after placement; or use `fetchOpenOrders` to discover child IDs |
-| Exchange rejects bracket syntax | High | Validate on testnet before production; keep sequential path as fallback |
-| Fill detector double-cancels | Low | Already idempotent; verify cancel errors are non-fatal |
-| CCXT version drift | Low | Pinned to ^4.4.0, currently 4.5.39; nested syntax stable since 4.x |
-
----
-
-## Out of Scope
-
-- Software OTO state machine (not needed — exchange handles activation natively)
-- Multi-exchange bracket support matrix (WOO only for now; extend per exchange later)
-- Partial fill handling for bracket legs (exchange manages this)
-- Amendment of bracket orders after placement (separate spec)
+All acceptance criteria checked. `cargo clippy --all-targets && cargo test` passes. Extension builds clean.

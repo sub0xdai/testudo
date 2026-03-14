@@ -72,6 +72,8 @@ async function handleBalance(req, res) {
       });
     }
 
+    const usdt = result.find(r => r.asset === 'USDT');
+    if (usdt) console.log('[BALANCE USDT]', usdt);
     res.json(result);
   } catch (err) {
     const mapped = mapError(err);
@@ -83,13 +85,20 @@ async function handleBalance(req, res) {
  * POST /order
  */
 async function handleOrder(req, res) {
+  let orderDetail = {};
   try {
     const { exchange, params } = getExchangeAndParams(req.body);
     const { symbol, type, side, amount, price, stopPrice, leverage,
             reduceOnly, clientOrderId, stopLoss, takeProfit } = params;
 
     if (leverage && leverage > 0) {
-      await exchange.setLeverage(leverage, symbol);
+      try {
+        await exchange.setLeverage(leverage, symbol);
+        console.log('[LEVERAGE OK]', { leverage, symbol });
+      } catch (levErr) {
+        console.error('[LEVERAGE ERROR]', { leverage, symbol, error: levErr.message });
+        // Continue — some exchanges don't support setLeverage or already have it set
+      }
     }
 
     const orderParams = {};
@@ -111,6 +120,8 @@ async function handleOrder(req, res) {
       orderParams.takeProfit = { triggerPrice: takeProfit.triggerPrice };
     }
 
+    orderDetail = { symbol, type, side, amount, price, leverage, reduceOnly, orderParams };
+    console.log('[ORDER REQ]', orderDetail);
     const order = await exchange.createOrder(symbol, type, side, amount, price, orderParams);
 
     res.json({
@@ -130,6 +141,11 @@ async function handleOrder(req, res) {
       takeProfitOrderId: order.info?.takeProfitOrderId || null,
     });
   } catch (err) {
+    console.error('[ORDER ERROR]', {
+      ...orderDetail,
+      error: err.constructor.name,
+      message: err.message,
+    });
     const mapped = mapError(err);
     res.status(mapped.status).json(mapped.body);
   }
@@ -139,10 +155,13 @@ async function handleOrder(req, res) {
  * POST /order/edit
  */
 async function handleEditOrder(req, res) {
+  let editDetail = {};
   try {
     const { exchange, params } = getExchangeAndParams(req.body);
     const { orderId, symbol, type, side, amount, price } = params;
 
+    editDetail = { orderId, symbol, type, side, amount, price };
+    console.log('[EDIT REQ]', editDetail);
     const order = await exchange.editOrder(orderId, symbol, type, side, amount, price);
 
     res.json({
@@ -158,6 +177,11 @@ async function handleEditOrder(req, res) {
       price: stringify(order.price),
     });
   } catch (err) {
+    console.error('[EDIT ERROR]', {
+      ...editDetail,
+      error: err.constructor.name,
+      message: err.message,
+    });
     const mapped = mapError(err);
     res.status(mapped.status).json(mapped.body);
   }
