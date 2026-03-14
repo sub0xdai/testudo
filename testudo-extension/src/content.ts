@@ -129,10 +129,14 @@ async function executeTrade(setup: TradeSetup): Promise<void> {
           partial_tp: management.partial_tp,
         },
       },
-    }) as { success: boolean; data?: unknown; error?: string };
+    }) as { success: boolean; data?: unknown; error?: string; warnings?: string[] };
 
     if (response.success) {
-      showToast("Order Sent", "success");
+      if (response.warnings && response.warnings.length > 0) {
+        showToast(`WARNING: ${response.warnings.join("; ")}`, "error");
+      } else {
+        showToast("Order Sent", "success");
+      }
     } else {
       showToast(`Error: ${response.error || "Unknown error"}`, "error");
     }

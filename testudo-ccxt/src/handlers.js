@@ -101,9 +101,19 @@ async function handleOrder(req, res) {
       }
     }
 
+    // Normalize precision to exchange tick/lot sizes to prevent rejection.
+    // Graceful fallback if markets not loaded or method unavailable (e.g. in tests).
+    const safePrecision = (method, val) => {
+      try { return typeof exchange[method] === 'function' ? exchange[method](symbol, val) : val; }
+      catch { return val; }
+    };
+    const safeAmount = safePrecision('amountToPrecision', amount);
+    const safePrice = price != null ? safePrecision('priceToPrecision', price) : price;
+    const safeStopPrice = stopPrice != null ? safePrecision('priceToPrecision', stopPrice) : undefined;
+
     const orderParams = {};
-    if (stopPrice !== undefined && stopPrice !== null) {
-      orderParams.stopPrice = stopPrice;
+    if (safeStopPrice !== undefined) {
+      orderParams.stopPrice = safeStopPrice;
     }
     if (reduceOnly) {
       orderParams.reduceOnly = true;
@@ -114,15 +124,15 @@ async function handleOrder(req, res) {
     }
     // EXT-31: Bracket order — attach SL/TP to entry (exchange activates on fill)
     if (stopLoss && stopLoss.triggerPrice) {
-      orderParams.stopLoss = { triggerPrice: stopLoss.triggerPrice };
+      orderParams.stopLoss = { triggerPrice: safePrecision('priceToPrecision', stopLoss.triggerPrice) };
     }
     if (takeProfit && takeProfit.triggerPrice) {
-      orderParams.takeProfit = { triggerPrice: takeProfit.triggerPrice };
+      orderParams.takeProfit = { triggerPrice: safePrecision('priceToPrecision', takeProfit.triggerPrice) };
     }
 
-    orderDetail = { symbol, type, side, amount, price, leverage, reduceOnly, orderParams };
+    orderDetail = { symbol, type, side, amount: safeAmount, price: safePrice, leverage, reduceOnly, orderParams };
     console.log('[ORDER REQ]', orderDetail);
-    const order = await exchange.createOrder(symbol, type, side, amount, price, orderParams);
+    const order = await exchange.createOrder(symbol, type, side, safeAmount, safePrice, orderParams);
 
     res.json({
       id: stringify(order.id),

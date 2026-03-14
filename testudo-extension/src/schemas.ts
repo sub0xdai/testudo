@@ -74,6 +74,7 @@ export const BackendResponseSchema = z.object({
   success: z.boolean(),
   data: z.unknown().optional(),
   error: z.string().nullable().optional(),
+  warnings: z.array(z.string()).optional(),
 });
 
 export const ErrorResponseSchema = z.object({

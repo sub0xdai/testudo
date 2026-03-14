@@ -44,12 +44,16 @@ type RuntimeTradePayload = Omit<TradePayload, "management"> & {
 function normalizeBackendAck(raw: unknown): BackendResponse {
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>;
+    // Extract warnings from nested data if present
+    const dataObj = obj.data && typeof obj.data === "object" ? obj.data as Record<string, unknown> : null;
+    const warnings = Array.isArray(dataObj?.warnings) ? dataObj.warnings as string[] : undefined;
 
     if (typeof obj.success === "boolean") {
       return {
         success: obj.success,
         data: obj.data,
         error: typeof obj.error === "string" || obj.error === null ? obj.error : null,
+        warnings,
       };
     }
 
@@ -61,7 +65,7 @@ function normalizeBackendAck(raw: unknown): BackendResponse {
       return { success: false, data: null, error: obj.message };
     }
 
-    return { success: true, data: raw, error: null };
+    return { success: true, data: raw, error: null, warnings };
   }
 
   return { success: true, data: raw, error: null };

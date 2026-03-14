@@ -68,6 +68,7 @@ export interface BackendResponse {
   success: boolean;
   data?: unknown;
   error?: string | null;
+  warnings?: string[];
 }
 
 export interface TakeProfitTargetResponse {
