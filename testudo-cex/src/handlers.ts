@@ -1,34 +1,360 @@
 /**
- * HTTP route handlers — same endpoints as testudo-ccxt.
- * CEX-04 will implement full endpoint compatibility.
+ * HTTP route handlers — same endpoint contract as testudo-ccxt.
+ * Reads come from safe-cex's in-memory Store (no HTTP round-trip to exchange).
+ * Writes use safe-cex methods (placeOrder, cancelOrders, updateOrder, etc.).
  */
 
 import type { Request, Response } from "express";
+import type { ExchangeGateway, Credentials } from "./gateway";
+import type { ExchangeName } from "safe-cex/dist/types";
 
-export function handleBalance(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
+// ── Helpers ──
+
+/** Convert numeric value to string, preserving precision. Returns null for nullish. */
+export function stringify(
+  val: number | string | null | undefined
+): string | null {
+  if (val === null || val === undefined) return null;
+  return String(val);
 }
 
-export function handleOrder(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
+export interface Envelope {
+  exchangeId: ExchangeName;
+  credentials: Credentials;
+  sandbox: boolean;
+  params: Record<string, any>;
 }
 
-export function handleCancelOrder(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
+/** Extract and validate the request envelope. */
+export function parseEnvelope(body: any): Envelope {
+  const { exchange_id, credentials, sandbox, params } = body;
+  if (!exchange_id) throw new Error("Missing exchange_id");
+  if (!credentials?.apiKey || !credentials?.secret) {
+    throw new Error("Missing or incomplete credentials");
+  }
+  return {
+    exchangeId: exchange_id as ExchangeName,
+    credentials: {
+      key: credentials.apiKey,
+      secret: credentials.secret,
+      applicationId: credentials.applicationId,
+      passphrase: credentials.password,
+    },
+    sandbox: Boolean(sandbox),
+    params: params || {},
+  };
 }
 
-export function handleEditOrder(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
+/** Map errors to HTTP status codes matching CcxtClientError enum. */
+export function mapError(err: any): {
+  status: number;
+  body: { error: string; code: string };
+} {
+  const msg = String(err?.message || err);
+  const lower = msg.toLowerCase();
+  if (lower.includes("401") || lower.includes("auth"))
+    return { status: 401, body: { error: msg, code: "AuthenticationError" } };
+  if (lower.includes("insufficient") || lower.includes("margin"))
+    return { status: 402, body: { error: msg, code: "InsufficientFunds" } };
+  if (lower.includes("not found"))
+    return { status: 404, body: { error: msg, code: "OrderNotFound" } };
+  if (lower.includes("rate") || lower.includes("429"))
+    return { status: 429, body: { error: msg, code: "RateLimitExceeded" } };
+  return { status: 502, body: { error: msg, code: "ExchangeError" } };
 }
 
-export function handleOpenOrders(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
-}
+// ── Handler factory ──
 
-export function handlePosition(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
-}
+export function createHandlers(gateway: ExchangeGateway) {
+  /** Get exchange instance + params from request body. */
+  async function getExchange(body: any) {
+    const envelope = parseEnvelope(body);
+    const exchange = await gateway.getOrCreate(
+      envelope.exchangeId,
+      envelope.credentials,
+      envelope.sandbox,
+      () => {} // CEX-05 will wire fill streaming
+    );
+    return { exchange, params: envelope.params };
+  }
 
-export function handleLeverage(_req: Request, res: Response) {
-  res.status(501).json({ error: "not implemented" });
+  // ── GET /health ──
+
+  async function handleHealth(_req: Request, res: Response) {
+    try {
+      return res.json({ ok: true });
+    } catch {
+      return res.status(503).json({ ok: false });
+    }
+  }
+
+  // ── POST /balance — reads from Store (FR-1) ──
+
+  async function handleBalance(req: Request, res: Response) {
+    try {
+      const { exchange } = await getExchange(req.body);
+      const balance = exchange.store.balance;
+
+      // safe-cex balance is a single object for the futures account.
+      // Return as array matching SidecarBalanceEntry[] shape.
+      const result = [
+        {
+          asset: "USDT",
+          total: stringify(balance.total),
+          free: stringify(balance.free),
+          used: stringify(balance.used),
+        },
+      ];
+
+      return res.json(result);
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /order — placeOrder with bracket support (FR-2, FR-12) ──
+
+  async function handleOrder(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const {
+        symbol,
+        type,
+        side,
+        amount,
+        price,
+        leverage,
+        reduceOnly,
+        clientOrderId,
+        stopLoss,
+        takeProfit,
+      } = params;
+
+      // Set leverage if provided (graceful fallback — FR-16)
+      if (leverage && leverage > 0) {
+        try {
+          await exchange.setLeverage(symbol, leverage);
+        } catch (levErr: any) {
+          console.error("[LEVERAGE ERROR]", {
+            leverage,
+            symbol,
+            error: levErr?.message,
+          });
+        }
+      }
+
+      // Build placeOrder options
+      const orderOpts: any = {
+        symbol,
+        type: type || "limit",
+        side,
+        amount: Number(amount),
+        reduceOnly: reduceOnly || false,
+      };
+      if (price != null) orderOpts.price = Number(price);
+
+      // Bracket order SL/TP (FR-12)
+      if (stopLoss?.triggerPrice)
+        orderOpts.stopLoss = Number(stopLoss.triggerPrice);
+      if (takeProfit?.triggerPrice)
+        orderOpts.takeProfit = Number(takeProfit.triggerPrice);
+
+      const orderIds: string[] = await exchange.placeOrder(orderOpts);
+
+      // Map to SidecarOrderResponse shape (FR-10: all numerics as strings)
+      return res.json({
+        id: stringify(orderIds[0]),
+        clientOrderId: clientOrderId || null,
+        status: "open",
+        symbol,
+        side,
+        type: type || "limit",
+        amount: stringify(amount),
+        filled: "0",
+        remaining: stringify(amount),
+        average: null,
+        price: stringify(price),
+        stopLossOrderId: orderIds[1] || null,
+        takeProfitOrderId: orderIds[2] || null,
+      });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /order/edit — updateOrder (FR-8) ──
+
+  async function handleEditOrder(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const { orderId, symbol, type, side, amount, price } = params;
+
+      // Find the order in the Store
+      const storeOrder = exchange.store.orders.find(
+        (o: any) => o.id === orderId
+      );
+      if (!storeOrder) {
+        return res.status(404).json({
+          error: `Order not found: ${orderId}`,
+          code: "OrderNotFound",
+        });
+      }
+
+      // Build update — safe-cex accepts {amount} or {price}
+      const update: any = {};
+      if (amount != null) update.amount = Number(amount);
+      if (price != null) update.price = Number(price);
+
+      await exchange.updateOrder({ order: storeOrder, update });
+
+      return res.json({
+        id: stringify(orderId),
+        status: storeOrder.status || "open",
+        symbol: symbol || storeOrder.symbol,
+        side: side || storeOrder.side,
+        type: type || storeOrder.type,
+        amount: stringify(amount ?? storeOrder.amount),
+        filled: stringify(storeOrder.filled),
+        remaining: stringify(storeOrder.remaining),
+        average: null,
+        price: stringify(price ?? storeOrder.price),
+      });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /order/cancel — cancelOrders (FR-3) ──
+
+  async function handleCancelOrder(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const { orderId, symbol } = params;
+
+      // Find the order in the Store to pass to cancelOrders
+      const storeOrder = exchange.store.orders.find(
+        (o: any) => o.id === orderId
+      );
+      if (storeOrder) {
+        await exchange.cancelOrders([storeOrder]);
+      } else {
+        // Order may not be in store — pass minimal object
+        await exchange.cancelOrders([{ id: orderId, symbol } as any]);
+      }
+
+      return res.json({ success: true });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /orders/cancel-all — cancelSymbolOrders (FR-4) ──
+
+  async function handleCancelAllOrders(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const { symbol } = params;
+
+      await exchange.cancelSymbolOrders(symbol);
+
+      return res.json({ success: true, cancelled: 0 });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /position — reads from Store (FR-5) ──
+
+  async function handlePosition(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const { symbol } = params;
+
+      let positions = exchange.store.positions;
+      if (symbol) {
+        positions = positions.filter((p: any) => p.symbol === symbol);
+      }
+
+      const result = positions.map((pos: any) => ({
+        symbol: pos.symbol,
+        side: pos.side,
+        contracts: stringify(pos.contracts),
+        entryPrice: stringify(pos.entryPrice),
+        unrealizedPnl: stringify(pos.unrealizedPnl),
+      }));
+
+      return res.json(result);
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /leverage — setLeverage (FR-6) ──
+
+  async function handleLeverage(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const { leverage, symbol } = params;
+
+      // safe-cex: setLeverage(symbol, leverage) — note param order differs from CCXT
+      await exchange.setLeverage(symbol, leverage);
+
+      return res.json({ success: true });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  // ── POST /orders/open — reads from Store (FR-7) ──
+
+  async function handleOpenOrders(req: Request, res: Response) {
+    try {
+      const { exchange, params } = await getExchange(req.body);
+      const { symbol } = params;
+
+      let orders = exchange.store.orders;
+      if (symbol) {
+        orders = orders.filter((o: any) => o.symbol === symbol);
+      }
+
+      const result = orders.map((o: any) => ({
+        id: stringify(o.id),
+        clientOrderId: null,
+        symbol: o.symbol,
+        status: o.status,
+        side: o.side,
+        type: o.type,
+        price: stringify(o.price),
+        stopPrice: null,
+        amount: stringify(o.amount),
+        filled: stringify(o.filled),
+        remaining: stringify(o.remaining),
+        timestamp: null,
+      }));
+
+      return res.json(result);
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
+  return {
+    handleHealth,
+    handleBalance,
+    handleOrder,
+    handleEditOrder,
+    handleCancelOrder,
+    handleCancelAllOrders,
+    handlePosition,
+    handleLeverage,
+    handleOpenOrders,
+  };
 }

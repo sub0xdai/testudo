@@ -2,7 +2,7 @@
 
 **Spec ID:** CEX-04-http-handlers
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Complete
 **Class:** Core / Migration
 **Priority:** P1 — Rust backend depends on these endpoints
 **Depends on:** CEX-02 (scaffold), CEX-03 (gateway)
