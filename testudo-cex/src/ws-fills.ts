@@ -10,7 +10,8 @@
 
 import type { WebSocketServer, WebSocket } from "ws";
 import type { ExchangeGateway } from "./gateway";
-import type { ExchangeName, OrderFillEvent } from "safe-cex/dist/types";
+import type { ExchangeName, OrderFillEvent, Market } from "safe-cex/dist/types";
+import { toBackendSymbol } from "./symbols";
 
 /** Order snapshot for diffing (matches safe-cex Order shape). */
 export interface OrderSnapshot {
@@ -73,7 +74,8 @@ export function sendOrderUpdate(ws: WebSocket, data: OrderUpdatePayload): void {
 export function processPending(
   ws: WebSocket,
   pendingFills: OrderFillEvent[],
-  pendingRemovals: Map<string, OrderSnapshot>
+  pendingRemovals: Map<string, OrderSnapshot>,
+  markets?: Market[]
 ): void {
   // Match fills to removals
   for (const fill of pendingFills) {
@@ -81,7 +83,7 @@ export function processPending(
       if (order.symbol === fill.symbol && order.side === fill.side) {
         sendOrderUpdate(ws, {
           id,
-          symbol: fill.symbol,
+          symbol: toBackendSymbol(fill.symbol, markets),
           status: "closed",
           side: fill.side,
           price: order.price,
@@ -101,7 +103,7 @@ export function processPending(
   for (const [id, order] of pendingRemovals) {
     sendOrderUpdate(ws, {
       id,
-      symbol: order.symbol,
+      symbol: toBackendSymbol(order.symbol, markets),
       status: "canceled",
       side: order.side,
       price: order.price,
@@ -178,7 +180,7 @@ export function setupFillStreaming(
             flushScheduled = true;
             queueMicrotask(() => {
               flushScheduled = false;
-              processPending(ws, pendingFills, pendingRemovals);
+              processPending(ws, pendingFills, pendingRemovals, exchange.store.markets);
             });
           }
         }

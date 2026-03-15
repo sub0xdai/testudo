@@ -13,6 +13,10 @@ function mockExchange(storeData?: any) {
   return {
     store: {
       balance: { total: 10000, free: 8000, used: 2000, upnl: 150 },
+      markets: [
+        { id: "btcusdt", symbol: "BTCUSDT", base: "BTC", quote: "USDT", active: true, precision: { amount: 8, price: 2 }, limits: { amount: { min: 0.001, max: 1000 }, leverage: { min: 1, max: 125 } } },
+        { id: "ethusdt", symbol: "ETHUSDT", base: "ETH", quote: "USDT", active: true, precision: { amount: 8, price: 2 }, limits: { amount: { min: 0.001, max: 1000 }, leverage: { min: 1, max: 125 } } },
+      ],
       orders: [
         {
           id: "order-1",
@@ -252,7 +256,7 @@ describe("handlers", () => {
       const req = mockReq({
         ...testEnvelope,
         params: {
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "buy",
           amount: "0.01",
@@ -267,7 +271,7 @@ describe("handlers", () => {
       expect(res._json.id).toBe("entry-123");
       expect(res._json.clientOrderId).toBe("testudo:g1:entry");
       expect(res._json.status).toBe("open");
-      expect(res._json.symbol).toBe("BTCUSDT");
+      expect(res._json.symbol).toBe("BTC_USDT");
       expect(res._json.side).toBe("buy");
       expect(res._json.amount).toBe("0.01");
       expect(res._json.price).toBe("70000");
@@ -285,7 +289,7 @@ describe("handlers", () => {
       const req = mockReq({
         ...testEnvelope,
         params: {
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "buy",
           amount: "0.01",
@@ -312,7 +316,7 @@ describe("handlers", () => {
       const req = mockReq({
         ...testEnvelope,
         params: {
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "buy",
           amount: "0.01",
@@ -334,7 +338,7 @@ describe("handlers", () => {
       const req = mockReq({
         ...testEnvelope,
         params: {
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "buy",
           amount: "0.01",
@@ -353,7 +357,7 @@ describe("handlers", () => {
       const req = mockReq({
         ...testEnvelope,
         params: {
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "sell",
           amount: "0.01",
@@ -375,7 +379,7 @@ describe("handlers", () => {
         ...testEnvelope,
         params: {
           orderId: "order-1",
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "buy",
           price: "69500",
@@ -399,7 +403,7 @@ describe("handlers", () => {
         ...testEnvelope,
         params: {
           orderId: "nonexistent",
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           type: "limit",
           side: "buy",
           price: "69500",
@@ -417,7 +421,7 @@ describe("handlers", () => {
     it("finds order in store and cancels it", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { orderId: "order-1", symbol: "BTCUSDT" },
+        params: { orderId: "order-1", symbol: "BTC_USDT" },
       });
       const res = mockRes();
       await handlers.handleCancelOrder(req, res);
@@ -433,7 +437,7 @@ describe("handlers", () => {
     it("passes minimal object if order not in store", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { orderId: "unknown-id", symbol: "BTCUSDT" },
+        params: { orderId: "unknown-id", symbol: "BTC_USDT" },
       });
       const res = mockRes();
       await handlers.handleCancelOrder(req, res);
@@ -441,7 +445,7 @@ describe("handlers", () => {
       expect(res._status).toBe(200);
       const cancelledOrders = exchange.cancelOrders.mock.calls[0][0];
       expect(cancelledOrders[0].id).toBe("unknown-id");
-      expect(cancelledOrders[0].symbol).toBe("BTCUSDT");
+      expect(cancelledOrders[0].symbol).toBe("BTCUSDT"); // exchange format for safe-cex
     });
   });
 
@@ -449,7 +453,7 @@ describe("handlers", () => {
     it("cancels all orders for symbol", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { symbol: "BTCUSDT" },
+        params: { symbol: "BTC_USDT" },
       });
       const res = mockRes();
       await handlers.handleCancelAllOrders(req, res);
@@ -469,7 +473,7 @@ describe("handlers", () => {
       expect(res._status).toBe(200);
       expect(res._json).toEqual([
         {
-          symbol: "BTCUSDT",
+          symbol: "BTC_USDT",
           side: "long",
           contracts: "0.05",
           entryPrice: "69000",
@@ -481,7 +485,7 @@ describe("handlers", () => {
     it("filters positions by symbol", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { symbol: "ETHUSDT" },
+        params: { symbol: "ETH_USDT" },
       });
       const res = mockRes();
       await handlers.handlePosition(req, res);
@@ -494,7 +498,7 @@ describe("handlers", () => {
     it("calls setLeverage with correct param order (symbol, leverage)", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { symbol: "BTCUSDT", leverage: 10 },
+        params: { symbol: "BTC_USDT", leverage: 10 },
       });
       const res = mockRes();
       await handlers.handleLeverage(req, res);
@@ -509,7 +513,7 @@ describe("handlers", () => {
     it("returns open orders from Store", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { symbol: "BTCUSDT" },
+        params: { symbol: "BTC_USDT" },
       });
       const res = mockRes();
       await handlers.handleOpenOrders(req, res);
@@ -517,7 +521,7 @@ describe("handlers", () => {
       expect(res._status).toBe(200);
       expect(res._json).toHaveLength(1);
       expect(res._json[0].id).toBe("order-1");
-      expect(res._json[0].symbol).toBe("BTCUSDT");
+      expect(res._json[0].symbol).toBe("BTC_USDT");
       expect(res._json[0].price).toBe("70000");
       expect(res._json[0].amount).toBe("0.01");
     });
@@ -533,7 +537,7 @@ describe("handlers", () => {
     it("all numeric fields are strings (FR-10)", async () => {
       const req = mockReq({
         ...testEnvelope,
-        params: { symbol: "BTCUSDT" },
+        params: { symbol: "BTC_USDT" },
       });
       const res = mockRes();
       await handlers.handleOpenOrders(req, res);

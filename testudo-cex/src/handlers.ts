@@ -7,6 +7,7 @@
 import type { Request, Response } from "express";
 import type { ExchangeGateway, Credentials } from "./gateway";
 import type { ExchangeName } from "safe-cex/dist/types";
+import { toExchangeSymbol, toBackendSymbol } from "./symbols";
 
 // ── Helpers ──
 
@@ -131,14 +132,17 @@ export function createHandlers(gateway: ExchangeGateway) {
         takeProfit,
       } = params;
 
+      // CEX-07: Convert backend symbol to exchange format
+      const exchSymbol = toExchangeSymbol(symbol);
+
       // Set leverage if provided (graceful fallback — FR-16)
       if (leverage && leverage > 0) {
         try {
-          await exchange.setLeverage(symbol, leverage);
+          await exchange.setLeverage(exchSymbol, leverage);
         } catch (levErr: any) {
           console.error("[LEVERAGE ERROR]", {
             leverage,
-            symbol,
+            symbol: exchSymbol,
             error: levErr?.message,
           });
         }
@@ -146,7 +150,7 @@ export function createHandlers(gateway: ExchangeGateway) {
 
       // Build placeOrder options
       const orderOpts: any = {
-        symbol,
+        symbol: exchSymbol,
         type: type || "limit",
         side,
         amount: Number(amount),
@@ -212,7 +216,7 @@ export function createHandlers(gateway: ExchangeGateway) {
       return res.json({
         id: stringify(orderId),
         status: storeOrder.status || "open",
-        symbol: symbol || storeOrder.symbol,
+        symbol: symbol || toBackendSymbol(storeOrder.symbol, exchange.store.markets),
         side: side || storeOrder.side,
         type: type || storeOrder.type,
         amount: stringify(amount ?? storeOrder.amount),
@@ -233,6 +237,7 @@ export function createHandlers(gateway: ExchangeGateway) {
     try {
       const { exchange, params } = await getExchange(req.body);
       const { orderId, symbol } = params;
+      const exchSymbol = toExchangeSymbol(symbol);
 
       // Find the order in the Store to pass to cancelOrders
       const storeOrder = exchange.store.orders.find(
@@ -242,7 +247,7 @@ export function createHandlers(gateway: ExchangeGateway) {
         await exchange.cancelOrders([storeOrder]);
       } else {
         // Order may not be in store — pass minimal object
-        await exchange.cancelOrders([{ id: orderId, symbol } as any]);
+        await exchange.cancelOrders([{ id: orderId, symbol: exchSymbol } as any]);
       }
 
       return res.json({ success: true });
@@ -259,7 +264,7 @@ export function createHandlers(gateway: ExchangeGateway) {
       const { exchange, params } = await getExchange(req.body);
       const { symbol } = params;
 
-      await exchange.cancelSymbolOrders(symbol);
+      await exchange.cancelSymbolOrders(toExchangeSymbol(symbol));
 
       return res.json({ success: true, cancelled: 0 });
     } catch (err) {
@@ -277,11 +282,12 @@ export function createHandlers(gateway: ExchangeGateway) {
 
       let positions = exchange.store.positions;
       if (symbol) {
-        positions = positions.filter((p: any) => p.symbol === symbol);
+        const exchSymbol = toExchangeSymbol(symbol);
+        positions = positions.filter((p: any) => p.symbol === exchSymbol);
       }
 
       const result = positions.map((pos: any) => ({
-        symbol: pos.symbol,
+        symbol: toBackendSymbol(pos.symbol, exchange.store.markets),
         side: pos.side,
         contracts: stringify(pos.contracts),
         entryPrice: stringify(pos.entryPrice),
@@ -303,7 +309,7 @@ export function createHandlers(gateway: ExchangeGateway) {
       const { leverage, symbol } = params;
 
       // safe-cex: setLeverage(symbol, leverage) — note param order differs from CCXT
-      await exchange.setLeverage(symbol, leverage);
+      await exchange.setLeverage(toExchangeSymbol(symbol), leverage);
 
       return res.json({ success: true });
     } catch (err) {
@@ -321,13 +327,14 @@ export function createHandlers(gateway: ExchangeGateway) {
 
       let orders = exchange.store.orders;
       if (symbol) {
-        orders = orders.filter((o: any) => o.symbol === symbol);
+        const exchSymbol = toExchangeSymbol(symbol);
+        orders = orders.filter((o: any) => o.symbol === exchSymbol);
       }
 
       const result = orders.map((o: any) => ({
         id: stringify(o.id),
         clientOrderId: null,
-        symbol: o.symbol,
+        symbol: toBackendSymbol(o.symbol, exchange.store.markets),
         status: o.status,
         side: o.side,
         type: o.type,

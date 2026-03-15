@@ -30,7 +30,7 @@ function parseMessages(ws: ReturnType<typeof mockWs>): any[] {
 function makeOrder(overrides: Partial<OrderSnapshot> = {}): OrderSnapshot {
   return {
     id: "order-1",
-    symbol: "BTC_USDT",
+    symbol: "BTCUSDT",
     side: "buy",
     price: 70000,
     amount: 0.01,
@@ -42,7 +42,7 @@ function makeOrder(overrides: Partial<OrderSnapshot> = {}): OrderSnapshot {
 
 function makeFill(overrides: Partial<OrderFillEvent> = {}): OrderFillEvent {
   return {
-    symbol: "BTC_USDT",
+    symbol: "BTCUSDT",
     side: "buy" as any,
     price: 70050,
     amount: 0.01,
@@ -56,7 +56,7 @@ describe("snapshotOrder", () => {
   it("extracts required fields from a safe-cex Order", () => {
     const order = {
       id: "abc",
-      symbol: "ETH_USDT",
+      symbol: "ETHUSDT",
       side: "sell",
       price: 3500,
       amount: 0.5,
@@ -69,7 +69,7 @@ describe("snapshotOrder", () => {
     const snap = snapshotOrder(order);
     expect(snap).toEqual({
       id: "abc",
-      symbol: "ETH_USDT",
+      symbol: "ETHUSDT",
       side: "sell",
       price: 3500,
       amount: 0.5,
@@ -200,12 +200,12 @@ describe("processPending", () => {
       const ws = mockWs();
       // Algo order: fill arrives, then removal arrives — both in same batch
       const fills: OrderFillEvent[] = [
-        makeFill({ symbol: "ETH_USDT", side: "sell" as any, price: 3500, amount: 0.5 }),
+        makeFill({ symbol: "ETHUSDT", side: "sell" as any, price: 3500, amount: 0.5 }),
       ];
       const removals = new Map([
         [
           "algo-sl-1",
-          makeOrder({ id: "algo-sl-1", symbol: "ETH_USDT", side: "sell", price: 3500, amount: 0.5 }),
+          makeOrder({ id: "algo-sl-1", symbol: "ETHUSDT", side: "sell", price: 3500, amount: 0.5 }),
         ],
       ]);
 
@@ -224,7 +224,7 @@ describe("processPending", () => {
       const ws = mockWs();
       const fills: OrderFillEvent[] = [];
       const removals = new Map([
-        ["tp-order-1", makeOrder({ id: "tp-order-1", symbol: "BTC_USDT", side: "sell" })],
+        ["tp-order-1", makeOrder({ id: "tp-order-1", symbol: "BTCUSDT", side: "sell" })],
       ]);
 
       processPending(ws, fills, removals);
@@ -272,11 +272,11 @@ describe("processPending", () => {
 
       // Two removals: one matched by a fill, one cancelled
       const fills: OrderFillEvent[] = [
-        makeFill({ symbol: "BTC_USDT", side: "buy" as any, price: 70050, amount: 0.01 }),
+        makeFill({ symbol: "BTCUSDT", side: "buy" as any, price: 70050, amount: 0.01 }),
       ];
       const removals = new Map<string, OrderSnapshot>([
-        ["entry-1", makeOrder({ id: "entry-1", symbol: "BTC_USDT", side: "buy" })],
-        ["tp-1", makeOrder({ id: "tp-1", symbol: "ETH_USDT", side: "sell" })],
+        ["entry-1", makeOrder({ id: "entry-1", symbol: "BTCUSDT", side: "buy" })],
+        ["tp-1", makeOrder({ id: "tp-1", symbol: "ETHUSDT", side: "sell" })],
       ]);
 
       processPending(ws, fills, removals);
@@ -298,11 +298,11 @@ describe("processPending", () => {
 
       // Two orders on same symbol, different sides
       const fills: OrderFillEvent[] = [
-        makeFill({ symbol: "BTC_USDT", side: "sell" as any }),
+        makeFill({ symbol: "BTCUSDT", side: "sell" as any }),
       ];
       const removals = new Map<string, OrderSnapshot>([
-        ["buy-order", makeOrder({ id: "buy-order", symbol: "BTC_USDT", side: "buy" })],
-        ["sell-order", makeOrder({ id: "sell-order", symbol: "BTC_USDT", side: "sell" })],
+        ["buy-order", makeOrder({ id: "buy-order", symbol: "BTCUSDT", side: "buy" })],
+        ["sell-order", makeOrder({ id: "sell-order", symbol: "BTCUSDT", side: "sell" })],
       ]);
 
       processPending(ws, fills, removals);
@@ -319,12 +319,12 @@ describe("processPending", () => {
       const ws = mockWs();
 
       const fills: OrderFillEvent[] = [
-        makeFill({ symbol: "BTC_USDT", side: "buy" as any, price: 70050 }),
-        makeFill({ symbol: "ETH_USDT", side: "sell" as any, price: 3510 }),
+        makeFill({ symbol: "BTCUSDT", side: "buy" as any, price: 70050 }),
+        makeFill({ symbol: "ETHUSDT", side: "sell" as any, price: 3510 }),
       ];
       const removals = new Map<string, OrderSnapshot>([
-        ["btc-entry", makeOrder({ id: "btc-entry", symbol: "BTC_USDT", side: "buy" })],
-        ["eth-tp", makeOrder({ id: "eth-tp", symbol: "ETH_USDT", side: "sell" })],
+        ["btc-entry", makeOrder({ id: "btc-entry", symbol: "BTCUSDT", side: "buy" })],
+        ["eth-tp", makeOrder({ id: "eth-tp", symbol: "ETHUSDT", side: "sell" })],
       ]);
 
       processPending(ws, fills, removals);
