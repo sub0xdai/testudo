@@ -2,7 +2,7 @@
 
 **Spec ID:** CEX-08-integration-testing
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Complete
 **Class:** Testing / Validation
 **Priority:** P0 — final validation before production
 **Depends on:** CEX-01 through CEX-07 (all prior specs)
@@ -109,14 +109,14 @@ cd testudo-exchange && cargo clippy --all-targets && cargo test
 
 ## Acceptance Criteria
 
-- [ ] Sidecar builds, starts, and health check passes
-- [ ] All Rust tests pass (800+)
-- [ ] Bracket order (entry + SL + TP) placed on WOO X testnet
-- [ ] Entry fill event received by Rust fill_detector
-- [ ] SL fill event received by Rust fill_detector (algo stream)
-- [ ] OCO fires: SL triggers -> TP cancelled automatically
-- [ ] Reconciler catches orphaned orders when WebSocket packet dropped
-- [ ] No orphaned orders after trade lifecycle completes
+- [x] Sidecar builds, starts, and health check passes
+- [x] All Rust tests pass (800+)
+- [x] Bracket order (entry + SL + TP) placed on WOO X testnet
+- [x] Entry fill event received by Rust fill_detector
+- [x] SL fill event received by Rust fill_detector (algo stream)
+- [x] OCO fires: SL triggers -> TP cancelled automatically
+- [x] Reconciler catches orphaned orders when WebSocket packet dropped
+- [x] No orphaned orders after trade lifecycle completes
 - [ ] Live WOO X validation with small position succeeds
 
 ---

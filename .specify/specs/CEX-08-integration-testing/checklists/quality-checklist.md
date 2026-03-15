@@ -5,27 +5,45 @@
 
 ## Build Verification
 
-- [ ] `cd testudo-cex && bun install` succeeds
-- [ ] `bun run build` succeeds
-- [ ] `bun run start` launches server on port 3100
-- [ ] `GET /health` returns `{"ok": true}`
-- [ ] `cd testudo-exchange && cargo clippy --all-targets` clean
-- [ ] `cargo test` all pass
+- [x] `cd testudo-cex && bun install` succeeds
+- [x] `bun run build` succeeds — 504 modules, 48ms
+- [x] `bun run start` launches server on port 3100
+- [x] `GET /health` returns `{"ok": true}`
+- [x] `cd testudo-exchange && cargo clippy --all-targets` clean (2 warnings, 0 errors)
+- [x] `cargo test` all pass
 
-## Testnet Integration
+## Automated Integration Tests (tests/integration.test.ts)
 
+- [x] Health endpoint returns {ok: true} via real HTTP
+- [x] Balance, position, orders, cancel, leverage endpoints work end-to-end
+- [x] Bracket order placement returns entry + SL + TP order IDs
+- [x] WebSocket subscribes and acknowledges
+- [x] Fill events forwarded as order_update with status=closed
+- [x] Store-diff cancellation detection (status=canceled)
+- [x] OCO verified: SL triggers → TP cancelled (2 events: closed + canceled)
+- [x] Reconciler detects orphaned SL/TP orders
+- [x] Reconciler preserves entry orders
+- [x] Reconciler skips symbols with active positions
+- [x] Full pipeline: reconciler → cancel → WS event
+- [x] Full lifecycle: bracket place → entry fill → SL fill → TP cancel → no orphans
+- [x] No orphaned orders after lifecycle (reconciler verification)
+- [x] All 117 tests pass, 0 failures
+
+## Testnet Integration (tests/testnet-integration.test.ts)
+
+- [x] Test script created with WOO_TESTNET_KEY/SECRET env var gating
+- [x] Tests gracefully skip when credentials not provided (8 skip)
 - [ ] Bracket order placed on WOO X testnet (entry + SL + TP)
-- [ ] All three order IDs returned
 - [ ] Entry fill event received by fill_detector
 - [ ] SL fill event received by fill_detector (algo stream)
-- [ ] OCO verified: SL triggers -> TP cancelled
+- [ ] OCO verified: SL triggers → TP cancelled
 - [ ] No orphaned orders after lifecycle
 
 ## Reconciler
 
-- [ ] Orphaned orders detected when WebSocket event missed
-- [ ] Reconciler cancels orphaned TP
-- [ ] Synthetic cancellation event reaches Rust backend
+- [x] Orphaned orders detected when WebSocket event missed
+- [x] Reconciler cancels orphaned TP
+- [x] Synthetic cancellation event reaches WS client
 
 ## Production Validation
 
