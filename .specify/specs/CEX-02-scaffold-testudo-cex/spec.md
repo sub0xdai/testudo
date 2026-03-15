@@ -2,7 +2,7 @@
 
 **Spec ID:** CEX-02-scaffold-testudo-cex
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Complete
 **Class:** Infrastructure / Migration
 **Priority:** P1 — prerequisite for CEX-03+
 **Depends on:** CEX-01 (fork safe-cex)
@@ -119,12 +119,12 @@ server.listen(PORT, () => {
 
 ## Acceptance Criteria
 
-- [ ] `testudo-ccxt-archived/` exists with full git history preserved
-- [ ] `testudo-cex/` directory exists with all stub files
-- [ ] `bun install` succeeds
-- [ ] `bun run start` launches server on port 3100
-- [ ] `GET /health` returns `{"ok": true}`
-- [ ] Old sidecar preserved in archive directory
+- [x] `testudo-ccxt-archived/` exists with full git history preserved
+- [x] `testudo-cex/` directory exists with all stub files
+- [x] `bun install` succeeds
+- [x] `bun run start` launches server on port 3100
+- [x] `GET /health` returns `{"ok": true}`
+- [x] Old sidecar preserved in archive directory
 
 ---
 

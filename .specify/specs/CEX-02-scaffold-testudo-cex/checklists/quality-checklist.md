@@ -5,17 +5,17 @@
 
 ## Implementation
 
-- [ ] `testudo-ccxt` archived via `git mv`
-- [ ] `testudo-cex/` directory created with full scaffold
-- [ ] `package.json` has correct dependencies (express, ws, prom-client)
-- [ ] `tsconfig.json` configured for Bun runtime
-- [ ] `src/server.ts` creates Express + WS server on port 3100
-- [ ] `GET /health` returns `{ok: true}`
-- [ ] All stub files created (gateway, handlers, ws-fills, reconciler, types, symbols, metrics)
+- [x] `testudo-ccxt` archived via `git mv`
+- [x] `testudo-cex/` directory created with full scaffold
+- [x] `package.json` has correct dependencies (express, ws, prom-client)
+- [x] `tsconfig.json` configured for Bun runtime
+- [x] `src/server.ts` creates Express + WS server on port 3100
+- [x] `GET /health` returns `{ok: true}`
+- [x] All stub files created (gateway, handlers, ws-fills, reconciler, types, symbols, metrics)
 
 ## Verification
 
-- [ ] `bun install` succeeds
-- [ ] `bun run start` launches without errors
-- [ ] `curl http://127.0.0.1:3100/health` returns `{"ok": true}`
-- [ ] Git history preserved for archived sidecar
+- [x] `bun install` succeeds
+- [x] `bun run start` launches without errors
+- [x] `curl http://127.0.0.1:3100/health` returns `{"ok": true}`
+- [x] Git history preserved for archived sidecar
