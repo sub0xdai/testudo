@@ -40,8 +40,8 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
     e.stopPropagation();
 
     try {
-      // On non-TV sites, only attempt Strategy 0 (Chart API probe)
-      const strategiesToTry = isTradingView() ? undefined : [0];
+      // On non-TV sites, only attempt Chart API probe (index 2 after reorder)
+      const strategiesToTry = isTradingView() ? undefined : [2];
       let setup = scrapeTradeSetup(strategiesToTry);
 
       // Fallback: try symbol-only detection when full scrape fails

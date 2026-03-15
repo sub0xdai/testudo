@@ -154,7 +154,12 @@ function getChartApi(): any | null {
   return widget.activeChart();
 }
 
-function getTickSize(chart: any, entryPrice: number): number {
+interface TickSizeResult {
+  value: number;
+  source: string;
+}
+
+function getTickSize(chart: any, entryPrice: number): TickSizeResult {
   // Try 1: Price formatter internals
   try {
     if (typeof chart.priceFormatter === "function") {
@@ -164,7 +169,7 @@ function getTickSize(chart: any, entryPrice: number): number {
         const minMove = fmt._minMove ?? fmt.minMove;
         const priceScale = fmt._priceScale ?? fmt.priceScale;
         if (typeof minMove === "number" && typeof priceScale === "number" && priceScale > 0) {
-          return minMove / priceScale;
+          return { value: minMove / priceScale, source: "priceFormatter" };
         }
       }
     }
@@ -182,7 +187,7 @@ function getTickSize(chart: any, entryPrice: number): number {
           const mm = info.minmov ?? info.minmovement ?? info.min_move;
           const ps = info.pricescale ?? info.price_scale;
           if (typeof mm === "number" && typeof ps === "number" && ps > 0) {
-            return mm / ps;
+            return { value: mm / ps, source: "symbolInfo" };
           }
         }
       }
@@ -193,9 +198,9 @@ function getTickSize(chart: any, entryPrice: number): number {
   const str = entryPrice.toString();
   const dot = str.indexOf(".");
   if (dot >= 0) {
-    return Math.pow(10, -(str.length - dot - 1));
+    return { value: Math.pow(10, -(str.length - dot - 1)), source: "decimalFallback" };
   }
-  return 0.01;
+  return { value: 0.01, source: "hardcodedFallback" };
 }
 
 function findPositionToolByChartApi(): PositionToolData | null {
@@ -230,12 +235,19 @@ function findPositionToolByChartApi(): PositionToolData | null {
   const props = api.getProperties();
   if (!props || typeof props.stopLevel !== "number" || typeof props.profitLevel !== "number") return null;
 
-  const tickSize = getTickSize(chart, entry);
-  const stopDist = props.stopLevel * tickSize;
-  const profitDist = props.profitLevel * tickSize;
+  const tick = getTickSize(chart, entry);
+  const stopDist = props.stopLevel * tick.value;
+  const profitDist = props.profitLevel * tick.value;
 
   const stop = side === "LONG" ? entry - stopDist : entry + stopDist;
   const target = side === "LONG" ? entry + profitDist : entry - profitDist;
+
+  console.log("[Testudo] Strategy:ChartApi", {
+    entry, side,
+    stopLevel: props.stopLevel, profitLevel: props.profitLevel,
+    tickSize: tick.value, tickSource: tick.source,
+    stop, target,
+  });
 
   // Validate prices
   if (stop <= 0 || target <= 0) return null;
@@ -466,11 +478,12 @@ function inferSideFromPrices(entry: number, stop: number, target: number): Posit
 // --- Main Scraper Function ---
 
 export function scrapeTradeSetup(strategiesOnly?: number[]): TradeSetup | null {
-  // Try each strategy in order of reliability
+  // Try each strategy in order of reliability.
+  // Dialog-based strategies (exact prices) take priority over Chart API (tick math).
   const allStrategies = [
-    findPositionToolByChartApi,       // Strategy 0: zero-flash, internal API
-    findPositionToolByDataName,       // Strategy 1: properties dialog data-name
-    findPositionToolByPropertiesDialog, // Strategy 2: dialog by role
+    findPositionToolByDataName,       // Strategy 0: properties dialog data-name (exact prices)
+    findPositionToolByPropertiesDialog, // Strategy 1: dialog by role (exact prices)
+    findPositionToolByChartApi,       // Strategy 2: chart API (computed from tick math)
     findPositionToolByPropertiesPanel,  // Strategy 3: legacy overlay panel
     findPositionToolByChartOverlay,     // Strategy 4: chart overlay elements
     findPositionToolByPriceScan,        // Strategy 5: floating panel scan

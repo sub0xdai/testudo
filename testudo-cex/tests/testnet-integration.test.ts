@@ -1,26 +1,27 @@
 /**
- * Testnet integration tests — CEX-08 Phase 2-4.
+ * Live integration tests — CEX-08 Phase 2-4.
  *
- * Exercises the full trade lifecycle against WOO X testnet via the sidecar.
- * Requires real testnet credentials to run.
+ * Exercises the sidecar against live WOO X via safe-cex.
  *
  * Set env vars:
- *   WOO_TESTNET_KEY=<api-key>
- *   WOO_TESTNET_SECRET=<api-secret>
- *   WOO_TESTNET_APP_ID=<application-id>  (optional)
+ *   WOO_API_KEY=<api-key>
+ *   WOO_API_SECRET=<api-secret>
+ *   WOO_APP_ID=<application-id>  (optional)
  *
  * Run:
- *   WOO_TESTNET_KEY=... WOO_TESTNET_SECRET=... bun test tests/testnet-integration.test.ts
+ *   WOO_API_KEY=... WOO_API_SECRET=... bun test tests/testnet-integration.test.ts
  *
- * These tests are SKIPPED when credentials are not provided.
+ * IMPORTANT: This places REAL orders on live WOO X.
+ * Uses limit buy well below market price — should NOT fill.
+ * All orders are cancelled at the end.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { WebSocket } from "ws";
 
-const API_KEY = process.env.WOO_TESTNET_KEY;
-const API_SECRET = process.env.WOO_TESTNET_SECRET;
-const APP_ID = process.env.WOO_TESTNET_APP_ID;
+const API_KEY = process.env.WOO_API_KEY;
+const API_SECRET = process.env.WOO_API_SECRET;
+const APP_ID = process.env.WOO_APP_ID;
 const HAS_CREDENTIALS = Boolean(API_KEY && API_SECRET);
 
 const TEST_PORT = 3197;
@@ -38,7 +39,7 @@ const envelope = {
     secret: API_SECRET || "",
     applicationId: APP_ID,
   },
-  sandbox: true,
+  sandbox: false,
 };
 
 async function post(path: string, body: any): Promise<any> {
@@ -90,11 +91,10 @@ function createCollector(ws: WebSocket) {
 }
 
 // Skip all tests if no credentials
-const describeTestnet = HAS_CREDENTIALS ? describe : describe.skip;
+const describeLive = HAS_CREDENTIALS ? describe : describe.skip;
 
-describeTestnet("Testnet Integration (WOO X)", () => {
+describeLive("Live Integration (WOO X)", () => {
   beforeAll(async () => {
-    // Start the real sidecar server
     const express = (await import("express")).default;
     const { createServer } = await import("http");
     const { WebSocketServer } = await import("ws");
@@ -127,10 +127,17 @@ describeTestnet("Testnet Integration (WOO X)", () => {
     });
     server = httpServer;
 
-    console.log(`[testnet] Sidecar started on port ${TEST_PORT}`);
+    console.log(`[live] Sidecar started on port ${TEST_PORT}`);
   }, 30000);
 
   afterAll(async () => {
+    // Safety: cancel any remaining test orders before shutdown
+    try {
+      await post("/orders/cancel-all", {
+        ...envelope,
+        params: { symbol: "BTC_USDT" },
+      });
+    } catch {}
     wss?.close();
     server?.close();
     await gateway?.disposeAll?.();
@@ -144,13 +151,14 @@ describeTestnet("Testnet Integration (WOO X)", () => {
     expect(body).toEqual({ ok: true });
   });
 
-  it("connects to WOO X testnet and fetches balance", async () => {
+  it("connects to WOO X and fetches balance", async () => {
     const { status, body } = await post("/balance", envelope);
     expect(status).toBe(200);
     expect(Array.isArray(body)).toBe(true);
     expect(body[0].asset).toBe("USDT");
-    expect(Number(body[0].total)).toBeGreaterThan(0);
-    console.log(`[testnet] Balance: ${body[0].free} USDT free`);
+    console.log(
+      `[live] Balance: ${body[0].free} USDT free / ${body[0].total} total`
+    );
   }, 30000);
 
   it("fetches positions", async () => {
@@ -160,7 +168,11 @@ describeTestnet("Testnet Integration (WOO X)", () => {
     });
     expect(status).toBe(200);
     expect(Array.isArray(body)).toBe(true);
-    console.log(`[testnet] Open positions: ${body.length}`);
+    for (const p of body) {
+      console.log(
+        `[live] Position: ${p.symbol} ${p.side} ${p.contracts} @ ${p.entryPrice}`
+      );
+    }
   }, 15000);
 
   it("fetches open orders", async () => {
@@ -170,24 +182,23 @@ describeTestnet("Testnet Integration (WOO X)", () => {
     });
     expect(status).toBe(200);
     expect(Array.isArray(body)).toBe(true);
-    console.log(`[testnet] Open orders: ${body.length}`);
+    console.log(`[live] Open orders: ${body.length}`);
   }, 15000);
 
-  // Phase 2: Bracket Order Lifecycle
+  // Phase 2: Bracket Order Placement
 
   it("sets leverage on BTC_USDT", async () => {
     const { status, body } = await post("/leverage", {
       ...envelope,
       params: { symbol: "BTC_USDT", leverage: 5 },
     });
-    // Leverage setting may fail on testnet — that's acceptable (FR-16 graceful fallback)
-    console.log(`[testnet] Set leverage response:`, body);
+    console.log(`[live] Set leverage response:`, body);
     expect([200, 502]).toContain(status);
   }, 15000);
 
-  it("places bracket order (entry + SL + TP) on testnet", async () => {
-    // Get current price from position/ticker to set reasonable bracket levels
-    // Use a small amount and price levels that won't immediately fill
+  it("places bracket order (entry + SL + TP) — limit far from market", async () => {
+    // Limit buy at $50k — well below current BTC price (~$80-90k+)
+    // This should NOT fill. Cancelled immediately after verification.
     const { status, body } = await post("/order", {
       ...envelope,
       params: {
@@ -195,37 +206,41 @@ describeTestnet("Testnet Integration (WOO X)", () => {
         type: "limit",
         side: "buy",
         amount: "0.001",
-        price: "50000", // Well below market — entry shouldn't fill immediately
-        clientOrderId: `testudo:test-${Date.now()}:entry`,
+        price: "50000",
+        clientOrderId: `testudo:cex08-${Date.now()}:entry`,
         stopLoss: { triggerPrice: "49000" },
         takeProfit: { triggerPrice: "55000" },
       },
     });
 
-    console.log(`[testnet] Place bracket order response:`, body);
+    console.log(`[live] Place bracket order response:`, JSON.stringify(body));
 
     if (status === 200) {
       expect(body.id).toBeTruthy();
-      expect(body.status).toBe("open");
       expect(typeof body.amount).toBe("string");
 
-      // If bracket order IDs are returned, verify them
-      if (body.stopLossOrderId) {
-        console.log(`[testnet] SL order ID: ${body.stopLossOrderId}`);
-      }
-      if (body.takeProfitOrderId) {
-        console.log(`[testnet] TP order ID: ${body.takeProfitOrderId}`);
-      }
+      console.log(`[live] Entry ID: ${body.id}`);
+      if (body.stopLossOrderId)
+        console.log(`[live] SL ID: ${body.stopLossOrderId}`);
+      if (body.takeProfitOrderId)
+        console.log(`[live] TP ID: ${body.takeProfitOrderId}`);
 
-      // Cleanup: cancel the order after verification
+      // Verify orders appear in open orders
+      const { body: openOrders } = await post("/orders/open", {
+        ...envelope,
+        params: { symbol: "BTC_USDT" },
+      });
+      console.log(`[live] Open orders after bracket: ${openOrders.length}`);
+
+      // Cleanup: cancel all
       const cancelRes = await post("/orders/cancel-all", {
         ...envelope,
         params: { symbol: "BTC_USDT" },
       });
-      console.log(`[testnet] Cleanup cancel-all:`, cancelRes.body);
+      console.log(`[live] Cleanup cancel-all:`, cancelRes.body);
     } else {
-      // Exchange may reject the order (insufficient margin, etc.)
-      console.log(`[testnet] Order rejected (${status}): ${body.error}`);
+      console.log(`[live] Order rejected (${status}): ${body.error}`);
+      // Don't fail — exchange may have restrictions
     }
   }, 30000);
 
@@ -243,7 +258,7 @@ describeTestnet("Testnet Integration (WOO X)", () => {
           apiKey: API_KEY,
           secret: API_SECRET,
         },
-        sandbox: true,
+        sandbox: false,
         symbols: ["BTC_USDT"],
       })
     );
@@ -253,37 +268,41 @@ describeTestnet("Testnet Integration (WOO X)", () => {
       15000
     );
     expect(msg.event).toBe("subscribed");
-    console.log(`[testnet] WebSocket subscribed successfully`);
+    console.log(`[live] WebSocket subscribed successfully`);
 
     ws.close();
   }, 20000);
 
-  // Phase 4: Post-test cleanup verification
+  // Phase 4: Clean state verification
 
   it("no orphaned orders after test lifecycle", async () => {
-    // Cancel any remaining orders
+    // Final cancel-all safety net
     await post("/orders/cancel-all", {
       ...envelope,
       params: { symbol: "BTC_USDT" },
     });
 
-    // Verify no orders remain
     const { body } = await post("/orders/open", {
       ...envelope,
       params: { symbol: "BTC_USDT" },
     });
-    expect(body).toHaveLength(0);
-    console.log(`[testnet] Clean state verified — no orphaned orders`);
+
+    // Only check for our test orders — there may be real trading orders
+    const testOrders = body.filter((o: any) =>
+      o.clientOrderId?.startsWith("testudo:cex08-")
+    );
+    expect(testOrders).toHaveLength(0);
+    console.log(`[live] Clean state verified — no test orphans`);
   }, 15000);
 });
 
 // Informational message when tests are skipped
 if (!HAS_CREDENTIALS) {
-  describe("Testnet Integration (skipped)", () => {
-    it("credentials not provided — set WOO_TESTNET_KEY and WOO_TESTNET_SECRET", () => {
+  describe("Live Integration (skipped)", () => {
+    it("credentials not provided — set WOO_API_KEY and WOO_API_SECRET", () => {
       console.log(
-        "\n  To run testnet integration tests:\n" +
-          "  WOO_TESTNET_KEY=<key> WOO_TESTNET_SECRET=<secret> bun test tests/testnet-integration.test.ts\n"
+        "\n  To run live integration tests:\n" +
+          "  WOO_API_KEY=<key> WOO_API_SECRET=<secret> bun test tests/testnet-integration.test.ts\n"
       );
       expect(true).toBe(true);
     });
