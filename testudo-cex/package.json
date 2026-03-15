@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "express": "^4.21.0",
+    "safe-cex": "file:../safe-cex-sub0",
     "ws": "^8.18.0",
     "prom-client": "^15.1.0"
   },

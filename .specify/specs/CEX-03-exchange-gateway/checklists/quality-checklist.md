@@ -5,25 +5,25 @@
 
 ## Implementation
 
-- [ ] `ExchangeGateway` class created in `testudo-cex/src/gateway.ts`
-- [ ] Cache key derived from `hash(exchange_id + api_key + sandbox)`
-- [ ] `getOrCreate()` returns cached instance on duplicate calls
-- [ ] `createExchange()` called with correct config shape
-- [ ] `exchange.on("fill", onFill)` wired during creation
-- [ ] `exchange.on("error", ...)` and `exchange.on("log", ...)` wired
-- [ ] `exchange.start()` called to establish WebSocket connections
-- [ ] Failed `start()` throws without caching instance
-- [ ] `dispose()` and `disposeAll()` clean up correctly
+- [x] `ExchangeGateway` class created in `testudo-cex/src/gateway.ts`
+- [x] Cache key derived from `hash(exchange_id + api_key + sandbox)`
+- [x] `getOrCreate()` returns cached instance on duplicate calls
+- [x] `createExchange()` called with correct config shape
+- [x] `exchange.on("fill", onFill)` wired during creation
+- [x] `exchange.on("error", ...)` and `exchange.on("log", ...)` wired
+- [x] `exchange.start()` called to establish WebSocket connections
+- [x] Failed `start()` throws without caching instance
+- [x] `dispose()` and `disposeAll()` clean up correctly
 
 ## Testing
 
-- [ ] Test: create returns new instance
-- [ ] Test: second getOrCreate returns cached instance
-- [ ] Test: dispose removes instance
-- [ ] Test: start failure does not cache instance
-- [ ] `bun test` all pass
+- [x] Test: create returns new instance
+- [x] Test: second getOrCreate returns cached instance
+- [x] Test: dispose removes instance
+- [x] Test: start failure does not cache instance
+- [x] `bun test` all pass (10/10)
 
 ## Verification
 
-- [ ] `bun run build` succeeds
-- [ ] No lint errors
+- [x] `bun run build` succeeds (143 modules, 1.1 MB)
+- [x] No lint errors

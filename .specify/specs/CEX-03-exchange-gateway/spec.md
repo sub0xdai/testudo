@@ -2,7 +2,7 @@
 
 **Spec ID:** CEX-03-exchange-gateway
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Complete
 **Class:** Core / Infrastructure
 **Priority:** P1 — all handlers depend on this
 **Depends on:** CEX-01 (fork), CEX-02 (scaffold)
@@ -144,14 +144,14 @@ HTTP handlers call `gateway.getOrCreate()` on each request, passing credentials 
 
 ## Acceptance Criteria
 
-- [ ] Gateway creates and caches exchange instances by (exchange_id, api_key, sandbox) tuple
-- [ ] Duplicate `getOrCreate()` calls return the same instance
-- [ ] `exchange.start()` establishes WebSocket connections
-- [ ] Fill events fire via the `onFill` callback
-- [ ] Error and log events are forwarded to console
-- [ ] `dispose()` removes instance from cache
-- [ ] `disposeAll()` cleans up all instances
-- [ ] Failed `start()` does not cache the broken instance
+- [x] Gateway creates and caches exchange instances by (exchange_id, api_key, sandbox) tuple
+- [x] Duplicate `getOrCreate()` calls return the same instance
+- [x] `exchange.start()` establishes WebSocket connections
+- [x] Fill events fire via the `onFill` callback
+- [x] Error and log events are forwarded to console
+- [x] `dispose()` removes instance from cache
+- [x] `disposeAll()` cleans up all instances
+- [x] Failed `start()` does not cache the broken instance
 
 ---
 
