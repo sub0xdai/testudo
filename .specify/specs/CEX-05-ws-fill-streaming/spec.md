@@ -2,7 +2,7 @@
 
 **Spec ID:** CEX-05-ws-fill-streaming
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Complete
 **Class:** Core / Critical Path
 **Priority:** P0 — fixes the root cause (dead watchOrders)
 **Depends on:** CEX-03 (gateway), CEX-04 (handlers)
@@ -133,12 +133,12 @@ This maps directly to the `OrderUpdateEvent` struct in `ccxt_client.rs`.
 
 ## Acceptance Criteria
 
-- [ ] Fill events for regular orders (limit, market) arrive at Rust backend
-- [ ] Fill events for algo orders (stop-market SL, conditional TP) arrive at Rust backend
-- [ ] Cancellation events arrive at Rust backend
-- [ ] Event shape matches existing `OrderUpdateEvent` struct exactly
-- [ ] `fill_detector.rs` can process events without any changes
-- [ ] WebSocket server at `/ws/orders` path accepts connections
+- [x] Fill events for regular orders (limit, market) arrive at Rust backend
+- [x] Fill events for algo orders (stop-market SL, conditional TP) arrive at Rust backend
+- [x] Cancellation events arrive at Rust backend
+- [x] Event shape matches existing `OrderUpdateEvent` struct exactly
+- [x] `fill_detector.rs` can process events without any changes
+- [x] WebSocket server at `/ws/orders` path accepts connections
 
 ---
 

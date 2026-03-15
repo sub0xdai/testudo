@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { ExchangeGateway } from "./gateway";
 import { createHandlers } from "./handlers";
+import { setupFillStreaming } from "./ws-fills";
 
 const app = express();
 app.use(express.json());
@@ -26,10 +27,8 @@ const PORT = process.env.PORT || 3100;
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws/orders" });
 
-wss.on("connection", (ws) => {
-  console.log("WebSocket client connected");
-  ws.on("close", () => console.log("WebSocket client disconnected"));
-});
+// CEX-05: Wire fill streaming — subscribe, fill forwarding, cancellation detection
+setupFillStreaming(wss, gateway);
 
 server.listen(PORT, () => {
   console.log(`testudo-cex listening on port ${PORT}`);
