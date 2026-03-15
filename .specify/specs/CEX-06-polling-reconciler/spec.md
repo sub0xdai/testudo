@@ -2,7 +2,7 @@
 
 **Spec ID:** CEX-06-polling-reconciler
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Complete
 **Class:** Safety / Defense-in-Depth
 **Priority:** P1 — catches missed WebSocket events
 **Depends on:** CEX-03 (gateway), CEX-05 (fill streaming)
@@ -133,14 +133,14 @@ The reconciler only cancels **reduce-only and stop/TP orders** when no position 
 
 ## Acceptance Criteria
 
-- [ ] Reconciler runs on configurable interval (default 15s)
-- [ ] Detects orphaned orders when position is gone but orders remain
-- [ ] Only cancels reduce-only / stop / TP orders (not entry orders)
-- [ ] Cancels orphaned orders via `cancelSymbolOrders`
-- [ ] Emits synthetic events so Rust backend updates state
-- [ ] Does not interfere with normal fill processing
-- [ ] Logs reconciliation actions with symbol and order IDs
-- [ ] Graceful shutdown (clears interval)
+- [x] Reconciler runs on configurable interval (default 15s)
+- [x] Detects orphaned orders when position is gone but orders remain
+- [x] Only cancels reduce-only / stop / TP orders (not entry orders)
+- [x] Cancels orphaned orders via `cancelSymbolOrders`
+- [x] Emits synthetic events so Rust backend updates state
+- [x] Does not interfere with normal fill processing
+- [x] Logs reconciliation actions with symbol and order IDs
+- [x] Graceful shutdown (clears interval)
 
 ---
 
