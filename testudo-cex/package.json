@@ -1,0 +1,19 @@
+{
+  "name": "testudo-cex",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "build": "bun build src/server.ts --outdir=dist --target=bun",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0",
+    "prom-client": "^15.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.7.0"
+  }
+}
