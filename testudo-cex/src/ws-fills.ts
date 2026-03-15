@@ -4,7 +4,7 @@
  * Forwards safe-cex fill events and detects order cancellations via Store
  * diffing, sending `order_update` events to the connected Rust backend.
  *
- * Event shape matches the `OrderUpdateEvent` struct in ccxt_client.rs exactly:
+ * Event shape matches the `OrderUpdateEvent` struct in cex_client.rs exactly:
  * numeric fields are JSON numbers (f64/i64), not strings.
  */
 

@@ -46,7 +46,7 @@ export function parseEnvelope(body: any): Envelope {
   };
 }
 
-/** Map errors to HTTP status codes matching CcxtClientError enum. */
+/** Map errors to HTTP status codes matching CexClientError enum. */
 export function mapError(err: any): {
   status: number;
   body: { error: string; code: string };
