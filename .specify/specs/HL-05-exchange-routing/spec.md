@@ -2,7 +2,7 @@
 
 **Spec ID:** HL-05-exchange-routing
 **Date:** 2026-03-16
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Architecture
 **Priority:** P1 — integrates all HL components
 **Depends on:** HL-03 (exchange_api), HL-04 (ws_fills)
@@ -94,15 +94,15 @@ let routing_api = Arc::new(RoutingExchangeApi::new(
 
 ## Acceptance Criteria
 
-- [ ] `RoutingExchangeApi` delegates to correct backend based on `exchange_name`
-- [ ] `"hyperliquid"` routes to `HyperliquidExchangeApi`
-- [ ] All other exchange names route to `CexExchangeApi`
-- [ ] `TradeManagerService` unchanged — receives `Arc<dyn ExchangeApi>`
-- [ ] `FillDetectorService` unchanged — consumes same `OrderUpdateEvent` channel
-- [ ] WS subscription manager spawns HL fill subscriber for hyperliquid accounts
-- [ ] `main.rs` conditionally creates routing based on `HYPERLIQUID_ENABLED` env var
-- [ ] Unit tests verify routing to correct backend
-- [ ] `cargo clippy --all-targets && cargo test` passes
+- [x] `RoutingExchangeApi` delegates to correct backend based on `exchange_name`
+- [x] `"hyperliquid"` routes to `HyperliquidExchangeApi`
+- [x] All other exchange names route to `CexExchangeApi`
+- [x] `TradeManagerService` unchanged — receives `Arc<dyn ExchangeApi>`
+- [x] `FillDetectorService` unchanged — consumes same `OrderUpdateEvent` channel
+- [x] WS subscription manager spawns HL fill subscriber for hyperliquid accounts
+- [x] `main.rs` conditionally creates routing based on `HYPERLIQUID_ENABLED` env var
+- [x] Unit tests verify routing to correct backend
+- [x] `cargo clippy --all-targets && cargo test` passes
 
 ---
 
