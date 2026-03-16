@@ -2,7 +2,7 @@
 
 **Spec ID:** HL-03-exchange-api
 **Date:** 2026-03-16
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Exchange Integration
 **Priority:** P1 — core trading functionality
 **Depends on:** HL-01 (universe), HL-02 (auth)
@@ -86,17 +86,17 @@ pub struct HyperliquidExchangeApi {
 
 ## Acceptance Criteria
 
-- [ ] `HyperliquidExchangeApi` implements all 6 `ExchangeApi` trait methods
-- [ ] `get_balance` returns account value as `Decimal`
-- [ ] `place_order` creates limit, market, and stop-loss orders via SDK
-- [ ] `amend_order` uses native modify (not cancel+replace)
-- [ ] `cancel_order` parses string order ID to u64
-- [ ] `cancel_all_orders` fetches open orders then bulk cancels
-- [ ] `get_position` filters asset positions by coin name
-- [ ] Symbol normalization strips `_USDT` suffix
-- [ ] CLOIDs are deterministic UUID v5 from group_id + role
-- [ ] Unit tests with mocked SDK responses — one per trait method + error paths
-- [ ] `cargo clippy --all-targets && cargo test` passes
+- [x] `HyperliquidExchangeApi` implements all 6 `ExchangeApi` trait methods
+- [x] `get_balance` returns account value as `Decimal`
+- [x] `place_order` creates limit, market, and stop-loss orders via SDK
+- [x] `amend_order` uses native modify (not cancel+replace)
+- [x] `cancel_order` parses string order ID to u64
+- [x] `cancel_all_orders` fetches open orders then bulk cancels
+- [x] `get_position` filters asset positions by coin name
+- [x] Symbol normalization strips `_USDT` suffix
+- [x] CLOIDs are deterministic UUID v5 from group_id + role
+- [x] Unit tests with mocked SDK responses — one per trait method + error paths
+- [x] `cargo clippy --all-targets && cargo test` passes
 
 ---
 
