@@ -160,8 +160,8 @@ let service = AgentRotationService::new(repo, tx, 12);
 ## Completion Signal
 
 This spec is complete when:
-1. External calls are resilient (timeouts, connection pooling)
-2. Configuration is resolved once at startup
-3. No unsafe env mutations in tests
-4. All tests pass
-5. Code committed to master
+1. ~~External calls are resilient (timeouts, connection pooling)~~ Done
+2. ~~Configuration is resolved once at startup~~ Done
+3. ~~No unsafe env mutations in tests~~ Done
+4. ~~All tests pass~~ 920 tests pass, 0 failures
+5. ~~Code committed to master~~ Committed (a694b24)
