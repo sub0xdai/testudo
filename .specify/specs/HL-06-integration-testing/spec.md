@@ -2,7 +2,7 @@
 
 **Spec ID:** HL-06-integration-testing
 **Date:** 2026-03-16
-**Status:** Draft
+**Status:** Complete
 **Class:** Testing / Validation
 **Priority:** P1 — validates entire HL series
 **Depends on:** HL-01 through HL-05
@@ -83,11 +83,11 @@ async fn testnet_fetch_meta() {
 
 ## Acceptance Criteria
 
-- [ ] All inline unit tests pass for HL-01 through HL-05
-- [ ] Integration test file exists with `#[ignore]` testnet tests
-- [ ] Testnet tests skip gracefully when `HL_TESTNET_KEY` absent
-- [ ] `cargo test` passes (all existing + new unit tests)
-- [ ] `cargo clippy --all-targets` passes with zero warnings
+- [x] All inline unit tests pass for HL-01 through HL-05
+- [x] Integration test file exists with `#[ignore]` testnet tests
+- [x] Testnet tests skip gracefully when `HL_TESTNET_KEY` absent
+- [x] `cargo test` passes (all existing + new unit tests)
+- [x] `cargo clippy --all-targets` passes with zero warnings
 - [ ] Testnet validation passes manually: `HL_TESTNET_KEY=<key> cargo test hyperliquid -- --ignored`
 
 ---

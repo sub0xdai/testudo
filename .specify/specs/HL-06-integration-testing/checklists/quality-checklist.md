@@ -5,16 +5,16 @@
 
 ## Implementation
 
-- [ ] Testnet integration test file created
-- [ ] Conditional compilation on HL_TESTNET_KEY env var
-- [ ] Auth validation test (key derivation + address)
-- [ ] Universe fetch test (asset metadata retrieval)
-- [ ] Balance query test (user_state endpoint)
-- [ ] Order lifecycle test (place, amend, cancel)
-- [ ] Position query test (asset_positions)
-- [ ] WebSocket subscription test (order updates stream)
+- [x] Testnet integration test file created
+- [x] Conditional compilation on HL_TESTNET_KEY env var
+- [x] Auth validation test (key derivation + address)
+- [x] Universe fetch test (asset metadata retrieval)
+- [x] Balance query test (user_state endpoint)
+- [x] Order lifecycle test (place, verify, cancel, verify)
+- [x] Position query test (user_state.asset_positions)
+- [x] WebSocket subscription test (order updates stream)
 
 ## Verification
 
-- [ ] `cargo test` passes for unit tests (no testnet key required)
+- [x] `cargo test` passes for unit tests (no testnet key required)
 - [ ] `HL_TESTNET_KEY=... cargo test --ignored` passes on testnet
