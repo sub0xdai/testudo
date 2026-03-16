@@ -328,7 +328,11 @@ async function ensureActiveExchange(): Promise<string | null> {
   const mode = await getExchangeMode();
   const currentId = await getActiveExchangeId();
   const result = await listExchangeAccounts();
-  const allAccounts = result.success ? (result.data || []) : [];
+
+  // Don't clear active ID if the API call failed — preserve what we have
+  if (!result.success) return currentId;
+
+  const allAccounts = result.data || [];
   const accounts = allAccounts.filter((a) => getExchangeType(a.exchange_name) === mode);
 
   if (accounts.length === 0) {
