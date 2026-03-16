@@ -2,7 +2,7 @@
 
 **Spec ID:** AW-03-frontend-wallet-connection
 **Date:** 2026-03-16
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Frontend
 **Priority:** P0 — user-facing onboarding flow
 **Depends on:** AW-01 (agent-key-generation), AW-02 (eip712-approval)
@@ -160,17 +160,17 @@ Once the agent wallet is configured via the web app, the extension automatically
 
 ## Acceptance Criteria
 
-- [ ] wagmi + viem + RainbowKit (or ConnectKit) installed and configured
-- [ ] Selecting "Hyperliquid" shows "Connect Wallet" instead of API key form
-- [ ] Wallet connection via MetaMask works (connect → address available)
-- [ ] Init endpoint called with wallet address, agent keypair created
-- [ ] EIP-712 signing prompt appears in wallet with correct typed data
-- [ ] After signing, approval submitted and account activated
-- [ ] Success state displayed with agent address
-- [ ] Error states show descriptive messages and retry option
-- [ ] Account list shows truncated wallet address for agent-wallet accounts
-- [ ] Extension shows "Open Web App" link for Hyperliquid setup
-- [ ] `cd testudo-web && bun run build` passes
+- [x] wagmi + viem + RainbowKit (or ConnectKit) installed and configured
+- [x] Selecting "Hyperliquid" shows "Connect Wallet" instead of API key form
+- [x] Wallet connection via MetaMask works (connect → address available)
+- [x] Init endpoint called with wallet address, agent keypair created
+- [x] EIP-712 signing prompt appears in wallet with correct typed data
+- [x] After signing, approval submitted and account activated
+- [x] Success state displayed with agent address
+- [x] Error states show descriptive messages and retry option
+- [x] Account list shows truncated wallet address for agent-wallet accounts
+- [x] Extension shows "Open Web App" link for Hyperliquid setup
+- [x] `cd testudo-web && bun run build` passes
 
 ---
 
