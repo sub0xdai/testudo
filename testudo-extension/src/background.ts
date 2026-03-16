@@ -3,9 +3,10 @@ import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse
 import {
   DEFAULT_SETTINGS, WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
+  getExchangeType,
 } from "./utils";
+import type { ExchangeMode } from "./utils";
 import {
-  ActiveExchangeStorageSchema,
   AddExchangeAccountResponseSchema,
   AuthTokensSchema,
   BackendResponseSchema,
@@ -295,20 +296,28 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
   }
 }
 
-// --- Active Exchange Selection (EXT-16 FR-3) ---
+// --- Active Exchange Selection (EXT-32: per-mode active exchange) ---
+
+async function getExchangeMode(): Promise<ExchangeMode> {
+  const stored = await browser.storage.local.get("exchangeMode");
+  const mode = stored.exchangeMode;
+  return mode === "dex" ? "dex" : "cex";
+}
 
 async function getActiveExchangeId(): Promise<string | null> {
-  const stored = await browser.storage.local.get(["activeExchangeId"]);
-  const parsed = ActiveExchangeStorageSchema.safeParse(stored);
-  if (!parsed.success) return null;
-  return parsed.data.activeExchangeId || null;
+  const mode = await getExchangeMode();
+  const key = mode === "dex" ? "activeDexAccountId" : "activeCexAccountId";
+  const stored = await browser.storage.local.get(key);
+  return (stored[key] as string) || null;
 }
 
 async function setActiveExchangeId(id: string | null): Promise<void> {
+  const mode = await getExchangeMode();
+  const key = mode === "dex" ? "activeDexAccountId" : "activeCexAccountId";
   if (id) {
-    await browser.storage.local.set({ activeExchangeId: id });
+    await browser.storage.local.set({ [key]: id });
   } else {
-    await browser.storage.local.remove(["activeExchangeId"]);
+    await browser.storage.local.remove([key]);
   }
 }
 
@@ -316,9 +325,11 @@ async function ensureActiveExchange(): Promise<string | null> {
   const tokens = await getTokens();
   if (!tokens || tokens.expires_in <= 0) return null;
 
+  const mode = await getExchangeMode();
   const currentId = await getActiveExchangeId();
   const result = await listExchangeAccounts();
-  const accounts = result.success ? (result.data || []) : [];
+  const allAccounts = result.success ? (result.data || []) : [];
+  const accounts = allAccounts.filter((a) => getExchangeType(a.exchange_name) === mode);
 
   if (accounts.length === 0) {
     if (currentId) await setActiveExchangeId(null);
@@ -332,6 +343,23 @@ async function ensureActiveExchange(): Promise<string | null> {
   const firstId = accounts[0].id;
   await setActiveExchangeId(firstId);
   return firstId;
+}
+
+// One-time migration from legacy activeExchangeId to per-mode keys
+async function migrateActiveExchangeId(): Promise<void> {
+  const stored = await browser.storage.local.get([
+    "activeExchangeId", "activeCexAccountId", "activeDexAccountId",
+  ]);
+  const legacy = stored.activeExchangeId as string | undefined;
+  if (!legacy || stored.activeCexAccountId || stored.activeDexAccountId) return;
+
+  const result = await listExchangeAccounts();
+  const accounts = result.success ? (result.data || []) : [];
+  const account = accounts.find((a) => a.id === legacy);
+  const type = account ? getExchangeType(account.exchange_name) : "cex";
+  const key = type === "dex" ? "activeDexAccountId" : "activeCexAccountId";
+  await browser.storage.local.set({ [key]: legacy, exchangeMode: type });
+  await browser.storage.local.remove("activeExchangeId");
 }
 
 // --- Trade Execution (EXT-19: live only, JWT required) ---
@@ -1176,14 +1204,27 @@ browser.runtime.onMessage.addListener((message: unknown) => {
   if (msg.type === "FORGOT_PASSWORD") {
     return forgotPassword(msg.email);
   }
+
+  if (msg.type === "GET_EXCHANGE_MODE") {
+    return getExchangeMode().then((mode) => ({ mode }));
+  }
+
+  if (msg.type === "SET_EXCHANGE_MODE") {
+    return browser.storage.local.set({ exchangeMode: msg.mode }).then(async () => {
+      await ensureActiveExchange();
+      return { success: true };
+    });
+  }
 });
 
-// On startup, schedule token refresh if tokens exist, then connect WebSocket
-getTokens().then((tokens) => {
-  if (tokens && tokens.expires_in > 0) {
-    scheduleTokenRefresh(tokens.expires_in);
-    ensureActiveExchange();
-  }
+// On startup, migrate legacy exchange ID, schedule token refresh, then connect WebSocket
+migrateActiveExchangeId().then(() => {
+  getTokens().then((tokens) => {
+    if (tokens && tokens.expires_in > 0) {
+      scheduleTokenRefresh(tokens.expires_in);
+      ensureActiveExchange();
+    }
+  });
 });
 
 // EXT-06: Connect WebSocket on startup

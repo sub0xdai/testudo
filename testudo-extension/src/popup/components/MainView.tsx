@@ -7,6 +7,7 @@ import TabBar, { type TabId } from "./TabBar";
 import TradeManagement from "./TradeManagement";
 import QuickTrade from "./QuickTrade";
 import ActiveOrders from "./ActiveOrders";
+import { WEB_APP_URL, type ExchangeMode } from "../../utils";
 import type { BalanceResponse, LiveBalanceResponse } from "../../types";
 
 function formatBalance(value: number): string {
@@ -30,6 +31,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   const [balanceLoading, setBalanceLoading] = createSignal(true);
   const [positionCount, setPositionCount] = createSignal(0);
   const [pendingCount, setPendingCount] = createSignal(0);
+  const [exchangeMode, setExchangeMode] = createSignal<ExchangeMode>("cex");
   let balanceRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function fetchBalance() {
@@ -90,9 +92,12 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     }
   }
 
-  // Re-fetch balance when active exchange changes
+  // Re-fetch balance when active exchange or mode changes
   function handleStorageChange(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) {
-    if (changes.activeExchangeId) {
+    if (changes.exchangeMode) {
+      setExchangeMode((changes.exchangeMode.newValue as ExchangeMode) || "cex");
+    }
+    if (changes.activeCexAccountId || changes.activeDexAccountId || changes.exchangeMode) {
       setBalance(null);        // Clear stale balance before fetching
       setBalanceLoading(true);
       fetchBalance();
@@ -102,6 +107,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
   onMount(async () => {
     const stored = await browser.storage.local.get(["popupActiveTab"]);
     if (stored.popupActiveTab) setActiveTabRaw(stored.popupActiveTab as TabId);
+    const modeRes = await browser.runtime.sendMessage({ type: "GET_EXCHANGE_MODE" }) as { mode: ExchangeMode };
+    if (modeRes?.mode) setExchangeMode(modeRes.mode);
     fetchBalance();
     browser.runtime.onMessage.addListener(handleMessage);
     browser.storage.onChanged.addListener(handleStorageChange);
@@ -148,9 +155,18 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                   when={!balanceLoading() && noExchange()}
                   fallback={<span class="balance-loading text-white/60">$--</span>}
                 >
-                  <span class="text-[18px] text-text-dim font-sans font-medium">
-                    Connect an exchange account in Settings to start trading
-                  </span>
+                  <div class="mx-4 my-3 p-4 rounded-lg border border-white/10 text-center">
+                    <p class="text-sm text-text-dim mb-2">
+                      {exchangeMode() === "dex" ? "No wallet connected" : "No CEX exchange linked"}
+                    </p>
+                    <button
+                      class="px-4 py-1.5 text-xs font-medium rounded bg-accent/20 text-accent hover:bg-accent/30 transition border-0 cursor-pointer"
+                      onClick={() => window.open(`${WEB_APP_URL}/account`, "_blank")}
+                      data-testid="connect-account-cta"
+                    >
+                      Connect Account
+                    </button>
+                  </div>
                 </Show>
               }
             >
@@ -230,7 +246,9 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                 when={available() !== null}
                 fallback={
                   <p class="text-[14px] text-text-dim italic font-sans">
-                    {noExchange() ? "Connect an exchange account in Settings to view balance" : "Balance unavailable"}
+                    {noExchange()
+                      ? (exchangeMode() === "dex" ? "No wallet connected" : "No CEX exchange linked")
+                      : "Balance unavailable"}
                   </p>
                 }
               >

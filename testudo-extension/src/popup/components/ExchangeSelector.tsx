@@ -1,6 +1,7 @@
-import { createSignal, onMount, onCleanup, Show, For } from "solid-js";
+import { createSignal, createMemo, onMount, onCleanup, Show, For } from "solid-js";
 import browser from "webextension-polyfill";
 import type { ExchangeAccount } from "../../types";
+import { getExchangeType, type ExchangeMode } from "../../utils";
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -10,10 +11,15 @@ export default function ExchangeSelector() {
   const [accounts, setAccounts] = createSignal<ExchangeAccount[]>([]);
   const [activeId, setActiveId] = createSignal<string | null>(null);
   const [open, setOpen] = createSignal(false);
+  const [exchangeMode, setExchangeMode] = createSignal<ExchangeMode>("cex");
+
+  const filteredAccounts = createMemo(() =>
+    accounts().filter((a) => getExchangeType(a.exchange_name) === exchangeMode())
+  );
 
   async function fetchData() {
     try {
-      const [accountsRes, activeRes] = await Promise.all([
+      const [accountsRes, activeRes, modeRes] = await Promise.all([
         browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as Promise<{
           success?: boolean;
           data?: ExchangeAccount[];
@@ -21,21 +27,29 @@ export default function ExchangeSelector() {
         browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as Promise<{
           exchangeId: string | null;
         }>,
+        browser.runtime.sendMessage({ type: "GET_EXCHANGE_MODE" }) as Promise<{
+          mode: ExchangeMode;
+        }>,
       ]);
+      if (modeRes?.mode) setExchangeMode(modeRes.mode);
       if (accountsRes?.success && accountsRes.data) {
         setAccounts(accountsRes.data);
       }
       const currentActiveId = activeRes?.exchangeId || null;
       setActiveId(currentActiveId);
 
-      // Auto-select first account if none active (safety net for background miss)
+      // Auto-select first matching account if none active
       if (!currentActiveId && accountsRes?.data?.length) {
-        const firstId = accountsRes.data[0].id;
-        setActiveId(firstId);
-        await browser.runtime.sendMessage({
-          type: "SET_ACTIVE_EXCHANGE",
-          exchangeId: firstId,
-        });
+        const mode = modeRes?.mode || "cex";
+        const matching = accountsRes.data.filter((a) => getExchangeType(a.exchange_name) === mode);
+        if (matching.length) {
+          const firstId = matching[0].id;
+          setActiveId(firstId);
+          await browser.runtime.sendMessage({
+            type: "SET_ACTIVE_EXCHANGE",
+            exchangeId: firstId,
+          });
+        }
       }
     } catch {
       /* non-blocking */
@@ -59,12 +73,17 @@ export default function ExchangeSelector() {
     }
   }
 
-  // Refresh when accounts change (add/delete in settings)
+  // Refresh when accounts or mode change
   function handleStorageChange(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) {
     if (changes.exchangeAccounts) {
-      fetchData();             // Re-fetch full list on account add/delete
-    } else if (changes.activeExchangeId) {
-      setActiveId((changes.activeExchangeId.newValue as string) || null);
+      fetchData();
+    }
+    if (changes.exchangeMode) {
+      setExchangeMode((changes.exchangeMode.newValue as ExchangeMode) || "cex");
+      fetchData();
+    }
+    if (changes.activeCexAccountId || changes.activeDexAccountId) {
+      fetchData();
     }
   }
 
@@ -79,14 +98,14 @@ export default function ExchangeSelector() {
     browser.storage.onChanged.removeListener(handleStorageChange);
   });
 
-  const activeAccount = () => accounts().find((a) => a.id === activeId());
+  const activeAccount = () => filteredAccounts().find((a) => a.id === activeId());
   const activeLabel = () => {
     const acct = activeAccount();
     return acct ? capitalize(acct.exchange_name) : "No Exchange";
   };
 
   return (
-    <Show when={accounts().length > 0}>
+    <Show when={filteredAccounts().length > 0}>
       <div class="relative" data-exchange-selector data-testid="exchange-selector">
         {/* Trigger pill */}
         <button
@@ -111,7 +130,7 @@ export default function ExchangeSelector() {
         {/* Dropdown */}
         <Show when={open()}>
           <div role="listbox" aria-label="Exchange accounts" class="absolute top-full right-0 mt-1 min-w-[140px] bg-bg-elevated border border-border-subtle rounded-lg shadow-lg z-50 overflow-hidden">
-            <For each={accounts()}>
+            <For each={filteredAccounts()}>
               {(account) => (
                 <button
                   role="option"

@@ -1,5 +1,15 @@
 import type { Settings } from "./types";
 
+// --- Exchange Type Derivation ---
+
+const DEX_EXCHANGES = new Set(["hyperliquid"]);
+
+export type ExchangeMode = "cex" | "dex";
+
+export function getExchangeType(exchangeName: string): ExchangeMode {
+  return DEX_EXCHANGES.has(exchangeName.toLowerCase()) ? "dex" : "cex";
+}
+
 // --- Constants ---
 
 export const DEFAULT_SETTINGS: Settings = {

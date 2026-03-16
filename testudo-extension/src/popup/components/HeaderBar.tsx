@@ -1,6 +1,7 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import StatusBar from "./StatusBar";
+import ExchangeToggle from "./ExchangeToggle";
 import ExchangeSelector from "./ExchangeSelector";
 
 type SidecarStatus = "unknown" | "healthy" | "unreachable";
@@ -36,6 +37,7 @@ export default function HeaderBar(props: HeaderBarProps) {
           <StatusBar sidecarStatus={sidecarStatus()} />
         </div>
         <div class="flex items-center gap-2">
+          <ExchangeToggle />
           <ExchangeSelector />
           <button
             class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
