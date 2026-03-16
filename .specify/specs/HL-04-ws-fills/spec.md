@@ -2,7 +2,7 @@
 
 **Spec ID:** HL-04-ws-fills
 **Date:** 2026-03-16
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Exchange Integration
 **Priority:** P1 — required for live fill detection
 **Depends on:** HL-02 (auth for signing WS subscription)
@@ -90,13 +90,13 @@ pub struct OrderUpdateEvent {
 
 ## Acceptance Criteria
 
-- [ ] `HyperliquidFillSubscriber` connects to HL WebSocket
-- [ ] Order status changes translated to `OrderUpdateEvent`
-- [ ] Events forwarded to `mpsc::Sender<OrderUpdateEvent>`
-- [ ] Auto-reconnect with exponential backoff on disconnect
-- [ ] Graceful shutdown on cancellation signal
-- [ ] Unit tests verify correct `OrderUpdateEvent` translation for filled/canceled/open states
-- [ ] `cargo clippy --all-targets && cargo test` passes
+- [x] `HyperliquidFillSubscriber` connects to HL WebSocket
+- [x] Order status changes translated to `OrderUpdateEvent`
+- [x] Events forwarded to `mpsc::Sender<OrderUpdateEvent>`
+- [x] Auto-reconnect with exponential backoff on disconnect
+- [x] Graceful shutdown on cancellation signal
+- [x] Unit tests verify correct `OrderUpdateEvent` translation for filled/canceled/open states
+- [x] `cargo clippy --all-targets && cargo test` passes
 
 ---
 
