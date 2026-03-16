@@ -176,6 +176,20 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             <p class="text-[10px] text-text-dim font-sans mt-2 text-center">
               Opens account management in your browser
             </p>
+
+            <button
+              class="w-full py-2.5 mt-3 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
+              onClick={() => {
+                const base = webUrl().replace(/\/$/, '');
+                window.open(`${base}/account`, '_blank');
+              }}
+              data-testid="setup-hyperliquid-btn"
+            >
+              SET UP HYPERLIQUID
+            </button>
+            <p class="text-[10px] text-text-dim font-sans mt-2 text-center">
+              Connect wallet via web app for Hyperliquid trading
+            </p>
           </div>
         </Show>
       </div>
