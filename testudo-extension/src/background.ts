@@ -414,6 +414,7 @@ async function executeTrade(payload: RuntimeTradePayload, retried = false): Prom
 
     if (!response.ok) {
       const raw = await response.json().catch(() => ({}));
+      console.error("[executeTrade] HTTP error:", response.status, raw);
       const json = ErrorResponseSchema.safeParse(raw);
 
       if (response.status === 401 && !retried) {
@@ -427,9 +428,11 @@ async function executeTrade(payload: RuntimeTradePayload, retried = false): Prom
     }
 
     const raw = await response.json().catch(() => ({}));
+    console.log("[executeTrade] response:", JSON.stringify(raw).slice(0, 500));
     const normalized = normalizeBackendAck(raw);
     const validated = BackendResponseSchema.safeParse(normalized);
     if (!validated.success) {
+      console.error("[executeTrade] validation failed:", validated.error.message);
       return { success: false, error: "Malformed trade response" };
     }
     return validated.data;
