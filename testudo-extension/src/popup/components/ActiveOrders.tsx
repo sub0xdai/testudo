@@ -1,6 +1,6 @@
 import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import browser from "webextension-polyfill";
-import type { TradeGroupResponse, ExchangePositionsResponse } from "../../types";
+import type { TradeGroupResponse, ExchangePositionsResponse, ExchangePosition } from "../../types";
 import PositionCard from "./PositionCard";
 
 interface ActiveOrdersProps {
@@ -16,6 +16,8 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   const [error, setError] = createSignal("");
   const [cancelError, setCancelError] = createSignal("");
   const [cancelling, setCancelling] = createSignal("");
+  const [closingPosition, setClosingPosition] = createSignal("");
+  const [confirmingClose, setConfirmingClose] = createSignal<ExchangePosition | null>(null);
 
   async function fetchExchangePositions() {
     setExchangeLoading(true);
@@ -78,6 +80,30 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       setCancelError("Failed to send cancel request");
     } finally {
       setCancelling("");
+    }
+  }
+
+  async function handleClosePosition(pos: ExchangePosition) {
+    setCancelError("");
+    setClosingPosition(pos.symbol);
+    setConfirmingClose(null);
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "CLOSE_EXCHANGE_POSITION",
+        symbol: pos.symbol,
+        side: pos.side.toLowerCase() as "long" | "short",
+        contracts: pos.contracts,
+      }) as { success: boolean; error?: string };
+      if (response.success) {
+        fetchExchangePositions();
+        props.onBalanceRefresh?.();
+      } else {
+        setCancelError(response.error || "Close failed");
+      }
+    } catch {
+      setCancelError("Failed to close position");
+    } finally {
+      setClosingPosition("");
     }
   }
 
@@ -206,6 +232,37 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                             {parseFloat(pos.unrealized_pnl) >= 0 ? "+" : ""}{parseFloat(pos.unrealized_pnl).toFixed(2)}
                           </p>
                         </div>
+                      </div>
+                      <div class="flex items-center justify-end mt-2 pt-2 border-t border-border-subtle">
+                        <Show when={confirmingClose()?.symbol === pos.symbol && confirmingClose()?.side === pos.side}
+                          fallback={
+                            <button
+                              class="px-3 py-1.5 text-[10px] font-bold tracking-wider text-signal-red bg-signal-red/10 rounded-md hover:bg-signal-red/20 transition-colors disabled:opacity-50"
+                              onClick={() => setConfirmingClose(pos)}
+                              disabled={closingPosition() === pos.symbol}
+                            >
+                              {closingPosition() === pos.symbol ? "CLOSING..." : "CLOSE"}
+                            </button>
+                          }
+                        >
+                          <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-text-dim font-mono">
+                              Close {pos.contracts} {pos.symbol}?
+                            </span>
+                            <button
+                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-signal-red bg-signal-red/20 rounded hover:bg-signal-red/30 transition-colors"
+                              onClick={() => handleClosePosition(pos)}
+                            >
+                              YES
+                            </button>
+                            <button
+                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-text-dim bg-bg-elevated rounded hover:bg-bg-panel transition-colors"
+                              onClick={() => setConfirmingClose(null)}
+                            >
+                              NO
+                            </button>
+                          </div>
+                        </Show>
                       </div>
                     </div>
                   )}

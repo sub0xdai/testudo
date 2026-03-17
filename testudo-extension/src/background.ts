@@ -877,6 +877,60 @@ async function fetchExchangePositions(retried = false): Promise<{ success: boole
   }
 }
 
+// --- EXT-34: Close Exchange Position ---
+
+async function closeExchangePosition(
+  symbol: string,
+  side: string,
+  contracts: string,
+  retried = false,
+): Promise<{ success: boolean; error?: string }> {
+  let activeId = await getActiveExchangeId();
+  if (!activeId) {
+    activeId = await ensureActiveExchange();
+    if (!activeId) {
+      return { success: false, error: "No active exchange selected" };
+    }
+  }
+
+  const settings = await getSettings();
+  const tokens = await getTokens();
+  if (!tokens || tokens.expires_in <= 0) {
+    return { success: false, error: "Authentication required" };
+  }
+
+  try {
+    const response = await fetch(
+      `${settings.backendUrl}/api/v1/exchanges/accounts/${activeId}/close-position`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${tokens.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ symbol, side, contracts }),
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401 && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return closeExchangePosition(symbol, side, contracts, true);
+      }
+      const raw = await response.json().catch(() => ({}));
+      const json = ErrorResponseSchema.safeParse(raw);
+      const errorMsg = json.success ? (json.data.message || json.data.error) : undefined;
+      return { success: false, error: errorMsg || `HTTP ${response.status}` };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
 // --- Sidecar Health Polling (EXT-16 FR-2) ---
 
 export type SidecarStatus = "unknown" | "healthy" | "unreachable";
@@ -1209,6 +1263,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "EXCHANGE_POSITIONS") {
     return fetchExchangePositions();
+  }
+
+  if (msg.type === "CLOSE_EXCHANGE_POSITION") {
+    return closeExchangePosition(msg.symbol, msg.side, msg.contracts);
   }
 
   if (msg.type === "FORGOT_PASSWORD") {

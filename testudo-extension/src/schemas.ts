@@ -241,6 +241,12 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("TOKEN_SYNCED_FROM_WEB") }),
   z.object({ type: z.literal("FORGOT_PASSWORD"), email: z.string().email() }),
   z.object({ type: z.literal("EXCHANGE_POSITIONS") }),
+  z.object({
+    type: z.literal("CLOSE_EXCHANGE_POSITION"),
+    symbol: z.string(),
+    side: z.enum(["long", "short"]),
+    contracts: z.string(),
+  }),
   z.object({ type: z.literal("GET_EXCHANGE_MODE") }),
   z.object({ type: z.literal("SET_EXCHANGE_MODE"), mode: z.enum(["cex", "dex"]) }),
   z.object({
