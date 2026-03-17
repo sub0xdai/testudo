@@ -120,7 +120,7 @@ describe("background message router", () => {
       const result = await messageHandler({ type: "GET_SETTINGS" });
       expect(result).toEqual({
         backendUrl: "http://localhost:8080",
-        wsUrl: "ws://localhost:4000",
+        wsUrl: "ws://127.0.0.1:4000",
       });
     });
 

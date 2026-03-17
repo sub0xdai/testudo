@@ -40,7 +40,7 @@ export default function ExchangeToggle() {
 
   return (
     <div
-      class="flex items-center bg-bg-panel rounded-md p-0.5 gap-0"
+      class="flex items-center bg-bg-panel rounded-md p-[3px] gap-0"
       data-testid="exchange-toggle"
       role="radiogroup"
       aria-label="Exchange mode"
@@ -50,7 +50,7 @@ export default function ExchangeToggle() {
           <button
             role="radio"
             aria-checked={mode() === m.value}
-            class={`px-2 py-0.5 text-[10px] font-bold tracking-wider border-0 rounded transition-colors cursor-pointer ${
+            class={`px-2.5 py-1 text-[11px] font-bold tracking-wider border-0 rounded transition-colors cursor-pointer ${
               mode() === m.value
                 ? "bg-accent/20 text-accent"
                 : "text-text-dim hover:text-text-secondary bg-transparent"

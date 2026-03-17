@@ -14,7 +14,7 @@ export function getExchangeType(exchangeName: string): ExchangeMode {
 
 export const DEFAULT_SETTINGS: Settings = {
   backendUrl: "http://localhost:8080",
-  wsUrl: "ws://localhost:4000",
+  wsUrl: "ws://127.0.0.1:4000",
 };
 
 export const WEB_APP_URL = "http://localhost:3001";

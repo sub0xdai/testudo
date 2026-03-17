@@ -23,6 +23,7 @@ export default function ExchangeSelector() {
         browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as Promise<{
           success?: boolean;
           data?: ExchangeAccount[];
+          error?: string;
         }>,
         browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as Promise<{
           exchangeId: string | null;
@@ -31,6 +32,11 @@ export default function ExchangeSelector() {
           mode: ExchangeMode;
         }>,
       ]);
+      console.log("[ExchangeSelector] fetchData:", {
+        accounts: accountsRes,
+        active: activeRes,
+        mode: modeRes,
+      });
       if (modeRes?.mode) setExchangeMode(modeRes.mode);
       if (accountsRes?.success && accountsRes.data) {
         setAccounts(accountsRes.data);
@@ -51,8 +57,8 @@ export default function ExchangeSelector() {
           });
         }
       }
-    } catch {
-      /* non-blocking */
+    } catch (err) {
+      console.error("[ExchangeSelector] fetchData failed:", err);
     }
   }
 
@@ -109,7 +115,7 @@ export default function ExchangeSelector() {
       <div class="relative" data-exchange-selector data-testid="exchange-selector">
         {/* Trigger pill */}
         <button
-          class={`flex items-center gap-1 px-2 py-1 min-h-[44px] text-[10px] font-bold tracking-wider border-0 rounded-md font-sans transition-colors ${
+          class={`flex items-center gap-1.5 px-2.5 py-1 min-h-[44px] text-[11px] font-bold tracking-wider border-0 rounded-md font-sans transition-colors ${
             activeAccount()
               ? "bg-accent-green/10 text-accent-green hover:bg-accent-green/20"
               : "bg-bg-panel text-text-dim hover:text-text-secondary"
@@ -124,7 +130,7 @@ export default function ExchangeSelector() {
             <path d="M8 9l4-4 4 4" />
             <path d="M16 15l-4 4-4-4" />
           </svg>
-          <span class="max-w-[60px] truncate">{activeLabel()}</span>
+          <span class="max-w-[80px] truncate">{activeLabel()}</span>
         </button>
 
         {/* Dropdown */}
@@ -135,7 +141,7 @@ export default function ExchangeSelector() {
                 <button
                   role="option"
                   aria-selected={account.id === activeId()}
-                  class={`w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] font-sans border-0 transition-colors ${
+                  class={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-[11px] font-sans border-0 transition-colors ${
                     account.id === activeId()
                       ? "bg-accent-green/10 text-accent-green font-bold"
                       : "text-text-secondary hover:bg-bg-panel hover:text-text-primary"

@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 export default function SettingsView(props: { onBack: () => void; onLogout: () => void }) {
   const auth = useAuth();
   const [backendUrl, setBackendUrl] = createSignal("http://localhost:8080");
-  const [wsUrl, setWsUrl] = createSignal("ws://localhost:4000");
+  const [wsUrl, setWsUrl] = createSignal("ws://127.0.0.1:4000");
   const [webUrl, setWebUrl] = createSignal("http://localhost:3001");
   const [saved, setSaved] = createSignal("");
 
@@ -90,7 +90,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             type="url"
             value={wsUrl()}
             onChange={handleWsChange}
-            placeholder="ws://localhost:4000"
+            placeholder="ws://127.0.0.1:4000"
             required
             data-testid="ws-url"
           />
