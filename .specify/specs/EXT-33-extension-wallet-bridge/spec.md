@@ -2,7 +2,7 @@
 
 **Spec ID:** EXT-33-extension-wallet-bridge
 **Date:** 2026-03-17
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Integration
 **Priority:** P1 — Enables DEX wallet connection from extension without manual tab juggling
 **Depends on:** AW-01 through AW-05 (agent wallet lifecycle, complete), EXT-32 (CEX/DEX toggle, complete)
@@ -114,14 +114,14 @@ None. All required libraries (wagmi, viem, webextension-polyfill) are already pr
 
 ## Acceptance Criteria
 
-- [ ] Clicking "Connect Wallet" in DEX empty state opens `{webUrl}/account?source=extension`
-- [ ] Completing agent wallet flow on web app fires `TESTUDO_ACCOUNT_LINKED` postMessage
-- [ ] `token-sync.js` relays the message to background worker with origin validation
-- [ ] Background worker refreshes account list and updates storage
-- [ ] Extension popup shows new Hyperliquid account in DEX dropdown without manual refresh
-- [ ] postMessage origin is validated (spoofed origins are rejected)
-- [ ] Extension build passes: `cd testudo-extension && bun run build`
-- [ ] Web app build passes: `cd testudo-web && bun run build`
+- [x] Clicking "Connect Wallet" in DEX empty state opens `{webUrl}/account?source=extension`
+- [x] Completing agent wallet flow on web app fires `TESTUDO_ACCOUNT_LINKED` postMessage
+- [x] `token-sync.js` relays the message to background worker with origin validation
+- [x] Background worker refreshes account list and updates storage
+- [x] Extension popup shows new Hyperliquid account in DEX dropdown without manual refresh
+- [x] postMessage origin is validated (spoofed origins are rejected)
+- [x] Extension build passes: `cd testudo-extension && bun run build`
+- [x] Web app build passes: `cd testudo-web && bun run build`
 
 ---
 
