@@ -169,8 +169,9 @@ export default function TradeForm(props: TradeFormProps) {
             "font-weight": "700",
             "letter-spacing": "0.5px",
             padding: "3px 10px",
-            "border-radius": "20px",
+            "border-radius": "4px",
             "text-transform": "uppercase",
+            "font-family": "'Space Mono', ui-monospace, monospace",
           }}>{props.activeExchange}</span>
         </Show>
       </div>
@@ -345,11 +346,12 @@ export default function TradeForm(props: TradeFormProps) {
               "letter-spacing": "0.6px",
               "text-transform": "uppercase",
               padding: "7px 12px",
-              border: "1px solid color-mix(in srgb, var(--color-accent-steel) 30%, transparent)",
-              "border-radius": "8px",
+              border: "1px solid var(--color-border)",
+              "border-radius": "6px",
               background: "transparent",
               color: "var(--color-accent-steel)",
               cursor: "pointer",
+              "font-family": "'Space Mono', ui-monospace, monospace",
             }}
           >Cancel</button>
           <button
@@ -363,10 +365,11 @@ export default function TradeForm(props: TradeFormProps) {
               "text-transform": "uppercase",
               padding: "7px 12px",
               border: confirmStep() > 0 ? "1px solid color-mix(in srgb, var(--color-signal-green) 50%, transparent)" : "1px solid color-mix(in srgb, var(--color-signal-red) 45%, transparent)",
-              "border-radius": "8px",
+              "border-radius": "6px",
               background: !isValid() ? "rgba(63,63,70,0.45)" : (confirmStep() > 0 ? "color-mix(in srgb, var(--color-signal-green) 20%, transparent)" : "color-mix(in srgb, var(--color-signal-red) 20%, transparent)"),
               color: !isValid() ? "var(--color-text-dim)" : (confirmStep() > 0 ? "var(--color-signal-green)" : "var(--color-signal-red)"),
               cursor: !isValid() ? "not-allowed" : "pointer",
+              "font-family": "'Space Mono', ui-monospace, monospace",
             }}
           >{confirmStep() > 0 ? "Confirm Now" : "Arm Confirm"}</button>
           <span class="hint"><kbd>Esc</kbd> dismiss</span>
