@@ -179,8 +179,8 @@ export function createHandlers(gateway: ExchangeGateway) {
         remaining: stringify(amount),
         average: null,
         price: stringify(price),
-        stopLossOrderId: orderIds[1] || null,
-        takeProfitOrderId: orderIds[2] || null,
+        stopLossOrderId: stringify(orderIds[1]) || null,
+        takeProfitOrderId: stringify(orderIds[2]) || null,
       });
     } catch (err) {
       const mapped = mapError(err);
