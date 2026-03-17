@@ -14,15 +14,21 @@ const fontBaseUrl = typeof chrome !== "undefined" && chrome.runtime?.getURL
 
 const MODAL_STYLES = `
   @font-face {
-    font-family: 'DM Sans';
-    src: url('${fontBaseUrl}dm-sans-variable.woff2') format('woff2');
-    font-weight: 100 900;
+    font-family: 'Space Grotesk';
+    src: url('${fontBaseUrl}space-grotesk-variable.woff2') format('woff2');
+    font-weight: 300 700;
     font-display: swap;
   }
   @font-face {
-    font-family: 'JetBrains Mono';
-    src: url('${fontBaseUrl}jetbrains-mono-regular.woff2') format('woff2');
+    font-family: 'Space Mono';
+    src: url('${fontBaseUrl}space-mono-regular.woff2') format('woff2');
     font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Space Mono';
+    src: url('${fontBaseUrl}space-mono-bold.woff2') format('woff2');
+    font-weight: 700;
     font-display: swap;
   }
   :host {
@@ -34,7 +40,7 @@ const MODAL_STYLES = `
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     --color-signal-green: #4ade80;
     --color-signal-red: #ef4444;
@@ -78,7 +84,7 @@ const MODAL_STYLES = `
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 14px;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: 'Space Mono', ui-monospace, monospace;
     color: #fff;
     outline: none;
     transition: border-color 0.15s;
@@ -100,11 +106,11 @@ const MODAL_STYLES = `
   .field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .field-wrapper { position: relative; flex: 1; }
   .label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; min-width: 50px; }
-  .value { font-size: 14px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: #fff; font-weight: 500; }
+  .value { font-size: 14px; font-family: 'Space Mono', ui-monospace, monospace; color: #fff; font-weight: 500; }
   .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 14px 0; }
   .rr-row { display: flex; justify-content: space-between; align-items: center; }
   .rr-label { font-size: 13px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-  .rr-value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: -0.5px; }
+  .rr-value { font-size: 20px; font-weight: 700; font-family: 'Space Mono', ui-monospace, monospace; letter-spacing: -0.5px; }
   .rr-value.good { color: var(--color-signal-green); }
   .rr-value.bad { color: var(--color-signal-red); }
   .rr-value.neutral { color: var(--color-signal-orange); }
@@ -115,13 +121,13 @@ const MODAL_STYLES = `
   .mgmt-rule .off { color: var(--color-text-dim); }
   .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
   .hint { font-size: 11px; color: var(--color-text-dim); display: flex; align-items: center; gap: 4px; }
-  kbd { display: inline-block; padding: 2px 7px; font-size: 10px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--color-text-secondary); background: color-mix(in srgb, var(--color-accent-steel) 12%, transparent); border: 1px solid color-mix(in srgb, var(--color-accent-steel) 25%, transparent); border-radius: 6px; font-weight: 500; }
+  kbd { display: inline-block; padding: 2px 7px; font-size: 10px; font-family: 'Space Mono', ui-monospace, monospace; color: var(--color-text-secondary); background: color-mix(in srgb, var(--color-accent-steel) 12%, transparent); border: 1px solid color-mix(in srgb, var(--color-accent-steel) 25%, transparent); border-radius: 6px; font-weight: 500; }
   .live-badge { display: inline-block; background: color-mix(in srgb, var(--color-signal-red) 15%, transparent); color: var(--color-signal-red); font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 12px; }
   .live-warning { font-size: 11px; color: rgba(239,68,68,0.8); margin-bottom: 12px; text-align: center; }
   .balance-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
   .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
   .balance-label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-  .balance-value { font-size: 14px; font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--color-signal-green); font-weight: 500; }
+  .balance-value { font-size: 14px; font-family: 'Space Mono', ui-monospace, monospace; color: var(--color-signal-green); font-weight: 500; }
   .balance-value.size { color: #fff; font-weight: 600; }
   .balance-value.leverage { color: var(--color-accent-steel); }
   .balance-value.margin { color: var(--color-signal-orange); }
@@ -233,7 +239,7 @@ const TOAST_STYLES = `
   .toast {
     position: fixed; top: 20px; right: 20px;
     padding: 12px 18px; border-radius: 12px;
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
     font-size: 13px; font-weight: 600; color: #fff;
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     z-index: 100000; opacity: 0; transition: opacity 0.3s;

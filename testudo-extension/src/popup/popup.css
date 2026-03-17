@@ -2,19 +2,27 @@
 
 /* --- Font Face Declarations --- */
 @font-face {
-    font-family: "DM Sans";
+    font-family: "Space Grotesk";
     font-style: normal;
-    font-weight: 400 700;
+    font-weight: 300 700;
     font-display: swap;
-    src: url("./fonts/dm-sans-variable.woff2") format("woff2");
+    src: url("./fonts/space-grotesk-variable.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "JetBrains Mono";
+    font-family: "Space Mono";
     font-style: normal;
-    font-weight: 400 700;
+    font-weight: 400;
     font-display: swap;
-    src: url("./fonts/jetbrains-mono-regular.woff2") format("woff2");
+    src: url("./fonts/space-mono-regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Space Mono";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("./fonts/space-mono-bold.woff2") format("woff2");
 }
 
 /* --- Design Tokens (Tailwind v4 @theme) --- */
@@ -39,8 +47,8 @@
     --color-text-primary: #ffffff;
     --color-text-secondary: #9ca3af;
     --color-text-dim: #6b7280;
-    --font-family-sans: "DM Sans", system-ui, -apple-system, sans-serif;
-    --font-family-mono: "JetBrains Mono", ui-monospace, monospace;
+    --font-family-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    --font-family-mono: "Space Mono", ui-monospace, monospace;
 }
 
 /* ============================================================
