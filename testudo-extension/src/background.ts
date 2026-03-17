@@ -640,11 +640,14 @@ async function listExchangeAccounts(retried = false): Promise<{ success: boolean
     }
 
     const raw = await response.json().catch(() => ([]));
+    console.log("[listExchangeAccounts] raw response:", JSON.stringify(raw).slice(0, 500));
     const json = ExchangeAccountsResponseSchema.safeParse(raw);
     if (!json.success) {
+      console.error("[listExchangeAccounts] schema parse failed:", json.error.issues);
       return { success: false, error: "Malformed exchange accounts response" };
     }
     const accounts = Array.isArray(json.data) ? json.data : (json.data.data || json.data.accounts || []);
+    console.log("[listExchangeAccounts] parsed accounts:", accounts.length, accounts.map(a => a.exchange_name));
     return { success: true, data: accounts };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
@@ -1218,6 +1221,20 @@ browser.runtime.onMessage.addListener((message: unknown) => {
       await ensureActiveExchange();
       return { success: true };
     });
+  }
+
+  // EXT-33: Handle wallet connection event from web app via token-sync content script
+  if (msg.type === "ACCOUNT_LINKED") {
+    return (async () => {
+      // Small delay to allow backend to persist the account
+      await new Promise((r) => setTimeout(r, 500));
+      const result = await listExchangeAccounts();
+      if (result.success && result.data) {
+        await browser.storage.local.set({ exchangeAccounts: result.data });
+      }
+      await ensureActiveExchange();
+      return { success: true };
+    })();
   }
 });
 

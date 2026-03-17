@@ -37,6 +37,21 @@ async function clearExtensionTokens(): Promise<void> {
   browser.runtime.sendMessage({ type: "LOGOUT" }).catch(() => {});
 }
 
+// EXT-33: Listen for wallet connection events from web app (FR-3, FR-6)
+window.addEventListener("message", (event: MessageEvent) => {
+  // FR-6: Validate origin matches current page origin
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type !== "TESTUDO_ACCOUNT_LINKED") return;
+
+  browser.runtime.sendMessage({
+    type: "ACCOUNT_LINKED",
+    account: {
+      id: event.data.account?.id,
+      exchange_name: event.data.account?.exchange_name,
+    },
+  }).catch(() => {});
+});
+
 // Sync on page load
 syncTokensToExtension();
 

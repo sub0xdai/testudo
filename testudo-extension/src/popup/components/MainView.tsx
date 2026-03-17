@@ -161,10 +161,10 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                     </p>
                     <button
                       class="px-4 py-1.5 text-xs font-medium rounded bg-accent/20 text-accent hover:bg-accent/30 transition border-0 cursor-pointer"
-                      onClick={() => window.open(`${WEB_APP_URL}/account`, "_blank")}
+                      onClick={() => window.open(`${WEB_APP_URL}/account?source=extension`, "_blank")}
                       data-testid="connect-account-cta"
                     >
-                      Connect Account
+                      {exchangeMode() === "dex" ? "Connect Wallet" : "Connect Account"}
                     </button>
                   </div>
                 </Show>

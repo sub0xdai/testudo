@@ -243,4 +243,11 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("EXCHANGE_POSITIONS") }),
   z.object({ type: z.literal("GET_EXCHANGE_MODE") }),
   z.object({ type: z.literal("SET_EXCHANGE_MODE"), mode: z.enum(["cex", "dex"]) }),
+  z.object({
+    type: z.literal("ACCOUNT_LINKED"),
+    account: z.object({
+      id: z.string().optional(),
+      exchange_name: z.string().optional(),
+    }).optional(),
+  }),
 ]);
