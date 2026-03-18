@@ -1,4 +1,5 @@
-import { createResource, Show } from 'solid-js'
+import { createResource, Show, For } from 'solid-js'
+import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { HeroEquityCurve } from './HeroEquityCurve'
 import { ChartSelector } from './ChartSelector'
@@ -51,15 +52,47 @@ export function Overview() {
 
   return (
     <div>
-      {/* Loading state */}
+      {/* Loading state — structural skeleton */}
       <Show when={stats.loading && !stats()}>
-        <div class="flex gap-6">
-          <div class="w-64 shrink-0 hidden md:block">
-            <div class="bg-elevated border border-container-border animate-pulse h-96" />
+        <div class="flex gap-0">
+          {/* Stats sidebar skeleton */}
+          <div class="w-64 shrink-0 border-r border-container-border hidden md:block">
+            <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
+              {(section) => (
+                <div class="px-4 py-3 border-b border-container-border">
+                  <span class="font-display text-xs tracking-[0.2em] text-text-tertiary uppercase">
+                    {section}
+                  </span>
+                  <div class="mt-3 space-y-2">
+                    <For each={Array(4)}>
+                      {() => (
+                        <div class="flex justify-between">
+                          <SkeletonBar width="60px" />
+                          <SkeletonBar width="80px" />
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              )}
+            </For>
           </div>
-          <div class="flex-1">
-            <div class="bg-elevated border border-container-border animate-pulse h-12 mb-4" />
-            <div class="bg-elevated border border-container-border animate-pulse" style={{ "min-height": "400px" }} />
+          {/* Hero area skeleton */}
+          <div class="flex-1 min-w-0">
+            <div class="px-6 py-4 border-b border-container-border">
+              <SkeletonBar width="200px" height="40px" class="mb-2" />
+              <div class="flex gap-6">
+                <SkeletonBar width="100px" />
+                <SkeletonBar width="100px" />
+                <SkeletonBar width="80px" />
+              </div>
+            </div>
+            <div class="relative" style={{ "min-height": "400px" }}>
+              {/* Axis lines */}
+              <div class="absolute left-8 top-4 bottom-8 w-px bg-container-border/20" />
+              <div class="absolute left-8 right-4 bottom-8 h-px bg-container-border/20" />
+              <div class="absolute inset-0 skeleton-shimmer" />
+            </div>
           </div>
         </div>
       </Show>

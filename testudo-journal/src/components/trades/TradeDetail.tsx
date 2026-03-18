@@ -20,6 +20,7 @@ import {
   rColor,
   sideColor,
 } from '../../lib/formatters'
+import { SkeletonBar } from '../SkeletonBar'
 
 export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   const [detail, { refetch }] = createResource(() => props.tradeId, fetchTradeDetail)
@@ -96,7 +97,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
       <div class={`fixed top-0 right-0 h-full w-full max-w-md bg-container-bg border-l border-container-border z-50 overflow-y-auto ${closing() ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
         {/* Header */}
         <div class="sticky top-0 bg-container-bg border-b border-container-border px-5 py-4 flex items-center justify-between">
-          <Show when={detail()} fallback={<div class="h-5 w-40 bg-container-border/20 animate-pulse rounded" />}>
+          <Show when={detail()} fallback={<div class="flex gap-2"><SkeletonBar width="60px" height="16px" /><SkeletonBar width="32px" height="16px" /><SkeletonBar width="40px" height="16px" /></div>}>
             {(d) => (
               <div>
                 <span class="font-mono text-sm text-text-primary">{d().symbol}</span>
@@ -118,10 +119,33 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
         <Show
           when={!detail.loading && detail()}
           fallback={
-            <div class="p-5 space-y-4">
-              <For each={Array(8)}>
-                {() => <div class="h-4 bg-container-border/20 rounded animate-pulse" />}
-              </For>
+            <div class="p-5 space-y-6">
+              {/* Date skeleton */}
+              <SkeletonBar width="160px" />
+              {/* Price grid skeleton */}
+              <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                <div class="flex justify-between"><SkeletonBar width="40px" /><SkeletonBar width="64px" /></div>
+                <div class="flex justify-between"><SkeletonBar width="32px" /><SkeletonBar width="64px" /></div>
+                <div class="flex justify-between"><SkeletonBar width="48px" /><SkeletonBar width="56px" /></div>
+                <div class="flex justify-between"><SkeletonBar width="44px" /><SkeletonBar width="56px" /></div>
+              </div>
+              <div class="border-t border-container-border" />
+              {/* P&L grid skeleton */}
+              <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                <div class="flex justify-between"><SkeletonBar width="48px" /><SkeletonBar width="72px" /></div>
+                <div class="flex justify-between"><SkeletonBar width="56px" /><SkeletonBar width="40px" /></div>
+                <div class="flex justify-between"><SkeletonBar width="32px" /><SkeletonBar width="56px" /></div>
+                <div class="flex justify-between"><SkeletonBar width="40px" /><SkeletonBar width="48px" /></div>
+              </div>
+              <div class="border-t border-container-border" />
+              {/* Tags row skeleton */}
+              <div>
+                <SkeletonBar width="36px" height="10px" class="mb-2" />
+                <div class="flex gap-1.5">
+                  <SkeletonBar width="48px" height="20px" />
+                  <SkeletonBar width="56px" height="20px" />
+                </div>
+              </div>
             </div>
           }
         >

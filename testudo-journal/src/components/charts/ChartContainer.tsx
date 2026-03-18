@@ -1,4 +1,5 @@
 import { Show, type JSX } from 'solid-js'
+import { SkeletonBar } from '../SkeletonBar'
 
 interface ChartContainerProps {
   title: string
@@ -16,8 +17,17 @@ export function ChartContainer(props: ChartContainerProps) {
       </h3>
 
       <Show when={props.loading}>
-        <div class="flex items-center justify-center h-48">
-          <div class="font-mono text-xs text-text-tertiary animate-pulse">LOADING...</div>
+        <div class="relative h-48">
+          {/* Y-axis ticks */}
+          <div class="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between">
+            <SkeletonBar width="30px" height="8px" />
+            <SkeletonBar width="24px" height="8px" />
+            <SkeletonBar width="28px" height="8px" />
+          </div>
+          {/* Chart area with grid */}
+          <div class="ml-10 h-full border-l border-b border-container-border/20 relative">
+            <div class="absolute inset-0 skeleton-shimmer" />
+          </div>
         </div>
       </Show>
 

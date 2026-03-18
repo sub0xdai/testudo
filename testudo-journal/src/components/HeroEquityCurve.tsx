@@ -1,6 +1,7 @@
 import { onMount, onCleanup, createEffect, Show } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, LineSeries, AreaSeries } from 'lightweight-charts'
 import type { EquityPoint } from '../api/client'
+import { SkeletonBar } from './SkeletonBar'
 
 interface HeroEquityCurveProps {
   data: EquityPoint[] | undefined
@@ -82,8 +83,18 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
   return (
     <div class="border-b border-container-border">
       <Show when={props.loading}>
-        <div class="flex items-center justify-center" style={{ "min-height": "400px" }}>
-          <div class="font-mono text-xs text-text-tertiary animate-pulse">LOADING...</div>
+        <div class="relative" style={{ "min-height": "400px" }}>
+          {/* Y-axis ticks */}
+          <div class="absolute left-2 top-4 bottom-8 w-10 flex flex-col justify-between">
+            <SkeletonBar width="36px" height="8px" />
+            <SkeletonBar width="30px" height="8px" />
+            <SkeletonBar width="34px" height="8px" />
+            <SkeletonBar width="28px" height="8px" />
+          </div>
+          {/* Chart area */}
+          <div class="absolute left-14 top-4 right-4 bottom-8 border-l border-b border-container-border/20">
+            <div class="absolute inset-0 skeleton-shimmer" />
+          </div>
         </div>
       </Show>
 

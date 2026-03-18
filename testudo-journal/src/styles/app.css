@@ -42,6 +42,24 @@ body {
 .markdown-preview a { color: #00FF41; text-decoration: underline; }
 .markdown-preview a:hover { opacity: 0.8; }
 
+/* ── Skeleton Shimmer ────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(63, 63, 70, 0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
 /* ── Overlay Animations ───────────────────────────── */
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

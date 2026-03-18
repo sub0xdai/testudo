@@ -10,6 +10,7 @@ import {
 import { EntryCard } from './EntryCard'
 import { EntryEditor } from './EntryEditor'
 import { TagManager } from './TagManager'
+import { SkeletonBar } from '../SkeletonBar'
 
 const ENTRY_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -212,15 +213,28 @@ export function JournalTimeline() {
         </Show>
       </div>
 
-      {/* Loading state */}
+      {/* Loading state — structural skeleton */}
       <Show when={entriesData.loading}>
-        <div class="space-y-4">
+        <div class="space-y-3">
           <For each={[1, 2, 3]}>
             {() => (
-              <div class="bg-container-bg border border-container-border rounded-lg p-6 animate-pulse">
-                <div class="h-4 bg-elevated rounded w-48 mb-3" />
-                <div class="h-3 bg-elevated rounded w-full mb-2" />
-                <div class="h-3 bg-elevated rounded w-3/4" />
+              <div class="bg-container-bg border border-container-border rounded-lg overflow-hidden">
+                {/* Header bar with left accent */}
+                <div class="px-4 py-2 flex items-center gap-3 border-b border-container-border" style={{ 'border-left': '3px solid rgba(148, 163, 184, 0.3)' }}>
+                  <SkeletonBar width="56px" height="18px" />
+                  <SkeletonBar width="140px" height="14px" />
+                </div>
+                {/* Body lines */}
+                <div class="px-4 py-3 space-y-2">
+                  <SkeletonBar width="100%" />
+                  <SkeletonBar width="85%" />
+                  <SkeletonBar width="60%" />
+                </div>
+                {/* Footer */}
+                <div class="px-4 py-2 border-t border-container-border flex justify-between">
+                  <SkeletonBar width="48px" height="10px" />
+                  <SkeletonBar width="64px" height="10px" />
+                </div>
               </div>
             )}
           </For>

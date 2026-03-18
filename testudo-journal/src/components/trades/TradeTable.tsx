@@ -4,6 +4,7 @@ import { useFilters } from '../filterContext'
 import { TradeRow } from './TradeRow'
 import { TradeFilters, type TradeFilterState } from './TradeFilters'
 import { Pagination } from './Pagination'
+import { SkeletonBar } from '../SkeletonBar'
 
 type SortState = { field: string; order: 'asc' | 'desc' }
 
@@ -94,15 +95,18 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
               when={!data.loading}
               fallback={
                 <For each={Array(10)}>
-                  {() => (
+                  {(_, i) => (
                     <tr class="border-b border-container-border/30">
-                      <For each={COLUMNS}>
-                        {() => (
-                          <td class="px-3 py-2.5">
-                            <div class="h-3 bg-container-border/20 rounded animate-pulse" />
-                          </td>
-                        )}
-                      </For>
+                      <td class="px-3 py-2.5"><SkeletonBar width="72px" /></td>
+                      <td class="px-3 py-2.5"><SkeletonBar width="64px" /></td>
+                      <td class="px-3 py-2.5"><SkeletonBar width="36px" /></td>
+                      <td class="px-3 py-2.5"><SkeletonBar width="32px" /></td>
+                      <td class="px-3 py-2.5 text-right"><SkeletonBar width="56px" class="ml-auto" /></td>
+                      <td class="px-3 py-2.5 text-right"><SkeletonBar width="56px" class="ml-auto" /></td>
+                      <td class="px-3 py-2.5 text-right"><SkeletonBar width="64px" class="ml-auto" /></td>
+                      <td class="px-3 py-2.5 text-right"><SkeletonBar width="28px" class="ml-auto" /></td>
+                      <td class="px-3 py-2.5 text-right"><SkeletonBar width="44px" class="ml-auto" /></td>
+                      <td class="px-3 py-2.5"><SkeletonBar width={i() % 2 === 0 ? '48px' : '32px'} /></td>
                     </tr>
                   )}
                 </For>

@@ -45,7 +45,10 @@ export function TradeSelector(props: {
       <Show when={open() && !props.value}>
         <div class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded-lg max-h-48 overflow-y-auto shadow-lg animate-dropdown-in">
           <Show when={trades.loading}>
-            <div class="px-3 py-2 font-mono text-xs text-text-tertiary animate-pulse">Loading...</div>
+            <div class="px-3 py-2 space-y-1.5">
+              <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '80%' }} />
+              <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '60%' }} />
+            </div>
           </Show>
           <Show when={!trades.loading && trades()?.length === 0}>
             <div class="px-3 py-2 font-mono text-xs text-text-tertiary">No trades found</div>
