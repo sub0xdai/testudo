@@ -137,3 +137,139 @@ export async function fetchReturnDistribution(filters: StatsFilter): Promise<{ d
 export async function fetchTimeDistribution(filters: StatsFilter): Promise<{ data: TimeSlot[] }> {
   return fetchApi('time-distribution', filters)
 }
+
+// --- Trade CRUD API ---
+
+export interface JournalTrade {
+  id: string
+  user_id: string
+  exchange: string
+  symbol: string
+  side: string
+  entry_price: string
+  exit_price: string
+  quantity: string
+  leverage: number
+  realized_pnl: string
+  realized_pnl_pct: string
+  fees: string
+  net_pnl: string
+  stop_price: string | null
+  target_price: string | null
+  risk_amount: string | null
+  r_multiple: string | null
+  opened_at: string
+  closed_at: string
+  duration_secs: number
+  trade_group_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface JournalTag {
+  id: string
+  user_id: string
+  name: string
+  color: string | null
+}
+
+export interface JournalEntry {
+  id: string
+  user_id: string
+  trade_id: string | null
+  entry_date: string | null
+  title: string
+  body: string
+  entry_type: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TradeDetail extends JournalTrade {
+  entries: JournalEntry[]
+  tags: JournalTag[]
+}
+
+export interface TradesResponse {
+  trades: JournalTrade[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface TradeListParams {
+  page?: number
+  limit?: number
+  exchange?: string
+  symbol?: string
+  side?: string
+  tag?: string
+  dateFrom?: string
+  dateTo?: string
+  sort?: string
+  order?: string
+}
+
+async function fetchCrud<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}/api/v1/journal/${path}`, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      'Content-Type': 'application/json',
+    },
+    ...init,
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchTrades(params: TradeListParams): Promise<TradesResponse> {
+  const p = new URLSearchParams()
+  if (params.page) p.set('page', String(params.page))
+  if (params.limit) p.set('limit', String(params.limit))
+  if (params.exchange) p.set('exchange', params.exchange)
+  if (params.symbol) p.set('symbol', params.symbol)
+  if (params.side) p.set('side', params.side)
+  if (params.tag) p.set('tag', params.tag)
+  if (params.dateFrom) p.set('date_from', params.dateFrom)
+  if (params.dateTo) p.set('date_to', params.dateTo)
+  if (params.sort) p.set('sort', params.sort)
+  if (params.order) p.set('order', params.order)
+  return fetchCrud<TradesResponse>(`trades?${p}`)
+}
+
+export async function fetchTradeDetail(tradeId: string): Promise<TradeDetail> {
+  return fetchCrud<TradeDetail>(`trades/${tradeId}`)
+}
+
+export async function updateTradeNotes(tradeId: string, notes: string | null): Promise<JournalTrade> {
+  return fetchCrud<JournalTrade>(`trades/${tradeId}/notes`, {
+    method: 'PUT',
+    body: JSON.stringify({ notes }),
+  })
+}
+
+export async function addTradeTags(tradeId: string, tagIds: string[]): Promise<JournalTag[]> {
+  return fetchCrud<JournalTag[]>(`trades/${tradeId}/tags`, {
+    method: 'POST',
+    body: JSON.stringify({ tag_ids: tagIds }),
+  })
+}
+
+export async function removeTradeTag(tradeId: string, tagId: string): Promise<void> {
+  await fetchCrud<{ deleted: boolean }>(`trades/${tradeId}/tags/${tagId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function fetchTags(): Promise<JournalTag[]> {
+  return fetchCrud<JournalTag[]>('tags')
+}
+
+export async function fetchEntries(params: { tradeId?: string; page?: number; limit?: number }): Promise<{ entries: JournalEntry[]; total: number }> {
+  const p = new URLSearchParams()
+  if (params.tradeId) p.set('trade_id', params.tradeId)
+  if (params.page) p.set('page', String(params.page))
+  if (params.limit) p.set('limit', String(params.limit))
+  return fetchCrud(`entries?${p}`)
+}

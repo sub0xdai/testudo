@@ -5,11 +5,8 @@ import { FilterProvider } from './components/filterContext'
 import { Layout } from './components/Layout'
 import { Overview } from './components/Overview'
 import { Charts } from './components/Charts'
+import { Trades } from './pages/Trades'
 import './styles/app.css'
-
-function TradesPlaceholder() {
-  return <div class="font-mono text-text-secondary text-center py-20">TRADES — COMING SOON</div>
-}
 
 function JournalPlaceholder() {
   return <div class="font-mono text-text-secondary text-center py-20">JOURNAL — COMING SOON</div>
@@ -23,7 +20,7 @@ render(
       <Router root={Layout}>
         <Route path="/" component={Overview} />
         <Route path="/charts" component={Charts} />
-        <Route path="/trades" component={TradesPlaceholder} />
+        <Route path="/trades" component={Trades} />
         <Route path="/journal" component={JournalPlaceholder} />
       </Router>
     </FilterProvider>
