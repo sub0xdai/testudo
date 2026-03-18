@@ -3,6 +3,7 @@ import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, BarController }
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchReturnDistribution } from '../../api/client'
+import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
 
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, BarController)
 
@@ -35,7 +36,7 @@ export function ReturnHistogram() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#111111',
+            backgroundColor: CHART_BG,
             borderColor: '#3F3F46',
             borderWidth: 1,
             titleFont: { family: "'Space Mono', monospace" },
@@ -58,7 +59,7 @@ export function ReturnHistogram() {
     chart.data.datasets[0].data = d.data.map((b) => b.count)
     chart.data.datasets[0].backgroundColor = d.data.map((b) => {
       const num = parseFloat(b.bucket)
-      return isNaN(num) || num >= 0 ? '#00FF41' : '#FF003C'
+      return isNaN(num) || num >= 0 ? SIGNAL_GREEN : SIGNAL_RED
     })
     chart.update()
   })

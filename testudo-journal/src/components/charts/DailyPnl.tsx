@@ -3,6 +3,7 @@ import { createChart, type IChartApi, type ISeriesApi, HistogramSeries } from 'l
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchDailyPnl } from '../../api/client'
+import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
 
 export function DailyPnl() {
   const { filters } = useFilters()
@@ -17,7 +18,7 @@ export function DailyPnl() {
       width: container.clientWidth,
       height: 250,
       layout: {
-        background: { color: '#111111' },
+        background: { color: CHART_BG },
         textColor: '#555555',
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,
@@ -54,7 +55,7 @@ export function DailyPnl() {
       return {
         time: p.date as string,
         value,
-        color: value >= 0 ? '#00FF41' : '#FF003C',
+        color: value >= 0 ? SIGNAL_GREEN : SIGNAL_RED,
       }
     })
 

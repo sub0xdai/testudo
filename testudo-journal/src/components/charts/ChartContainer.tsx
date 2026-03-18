@@ -13,7 +13,7 @@ interface ChartContainerProps {
 export function ChartContainer(props: ChartContainerProps) {
   return (
     <div class={`bg-elevated border border-container-border rounded-lg p-5 ${props.class ?? ''}`}>
-      <h3 class="font-display text-xs font-semibold tracking-[0.2em] text-text-tertiary uppercase mb-4">
+      <h3 class="font-display text-xs font-semibold tracking-section text-text-tertiary uppercase mb-4">
         {props.title}
       </h3>
 
@@ -35,7 +35,7 @@ export function ChartContainer(props: ChartContainerProps) {
       <Show when={!props.loading && props.error}>
         <div class="flex items-center justify-center h-48">
           <div class="text-center">
-            <span class="font-display text-xs tracking-[0.2em] text-signal-red uppercase">
+            <span class="font-display text-xs tracking-section text-signal-red uppercase">
               FAILED TO LOAD
             </span>
             <p class="font-mono text-xs text-text-tertiary mt-1">{props.error}</p>

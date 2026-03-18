@@ -3,6 +3,7 @@ import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, BarController }
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchSymbolBreakdown } from '../../api/client'
+import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
 
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, BarController)
 
@@ -44,7 +45,7 @@ export function MarketReturn() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#111111',
+            backgroundColor: CHART_BG,
             borderColor: '#3F3F46',
             borderWidth: 1,
             titleFont: { family: "'Space Mono', monospace" },
@@ -67,7 +68,7 @@ export function MarketReturn() {
     chart.data.labels = sorted.map((s) => s.symbol)
     const values = sorted.map((s) => parseFloat(s.total_pnl))
     chart.data.datasets[0].data = values
-    chart.data.datasets[0].backgroundColor = values.map((v) => (v >= 0 ? '#00FF41' : '#FF003C'))
+    chart.data.datasets[0].backgroundColor = values.map((v) => (v >= 0 ? SIGNAL_GREEN : SIGNAL_RED))
     chart.update()
   })
 

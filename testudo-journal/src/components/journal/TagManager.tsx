@@ -2,8 +2,7 @@ import { createSignal, Show, For } from 'solid-js'
 import { createTag, updateTag, deleteTag, type JournalTag } from '../../api/client'
 import { useEscapeClose } from '../../lib/useEscapeClose'
 import { createFocusTrap } from '../../lib/createFocusTrap'
-
-const PRESET_COLORS = ['#FF003C', '#00FF41', '#f59e0b', '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981']
+import { TAG_PALETTE, CLOSE_ANIMATION_MS } from '../../lib/tokens'
 
 export function TagManager(props: {
   tags: JournalTag[]
@@ -11,7 +10,7 @@ export function TagManager(props: {
   onClose: () => void
 }) {
   const [newName, setNewName] = createSignal('')
-  const [newColor, setNewColor] = createSignal(PRESET_COLORS[0])
+  const [newColor, setNewColor] = createSignal(TAG_PALETTE[0])
   const [editingId, setEditingId] = createSignal<string | null>(null)
   const [editName, setEditName] = createSignal('')
   const [editColor, setEditColor] = createSignal('')
@@ -23,7 +22,7 @@ export function TagManager(props: {
 
   function requestClose() {
     setClosing(true)
-    setTimeout(props.onClose, 150)
+    setTimeout(props.onClose, CLOSE_ANIMATION_MS)
   }
 
   useEscapeClose(requestClose)
@@ -70,7 +69,7 @@ export function TagManager(props: {
   function startEdit(tag: JournalTag) {
     setEditingId(tag.id)
     setEditName(tag.name)
-    setEditColor(tag.color || PRESET_COLORS[0])
+    setEditColor(tag.color || TAG_PALETTE[0])
   }
 
   return (
@@ -84,7 +83,7 @@ export function TagManager(props: {
         class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-md p-6 ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
       >
         <div class="flex items-center justify-between mb-6">
-          <h2 id="tag-manager-title" class="font-display text-sm tracking-[0.2em] text-text-primary uppercase">Tag Manager</h2>
+          <h2 id="tag-manager-title" class="font-display text-sm tracking-section text-text-primary uppercase">Tag Manager</h2>
           <button
             class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
             onClick={requestClose}
@@ -122,7 +121,7 @@ export function TagManager(props: {
               >
                 <div class="flex items-center gap-2 px-3 py-2 rounded border border-border-active">
                   <div class="flex gap-1 flex-shrink-0">
-                    <For each={PRESET_COLORS}>
+                    <For each={TAG_PALETTE}>
                       {(c) => (
                         <button
                           class="w-4 h-4 rounded-full border transition-transform"
@@ -165,7 +164,7 @@ export function TagManager(props: {
         {/* New tag */}
         <div class="border-t border-container-border pt-4">
           <div class="flex gap-1 mb-3">
-            <For each={PRESET_COLORS}>
+            <For each={TAG_PALETTE}>
               {(c) => (
                 <button
                   class="w-5 h-5 rounded-full border transition-transform"

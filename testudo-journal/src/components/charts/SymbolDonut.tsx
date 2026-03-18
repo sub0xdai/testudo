@@ -3,10 +3,9 @@ import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchSymbolBreakdown } from '../../api/client'
+import { TAG_PALETTE, CHART_BG } from '../../lib/tokens'
 
 Chart.register(ArcElement, Tooltip, Legend, DoughnutController)
-
-const PALETTE = ['#00FF41', '#FF003C', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
 
 export function SymbolDonut() {
   const { filters } = useFilters()
@@ -18,7 +17,7 @@ export function SymbolDonut() {
   onMount(() => {
     chart = new Chart(canvas, {
       type: 'doughnut',
-      data: { labels: [], datasets: [{ data: [], backgroundColor: PALETTE, borderWidth: 0 }] },
+      data: { labels: [], datasets: [{ data: [], backgroundColor: TAG_PALETTE, borderWidth: 0 }] },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -29,7 +28,7 @@ export function SymbolDonut() {
             labels: { color: '#888888', font: { family: "'Space Mono', monospace", size: 11 }, padding: 12 },
           },
           tooltip: {
-            backgroundColor: '#111111',
+            backgroundColor: CHART_BG,
             borderColor: '#3F3F46',
             borderWidth: 1,
             titleFont: { family: "'Space Mono', monospace" },

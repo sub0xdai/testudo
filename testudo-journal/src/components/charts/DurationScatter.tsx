@@ -3,6 +3,7 @@ import { Chart, PointElement, LinearScale, Tooltip, ScatterController } from 'ch
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchDurationProfit } from '../../api/client'
+import { CHART_BG, signalGreenAlpha, signalRedAlpha } from '../../lib/tokens'
 
 Chart.register(PointElement, LinearScale, Tooltip, ScatterController)
 
@@ -37,7 +38,7 @@ export function DurationScatter() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#111111',
+            backgroundColor: CHART_BG,
             borderColor: '#3F3F46',
             borderWidth: 1,
             titleFont: { family: "'Space Mono', monospace" },
@@ -70,7 +71,7 @@ export function DurationScatter() {
 
     chart.data.datasets = [{
       data: points,
-      backgroundColor: points.map((p) => (p.y >= 0 ? 'rgba(0, 255, 65, 0.6)' : 'rgba(255, 0, 60, 0.6)')),
+      backgroundColor: points.map((p) => (p.y >= 0 ? signalGreenAlpha(0.6) : signalRedAlpha(0.6))),
       pointRadius: 5,
       pointHoverRadius: 7,
     }]

@@ -22,6 +22,7 @@ import {
 } from '../../lib/formatters'
 import { SkeletonBar } from '../SkeletonBar'
 import { createFocusTrap } from '../../lib/createFocusTrap'
+import { CLOSE_ANIMATION_MS } from '../../lib/tokens'
 
 export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   let panelRef!: HTMLDivElement
@@ -37,7 +38,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
 
   function requestClose() {
     setClosing(true)
-    setTimeout(props.onClose, 200)
+    setTimeout(props.onClose, CLOSE_ANIMATION_MS)
   }
 
   // Sync notes from loaded detail

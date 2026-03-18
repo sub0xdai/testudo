@@ -3,13 +3,14 @@ import type { JournalEntry, JournalTag } from '../../api/client'
 import { MarkdownPreview } from './MarkdownPreview'
 import { TagBadge } from '../trades/TagBadge'
 import { exportEntry } from '../../lib/export'
+import { ENTRY_TYPE_COLORS } from '../../lib/tokens'
 
 const TYPE_STYLES: Record<string, { color: string; label: string }> = {
-  'note': { color: '#94a3b8', label: 'NOTE' },
-  'pre-trade': { color: '#f59e0b', label: 'PRE-TRADE' },
-  'post-trade': { color: '#22C55E', label: 'POST-TRADE' },
-  'daily-review': { color: '#888888', label: 'DAILY' },
-  'weekly-review': { color: '#888888', label: 'WEEKLY' },
+  'note': { color: ENTRY_TYPE_COLORS['note'], label: 'NOTE' },
+  'pre-trade': { color: ENTRY_TYPE_COLORS['pre-trade'], label: 'PRE-TRADE' },
+  'post-trade': { color: ENTRY_TYPE_COLORS['post-trade'], label: 'POST-TRADE' },
+  'daily-review': { color: ENTRY_TYPE_COLORS['daily-review'], label: 'DAILY' },
+  'weekly-review': { color: ENTRY_TYPE_COLORS['weekly-review'], label: 'WEEKLY' },
 }
 
 function formatTime(iso: string): string {

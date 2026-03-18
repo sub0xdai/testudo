@@ -22,6 +22,9 @@ export default {
         display: ['Space Grotesk', 'system-ui', 'sans-serif'],
         mono: ['Space Mono', 'JetBrains Mono', 'monospace'],
       },
+      letterSpacing: {
+        section: '0.2em',
+      },
     },
   },
 }

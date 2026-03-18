@@ -15,13 +15,14 @@ import { TradeSelector } from './TradeSelector'
 import { TagSelector } from './TagSelector'
 import { exportEntry } from '../../lib/export'
 import { createFocusTrap } from '../../lib/createFocusTrap'
+import { ENTRY_TYPE_COLORS, CLOSE_ANIMATION_MS } from '../../lib/tokens'
 
 const ENTRY_TYPES = [
-  { value: 'note', label: 'Note', color: '#94a3b8' },
-  { value: 'pre-trade', label: 'Pre-Trade', color: '#f59e0b' },
-  { value: 'post-trade', label: 'Post-Trade', color: '#22C55E' },
-  { value: 'daily-review', label: 'Daily', color: '#888888' },
-  { value: 'weekly-review', label: 'Weekly', color: '#888888' },
+  { value: 'note', label: 'Note', color: ENTRY_TYPE_COLORS['note'] },
+  { value: 'pre-trade', label: 'Pre-Trade', color: ENTRY_TYPE_COLORS['pre-trade'] },
+  { value: 'post-trade', label: 'Post-Trade', color: ENTRY_TYPE_COLORS['post-trade'] },
+  { value: 'daily-review', label: 'Daily', color: ENTRY_TYPE_COLORS['daily-review'] },
+  { value: 'weekly-review', label: 'Weekly', color: ENTRY_TYPE_COLORS['weekly-review'] },
 ]
 
 export function EntryEditor(props: {
@@ -52,7 +53,7 @@ export function EntryEditor(props: {
 
   function requestClose() {
     setClosing(true)
-    setTimeout(props.onClose, 150)
+    setTimeout(props.onClose, CLOSE_ANIMATION_MS)
   }
 
   const [allTags] = createResource(fetchTags)

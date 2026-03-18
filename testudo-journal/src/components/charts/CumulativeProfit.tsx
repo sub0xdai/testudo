@@ -2,6 +2,7 @@ import { onMount, onCleanup, createEffect } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, AreaSeries } from 'lightweight-charts'
 import { ChartContainer } from './ChartContainer'
 import type { EquityPoint } from '../../api/client'
+import { SIGNAL_GREEN, CHART_BG, signalGreenAlpha } from '../../lib/tokens'
 
 export function CumulativeProfit(props: {
   data?: { data: EquityPoint[] }
@@ -18,7 +19,7 @@ export function CumulativeProfit(props: {
       width: container.clientWidth,
       height: 250,
       layout: {
-        background: { color: '#111111' },
+        background: { color: CHART_BG },
         textColor: '#555555',
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,
@@ -32,9 +33,9 @@ export function CumulativeProfit(props: {
     })
 
     series = chart.addSeries(AreaSeries, {
-      topColor: 'rgba(0, 255, 65, 0.3)',
-      bottomColor: 'rgba(0, 255, 65, 0.02)',
-      lineColor: '#00FF41',
+      topColor: signalGreenAlpha(0.3),
+      bottomColor: signalGreenAlpha(0.02),
+      lineColor: SIGNAL_GREEN,
       lineWidth: 2,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })

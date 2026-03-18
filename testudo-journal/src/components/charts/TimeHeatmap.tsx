@@ -2,6 +2,7 @@ import { createResource, For } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchTimeDistribution } from '../../api/client'
+import { signalGreenAlpha } from '../../lib/tokens'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -9,10 +10,10 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i)
 function intensityColor(count: number, maxCount: number): string {
   if (count === 0 || maxCount === 0) return '#1A1A1A'
   const ratio = count / maxCount
-  if (ratio < 0.25) return 'rgba(0, 255, 65, 0.15)'
-  if (ratio < 0.5) return 'rgba(0, 255, 65, 0.3)'
-  if (ratio < 0.75) return 'rgba(0, 255, 65, 0.55)'
-  return 'rgba(0, 255, 65, 0.8)'
+  if (ratio < 0.25) return signalGreenAlpha(0.15)
+  if (ratio < 0.5) return signalGreenAlpha(0.3)
+  if (ratio < 0.75) return signalGreenAlpha(0.55)
+  return signalGreenAlpha(0.8)
 }
 
 export function TimeHeatmap() {

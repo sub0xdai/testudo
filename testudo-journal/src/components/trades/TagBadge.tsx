@@ -1,9 +1,8 @@
 import type { JournalTag } from '../../api/client'
-
-const DEFAULT_COLORS = ['#00FF41', '#FF003C', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981']
+import { TAG_PALETTE } from '../../lib/tokens'
 
 function tagColor(tag: JournalTag, index: number): string {
-  return tag.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]
+  return tag.color || TAG_PALETTE[index % TAG_PALETTE.length]
 }
 
 export function TagBadge(props: { tag: JournalTag; index?: number; onRemove?: () => void }) {

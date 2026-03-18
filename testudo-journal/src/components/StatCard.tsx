@@ -14,7 +14,7 @@ interface StatCardProps {
 export function StatCard(props: StatCardProps) {
   return (
     <div class="bg-elevated border border-container-border rounded-lg p-5">
-      <h3 class="font-display text-xs font-semibold tracking-[0.2em] text-text-tertiary uppercase mb-4">
+      <h3 class="font-display text-xs font-semibold tracking-section text-text-tertiary uppercase mb-4">
         {props.title}
       </h3>
       <div class="space-y-3">

@@ -2,6 +2,7 @@ import { onMount, onCleanup, createEffect, Show } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, LineSeries, AreaSeries } from 'lightweight-charts'
 import type { EquityPoint } from '../api/client'
 import { SkeletonBar } from './SkeletonBar'
+import { SIGNAL_GREEN, signalRedAlpha } from '../lib/tokens'
 
 interface HeroEquityCurveProps {
   data: EquityPoint[] | undefined
@@ -37,15 +38,15 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
     })
 
     equityLine = chart.addSeries(LineSeries, {
-      color: '#00FF41',
+      color: SIGNAL_GREEN,
       lineWidth: 2,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })
 
     drawdownArea = chart.addSeries(AreaSeries, {
-      topColor: 'rgba(255, 0, 60, 0)',
-      bottomColor: 'rgba(255, 0, 60, 0.15)',
-      lineColor: 'rgba(255, 0, 60, 0.3)',
+      topColor: signalRedAlpha(0),
+      bottomColor: signalRedAlpha(0.15),
+      lineColor: signalRedAlpha(0.3),
       lineWidth: 1,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })

@@ -59,7 +59,7 @@ export function Overview() {
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
               {(section) => (
                 <div class="px-4 py-3 border-b border-container-border">
-                  <span class="font-display text-xs tracking-[0.2em] text-text-tertiary uppercase">
+                  <span class="font-display text-xs tracking-section text-text-tertiary uppercase">
                     {section}
                   </span>
                   <div class="mt-3 space-y-2">

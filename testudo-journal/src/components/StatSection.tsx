@@ -9,7 +9,7 @@ interface StatSectionProps {
 export function StatSection(props: StatSectionProps) {
   return (
     <div>
-      <div class="font-display text-xs tracking-[0.2em] text-text-tertiary uppercase px-4 py-3 border-b border-container-border">
+      <div class="font-display text-xs tracking-section text-text-tertiary uppercase px-4 py-3 border-b border-container-border">
         {props.title}
       </div>
       <div class="py-1">

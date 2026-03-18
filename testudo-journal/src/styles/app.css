@@ -11,6 +11,17 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #888888;
   --color-text-tertiary: #555555;
+
+  /* Signal colors */
+  --color-signal-green: #00FF41;
+  --color-signal-red: #FF003C;
+  --color-signal-amber: #F59E0B;
+
+  /* Chart and elevated backgrounds */
+  --color-chart-bg: #111111;
+  --color-elevated: #141414;
+
+  /* Layout */
   --header-h: 57px;
 }
 
