@@ -22,8 +22,10 @@ export function SymbolSearch(props: {
 
   const filtered = createMemo(() => {
     const q = search().toLowerCase()
-    if (!q) return props.symbols
-    return props.symbols.filter((s) => s.symbol.toLowerCase().includes(q))
+    const list = q
+      ? props.symbols.filter((s) => s.symbol.toLowerCase().includes(q))
+      : props.symbols
+    return list.slice(0, 10)
   })
 
   function openDropdown() {
@@ -70,15 +72,20 @@ export function SymbolSearch(props: {
     setSearch('')
   }
 
-  const displayValue = () => props.value ? props.value.toUpperCase() : 'ALL'
+  const hasSymbols = () => props.symbols.length > 0
+  const displayValue = () => {
+    if (props.value) return props.value.toUpperCase()
+    return hasSymbols() ? 'ALL' : '—'
+  }
 
   return (
     <div class="relative">
       <button
-        class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded flex items-center gap-1.5 hover:border-text-secondary transition-colors min-w-[120px] text-left focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
-        onClick={openDropdown}
+        class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded flex items-center gap-1.5 hover:border-text-secondary transition-colors min-w-[120px] text-left focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+        onClick={() => hasSymbols() && openDropdown()}
         aria-haspopup="listbox"
         aria-expanded={open()}
+        disabled={!hasSymbols()}
       >
         <span class="flex-1 truncate">{displayValue()}</span>
         <span class="text-text-tertiary text-xs">▾</span>
@@ -94,7 +101,7 @@ export function SymbolSearch(props: {
               ref={inputRef}
               type="text"
               placeholder="Search symbols..."
-              class="w-full bg-container-bg border border-container-border text-text-primary font-mono text-xs px-2 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none placeholder:text-text-tertiary"
+              class="w-full bg-container-bg border border-container-border text-text-primary font-mono text-xs px-2 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none placeholder:text-text-tertiary"
               value={search()}
               onInput={(e) => handleInput(e.currentTarget.value)}
               onKeyDown={onKeyDown}

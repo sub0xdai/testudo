@@ -109,14 +109,14 @@ export function FilterBar() {
         <div class="flex items-center gap-2">
           <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Exchange</label>
           <select
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
             value={filters().exchange ?? ''}
             onChange={(e) => selectExchange(e.currentTarget.value)}
           >
             <option value="">ALL</option>
-            <For each={options()?.exchanges ?? []}>
-              {(ex) => <option value={ex}>{ex.toUpperCase()}</option>}
-            </For>
+            <option value="woo">WOO</option>
+            <option value="binance">BINANCE</option>
+            <option value="hyperliquid">HYPERLIQUID</option>
           </select>
         </div>
 
@@ -140,7 +140,7 @@ export function FilterBar() {
               <button
                 class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
                   preset() === p.key
-                    ? 'text-signal-green border-b-2 border-signal-green font-bold'
+                    ? 'text-text-primary border-b-2 border-text-primary font-bold'
                     : 'text-text-tertiary hover:text-text-primary'
                 }`}
                 onClick={() => selectPreset(p.key)}
@@ -157,7 +157,7 @@ export function FilterBar() {
             <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</label>
             <input
               type="date"
-              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               value={customFrom()}
               onInput={(e) => applyCustomFrom(e.currentTarget.value)}
             />
@@ -166,7 +166,7 @@ export function FilterBar() {
             <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</label>
             <input
               type="date"
-              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               value={customTo()}
               onInput={(e) => applyCustomTo(e.currentTarget.value)}
             />
