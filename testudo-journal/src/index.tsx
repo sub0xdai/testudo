@@ -6,11 +6,8 @@ import { Layout } from './components/Layout'
 import { Overview } from './components/Overview'
 import { Charts } from './components/Charts'
 import { Trades } from './pages/Trades'
+import { Journal } from './pages/Journal'
 import './styles/app.css'
-
-function JournalPlaceholder() {
-  return <div class="font-mono text-text-secondary text-center py-20">JOURNAL — COMING SOON</div>
-}
 
 const root = document.getElementById('root')
 
@@ -21,7 +18,7 @@ render(
         <Route path="/" component={Overview} />
         <Route path="/charts" component={Charts} />
         <Route path="/trades" component={Trades} />
-        <Route path="/journal" component={JournalPlaceholder} />
+        <Route path="/journal" component={Journal} />
       </Router>
     </FilterProvider>
   ),

@@ -273,3 +273,53 @@ export async function fetchEntries(params: { tradeId?: string; page?: number; li
   if (params.limit) p.set('limit', String(params.limit))
   return fetchCrud(`entries?${p}`)
 }
+
+export async function createEntry(data: {
+  title: string
+  body: string
+  entry_type?: string
+  trade_id?: string
+  entry_date?: string
+}): Promise<JournalEntry> {
+  return fetchCrud<JournalEntry>('entries', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateEntry(entryId: string, data: {
+  title: string
+  body: string
+  entry_type?: string
+}): Promise<JournalEntry> {
+  return fetchCrud<JournalEntry>(`entries/${entryId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteEntry(entryId: string): Promise<void> {
+  await fetchCrud<{ deleted: boolean }>(`entries/${entryId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function createTag(data: { name: string; color?: string }): Promise<JournalTag> {
+  return fetchCrud<JournalTag>('tags', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateTag(tagId: string, data: { name?: string; color?: string }): Promise<JournalTag> {
+  return fetchCrud<JournalTag>(`tags/${tagId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteTag(tagId: string): Promise<void> {
+  await fetchCrud<{ deleted: boolean }>(`tags/${tagId}`, {
+    method: 'DELETE',
+  })
+}

@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "solid-js": "^1.9.5",
     "@solidjs/router": "^0.15.3",
     "chart.js": "^4.4.0",
-    "lightweight-charts": "^5.0.0"
+    "lightweight-charts": "^5.0.0",
+    "marked": "^17.0.4",
+    "solid-js": "^1.9.5"
   },
   "devDependencies": {
     "vite": "^5.4.8",
