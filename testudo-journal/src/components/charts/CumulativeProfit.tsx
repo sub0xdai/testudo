@@ -1,12 +1,13 @@
-import { createResource, onMount, onCleanup, createEffect } from 'solid-js'
+import { onMount, onCleanup, createEffect } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, AreaSeries } from 'lightweight-charts'
 import { ChartContainer } from './ChartContainer'
-import { useFilters } from '../filterContext'
-import { fetchEquityCurve } from '../../api/client'
+import type { EquityPoint } from '../../api/client'
 
-export function CumulativeProfit() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchEquityCurve)
+export function CumulativeProfit(props: {
+  data?: { data: EquityPoint[] }
+  loading: boolean
+  error?: string
+}) {
 
   let container!: HTMLDivElement
   let chart: IChartApi | undefined
@@ -50,7 +51,7 @@ export function CumulativeProfit() {
   })
 
   createEffect(() => {
-    const d = data()
+    const d = props.data
     if (!d?.data?.length || !series) return
 
     const points = d.data.map((p) => ({
@@ -63,7 +64,7 @@ export function CumulativeProfit() {
   })
 
   return (
-    <ChartContainer title="CUMULATIVE PROFIT" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="CUMULATIVE PROFIT" loading={props.loading} empty={!props.data?.data?.length} error={props.error}>
       <div ref={container!} />
     </ChartContainer>
   )

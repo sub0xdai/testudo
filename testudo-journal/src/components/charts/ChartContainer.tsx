@@ -5,6 +5,7 @@ interface ChartContainerProps {
   title: string
   loading: boolean
   empty: boolean
+  error?: string
   class?: string
   children: JSX.Element
 }
@@ -31,13 +32,24 @@ export function ChartContainer(props: ChartContainerProps) {
         </div>
       </Show>
 
-      <Show when={!props.loading && props.empty}>
+      <Show when={!props.loading && props.error}>
+        <div class="flex items-center justify-center h-48">
+          <div class="text-center">
+            <span class="font-display text-xs tracking-[0.2em] text-signal-red uppercase">
+              FAILED TO LOAD
+            </span>
+            <p class="font-mono text-xs text-text-tertiary mt-1">{props.error}</p>
+          </div>
+        </div>
+      </Show>
+
+      <Show when={!props.loading && !props.error && props.empty}>
         <div class="flex items-center justify-center h-48">
           <div class="font-mono text-xs text-text-tertiary">NO DATA</div>
         </div>
       </Show>
 
-      <Show when={!props.loading && !props.empty}>
+      <Show when={!props.loading && !props.error && !props.empty}>
         {props.children}
       </Show>
     </div>

@@ -248,7 +248,7 @@ export function EntryEditor(props: {
 
           <div class="flex items-center gap-2 ml-auto flex-shrink-0">
             <button
-              class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
+              class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleSave}
               disabled={saving()}
             >

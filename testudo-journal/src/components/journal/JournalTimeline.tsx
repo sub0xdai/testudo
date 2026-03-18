@@ -54,14 +54,19 @@ export function JournalTimeline() {
 
   const [tags, { refetch: refetchTags }] = createResource(fetchTags)
 
-  // Trade tag cache: tradeId -> tags
-  const [tradeTagCache, setTradeTagCache] = createSignal<Record<string, JournalTag[]>>({})
+  // Trade detail cache: tradeId -> { tags, symbol, closed_at }
+  const [tradeDetailCache, setTradeDetailCache] = createSignal<
+    Record<string, { tags: JournalTag[]; symbol: string; closed_at: string }>
+  >({})
 
-  async function loadTradeTags(tradeId: string) {
-    if (tradeTagCache()[tradeId]) return
+  async function loadTradeDetail(tradeId: string) {
+    if (tradeDetailCache()[tradeId]) return
     try {
       const detail = await fetchTradeDetail(tradeId)
-      setTradeTagCache((prev) => ({ ...prev, [tradeId]: detail.tags }))
+      setTradeDetailCache((prev) => ({
+        ...prev,
+        [tradeId]: { tags: detail.tags, symbol: detail.symbol, closed_at: detail.closed_at },
+      }))
     } catch {
       // Trade may not exist
     }
@@ -84,17 +89,17 @@ export function JournalTimeline() {
 
     const tag = tagFilter()
     if (tag) {
-      const cache = tradeTagCache()
+      const cache = tradeDetailCache()
       entries = entries.filter((e) => {
         if (!e.trade_id) return false
-        const tradeTags = cache[e.trade_id]
+        const tradeTags = cache[e.trade_id]?.tags
         return tradeTags?.some((t) => t.name === tag)
       })
     }
 
     // Load trade tags for entries that have trade_ids
     for (const entry of entries) {
-      if (entry.trade_id) loadTradeTags(entry.trade_id)
+      if (entry.trade_id) loadTradeDetail(entry.trade_id)
     }
 
     return entries
@@ -134,12 +139,19 @@ export function JournalTimeline() {
 
   function getEntryTags(entry: JournalEntry): JournalTag[] {
     if (!entry.trade_id) return []
-    return tradeTagCache()[entry.trade_id] ?? []
+    return tradeDetailCache()[entry.trade_id]?.tags ?? []
   }
 
   function getTradeLabel(entry: JournalEntry): string | undefined {
     if (!entry.trade_id) return undefined
-    return `Trade ${entry.trade_id.slice(0, 8)}...`
+    const cached = tradeDetailCache()[entry.trade_id]
+    if (!cached) return `Trade ${entry.trade_id.slice(0, 8)}...`
+    const symbol = cached.symbol.replace('_', '')
+    const date = new Date(cached.closed_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })
+    return `${symbol} ${date}`
   }
 
   return (

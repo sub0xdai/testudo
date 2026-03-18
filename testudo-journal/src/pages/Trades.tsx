@@ -12,7 +12,7 @@ export function Trades() {
         <GhostAnnotation text="TRADE_HISTORY" />
         <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight">TRADES</h1>
       </div>
-      <div class="border border-container-border bg-container-bg">
+      <div class="border border-container-border bg-container-bg rounded-lg">
         <TradeTable onSelectTrade={(id) => setSelectedTradeId(id)} />
         <Show when={selectedTradeId()}>
           {(id) => (

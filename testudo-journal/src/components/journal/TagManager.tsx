@@ -1,5 +1,6 @@
 import { createSignal, Show, For } from 'solid-js'
 import { createTag, updateTag, deleteTag, type JournalTag } from '../../api/client'
+import { useEscapeClose } from '../../lib/useEscapeClose'
 
 const PRESET_COLORS = ['#FF003C', '#00FF41', '#f59e0b', '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981']
 
@@ -20,6 +21,8 @@ export function TagManager(props: {
     setClosing(true)
     setTimeout(props.onClose, 150)
   }
+
+  useEscapeClose(requestClose)
 
   async function handleCreate() {
     const name = newName().trim()
@@ -97,7 +100,7 @@ export function TagManager(props: {
                       [Edit]
                     </button>
                     <button
-                      class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors"
+                      class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleDelete(tag.id)}
                       disabled={loading()}
                     >
@@ -126,7 +129,7 @@ export function TagManager(props: {
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
                   />
                   <button
-                    class="font-mono text-xs text-signal-green hover:text-signal-green/80 transition-colors"
+                    class="font-mono text-xs text-signal-green hover:text-signal-green/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => handleUpdate(tag.id)}
                     disabled={loading()}
                   >
@@ -170,7 +173,7 @@ export function TagManager(props: {
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
             <button
-              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
+              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleCreate}
               disabled={loading() || !newName().trim()}
             >

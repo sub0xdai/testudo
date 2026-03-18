@@ -1,6 +1,7 @@
 import { createSignal, createResource, Show, For } from 'solid-js'
 import { fetchTrades, type JournalTrade } from '../../api/client'
 import { formatCurrency, formatDateFull } from '../../lib/formatters'
+import { useEscapeClose } from '../../lib/useEscapeClose'
 
 export function TradeSelector(props: {
   value: JournalTrade | null
@@ -8,6 +9,7 @@ export function TradeSelector(props: {
 }) {
   const [search, setSearch] = createSignal('')
   const [open, setOpen] = createSignal(false)
+  useEscapeClose(() => setOpen(false))
 
   const [trades] = createResource(
     () => ({ symbol: search() || undefined, limit: 20, sort: 'closed_at', order: 'desc' as const }),
@@ -43,7 +45,7 @@ export function TradeSelector(props: {
       </Show>
 
       <Show when={open() && !props.value}>
-        <div class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded-lg max-h-48 overflow-y-auto shadow-lg animate-dropdown-in">
+        <div class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
           <Show when={trades.loading}>
             <div class="px-3 py-2 space-y-1.5">
               <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '80%' }} />

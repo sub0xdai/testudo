@@ -1,12 +1,13 @@
-import { createResource, onMount, onCleanup, createEffect } from 'solid-js'
+import { onMount, onCleanup, createEffect } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, LineSeries, AreaSeries } from 'lightweight-charts'
 import { ChartContainer } from './ChartContainer'
-import { useFilters } from '../filterContext'
-import { fetchEquityCurve } from '../../api/client'
+import type { EquityPoint } from '../../api/client'
 
-export function EquityCurve() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchEquityCurve)
+export function EquityCurve(props: {
+  data?: { data: EquityPoint[] }
+  loading: boolean
+  error?: string
+}) {
 
   let container!: HTMLDivElement
   let chart: IChartApi | undefined
@@ -61,7 +62,7 @@ export function EquityCurve() {
   })
 
   createEffect(() => {
-    const d = data()
+    const d = props.data
     if (!d?.data?.length || !equityLine || !drawdownArea) return
 
     const equityData = d.data.map((p) => ({
@@ -82,8 +83,9 @@ export function EquityCurve() {
   return (
     <ChartContainer
       title="EQUITY CURVE"
-      loading={data.loading}
-      empty={!data()?.data?.length}
+      loading={props.loading}
+      empty={!props.data?.data?.length}
+      error={props.error}
       class="col-span-full"
     >
       <div ref={container!} />

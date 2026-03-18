@@ -1,6 +1,7 @@
 import { createSignal, Show, For } from 'solid-js'
 import type { JournalTag } from '../../api/client'
 import { TagBadge } from '../trades/TagBadge'
+import { useEscapeClose } from '../../lib/useEscapeClose'
 
 export function TagSelector(props: {
   allTags: JournalTag[]
@@ -9,6 +10,7 @@ export function TagSelector(props: {
   onRemove: (tag: JournalTag) => void
 }) {
   const [open, setOpen] = createSignal(false)
+  useEscapeClose(() => setOpen(false))
 
   const available = () => {
     const selectedIds = new Set(props.selected.map((t) => t.id))
@@ -32,7 +34,7 @@ export function TagSelector(props: {
       </div>
 
       <Show when={open()}>
-        <div class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded-lg min-w-48 shadow-lg animate-dropdown-in">
+        <div class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 min-w-48 animate-dropdown-in">
           <Show when={available().length === 0}>
             <div class="px-3 py-2 font-mono text-xs text-text-tertiary">No more tags</div>
           </Show>

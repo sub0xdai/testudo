@@ -1,3 +1,4 @@
+import { createResource } from 'solid-js'
 import { EquityCurve } from './charts/EquityCurve'
 import { DailyPnl } from './charts/DailyPnl'
 import { CumulativeProfit } from './charts/CumulativeProfit'
@@ -7,8 +8,13 @@ import { DurationScatter } from './charts/DurationScatter'
 import { ReturnHistogram } from './charts/ReturnHistogram'
 import { TimeHeatmap } from './charts/TimeHeatmap'
 import { GhostAnnotation } from './GhostAnnotation'
+import { useFilters } from './filterContext'
+import { fetchEquityCurve } from '../api/client'
 
 export function Charts() {
+  const { filters } = useFilters()
+  const [equityData] = createResource(filters, fetchEquityCurve)
+
   return (
     <div class="space-y-6">
       <div>
@@ -17,12 +23,12 @@ export function Charts() {
       </div>
 
       {/* Full-width equity curve */}
-      <EquityCurve />
+      <EquityCurve data={equityData()} loading={equityData.loading} error={equityData.error?.message} />
 
       {/* 2-column grid */}
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DailyPnl />
-        <CumulativeProfit />
+        <CumulativeProfit data={equityData()} loading={equityData.loading} error={equityData.error?.message} />
         <SymbolDonut />
         <MarketReturn />
         <DurationScatter />

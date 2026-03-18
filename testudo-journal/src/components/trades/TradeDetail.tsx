@@ -232,7 +232,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
 
                   {/* Tag picker */}
                   <Show when={showTagPicker()}>
-                    <div class="mt-2 p-2 border border-container-border bg-main-bg animate-dropdown-in">
+                    <div class="mt-2 p-2 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 animate-dropdown-in">
                       <Show
                         when={availableTags().length > 0}
                         fallback={<span class="text-xs font-mono text-text-tertiary">No more tags</span>}
@@ -264,11 +264,11 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                     }}
                     onBlur={() => { if (notesDirty()) saveNotes() }}
                     placeholder="Quick note..."
-                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
                   />
                   <Show when={notesDirty()}>
                     <button
-                      class="mt-1 px-3 py-1 text-xs font-mono border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg rounded transition-colors disabled:opacity-50"
+                      class="mt-1 px-3 py-1 text-xs font-mono border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={saveNotes}
                       disabled={saving()}
                     >

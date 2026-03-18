@@ -1,4 +1,4 @@
-import { For, type JSX } from 'solid-js'
+import { For, Show, type JSX } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
 import { FilterBar } from './FilterBar'
 
@@ -42,7 +42,9 @@ export function Layout(props: { children: JSX.Element }) {
       {/* Spacer for fixed header */}
       <div class="h-[57px]" />
 
-      <FilterBar />
+      <Show when={!location.pathname.startsWith('/journal')}>
+        <FilterBar />
+      </Show>
 
       <main class="max-w-[1400px] mx-auto px-6 py-6">
         {props.children}
