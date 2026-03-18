@@ -28,19 +28,26 @@ export function TagSelector(props: {
         <button
           class="font-mono text-xs text-text-tertiary hover:text-signal-green transition-colors px-2 py-0.5 border border-dashed border-container-border rounded hover:border-signal-green"
           onClick={() => setOpen(!open())}
+          aria-haspopup="listbox"
+          aria-expanded={open()}
         >
           + Add Tag
         </button>
       </div>
 
       <Show when={open()}>
-        <div class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 min-w-48 animate-dropdown-in">
+        <div
+          role="listbox"
+          aria-label="Available tags"
+          class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 min-w-48 animate-dropdown-in"
+        >
           <Show when={available().length === 0}>
             <div class="px-3 py-2 font-mono text-xs text-text-tertiary">No more tags</div>
           </Show>
           <For each={available()}>
             {(tag) => (
               <button
+                role="option"
                 class="w-full text-left px-3 py-2 hover:bg-container-bg-hover transition-colors flex items-center gap-2"
                 onClick={() => { props.onAdd(tag); setOpen(false) }}
               >

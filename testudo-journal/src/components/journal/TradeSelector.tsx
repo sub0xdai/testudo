@@ -28,6 +28,7 @@ export function TradeSelector(props: {
             <button
               class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors"
               onClick={() => props.onSelect(null)}
+              aria-label="Clear trade selection"
             >
               &times;
             </button>
@@ -41,11 +42,13 @@ export function TradeSelector(props: {
           value={search()}
           onInput={(e) => { setSearch(e.currentTarget.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
+          aria-haspopup="listbox"
+          aria-expanded={open()}
         />
       </Show>
 
       <Show when={open() && !props.value}>
-        <div class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
+        <div role="listbox" aria-label="Trade results" class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
           <Show when={trades.loading}>
             <div class="px-3 py-2 space-y-1.5">
               <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '80%' }} />
@@ -58,6 +61,7 @@ export function TradeSelector(props: {
           <For each={trades()}>
             {(trade) => (
               <button
+                role="option"
                 class="w-full text-left px-3 py-2 hover:bg-container-bg-hover transition-colors flex items-center gap-2"
                 onClick={() => { props.onSelect(trade); setOpen(false); setSearch('') }}
               >

@@ -24,11 +24,12 @@ export function Pagination(props: {
   }
 
   return (
-    <div class="flex items-center justify-center gap-1 py-4 font-mono text-sm">
+    <nav aria-label="Pagination" class="flex items-center justify-center gap-1 py-4 font-mono text-sm">
       <button
         class="px-2 py-1 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         disabled={props.page <= 1}
         onClick={() => props.onPageChange(props.page - 1)}
+        aria-label="Previous page"
       >
         &larr;
       </button>
@@ -44,6 +45,8 @@ export function Pagination(props: {
                   : 'text-text-secondary hover:text-text-primary'
               }`}
               onClick={() => props.onPageChange(p as number)}
+              aria-current={p === props.page ? 'page' : undefined}
+              aria-label={`Page ${p}`}
             >
               {p}
             </button>
@@ -54,9 +57,10 @@ export function Pagination(props: {
         class="px-2 py-1 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         disabled={props.page >= props.totalPages}
         onClick={() => props.onPageChange(props.page + 1)}
+        aria-label="Next page"
       >
         &rarr;
       </button>
-    </div>
+    </nav>
   )
 }

@@ -1,7 +1,7 @@
 export function formatCurrency(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value
   if (isNaN(num)) return '$0.00'
-  const sign = num >= 0 ? '' : '-'
+  const sign = num > 0 ? '+' : num < 0 ? '-' : ''
   return `${sign}$${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 

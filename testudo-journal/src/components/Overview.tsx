@@ -54,7 +54,7 @@ export function Overview() {
     <div>
       {/* Loading state — structural skeleton */}
       <Show when={stats.loading && !stats()}>
-        <div class="flex gap-0">
+        <div aria-live="polite" aria-busy="true" class="flex gap-0">
           {/* Stats sidebar skeleton */}
           <div class="w-64 shrink-0 border-r border-container-border hidden md:block">
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
@@ -99,7 +99,7 @@ export function Overview() {
 
       {/* Error state */}
       <Show when={stats.error}>
-        <div class="bg-elevated border border-container-border p-8 text-center">
+        <div role="alert" aria-live="assertive" class="bg-elevated border border-container-border p-8 text-center">
           <p class="font-mono text-signal-red text-sm mb-2">FAILED TO LOAD STATS</p>
           <p class="font-mono text-text-tertiary text-xs">{String(stats.error)}</p>
         </div>

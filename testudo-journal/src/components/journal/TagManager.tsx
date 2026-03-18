@@ -1,6 +1,7 @@
 import { createSignal, Show, For } from 'solid-js'
 import { createTag, updateTag, deleteTag, type JournalTag } from '../../api/client'
 import { useEscapeClose } from '../../lib/useEscapeClose'
+import { createFocusTrap } from '../../lib/createFocusTrap'
 
 const PRESET_COLORS = ['#FF003C', '#00FF41', '#f59e0b', '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981']
 
@@ -16,6 +17,9 @@ export function TagManager(props: {
   const [editColor, setEditColor] = createSignal('')
   const [loading, setLoading] = createSignal(false)
   const [closing, setClosing] = createSignal(false)
+  let dialogRef!: HTMLDivElement
+
+  createFocusTrap(() => dialogRef)
 
   function requestClose() {
     setClosing(true)
@@ -72,12 +76,19 @@ export function TagManager(props: {
   return (
     <div class="fixed inset-0 z-50 flex items-center justify-center">
       <div class={`absolute inset-0 bg-black/60 ${closing() ? 'animate-fade-out' : 'animate-fade-in'}`} onClick={requestClose} />
-      <div class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-md p-6 ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tag-manager-title"
+        class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-md p-6 ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
+      >
         <div class="flex items-center justify-between mb-6">
-          <h2 class="font-display text-sm tracking-[0.2em] text-text-primary uppercase">Tag Manager</h2>
+          <h2 id="tag-manager-title" class="font-display text-sm tracking-[0.2em] text-text-primary uppercase">Tag Manager</h2>
           <button
             class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
             onClick={requestClose}
+            aria-label="Close tag manager"
           >
             [Close]
           </button>
@@ -118,6 +129,7 @@ export function TagManager(props: {
                           classList={{ 'scale-125 border-white': editColor() === c, 'border-transparent': editColor() !== c }}
                           style={{ background: c }}
                           onClick={() => setEditColor(c)}
+                          aria-label={`Color ${c}`}
                         />
                       )}
                     </For>
@@ -160,6 +172,7 @@ export function TagManager(props: {
                   classList={{ 'scale-125 border-white': newColor() === c, 'border-transparent': newColor() !== c }}
                   style={{ background: c }}
                   onClick={() => setNewColor(c)}
+                  aria-label={`Color ${c}`}
                 />
               )}
             </For>

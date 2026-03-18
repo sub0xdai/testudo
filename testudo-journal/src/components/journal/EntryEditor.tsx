@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, onCleanup } from 'solid-js'
+import { createSignal, createResource, Show, onCleanup, onMount } from 'solid-js'
 import {
   createEntry,
   updateEntry,
@@ -14,6 +14,7 @@ import { MarkdownPreview } from './MarkdownPreview'
 import { TradeSelector } from './TradeSelector'
 import { TagSelector } from './TagSelector'
 import { exportEntry } from '../../lib/export'
+import { createFocusTrap } from '../../lib/createFocusTrap'
 
 const ENTRY_TYPES = [
   { value: 'note', label: 'Note', color: '#94a3b8' },
@@ -32,6 +33,9 @@ export function EntryEditor(props: {
 }) {
   const isEdit = () => !!props.entry
   let textareaRef!: HTMLTextAreaElement
+  let dialogRef!: HTMLDivElement
+
+  createFocusTrap(() => dialogRef)
 
   const [title, setTitle] = createSignal(props.entry?.title ?? '')
   const [body, setBody] = createSignal(props.entry?.body ?? '')
@@ -211,7 +215,13 @@ export function EntryEditor(props: {
   return (
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class={`absolute inset-0 bg-black/80 ${closing() ? 'animate-fade-out' : 'animate-fade-in'}`} onClick={requestClose} />
-      <div class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-4xl max-h-[95vh] flex flex-col ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="entry-editor-title"
+        class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-4xl max-h-[95vh] flex flex-col ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
+      >
         {/* Compact metadata strip */}
         <div class="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-container-border flex-shrink-0">
           <select
@@ -225,6 +235,7 @@ export function EntryEditor(props: {
           </select>
 
           <input
+            id="entry-editor-title"
             class="flex-1 min-w-[200px] bg-transparent border-none font-display text-sm font-semibold text-text-primary placeholder:text-text-tertiary focus:outline-none"
             placeholder="Entry title..."
             value={title()}
@@ -257,6 +268,7 @@ export function EntryEditor(props: {
             <button
               class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
               onClick={requestClose}
+              aria-label="Close editor"
             >
               &times;
             </button>
@@ -275,7 +287,7 @@ export function EntryEditor(props: {
 
         {/* Error */}
         <Show when={error()}>
-          <div class="mx-5 mt-3 font-mono text-xs text-signal-red bg-signal-red/10 border border-signal-red/30 rounded px-3 py-2">
+          <div role="alert" aria-live="polite" class="mx-5 mt-3 font-mono text-xs text-signal-red bg-signal-red/10 border border-signal-red/30 rounded px-3 py-2">
             {error()}
           </div>
         </Show>

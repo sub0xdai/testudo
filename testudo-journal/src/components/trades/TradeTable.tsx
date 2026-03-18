@@ -76,15 +76,22 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                   <th
                     class={`px-3 py-2.5 text-[10px] font-display font-medium tracking-widest uppercase whitespace-nowrap ${
                       col.align === 'right' ? 'text-right' : 'text-left'
-                    } ${col.sortable ? 'cursor-pointer hover:text-text-primary' : ''} ${
+                    } ${
                       sort().field === col.key ? 'text-signal-green' : 'text-text-tertiary'
                     }`}
-                    onClick={() => col.sortable && toggleSort(col.key)}
+                    aria-sort={col.sortable ? (sort().field === col.key ? (sort().order === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
                   >
-                    {col.label}
-                    <Show when={col.sortable && sort().field === col.key}>
-                      <span class="ml-1">{sort().order === 'asc' ? '▲' : '▼'}</span>
-                    </Show>
+                    {col.sortable ? (
+                      <button
+                        class={`w-full ${col.align === 'right' ? 'text-right' : 'text-left'} cursor-pointer hover:text-text-primary`}
+                        onClick={() => toggleSort(col.key)}
+                      >
+                        {col.label}
+                        <Show when={sort().field === col.key}>
+                          <span class="ml-1">{sort().order === 'asc' ? '▲' : '▼'}</span>
+                        </Show>
+                      </button>
+                    ) : col.label}
                   </th>
                 )}
               </For>

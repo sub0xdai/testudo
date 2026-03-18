@@ -30,6 +30,7 @@ export function Layout(props: { children: JSX.Element }) {
                     'text-text-primary': location.pathname === item.path,
                     'text-text-secondary hover:text-text-primary': location.pathname !== item.path,
                   }}
+                  aria-current={location.pathname === item.path ? 'page' : undefined}
                 >
                   {item.label}
                 </A>

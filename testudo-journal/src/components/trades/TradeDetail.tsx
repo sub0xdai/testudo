@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, For, onCleanup } from 'solid-js'
+import { createSignal, createResource, Show, For, onCleanup, onMount } from 'solid-js'
 import {
   fetchTradeDetail,
   fetchTags,
@@ -21,8 +21,10 @@ import {
   sideColor,
 } from '../../lib/formatters'
 import { SkeletonBar } from '../SkeletonBar'
+import { createFocusTrap } from '../../lib/createFocusTrap'
 
 export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
+  let panelRef!: HTMLDivElement
   const [detail, { refetch }] = createResource(() => props.tradeId, fetchTradeDetail)
   const [allTags] = createResource(fetchTags)
   const [notes, setNotes] = createSignal('')
@@ -30,6 +32,8 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   const [saving, setSaving] = createSignal(false)
   const [showTagPicker, setShowTagPicker] = createSignal(false)
   const [closing, setClosing] = createSignal(false)
+
+  createFocusTrap(() => panelRef)
 
   function requestClose() {
     setClosing(true)
@@ -94,15 +98,21 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
       />
 
       {/* Panel */}
-      <div class={`fixed top-0 right-0 h-full w-full max-w-md bg-container-bg border-l border-container-border z-50 overflow-y-auto ${closing() ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="trade-detail-title"
+        class={`fixed top-0 right-0 h-full w-full max-w-md bg-container-bg border-l border-container-border z-50 overflow-y-auto ${closing() ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}
+      >
         {/* Header */}
         <div class="sticky top-0 bg-container-bg border-b border-container-border px-5 py-4 flex items-center justify-between">
           <Show when={detail()} fallback={<div class="flex gap-2"><SkeletonBar width="60px" height="16px" /><SkeletonBar width="32px" height="16px" /><SkeletonBar width="40px" height="16px" /></div>}>
             {(d) => (
-              <div>
+              <div id="trade-detail-title">
                 <span class="font-mono text-sm text-text-primary">{d().symbol}</span>
                 <span class="mx-2 text-text-tertiary">&middot;</span>
-                <span class={`font-mono text-sm uppercase ${sideColor(d().side)}`}>{d().side}</span>
+                <span class={`font-mono text-sm uppercase ${sideColor(d().side)}`} aria-label={`${d().side} position`}>{d().side}</span>
                 <span class="mx-2 text-text-tertiary">&middot;</span>
                 <span class="font-mono text-xs text-text-secondary uppercase">{d().exchange}</span>
               </div>
@@ -111,6 +121,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
           <button
             class="text-text-secondary hover:text-text-primary text-lg transition-colors"
             onClick={requestClose}
+            aria-label="Close trade detail"
           >
             &times;
           </button>
@@ -232,7 +243,11 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
 
                   {/* Tag picker */}
                   <Show when={showTagPicker()}>
-                    <div class="mt-2 p-2 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 animate-dropdown-in">
+                    <div
+                      role="listbox"
+                      aria-label="Available tags"
+                      class="mt-2 p-2 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 animate-dropdown-in"
+                    >
                       <Show
                         when={availableTags().length > 0}
                         fallback={<span class="text-xs font-mono text-text-tertiary">No more tags</span>}
@@ -240,7 +255,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                         <div class="flex flex-wrap gap-1.5">
                           <For each={availableTags()}>
                             {(tag, i) => (
-                              <button onClick={() => handleAddTag(tag.id)}>
+                              <button role="option" onClick={() => handleAddTag(tag.id)} aria-label={`Add tag ${tag.name}`}>
                                 <TagBadge tag={tag} index={i()} />
                               </button>
                             )}
