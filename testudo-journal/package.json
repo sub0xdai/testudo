@@ -11,7 +11,7 @@
   "dependencies": {
     "@solidjs/router": "^0.15.3",
     "dompurify": "^3.3.3",
-    "echarts": "^6.0.0",
+    "echarts": "5",
     "lightweight-charts": "^5.0.0",
     "marked": "^17.0.4",
     "solid-js": "^1.9.5"

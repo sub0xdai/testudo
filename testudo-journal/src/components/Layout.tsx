@@ -3,7 +3,7 @@ import { A, useLocation } from '@solidjs/router'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
-  { path: '/charts', label: 'CHARTS' },
+  { path: '/charts', label: 'ANALYSIS' },
   { path: '/trades', label: 'TRADES' },
   { path: '/journal', label: 'JOURNAL' },
 ]

@@ -17,7 +17,7 @@ export function DurationScatter() {
 
     const points = d.data.map((p) => ({
       value: [p.duration_secs / 3600, parseFloat(p.pnl)],
-      symbol: p.symbol,
+      name: p.symbol,
       itemStyle: {
         color: parseFloat(p.pnl) >= 0 ? signalGreenAlpha(0.6) : signalRedAlpha(0.6),
       },
@@ -28,7 +28,7 @@ export function DurationScatter() {
         trigger: 'item',
         formatter: (params: any) => {
           const [hours, pnl] = params.value as [number, number]
-          const sym = params.data.symbol
+          const sym = params.data.name
           const sign = pnl >= 0 ? '+' : ''
           return `<span style="color:#fff">${sym}</span><br/>Duration: ${hours.toFixed(1)}h<br/>P&L: ${sign}$${pnl.toFixed(2)}`
         },

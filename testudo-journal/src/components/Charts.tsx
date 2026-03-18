@@ -17,7 +17,7 @@ export function Charts() {
 
   return (
     <div class="space-y-6">
-      <PageSubHeader title="CHARTS" />
+      <PageSubHeader title="ANALYSIS" />
 
       {/* Full-width equity curve */}
       <EquityCurve data={equityData()} loading={equityData.loading} error={equityData.error?.message} />
