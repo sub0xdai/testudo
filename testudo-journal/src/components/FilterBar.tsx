@@ -138,9 +138,9 @@ export function FilterBar() {
           <For each={PRESETS}>
             {(p) => (
               <button
-                class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
+                class={`font-mono text-xs px-2.5 py-1 transition-colors outline-none ${
                   preset() === p.key
-                    ? 'text-text-primary border-b-2 border-text-primary font-bold'
+                    ? 'text-text-primary'
                     : 'text-text-tertiary hover:text-text-primary'
                 }`}
                 onClick={() => selectPreset(p.key)}
