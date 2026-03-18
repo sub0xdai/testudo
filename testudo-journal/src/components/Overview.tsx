@@ -3,6 +3,7 @@ import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { HeroEquityCurve } from './HeroEquityCurve'
 import { ChartSelector } from './ChartSelector'
+import { PageSubHeader } from './PageSubHeader'
 import type { StatItem } from './StatCard'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve } from '../api/client'
@@ -51,6 +52,8 @@ export function Overview() {
 
   return (
     <div>
+      <PageSubHeader title="OVERVIEW" />
+
       {/* Loading state — structural skeleton */}
       <Show when={stats.loading && !stats()}>
         <div aria-live="polite" aria-busy="true" class="flex gap-0">
@@ -106,10 +109,6 @@ export function Overview() {
 
       {/* Main 2-column layout */}
       <Show when={stats() && !stats.loading}>
-        <div class="mb-4">
-          <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight">OVERVIEW</h1>
-        </div>
-
         {/* Mobile: condensed stats strip */}
         <div class="md:hidden mb-4">
           <div class="flex items-baseline gap-3 mb-2">
@@ -130,7 +129,7 @@ export function Overview() {
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
           {/* Left sidebar — stats */}
-          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block" style={{ "max-height": "calc(100vh - var(--header-h) - 83px)" }}>
+          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block" style={{ "max-height": "calc(100vh - var(--header-h) - var(--subheader-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />

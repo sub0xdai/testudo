@@ -1,6 +1,5 @@
 import { createSignal, For, Show, type JSX } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
-import { FilterBar } from './FilterBar'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -76,10 +75,6 @@ export function Layout(props: { children: JSX.Element }) {
 
       {/* Spacer for fixed header */}
       <div style={{ height: 'var(--header-h)' }} />
-
-      <Show when={!location.pathname.startsWith('/journal')}>
-        <FilterBar />
-      </Show>
 
       <main class="max-w-[1400px] mx-auto px-6 py-6">
         {props.children}

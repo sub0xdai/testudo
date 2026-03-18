@@ -7,6 +7,7 @@ import { MarketReturn } from './charts/MarketReturn'
 import { DurationScatter } from './charts/DurationScatter'
 import { ReturnHistogram } from './charts/ReturnHistogram'
 import { TimeHeatmap } from './charts/TimeHeatmap'
+import { PageSubHeader } from './PageSubHeader'
 import { useFilters } from './filterContext'
 import { fetchEquityCurve } from '../api/client'
 
@@ -16,9 +17,7 @@ export function Charts() {
 
   return (
     <div class="space-y-6">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight">CHARTS</h1>
-      </div>
+      <PageSubHeader title="CHARTS" />
 
       {/* Full-width equity curve */}
       <EquityCurve data={equityData()} loading={equityData.loading} error={equityData.error?.message} />
