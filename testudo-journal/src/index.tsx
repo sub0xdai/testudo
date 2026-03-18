@@ -7,6 +7,8 @@ import { Overview } from './components/Overview'
 import { Charts } from './components/Charts'
 import { Trades } from './pages/Trades'
 import { Journal } from './pages/Journal'
+import './lib/echarts-setup'
+import './lib/echarts-theme'
 import './styles/app.css'
 
 const root = document.getElementById('root')

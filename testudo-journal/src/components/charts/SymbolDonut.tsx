@@ -1,61 +1,61 @@
-import { createResource, onMount, onCleanup, createEffect } from 'solid-js'
-import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js'
+import { createResource, createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
+import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchSymbolBreakdown } from '../../api/client'
-import { TAG_PALETTE, CHART_BG } from '../../lib/tokens'
-
-Chart.register(ArcElement, Tooltip, Legend, DoughnutController)
+import { TAG_PALETTE } from '../../lib/tokens'
+import type { EChartsOption } from 'echarts'
 
 export function SymbolDonut() {
   const { filters, setFilters } = useFilters()
   const [data, { refetch }] = createResource(filters, fetchSymbolBreakdown)
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
-  let canvas!: HTMLCanvasElement
-  let chart: Chart<'doughnut'> | undefined
+  const option = createMemo((): EChartsOption | undefined => {
+    const d = data()
+    if (!d?.data?.length) return undefined
 
-  onMount(() => {
-    chart = new Chart(canvas, {
-      type: 'doughnut',
-      data: { labels: [], datasets: [{ data: [], backgroundColor: TAG_PALETTE, borderWidth: 0 }] },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '60%',
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: { color: '#888888', font: { family: "'Space Mono', monospace", size: 11 }, padding: 12 },
-          },
-          tooltip: {
-            backgroundColor: CHART_BG,
-            borderColor: '#3F3F46',
-            borderWidth: 1,
-            titleFont: { family: "'Space Mono', monospace" },
-            bodyFont: { family: "'Space Mono', monospace" },
-            titleColor: '#FFFFFF',
-            bodyColor: '#888888',
-          },
+    return {
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: any) => {
+          const { name, value, percent } = params
+          return `<span style="color:#fff">${name}</span><br/>${value} trades (${percent}%)`
         },
       },
-    })
-
-    onCleanup(() => chart?.destroy())
-  })
-
-  createEffect(() => {
-    const d = data()
-    if (!d?.data?.length || !chart) return
-
-    chart.data.labels = d.data.map((s) => s.symbol)
-    chart.data.datasets[0].data = d.data.map((s) => s.trade_count)
-    chart.update()
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center',
+        textStyle: { fontSize: 11 },
+      },
+      series: [{
+        type: 'pie',
+        radius: ['50%', '75%'],
+        center: ['35%', '50%'],
+        label: { show: false },
+        emphasis: {
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' },
+        },
+        data: d.data.map((s, i) => ({
+          name: s.symbol,
+          value: s.trade_count,
+          itemStyle: { color: TAG_PALETTE[i % TAG_PALETTE.length] },
+        })),
+      }],
+    }
   })
 
   return (
-    <ChartContainer title="SYMBOL DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
-      <div class="h-56"><canvas ref={canvas!} /></div>
+    <ChartContainer
+      title="SYMBOL DISTRIBUTION"
+      loading={data.loading}
+      empty={!data()?.data?.length}
+      onRetry={refetch}
+      hasActiveFilters={hasActiveFilters()}
+      onClearFilters={() => setFilters({})}
+    >
+      <EChart option={option} />
     </ChartContainer>
   )
 }

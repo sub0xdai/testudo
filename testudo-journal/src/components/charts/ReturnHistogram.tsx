@@ -1,73 +1,61 @@
-import { createResource, onMount, onCleanup, createEffect } from 'solid-js'
-import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, BarController } from 'chart.js'
+import { createResource, createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
+import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchReturnDistribution } from '../../api/client'
-import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
-
-Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, BarController)
+import { SIGNAL_GREEN, SIGNAL_RED } from '../../lib/tokens'
+import type { EChartsOption } from 'echarts'
 
 export function ReturnHistogram() {
   const { filters, setFilters } = useFilters()
   const [data, { refetch }] = createResource(filters, fetchReturnDistribution)
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
-  let canvas!: HTMLCanvasElement
-  let chart: Chart<'bar'> | undefined
+  const option = createMemo((): EChartsOption | undefined => {
+    const d = data()
+    if (!d?.data?.length) return undefined
 
-  onMount(() => {
-    chart = new Chart(canvas, {
-      type: 'bar',
-      data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: '#555555', font: { family: "'Space Mono', monospace", size: 11 } },
-            border: { color: '#3F3F46' },
-          },
-          y: {
-            grid: { color: '#1A1A1A' },
-            ticks: { color: '#555555', font: { family: "'Space Mono', monospace", size: 11 } },
-            border: { color: '#3F3F46' },
-          },
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: CHART_BG,
-            borderColor: '#3F3F46',
-            borderWidth: 1,
-            titleFont: { family: "'Space Mono', monospace" },
-            bodyFont: { family: "'Space Mono', monospace" },
-            titleColor: '#FFFFFF',
-            bodyColor: '#888888',
-          },
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params
+          return `<span style="color:#fff">${p.name}</span><br/>${p.value} trades`
         },
       },
-    })
-
-    onCleanup(() => chart?.destroy())
-  })
-
-  createEffect(() => {
-    const d = data()
-    if (!d?.data?.length || !chart) return
-
-    chart.data.labels = d.data.map((b) => b.bucket)
-    chart.data.datasets[0].data = d.data.map((b) => b.count)
-    chart.data.datasets[0].backgroundColor = d.data.map((b) => {
-      const num = parseFloat(b.bucket)
-      return isNaN(num) || num >= 0 ? SIGNAL_GREEN : SIGNAL_RED
-    })
-    chart.update()
+      grid: { left: 40, right: 20, top: 8, bottom: 24 },
+      xAxis: {
+        type: 'category',
+        data: d.data.map((b) => b.bucket),
+        axisLabel: { fontSize: 10 },
+      },
+      yAxis: { type: 'value' },
+      series: [{
+        type: 'bar',
+        data: d.data.map((b) => {
+          const num = parseFloat(b.bucket)
+          return {
+            value: b.count,
+            itemStyle: { color: isNaN(num) || num >= 0 ? SIGNAL_GREEN : SIGNAL_RED },
+          }
+        }),
+        barGap: '0%',
+        barCategoryGap: '0%',
+      }],
+    }
   })
 
   return (
-    <ChartContainer title="RETURN DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
-      <div class="h-56"><canvas ref={canvas!} /></div>
+    <ChartContainer
+      title="RETURN DISTRIBUTION"
+      loading={data.loading}
+      empty={!data()?.data?.length}
+      onRetry={refetch}
+      hasActiveFilters={hasActiveFilters()}
+      onClearFilters={() => setFilters({})}
+    >
+      <EChart option={option} />
     </ChartContainer>
   )
 }

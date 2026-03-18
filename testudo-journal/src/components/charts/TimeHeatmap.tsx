@@ -1,87 +1,91 @@
-import { createResource, For } from 'solid-js'
+import { createResource, createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
+import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchTimeDistribution } from '../../api/client'
-import { signalGreenAlpha } from '../../lib/tokens'
+import { SIGNAL_GREEN } from '../../lib/tokens'
+import type { EChartsOption } from 'echarts'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-const HOURS = Array.from({ length: 24 }, (_, i) => i)
-
-function intensityColor(count: number, maxCount: number): string {
-  if (count === 0 || maxCount === 0) return '#1A1A1A'
-  const ratio = count / maxCount
-  if (ratio < 0.25) return signalGreenAlpha(0.15)
-  if (ratio < 0.5) return signalGreenAlpha(0.3)
-  if (ratio < 0.75) return signalGreenAlpha(0.55)
-  return signalGreenAlpha(0.8)
-}
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 
 export function TimeHeatmap() {
   const { filters, setFilters } = useFilters()
   const [data, { refetch }] = createResource(filters, fetchTimeDistribution)
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
-  function grid() {
+  const option = createMemo((): EChartsOption | undefined => {
     const d = data()
-    if (!d?.data?.length) return { cells: [], maxCount: 0 }
+    if (!d?.data?.length) return undefined
 
-    const map = new Map<string, number>()
     let maxCount = 0
+    const points: [number, number, number][] = []
+
     for (const slot of d.data) {
-      const key = `${slot.day_of_week}-${slot.hour}`
-      map.set(key, slot.trade_count)
+      points.push([slot.hour, slot.day_of_week, slot.trade_count])
       if (slot.trade_count > maxCount) maxCount = slot.trade_count
     }
 
-    const cells: { day: number; hour: number; count: number }[] = []
-    for (const day of [0, 1, 2, 3, 4, 5, 6]) {
-      for (const hour of HOURS) {
-        cells.push({ day, hour, count: map.get(`${day}-${hour}`) ?? 0 })
+    // Fill missing cells with zero
+    const existing = new Set(points.map(([h, d]) => `${h}-${d}`))
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        if (!existing.has(`${hour}-${day}`)) {
+          points.push([hour, day, 0])
+        }
       }
     }
-    return { cells, maxCount }
-  }
+
+    return {
+      tooltip: {
+        formatter: (params: any) => {
+          const [hour, day, count] = params.value as [number, number, number]
+          return `<span style="color:#fff">${DAYS[day]} ${String(hour).padStart(2, '0')}:00</span><br/>${count} trades`
+        },
+      },
+      grid: { left: 50, right: 40, top: 8, bottom: 24 },
+      xAxis: {
+        type: 'category',
+        data: HOURS,
+        splitArea: { show: true },
+        axisLabel: { fontSize: 10, interval: 2 },
+      },
+      yAxis: {
+        type: 'category',
+        data: DAYS,
+        axisLabel: { fontSize: 10 },
+      },
+      visualMap: {
+        min: 0,
+        max: maxCount || 1,
+        calculable: false,
+        orient: 'vertical',
+        right: 0,
+        top: 'center',
+        itemHeight: 100,
+        textStyle: { color: '#555555', fontSize: 10 },
+        inRange: { color: ['#1A1A1A', SIGNAL_GREEN] },
+      },
+      series: [{
+        type: 'heatmap',
+        data: points,
+        emphasis: {
+          itemStyle: { borderColor: '#fff', borderWidth: 1 },
+        },
+      }],
+    }
+  })
 
   return (
-    <ChartContainer title="TIME DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
-      <div class="overflow-x-auto">
-        <div class="min-w-[500px]">
-          {/* Hour labels */}
-          <div class="flex ml-10 mb-1">
-            <For each={HOURS.filter((h) => h % 3 === 0)}>
-              {(h) => (
-                <div class="font-mono text-[9px] text-text-tertiary" style={{ width: `${(3 / 24) * 100}%` }}>
-                  {String(h).padStart(2, '0')}
-                </div>
-              )}
-            </For>
-          </div>
-
-          {/* Grid rows */}
-          <For each={[0, 1, 2, 3, 4, 5, 6]}>
-            {(day) => (
-              <div class="flex items-center gap-1 mb-0.5">
-                <span class="font-mono text-[10px] text-text-tertiary w-9 text-right">{DAYS[day]}</span>
-                <div class="flex flex-1 gap-px">
-                  <For each={HOURS}>
-                    {(hour) => {
-                      const g = grid()
-                      const cell = g.cells.find((c) => c.day === day && c.hour === hour)
-                      return (
-                        <div
-                          class="flex-1 h-4 rounded-sm"
-                          style={{ "background-color": intensityColor(cell?.count ?? 0, g.maxCount) }}
-                          title={`${DAYS[day]} ${String(hour).padStart(2, '0')}:00 — ${cell?.count ?? 0} trades`}
-                        />
-                      )
-                    }}
-                  </For>
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
-      </div>
+    <ChartContainer
+      title="TIME DISTRIBUTION"
+      loading={data.loading}
+      empty={!data()?.data?.length}
+      onRetry={refetch}
+      hasActiveFilters={hasActiveFilters()}
+      onClearFilters={() => setFilters({})}
+    >
+      <EChart option={option} height="250px" />
     </ChartContainer>
   )
 }
