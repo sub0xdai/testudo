@@ -1,5 +1,5 @@
 import { createSignal, For, Show, type JSX } from 'solid-js'
-import { A, useLocation } from '@solidjs/router'
+import { A } from '@solidjs/router'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -9,7 +9,6 @@ const NAV_ITEMS = [
 ]
 
 export function Layout(props: { children: JSX.Element }) {
-  const location = useLocation()
   const [menuOpen, setMenuOpen] = createSignal(false)
 
   return (
@@ -26,12 +25,10 @@ export function Layout(props: { children: JSX.Element }) {
               {(item) => (
                 <A
                   href={item.path}
+                  end={item.path === '/'}
                   class="font-mono text-xs tracking-wider transition-colors"
-                  classList={{
-                    'text-text-primary': location.pathname === item.path,
-                    'text-text-secondary hover:text-text-primary': location.pathname !== item.path,
-                  }}
-                  aria-current={location.pathname === item.path ? 'page' : undefined}
+                  activeClass="text-text-primary"
+                  inactiveClass="text-text-secondary hover:text-text-primary"
                 >
                   {item.label}
                 </A>
@@ -57,12 +54,10 @@ export function Layout(props: { children: JSX.Element }) {
               {(item) => (
                 <A
                   href={item.path}
+                  end={item.path === '/'}
                   class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider transition-colors flex items-center"
-                  classList={{
-                    'text-text-primary': location.pathname === item.path,
-                    'text-text-secondary hover:text-text-primary': location.pathname !== item.path,
-                  }}
-                  aria-current={location.pathname === item.path ? 'page' : undefined}
+                  activeClass="text-text-primary"
+                  inactiveClass="text-text-secondary hover:text-text-primary"
                   onClick={() => setMenuOpen(false)}
                 >
                   {item.label}

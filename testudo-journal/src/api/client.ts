@@ -50,7 +50,7 @@ export interface OverviewResponse {
 }
 
 function getToken(): string {
-  return localStorage.getItem('testudo_token') ?? ''
+  return localStorage.getItem('access_token') ?? ''
 }
 
 function buildParams(filters: StatsFilter): URLSearchParams {

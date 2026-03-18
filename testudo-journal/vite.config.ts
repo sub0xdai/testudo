@@ -3,6 +3,7 @@ import solid from 'vite-plugin-solid'
 
 export default defineConfig({
   plugins: [solid()],
+  base: '/journal/',
   server: {
     port: 3002,
     proxy: {
