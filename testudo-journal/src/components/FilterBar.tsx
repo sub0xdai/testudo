@@ -1,95 +1,187 @@
-import { createSignal } from 'solid-js'
+import { createSignal, createResource, Show, For } from 'solid-js'
 import { useFilters } from './filterContext'
+import { fetchFilterOptions } from '../api/client'
+import { SymbolSearch } from './SymbolSearch'
+
+type Preset = '1w' | '1m' | '3m' | 'ytd' | 'all' | 'custom'
+
+const PRESETS: { key: Preset; label: string }[] = [
+  { key: '1w', label: '1W' },
+  { key: '1m', label: '1M' },
+  { key: '3m', label: '3M' },
+  { key: 'ytd', label: 'YTD' },
+  { key: 'all', label: 'ALL' },
+  { key: 'custom', label: 'CUSTOM' },
+]
+
+function computeDateFrom(key: Preset): string | undefined {
+  const now = new Date()
+  switch (key) {
+    case '1w': {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 7)
+      return d.toISOString().slice(0, 10)
+    }
+    case '1m': {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 30)
+      return d.toISOString().slice(0, 10)
+    }
+    case '3m': {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 90)
+      return d.toISOString().slice(0, 10)
+    }
+    case 'ytd':
+      return `${now.getFullYear()}-01-01`
+    case 'all':
+      return undefined
+    default:
+      return undefined
+  }
+}
 
 export function FilterBar() {
   const { filters, setFilters } = useFilters()
-  const [localExchange, setLocalExchange] = createSignal(filters().exchange ?? '')
-  const [localSymbol, setLocalSymbol] = createSignal(filters().symbol ?? '')
-  const [localFrom, setLocalFrom] = createSignal(filters().dateFrom ?? '')
-  const [localTo, setLocalTo] = createSignal(filters().dateTo ?? '')
+  const [preset, setPreset] = createSignal<Preset>('all')
+  const [customFrom, setCustomFrom] = createSignal('')
+  const [customTo, setCustomTo] = createSignal('')
 
-  function apply() {
-    setFilters({
-      exchange: localExchange() || undefined,
-      symbol: localSymbol() || undefined,
-      dateFrom: localFrom() || undefined,
-      dateTo: localTo() || undefined,
-    })
+  // Fetch filter options, re-fetch when exchange changes
+  const [options] = createResource(
+    () => filters().exchange,
+    (exchange) => fetchFilterOptions(exchange || undefined)
+  )
+
+  function selectExchange(exchange: string) {
+    const current = filters()
+    // If symbol is set and not available on new exchange, reset it
+    if (current.symbol && exchange) {
+      const opts = options()
+      const symbolExists = opts?.symbols.some((s) => s.symbol === current.symbol)
+      if (!symbolExists) {
+        setFilters({ ...current, exchange: exchange || undefined, symbol: undefined })
+        return
+      }
+    }
+    setFilters({ ...current, exchange: exchange || undefined })
   }
 
-  function clear() {
-    setLocalExchange('')
-    setLocalSymbol('')
-    setLocalFrom('')
-    setLocalTo('')
+  function selectSymbol(symbol: string) {
+    setFilters({ ...filters(), symbol: symbol || undefined })
+  }
+
+  function selectPreset(key: Preset) {
+    setPreset(key)
+    if (key === 'custom') return
+    setCustomFrom('')
+    setCustomTo('')
+    const dateFrom = computeDateFrom(key)
+    setFilters({ ...filters(), dateFrom, dateTo: undefined })
+  }
+
+  function applyCustomFrom(val: string) {
+    setCustomFrom(val)
+    setFilters({ ...filters(), dateFrom: val || undefined })
+  }
+
+  function applyCustomTo(val: string) {
+    setCustomTo(val)
+    setFilters({ ...filters(), dateTo: val || undefined })
+  }
+
+  function reset() {
     setFilters({})
+    setPreset('all')
+    setCustomFrom('')
+    setCustomTo('')
+  }
+
+  const hasActiveFilters = () => {
+    const f = filters()
+    return !!(f.exchange || f.symbol || f.dateFrom || f.dateTo)
   }
 
   return (
     <div class="border-b border-container-border bg-container-bg">
       <div class="max-w-[1400px] mx-auto px-6 py-3 flex items-center gap-4 flex-wrap">
-        {/* Exchange */}
+        {/* Exchange dropdown */}
         <div class="flex items-center gap-2">
           <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Exchange</label>
           <select
             class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
-            value={localExchange()}
-            onChange={(e) => setLocalExchange(e.currentTarget.value)}
+            value={filters().exchange ?? ''}
+            onChange={(e) => selectExchange(e.currentTarget.value)}
           >
             <option value="">ALL</option>
-            <option value="woo">WOO</option>
-            <option value="binance">BINANCE</option>
-            <option value="hyperliquid">HYPERLIQUID</option>
+            <For each={options()?.exchanges ?? []}>
+              {(ex) => <option value={ex}>{ex.toUpperCase()}</option>}
+            </For>
           </select>
         </div>
 
-        {/* Symbol */}
+        {/* Symbol searchable dropdown */}
         <div class="flex items-center gap-2">
           <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Symbol</label>
-          <input
-            type="text"
-            placeholder="BTC_USDT"
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded w-32 focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg placeholder:text-text-tertiary"
-            value={localSymbol()}
-            onInput={(e) => setLocalSymbol(e.currentTarget.value)}
+          <SymbolSearch
+            symbols={options()?.symbols ?? []}
+            value={filters().symbol ?? ''}
+            onSelect={selectSymbol}
           />
         </div>
 
-        {/* Date From */}
-        <div class="flex items-center gap-2">
-          <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</label>
-          <input
-            type="date"
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
-            value={localFrom()}
-            onInput={(e) => setLocalFrom(e.currentTarget.value)}
-          />
+        {/* Separator */}
+        <div class="w-px h-6 bg-container-border" />
+
+        {/* Time presets */}
+        <div class="flex items-center gap-1">
+          <For each={PRESETS}>
+            {(p) => (
+              <button
+                class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
+                  preset() === p.key
+                    ? 'text-signal-green border-b-2 border-signal-green font-bold'
+                    : 'text-text-tertiary hover:text-text-primary'
+                }`}
+                onClick={() => selectPreset(p.key)}
+              >
+                {p.label}
+              </button>
+            )}
+          </For>
         </div>
 
-        {/* Date To */}
-        <div class="flex items-center gap-2">
-          <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</label>
-          <input
-            type="date"
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
-            value={localTo()}
-            onInput={(e) => setLocalTo(e.currentTarget.value)}
-          />
-        </div>
+        {/* Custom date inputs */}
+        <Show when={preset() === 'custom'}>
+          <div class="flex items-center gap-2">
+            <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</label>
+            <input
+              type="date"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+              value={customFrom()}
+              onInput={(e) => applyCustomFrom(e.currentTarget.value)}
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</label>
+            <input
+              type="date"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+              value={customTo()}
+              onInput={(e) => applyCustomTo(e.currentTarget.value)}
+            />
+          </div>
+        </Show>
 
-        {/* Actions */}
-        <button
-          onClick={apply}
-          class="font-mono text-sm px-4 py-1.5 border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg rounded transition-colors"
-        >
-          APPLY
-        </button>
-        <button
-          onClick={clear}
-          class="font-mono text-sm px-4 py-1.5 border border-container-border text-text-secondary hover:text-text-primary hover:border-text-secondary rounded transition-colors"
-        >
-          CLEAR
-        </button>
+        {/* Reset */}
+        <Show when={hasActiveFilters()}>
+          <button
+            class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors ml-auto"
+            onClick={reset}
+          >
+            × reset
+          </button>
+        </Show>
       </div>
     </div>
   )

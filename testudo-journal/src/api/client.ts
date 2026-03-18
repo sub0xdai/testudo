@@ -101,6 +101,28 @@ export interface TimeSlot {
   avg_pnl: string
 }
 
+// --- Filter options (UXP-09) ---
+
+export interface SymbolCount {
+  symbol: string
+  count: number
+}
+
+export interface FilterOptions {
+  exchanges: string[]
+  symbols: SymbolCount[]
+}
+
+export async function fetchFilterOptions(exchange?: string): Promise<FilterOptions> {
+  const params = new URLSearchParams()
+  if (exchange) params.set('exchange', exchange)
+  const res = await fetch(`${API_BASE}/api/v1/journal/analytics/filter-options?${params}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
 async function fetchApi<T>(path: string, filters: StatsFilter): Promise<T> {
   const params = buildParams(filters)
   const res = await fetch(`${API_BASE}/api/v1/journal/analytics/${path}?${params}`, {
