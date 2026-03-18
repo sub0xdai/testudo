@@ -32,7 +32,7 @@ export function TagSelector(props: {
       </div>
 
       <Show when={open()}>
-        <div class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded-lg min-w-48 shadow-lg">
+        <div class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded-lg min-w-48 shadow-lg animate-dropdown-in">
           <Show when={available().length === 0}>
             <div class="px-3 py-2 font-mono text-xs text-text-tertiary">No more tags</div>
           </Show>

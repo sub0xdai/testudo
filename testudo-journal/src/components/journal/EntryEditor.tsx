@@ -39,6 +39,12 @@ export function EntryEditor(props: {
   const [showPreview, setShowPreview] = createSignal(false)
   const [saving, setSaving] = createSignal(false)
   const [error, setError] = createSignal('')
+  const [closing, setClosing] = createSignal(false)
+
+  function requestClose() {
+    setClosing(true)
+    setTimeout(props.onClose, 150)
+  }
 
   const [allTags] = createResource(fetchTags)
 
@@ -101,8 +107,8 @@ export function EntryEditor(props: {
 
   return (
     <div class="fixed inset-0 z-50 flex items-center justify-center">
-      <div class="absolute inset-0 bg-black/60" onClick={props.onClose} />
-      <div class="relative bg-elevated border border-container-border rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div class={`absolute inset-0 bg-black/60 ${closing() ? 'animate-fade-out' : 'animate-fade-in'}`} onClick={requestClose} />
+      <div class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}>
         {/* Header */}
         <div class="flex items-center justify-between px-6 py-4 border-b border-container-border flex-shrink-0">
           <h2 class="font-display text-sm tracking-[0.2em] text-text-primary uppercase">
@@ -118,7 +124,7 @@ export function EntryEditor(props: {
             </button>
             <button
               class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
-              onClick={props.onClose}
+              onClick={requestClose}
             >
               [Close]
             </button>

@@ -14,6 +14,12 @@ export function TagManager(props: {
   const [editName, setEditName] = createSignal('')
   const [editColor, setEditColor] = createSignal('')
   const [loading, setLoading] = createSignal(false)
+  const [closing, setClosing] = createSignal(false)
+
+  function requestClose() {
+    setClosing(true)
+    setTimeout(props.onClose, 150)
+  }
 
   async function handleCreate() {
     const name = newName().trim()
@@ -62,13 +68,13 @@ export function TagManager(props: {
 
   return (
     <div class="fixed inset-0 z-50 flex items-center justify-center">
-      <div class="absolute inset-0 bg-black/60" onClick={props.onClose} />
-      <div class="relative bg-elevated border border-container-border rounded-lg w-full max-w-md p-6">
+      <div class={`absolute inset-0 bg-black/60 ${closing() ? 'animate-fade-out' : 'animate-fade-in'}`} onClick={requestClose} />
+      <div class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-md p-6 ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}>
         <div class="flex items-center justify-between mb-6">
           <h2 class="font-display text-sm tracking-[0.2em] text-text-primary uppercase">Tag Manager</h2>
           <button
             class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
-            onClick={props.onClose}
+            onClick={requestClose}
           >
             [Close]
           </button>

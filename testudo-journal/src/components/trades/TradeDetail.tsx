@@ -28,6 +28,12 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   const [notesDirty, setNotesDirty] = createSignal(false)
   const [saving, setSaving] = createSignal(false)
   const [showTagPicker, setShowTagPicker] = createSignal(false)
+  const [closing, setClosing] = createSignal(false)
+
+  function requestClose() {
+    setClosing(true)
+    setTimeout(props.onClose, 200)
+  }
 
   // Sync notes from loaded detail
   const syncNotes = () => {
@@ -42,7 +48,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
 
   // Close on Escape
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') props.onClose()
+    if (e.key === 'Escape') requestClose()
   }
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', handleKeyDown)
@@ -82,12 +88,12 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
     <>
       {/* Backdrop */}
       <div
-        class="fixed inset-0 bg-black/60 z-40"
-        onClick={props.onClose}
+        class={`fixed inset-0 bg-black/60 z-40 ${closing() ? 'animate-fade-out' : 'animate-fade-in'}`}
+        onClick={requestClose}
       />
 
       {/* Panel */}
-      <div class="fixed top-0 right-0 h-full w-full max-w-md bg-container-bg border-l border-container-border z-50 overflow-y-auto">
+      <div class={`fixed top-0 right-0 h-full w-full max-w-md bg-container-bg border-l border-container-border z-50 overflow-y-auto ${closing() ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
         {/* Header */}
         <div class="sticky top-0 bg-container-bg border-b border-container-border px-5 py-4 flex items-center justify-between">
           <Show when={detail()} fallback={<div class="h-5 w-40 bg-container-border/20 animate-pulse rounded" />}>
@@ -103,7 +109,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
           </Show>
           <button
             class="text-text-secondary hover:text-text-primary text-lg transition-colors"
-            onClick={props.onClose}
+            onClick={requestClose}
           >
             &times;
           </button>
@@ -202,7 +208,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
 
                   {/* Tag picker */}
                   <Show when={showTagPicker()}>
-                    <div class="mt-2 p-2 border border-container-border bg-main-bg">
+                    <div class="mt-2 p-2 border border-container-border bg-main-bg animate-dropdown-in">
                       <Show
                         when={availableTags().length > 0}
                         fallback={<span class="text-xs font-mono text-text-tertiary">No more tags</span>}
