@@ -1,16 +1,20 @@
 import { createResource, Show } from 'solid-js'
-import { StatCard, type StatItem } from './StatCard'
+import { StatSection } from './StatSection'
+import { HeroEquityCurve } from './HeroEquityCurve'
+import { ChartSelector } from './ChartSelector'
+import type { StatItem } from './StatCard'
 import { useFilters } from './filterContext'
-import { fetchOverview } from '../api/client'
+import { fetchOverview, fetchEquityCurve } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, streakSign } from '../lib/formatters'
 
 export function Overview() {
   const { filters } = useFilters()
 
-  const [data] = createResource(filters, fetchOverview)
+  const [stats] = createResource(filters, fetchOverview)
+  const [equity] = createResource(filters, fetchEquityCurve)
 
   function accountItems(): StatItem[] {
-    const d = data()
+    const d = stats()
     if (!d) return []
     return [
       { label: 'Total P&L', value: formatCurrency(d.account.total_pnl), colorClass: pnlColor(d.account.total_pnl) },
@@ -21,7 +25,7 @@ export function Overview() {
   }
 
   function performanceItems(): StatItem[] {
-    const d = data()
+    const d = stats()
     if (!d) return []
     return [
       { label: 'Win Rate', value: formatPercent(d.performance.win_rate) },
@@ -33,7 +37,7 @@ export function Overview() {
   }
 
   function riskItems(): StatItem[] {
-    const d = data()
+    const d = stats()
     if (!d) return []
     return [
       { label: 'Max DD', value: formatPercent(d.risk.max_drawdown_pct), colorClass: 'text-signal-red' },
@@ -46,26 +50,91 @@ export function Overview() {
 
   return (
     <div>
-      <Show when={data.loading}>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-elevated border border-container-border rounded-lg p-5 animate-pulse h-52" />
-          <div class="bg-elevated border border-container-border rounded-lg p-5 animate-pulse h-52" />
-          <div class="bg-elevated border border-container-border rounded-lg p-5 animate-pulse h-52" />
+      {/* Loading state */}
+      <Show when={stats.loading && !stats()}>
+        <div class="flex gap-6">
+          <div class="w-64 shrink-0 hidden md:block">
+            <div class="bg-elevated border border-container-border animate-pulse h-96" />
+          </div>
+          <div class="flex-1">
+            <div class="bg-elevated border border-container-border animate-pulse h-12 mb-4" />
+            <div class="bg-elevated border border-container-border animate-pulse" style={{ "min-height": "400px" }} />
+          </div>
         </div>
       </Show>
 
-      <Show when={data.error}>
-        <div class="bg-elevated border border-container-border rounded-lg p-8 text-center">
+      {/* Error state */}
+      <Show when={stats.error}>
+        <div class="bg-elevated border border-container-border p-8 text-center">
           <p class="font-mono text-signal-red text-sm mb-2">FAILED TO LOAD STATS</p>
-          <p class="font-mono text-text-tertiary text-xs">{String(data.error)}</p>
+          <p class="font-mono text-text-tertiary text-xs">{String(stats.error)}</p>
         </div>
       </Show>
 
-      <Show when={data() && !data.loading}>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard title="ACCOUNT" items={accountItems()} />
-          <StatCard title="PERFORMANCE" items={performanceItems()} />
-          <StatCard title="RISK" items={riskItems()} />
+      {/* Main 2-column layout */}
+      <Show when={stats() && !stats.loading}>
+        {/* Mobile: condensed stats strip */}
+        <div class="md:hidden mb-4">
+          <div class="flex items-baseline gap-3 mb-2">
+            <span class={`font-mono text-4xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
+              {formatCurrency(stats()!.account.net_pnl)}
+            </span>
+            <span class="font-mono text-xs text-text-secondary">
+              {formatPercent(stats()!.performance.win_rate)} WR
+            </span>
+          </div>
+          <div class="flex gap-4 font-mono text-xs text-text-secondary">
+            <span>PF <span class="text-text-primary font-bold">{formatNumber(stats()!.performance.profit_factor)}</span></span>
+            <span>Trades <span class="text-text-primary font-bold">{formatInteger(stats()!.account.total_trades)}</span></span>
+            <span>DD <span class="text-signal-red font-bold">{formatPercent(stats()!.risk.max_drawdown_pct)}</span></span>
+          </div>
+        </div>
+
+        {/* Desktop: 2-column layout */}
+        <div class="flex gap-0">
+          {/* Left sidebar — stats */}
+          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block" style={{ "max-height": "calc(100vh - 140px)" }}>
+            <StatSection title="ACCOUNT" items={accountItems()} />
+            <StatSection title="PERFORMANCE" items={performanceItems()} />
+            <StatSection title="RISK" items={riskItems()} />
+          </aside>
+
+          {/* Right main — hero P&L + charts */}
+          <div class="flex-1 min-w-0">
+            {/* Hero P&L */}
+            <div class="px-6 py-4 border-b border-container-border">
+              <div class="flex items-baseline gap-4 mb-1">
+                <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
+                  {formatCurrency(stats()!.account.net_pnl)}
+                </span>
+                <span class="font-mono text-sm text-text-secondary">
+                  net P&L
+                </span>
+              </div>
+              <div class="flex gap-6 font-mono text-sm">
+                <span class="text-text-secondary">
+                  Win Rate <span class="text-text-primary font-bold">{formatPercent(stats()!.performance.win_rate)}</span>
+                </span>
+                <span class="text-text-secondary">
+                  Profit Factor <span class="text-text-primary font-bold">{formatNumber(stats()!.performance.profit_factor)}</span>
+                </span>
+                <span class="text-text-secondary">
+                  Trades <span class="text-text-primary font-bold">{formatInteger(stats()!.account.total_trades)}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Hero Equity Curve — borderless, min 400px */}
+            <HeroEquityCurve
+              data={equity()?.data}
+              loading={equity.loading}
+            />
+
+            {/* Secondary chart selector */}
+            <div class="p-6">
+              <ChartSelector />
+            </div>
+          </div>
         </div>
       </Show>
     </div>
