@@ -323,3 +323,20 @@ export async function deleteTag(tagId: string): Promise<void> {
     method: 'DELETE',
   })
 }
+
+// --- Image upload ---
+
+export async function uploadJournalImage(file: File): Promise<{ url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${API_BASE}/api/v1/journal/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: `Upload failed: ${res.status}` }))
+    throw new Error(err.message || `Upload failed: ${res.status}`)
+  }
+  return res.json()
+}

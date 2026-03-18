@@ -2,6 +2,7 @@ import { Show, For } from 'solid-js'
 import type { JournalEntry, JournalTag } from '../../api/client'
 import { MarkdownPreview } from './MarkdownPreview'
 import { TagBadge } from '../trades/TagBadge'
+import { exportEntry } from '../../lib/export'
 
 const TYPE_STYLES: Record<string, { color: string; label: string }> = {
   'note': { color: '#94a3b8', label: 'NOTE' },
@@ -69,6 +70,12 @@ export function EntryCard(props: {
           {formatTime(props.entry.created_at)}
         </span>
         <div class="flex gap-2">
+          <button
+            class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            onClick={() => exportEntry(props.entry, props.tags)}
+          >
+            [Export]
+          </button>
           <button
             class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
             onClick={props.onEdit}
