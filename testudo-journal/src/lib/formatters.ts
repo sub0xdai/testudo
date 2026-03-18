@@ -69,7 +69,7 @@ export function rColor(value: string | number | null): string {
   const num = typeof value === 'string' ? parseFloat(value) : value
   if (num >= 1) return 'text-signal-green'
   if (num < 0) return 'text-signal-red'
-  return 'text-orange-400'
+  return 'text-signal-amber'
 }
 
 export function sideColor(side: string): string {

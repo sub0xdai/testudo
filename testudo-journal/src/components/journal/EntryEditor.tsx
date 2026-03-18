@@ -110,7 +110,7 @@ export function EntryEditor(props: {
           </h2>
           <div class="flex gap-3">
             <button
-              class="px-4 py-2 bg-signal-green/10 border border-signal-green text-signal-green font-mono text-xs rounded hover:bg-signal-green/20 transition-colors disabled:opacity-50"
+              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
               onClick={handleSave}
               disabled={saving()}
             >
@@ -137,7 +137,7 @@ export function EntryEditor(props: {
           <div class="flex gap-2 items-center">
             <label class="font-display text-xs text-text-secondary uppercase tracking-wider w-16">Type</label>
             <select
-              class="bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary focus:border-border-active focus:outline-none"
+              class="bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               value={entryType()}
               onChange={(e) => setEntryType(e.currentTarget.value)}
             >
@@ -151,7 +151,7 @@ export function EntryEditor(props: {
           <div class="flex gap-2 items-center">
             <label class="font-display text-xs text-text-secondary uppercase tracking-wider w-16">Title</label>
             <input
-              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-active focus:outline-none"
+              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               placeholder="Entry title..."
               value={title()}
               onInput={(e) => setTitle(e.currentTarget.value)}
@@ -174,7 +174,7 @@ export function EntryEditor(props: {
               <label class="font-display text-xs text-text-secondary uppercase tracking-wider w-16">Date</label>
               <input
                 type="date"
-                class="bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary focus:border-border-active focus:outline-none"
+                class="bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
                 value={entryDate()}
                 onInput={(e) => setEntryDate(e.currentTarget.value)}
               />
@@ -228,7 +228,7 @@ export function EntryEditor(props: {
               }
             >
               <textarea
-                class="w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-active focus:outline-none resize-none min-h-[300px]"
+                class="w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg resize-none min-h-[300px]"
                 placeholder="Write your journal entry in markdown..."
                 value={body()}
                 onInput={(e) => setBody(e.currentTarget.value)}

@@ -58,14 +58,14 @@ export function TradeFilters(props: {
           }
         }}
         onBlur={() => props.onChange({ ...props.filters, symbol: symbol() || undefined })}
-        class="w-28 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus:border-border-active focus:outline-none"
+        class="w-28 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
       />
 
       {/* Exchange dropdown */}
       <select
         value={props.filters.exchange ?? ''}
         onChange={(e) => props.onChange({ ...props.filters, exchange: e.currentTarget.value || undefined })}
-        class="px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono focus:border-border-active focus:outline-none appearance-none cursor-pointer"
+        class="px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg appearance-none cursor-pointer"
       >
         <option value="">ALL EXCH</option>
         <option value="WOO">WOO</option>
@@ -79,7 +79,7 @@ export function TradeFilters(props: {
         placeholder="TAG"
         value={props.filters.tag ?? ''}
         onInput={(e) => props.onChange({ ...props.filters, tag: e.currentTarget.value || undefined })}
-        class="w-24 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus:border-border-active focus:outline-none"
+        class="w-24 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
       />
 
       {/* Clear */}

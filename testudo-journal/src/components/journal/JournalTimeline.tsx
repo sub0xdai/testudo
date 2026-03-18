@@ -156,7 +156,7 @@ export function JournalTimeline() {
             Tags
           </button>
           <button
-            class="px-3 py-1.5 bg-signal-green/10 border border-signal-green text-signal-green font-mono text-xs rounded hover:bg-signal-green/20 transition-colors"
+            class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors"
             onClick={handleNewEntry}
           >
             + New Entry
@@ -167,7 +167,7 @@ export function JournalTimeline() {
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border rounded-lg">
         <select
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus:border-border-active focus:outline-none"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
           value={typeFilter()}
           onChange={(e) => setTypeFilter(e.currentTarget.value)}
         >
@@ -177,7 +177,7 @@ export function JournalTimeline() {
         </select>
 
         <select
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus:border-border-active focus:outline-none"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
           value={tagFilter()}
           onChange={(e) => setTagFilter(e.currentTarget.value)}
         >
@@ -189,14 +189,14 @@ export function JournalTimeline() {
 
         <input
           type="date"
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus:border-border-active focus:outline-none"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
           value={dateFrom()}
           onInput={(e) => setDateFrom(e.currentTarget.value)}
           placeholder="From"
         />
         <input
           type="date"
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus:border-border-active focus:outline-none"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
           value={dateTo()}
           onInput={(e) => setDateTo(e.currentTarget.value)}
           placeholder="To"
@@ -232,7 +232,7 @@ export function JournalTimeline() {
         <div class="text-center py-16">
           <div class="font-mono text-text-tertiary text-sm mb-4">NO ENTRIES YET</div>
           <button
-            class="px-4 py-2 bg-signal-green/10 border border-signal-green text-signal-green font-mono text-xs rounded hover:bg-signal-green/20 transition-colors"
+            class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors"
             onClick={handleNewEntry}
           >
             Write your first entry

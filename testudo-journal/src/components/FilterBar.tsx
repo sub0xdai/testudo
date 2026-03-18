@@ -32,7 +32,7 @@ export function FilterBar() {
         <div class="flex items-center gap-2">
           <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Exchange</label>
           <select
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus:border-signal-green focus:outline-none"
+            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
             value={localExchange()}
             onChange={(e) => setLocalExchange(e.currentTarget.value)}
           >
@@ -49,7 +49,7 @@ export function FilterBar() {
           <input
             type="text"
             placeholder="BTC_USDT"
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded w-32 focus:border-signal-green focus:outline-none placeholder:text-text-tertiary"
+            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded w-32 focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg placeholder:text-text-tertiary"
             value={localSymbol()}
             onInput={(e) => setLocalSymbol(e.currentTarget.value)}
           />
@@ -60,7 +60,7 @@ export function FilterBar() {
           <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</label>
           <input
             type="date"
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus:border-signal-green focus:outline-none"
+            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
             value={localFrom()}
             onInput={(e) => setLocalFrom(e.currentTarget.value)}
           />
@@ -71,7 +71,7 @@ export function FilterBar() {
           <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</label>
           <input
             type="date"
-            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus:border-signal-green focus:outline-none"
+            class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-signal-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
             value={localTo()}
             onInput={(e) => setLocalTo(e.currentTarget.value)}
           />
@@ -80,7 +80,7 @@ export function FilterBar() {
         {/* Actions */}
         <button
           onClick={apply}
-          class="font-mono text-sm px-4 py-1.5 border border-signal-green text-signal-green hover:bg-signal-green/10 rounded transition-colors"
+          class="font-mono text-sm px-4 py-1.5 border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg rounded transition-colors"
         >
           APPLY
         </button>

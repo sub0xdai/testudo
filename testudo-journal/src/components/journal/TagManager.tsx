@@ -114,7 +114,7 @@ export function TagManager(props: {
                     </For>
                   </div>
                   <input
-                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus:border-border-active focus:outline-none"
+                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
                     value={editName()}
                     onInput={(e) => setEditName(e.currentTarget.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
@@ -158,13 +158,13 @@ export function TagManager(props: {
           <div class="flex gap-2">
             <input
               placeholder="New tag name..."
-              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-active focus:outline-none"
+              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               value={newName()}
               onInput={(e) => setNewName(e.currentTarget.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
             <button
-              class="px-4 py-2 bg-signal-green/10 border border-signal-green text-signal-green font-mono text-xs rounded hover:bg-signal-green/20 transition-colors disabled:opacity-50"
+              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
               onClick={handleCreate}
               disabled={loading() || !newName().trim()}
             >
