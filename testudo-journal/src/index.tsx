@@ -4,11 +4,8 @@ import { Router, Route } from '@solidjs/router'
 import { FilterProvider } from './components/filterContext'
 import { Layout } from './components/Layout'
 import { Overview } from './components/Overview'
+import { Charts } from './components/Charts'
 import './styles/app.css'
-
-function ChartsPlaceholder() {
-  return <div class="font-mono text-text-secondary text-center py-20">CHARTS — COMING SOON</div>
-}
 
 function TradesPlaceholder() {
   return <div class="font-mono text-text-secondary text-center py-20">TRADES — COMING SOON</div>
@@ -25,7 +22,7 @@ render(
     <FilterProvider>
       <Router root={Layout}>
         <Route path="/" component={Overview} />
-        <Route path="/charts" component={ChartsPlaceholder} />
+        <Route path="/charts" component={Charts} />
         <Route path="/trades" component={TradesPlaceholder} />
         <Route path="/journal" component={JournalPlaceholder} />
       </Router>

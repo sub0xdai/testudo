@@ -1,0 +1,61 @@
+import { createResource, onMount, onCleanup, createEffect } from 'solid-js'
+import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js'
+import { ChartContainer } from './ChartContainer'
+import { useFilters } from '../filterContext'
+import { fetchSymbolBreakdown } from '../../api/client'
+
+Chart.register(ArcElement, Tooltip, Legend, DoughnutController)
+
+const PALETTE = ['#00FF41', '#FF003C', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+export function SymbolDonut() {
+  const { filters } = useFilters()
+  const [data] = createResource(filters, fetchSymbolBreakdown)
+
+  let canvas!: HTMLCanvasElement
+  let chart: Chart<'doughnut'> | undefined
+
+  onMount(() => {
+    chart = new Chart(canvas, {
+      type: 'doughnut',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: PALETTE, borderWidth: 0 }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: '#888888', font: { family: "'Space Mono', monospace", size: 11 }, padding: 12 },
+          },
+          tooltip: {
+            backgroundColor: '#111111',
+            borderColor: '#3F3F46',
+            borderWidth: 1,
+            titleFont: { family: "'Space Mono', monospace" },
+            bodyFont: { family: "'Space Mono', monospace" },
+            titleColor: '#FFFFFF',
+            bodyColor: '#888888',
+          },
+        },
+      },
+    })
+
+    onCleanup(() => chart?.destroy())
+  })
+
+  createEffect(() => {
+    const d = data()
+    if (!d?.data?.length || !chart) return
+
+    chart.data.labels = d.data.map((s) => s.symbol)
+    chart.data.datasets[0].data = d.data.map((s) => s.trade_count)
+    chart.update()
+  })
+
+  return (
+    <ChartContainer title="SYMBOL DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length}>
+      <div class="h-56"><canvas ref={canvas!} /></div>
+    </ChartContainer>
+  )
+}

@@ -62,11 +62,78 @@ function buildParams(filters: StatsFilter): URLSearchParams {
   return params
 }
 
-export async function fetchOverview(filters: StatsFilter): Promise<OverviewResponse> {
+export interface EquityPoint {
+  date: string
+  cumulative_pnl: string
+  peak: string
+  drawdown: string
+  drawdown_pct: string
+}
+
+export interface DailyPnlPoint {
+  date: string
+  pnl: string
+  trade_count: number
+}
+
+export interface SymbolBreakdownItem {
+  symbol: string
+  trade_count: number
+  total_pnl: string
+  win_rate: string
+}
+
+export interface DurationProfitPoint {
+  duration_secs: number
+  pnl: string
+  symbol: string
+}
+
+export interface ReturnBucket {
+  bucket: string
+  count: number
+}
+
+export interface TimeSlot {
+  day_of_week: number
+  hour: number
+  trade_count: number
+  avg_pnl: string
+}
+
+async function fetchApi<T>(path: string, filters: StatsFilter): Promise<T> {
   const params = buildParams(filters)
-  const res = await fetch(`${API_BASE}/api/v1/journal/analytics/overview?${params}`, {
+  const res = await fetch(`${API_BASE}/api/v1/journal/analytics/${path}?${params}`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   })
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
+}
+
+export async function fetchOverview(filters: StatsFilter): Promise<OverviewResponse> {
+  return fetchApi<OverviewResponse>('overview', filters)
+}
+
+export async function fetchEquityCurve(filters: StatsFilter): Promise<{ data: EquityPoint[] }> {
+  return fetchApi('equity-curve', filters)
+}
+
+export async function fetchDailyPnl(filters: StatsFilter): Promise<{ data: DailyPnlPoint[] }> {
+  return fetchApi('daily-pnl', filters)
+}
+
+export async function fetchSymbolBreakdown(filters: StatsFilter): Promise<{ data: SymbolBreakdownItem[] }> {
+  return fetchApi('symbol-breakdown', filters)
+}
+
+export async function fetchDurationProfit(filters: StatsFilter): Promise<{ data: DurationProfitPoint[] }> {
+  return fetchApi('duration-profit', filters)
+}
+
+export async function fetchReturnDistribution(filters: StatsFilter): Promise<{ data: ReturnBucket[] }> {
+  return fetchApi('return-distribution', filters)
+}
+
+export async function fetchTimeDistribution(filters: StatsFilter): Promise<{ data: TimeSlot[] }> {
+  return fetchApi('time-distribution', filters)
 }
