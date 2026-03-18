@@ -179,41 +179,51 @@ export function JournalTimeline() {
 
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border rounded-lg">
-        <select
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
-          value={typeFilter()}
-          onChange={(e) => setTypeFilter(e.currentTarget.value)}
-        >
-          <For each={ENTRY_TYPE_OPTIONS}>
-            {(opt) => <option value={opt.value}>{opt.label}</option>}
-          </For>
-        </select>
+        <label class="flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Type</span>
+          <select
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            value={typeFilter()}
+            onChange={(e) => setTypeFilter(e.currentTarget.value)}
+          >
+            <For each={ENTRY_TYPE_OPTIONS}>
+              {(opt) => <option value={opt.value}>{opt.label}</option>}
+            </For>
+          </select>
+        </label>
 
-        <select
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
-          value={tagFilter()}
-          onChange={(e) => setTagFilter(e.currentTarget.value)}
-        >
-          <option value="">All Tags</option>
-          <For each={tags() ?? []}>
-            {(tag) => <option value={tag.name}>{tag.name}</option>}
-          </For>
-        </select>
+        <label class="flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
+          <select
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            value={tagFilter()}
+            onChange={(e) => setTagFilter(e.currentTarget.value)}
+          >
+            <option value="">All Tags</option>
+            <For each={tags() ?? []}>
+              {(tag) => <option value={tag.name}>{tag.name}</option>}
+            </For>
+          </select>
+        </label>
 
-        <input
-          type="date"
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
-          value={dateFrom()}
-          onInput={(e) => setDateFrom(e.currentTarget.value)}
-          placeholder="From"
-        />
-        <input
-          type="date"
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
-          value={dateTo()}
-          onInput={(e) => setDateTo(e.currentTarget.value)}
-          placeholder="To"
-        />
+        <label class="flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">From</span>
+          <input
+            type="date"
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            value={dateFrom()}
+            onInput={(e) => setDateFrom(e.currentTarget.value)}
+          />
+        </label>
+        <label class="flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">To</span>
+          <input
+            type="date"
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            value={dateTo()}
+            onInput={(e) => setDateTo(e.currentTarget.value)}
+          />
+        </label>
 
         <Show when={typeFilter() || tagFilter() || dateFrom() || dateTo()}>
           <button

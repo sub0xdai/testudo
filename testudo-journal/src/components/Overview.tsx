@@ -130,7 +130,7 @@ export function Overview() {
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
           {/* Left sidebar — stats */}
-          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block" style={{ "max-height": "calc(100vh - 140px)" }}>
+          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block" style={{ "max-height": "calc(100vh - var(--header-h) - 83px)" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />

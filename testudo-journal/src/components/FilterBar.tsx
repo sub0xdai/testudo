@@ -106,8 +106,8 @@ export function FilterBar() {
     <div class="border-b border-container-border bg-container-bg">
       <div class="max-w-[1400px] mx-auto px-6 py-3 flex items-center gap-4 flex-wrap">
         {/* Exchange dropdown */}
-        <div class="flex items-center gap-2">
-          <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Exchange</label>
+        <label class="flex items-center gap-2">
+          <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Exchange</span>
           <select
             class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
             value={filters().exchange ?? ''}
@@ -118,11 +118,11 @@ export function FilterBar() {
             <option value="binance">BINANCE</option>
             <option value="hyperliquid">HYPERLIQUID</option>
           </select>
-        </div>
+        </label>
 
         {/* Symbol searchable dropdown */}
         <div class="flex items-center gap-2">
-          <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">Symbol</label>
+          <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider" id="symbol-label">Symbol</span>
           <SymbolSearch
             symbols={options()?.symbols ?? []}
             value={filters().symbol ?? ''}
@@ -153,24 +153,24 @@ export function FilterBar() {
 
         {/* Custom date inputs */}
         <Show when={preset() === 'custom'}>
-          <div class="flex items-center gap-2">
-            <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</label>
+          <label class="flex items-center gap-2">
+            <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</span>
             <input
               type="date"
               class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               value={customFrom()}
               onInput={(e) => applyCustomFrom(e.currentTarget.value)}
             />
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</label>
+          </label>
+          <label class="flex items-center gap-2">
+            <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</span>
             <input
               type="date"
               class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
               value={customTo()}
               onInput={(e) => applyCustomTo(e.currentTarget.value)}
             />
-          </div>
+          </label>
         </Show>
 
         {/* Reset */}

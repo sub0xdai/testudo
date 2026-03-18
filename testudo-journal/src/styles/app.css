@@ -11,6 +11,7 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #888888;
   --color-text-tertiary: #555555;
+  --header-h: 57px;
 }
 
 * {

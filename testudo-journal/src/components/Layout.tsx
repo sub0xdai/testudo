@@ -1,4 +1,4 @@
-import { For, Show, type JSX } from 'solid-js'
+import { createSignal, For, Show, type JSX } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
 import { FilterBar } from './FilterBar'
 
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
 
 export function Layout(props: { children: JSX.Element }) {
   const location = useLocation()
+  const [menuOpen, setMenuOpen] = createSignal(false)
 
   return (
     <div class="min-h-screen bg-main-bg text-text-primary">
@@ -20,7 +21,8 @@ export function Layout(props: { children: JSX.Element }) {
             TESTUDO
           </A>
 
-          <nav class="flex items-center gap-6">
+          {/* Desktop nav */}
+          <nav class="hidden md:flex items-center gap-6">
             <For each={NAV_ITEMS}>
               {(item) => (
                 <A
@@ -37,11 +39,43 @@ export function Layout(props: { children: JSX.Element }) {
               )}
             </For>
           </nav>
+
+          {/* Mobile hamburger */}
+          <button
+            class="md:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            onClick={() => setMenuOpen(!menuOpen())}
+            aria-expanded={menuOpen()}
+            aria-label="Navigation menu"
+          >
+            <span class="font-mono text-lg">{menuOpen() ? '\u00D7' : '\u2261'}</span>
+          </button>
         </div>
+
+        {/* Mobile nav panel */}
+        <Show when={menuOpen()}>
+          <nav class="md:hidden border-t border-container-border py-2 bg-main-bg/95 backdrop-blur-sm">
+            <For each={NAV_ITEMS}>
+              {(item) => (
+                <A
+                  href={item.path}
+                  class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider transition-colors flex items-center"
+                  classList={{
+                    'text-text-primary': location.pathname === item.path,
+                    'text-text-secondary hover:text-text-primary': location.pathname !== item.path,
+                  }}
+                  aria-current={location.pathname === item.path ? 'page' : undefined}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </A>
+              )}
+            </For>
+          </nav>
+        </Show>
       </header>
 
       {/* Spacer for fixed header */}
-      <div class="h-[57px]" />
+      <div style={{ height: 'var(--header-h)' }} />
 
       <Show when={!location.pathname.startsWith('/journal')}>
         <FilterBar />

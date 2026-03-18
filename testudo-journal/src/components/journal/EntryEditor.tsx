@@ -224,15 +224,18 @@ export function EntryEditor(props: {
       >
         {/* Compact metadata strip */}
         <div class="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-container-border flex-shrink-0">
-          <select
-            class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none"
-            value={entryType()}
-            onChange={(e) => setEntryType(e.currentTarget.value)}
-          >
-            {ENTRY_TYPES.map((t) => (
-              <option value={t.value}>{t.label}</option>
-            ))}
-          </select>
+          <label class="flex items-center gap-1.5">
+            <span class="sr-only">Entry type</span>
+            <select
+              class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none"
+              value={entryType()}
+              onChange={(e) => setEntryType(e.currentTarget.value)}
+            >
+              {ENTRY_TYPES.map((t) => (
+                <option value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </label>
 
           <input
             id="entry-editor-title"
@@ -249,12 +252,15 @@ export function EntryEditor(props: {
           </Show>
 
           <Show when={showDatePicker()}>
-            <input
-              type="date"
-              class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none"
-              value={entryDate()}
-              onInput={(e) => setEntryDate(e.currentTarget.value)}
-            />
+            <label class="flex items-center gap-1.5">
+              <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Date</span>
+              <input
+                type="date"
+                class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none"
+                value={entryDate()}
+                onInput={(e) => setEntryDate(e.currentTarget.value)}
+              />
+            </label>
           </Show>
 
           <div class="flex items-center gap-2 ml-auto flex-shrink-0">

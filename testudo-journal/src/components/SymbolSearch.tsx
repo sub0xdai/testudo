@@ -1,4 +1,4 @@
-import { createSignal, createMemo, Show, For, onCleanup } from 'solid-js'
+import { createSignal, createMemo, Show, For } from 'solid-js'
 import type { SymbolCount } from '../api/client'
 import { useEscapeClose } from '../lib/useEscapeClose'
 
@@ -85,6 +85,7 @@ export function SymbolSearch(props: {
         onClick={() => hasSymbols() && openDropdown()}
         aria-haspopup="listbox"
         aria-expanded={open()}
+        aria-labelledby="symbol-label"
         disabled={!hasSymbols()}
       >
         <span class="flex-1 truncate">{displayValue()}</span>

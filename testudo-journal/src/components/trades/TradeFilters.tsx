@@ -41,13 +41,16 @@ export function TradeFilters(props: {
       </div>
 
       {/* Tag filter */}
-      <input
-        type="text"
-        placeholder="TAG"
-        value={props.filters.tag ?? ''}
-        onInput={(e) => props.onChange({ ...props.filters, tag: e.currentTarget.value || undefined })}
-        class="w-24 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus-ring"
-      />
+      <label class="flex items-center gap-1.5">
+        <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
+        <input
+          type="text"
+          placeholder="TAG"
+          value={props.filters.tag ?? ''}
+          onInput={(e) => props.onChange({ ...props.filters, tag: e.currentTarget.value || undefined })}
+          class="w-24 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus-ring"
+        />
+      </label>
 
       {/* Clear */}
       {(props.filters.side || props.filters.tag) && (
