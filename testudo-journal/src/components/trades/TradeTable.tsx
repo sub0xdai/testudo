@@ -77,7 +77,7 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                     class={`px-3 py-2.5 text-[10px] font-display font-medium tracking-widest uppercase whitespace-nowrap ${
                       col.align === 'right' ? 'text-right' : 'text-left'
                     } ${
-                      sort().field === col.key ? 'text-signal-green' : 'text-text-tertiary'
+                      sort().field === col.key ? 'text-text-primary' : 'text-text-tertiary'
                     }`}
                     aria-sort={col.sortable ? (sort().field === col.key ? (sort().order === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
                   >

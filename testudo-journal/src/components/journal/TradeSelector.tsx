@@ -38,7 +38,7 @@ export function TradeSelector(props: {
         <input
           type="text"
           placeholder="Search trades by symbol..."
-          class="w-full bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+          class="w-full bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-ring"
           value={search()}
           onInput={(e) => { setSearch(e.currentTarget.value); setOpen(true) }}
           onFocus={() => setOpen(true)}

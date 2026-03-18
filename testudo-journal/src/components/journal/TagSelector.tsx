@@ -26,7 +26,7 @@ export function TagSelector(props: {
           )}
         </For>
         <button
-          class="font-mono text-xs text-text-tertiary hover:text-signal-green transition-colors px-2 py-0.5 border border-dashed border-container-border rounded hover:border-signal-green"
+          class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-0.5 border border-dashed border-container-border rounded hover:border-text-primary"
           onClick={() => setOpen(!open())}
           aria-haspopup="listbox"
           aria-expanded={open()}

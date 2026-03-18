@@ -135,13 +135,13 @@ export function TagManager(props: {
                     </For>
                   </div>
                   <input
-                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-ring"
                     value={editName()}
                     onInput={(e) => setEditName(e.currentTarget.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
                   />
                   <button
-                    class="font-mono text-xs text-signal-green hover:text-signal-green/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="font-mono text-xs text-text-primary hover:text-text-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => handleUpdate(tag.id)}
                     disabled={loading()}
                   >
@@ -180,7 +180,7 @@ export function TagManager(props: {
           <div class="flex gap-2">
             <input
               placeholder="New tag name..."
-              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-ring"
               value={newName()}
               onInput={(e) => setNewName(e.currentTarget.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}

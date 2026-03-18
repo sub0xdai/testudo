@@ -7,7 +7,7 @@ import { exportEntry } from '../../lib/export'
 const TYPE_STYLES: Record<string, { color: string; label: string }> = {
   'note': { color: '#94a3b8', label: 'NOTE' },
   'pre-trade': { color: '#f59e0b', label: 'PRE-TRADE' },
-  'post-trade': { color: '#00FF41', label: 'POST-TRADE' },
+  'post-trade': { color: '#22C55E', label: 'POST-TRADE' },
   'daily-review': { color: '#888888', label: 'DAILY' },
   'weekly-review': { color: '#888888', label: 'WEEKLY' },
 }

@@ -19,7 +19,7 @@ import { createFocusTrap } from '../../lib/createFocusTrap'
 const ENTRY_TYPES = [
   { value: 'note', label: 'Note', color: '#94a3b8' },
   { value: 'pre-trade', label: 'Pre-Trade', color: '#f59e0b' },
-  { value: 'post-trade', label: 'Post-Trade', color: '#00FF41' },
+  { value: 'post-trade', label: 'Post-Trade', color: '#22C55E' },
   { value: 'daily-review', label: 'Daily', color: '#888888' },
   { value: 'weekly-review', label: 'Weekly', color: '#888888' },
 ]
@@ -297,7 +297,7 @@ export function EntryEditor(props: {
           <button
             class="font-mono text-xs transition-colors"
             classList={{
-              'text-signal-green': !showPreview(),
+              'text-text-primary': !showPreview(),
               'text-text-tertiary hover:text-text-primary': showPreview(),
             }}
             onClick={() => setShowPreview(false)}
@@ -307,7 +307,7 @@ export function EntryEditor(props: {
           <button
             class="font-mono text-xs transition-colors"
             classList={{
-              'text-signal-green': showPreview(),
+              'text-text-primary': showPreview(),
               'text-text-tertiary hover:text-text-primary': !showPreview(),
             }}
             onClick={() => setShowPreview(true)}
@@ -343,7 +343,7 @@ export function EntryEditor(props: {
           >
             <textarea
               ref={textareaRef!}
-              class={`w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg resize-none min-h-[400px] ${dragging() ? 'border-signal-green border-dashed' : ''}`}
+              class={`w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-ring resize-none min-h-[400px] ${dragging() ? 'border-text-primary border-dashed' : ''}`}
               style={{ 'border-left': `3px solid ${typeColor()}` }}
               placeholder="Write your journal entry in markdown... Paste images or drag files here."
               value={body()}

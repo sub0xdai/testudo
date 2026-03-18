@@ -41,7 +41,7 @@ export function Pagination(props: {
             <button
               class={`px-2 py-1 transition-colors ${
                 p === props.page
-                  ? 'text-signal-green border-b border-signal-green'
+                  ? 'text-text-primary border-b border-text-primary'
                   : 'text-text-secondary hover:text-text-primary'
               }`}
               onClick={() => props.onPageChange(p as number)}

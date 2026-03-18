@@ -220,7 +220,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                       TAGS
                     </span>
                     <button
-                      class="text-xs font-mono text-text-secondary hover:text-signal-green transition-colors"
+                      class="text-xs font-mono text-text-secondary hover:text-text-primary transition-colors"
                       onClick={() => setShowTagPicker(!showTagPicker())}
                     >
                       + Add
@@ -279,7 +279,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                     }}
                     onBlur={() => { if (notesDirty()) saveNotes() }}
                     placeholder="Quick note..."
-                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none focus-ring"
                   />
                   <Show when={notesDirty()}>
                     <button

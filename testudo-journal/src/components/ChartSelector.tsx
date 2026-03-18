@@ -24,7 +24,7 @@ export function ChartSelector() {
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
-          class="font-mono text-xs border border-container-border bg-elevated text-text-primary px-3 py-1.5 focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg focus-visible:outline-none"
+          class="font-mono text-xs border border-container-border bg-elevated text-text-primary px-3 py-1.5 focus-ring"
         >
           {CHART_OPTIONS.map((opt) => (
             <option value={opt.value}>{opt.label}</option>

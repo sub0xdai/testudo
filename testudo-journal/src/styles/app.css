@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design Token CSS Variables ──────────────────── */
+:root {
+  --color-main-bg: #050505;
+  --color-container-bg: #0A0A0A;
+  --color-container-border: #3F3F46;
+  --color-accent-steel: #94A3B8;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #888888;
+  --color-text-tertiary: #555555;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -21,25 +32,25 @@ body {
 }
 
 ::selection {
-  background-color: #94A3B8;
-  color: #050505;
+  background-color: var(--color-accent-steel, #94A3B8);
+  color: var(--color-main-bg, #050505);
 }
 
 /* Markdown preview styles */
-.markdown-preview h1 { font-size: 1.25rem; font-weight: 700; color: #FFFFFF; margin: 1rem 0 0.5rem; }
-.markdown-preview h2 { font-size: 1.1rem; font-weight: 600; color: #FFFFFF; margin: 0.75rem 0 0.5rem; }
-.markdown-preview h3 { font-size: 1rem; font-weight: 600; color: #FFFFFF; margin: 0.5rem 0 0.25rem; }
+.markdown-preview h1 { font-size: 1.25rem; font-weight: 700; color: var(--color-text-primary, #FFFFFF); margin: 1rem 0 0.5rem; }
+.markdown-preview h2 { font-size: 1.1rem; font-weight: 600; color: var(--color-text-primary, #FFFFFF); margin: 0.75rem 0 0.5rem; }
+.markdown-preview h3 { font-size: 1rem; font-weight: 600; color: var(--color-text-primary, #FFFFFF); margin: 0.5rem 0 0.25rem; }
 .markdown-preview p { margin: 0.5rem 0; }
-.markdown-preview strong { color: #FFFFFF; font-weight: 600; }
+.markdown-preview strong { color: var(--color-text-primary, #FFFFFF); font-weight: 600; }
 .markdown-preview em { font-style: italic; }
-.markdown-preview del { text-decoration: line-through; color: #555555; }
+.markdown-preview del { text-decoration: line-through; color: var(--color-text-tertiary, #555555); }
 .markdown-preview ul, .markdown-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
 .markdown-preview li { margin: 0.25rem 0; }
-.markdown-preview blockquote { border-left: 2px solid #3F3F46; padding-left: 1rem; color: #888888; margin: 0.5rem 0; }
-.markdown-preview code { font-family: 'Space Mono', monospace; background: #1A1A1A; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.85em; }
-.markdown-preview pre { background: #1A1A1A; border: 1px solid #3F3F46; border-radius: 6px; padding: 1rem; margin: 0.5rem 0; overflow-x: auto; }
+.markdown-preview blockquote { border-left: 2px solid var(--color-container-border, #3F3F46); padding-left: 1rem; color: var(--color-text-secondary, #888888); margin: 0.5rem 0; }
+.markdown-preview code { font-family: 'Space Mono', monospace; background: var(--color-container-bg, #1A1A1A); padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.85em; }
+.markdown-preview pre { background: var(--color-container-bg, #1A1A1A); border: 1px solid var(--color-container-border, #3F3F46); border-radius: 6px; padding: 1rem; margin: 0.5rem 0; overflow-x: auto; }
 .markdown-preview pre code { background: none; padding: 0; }
-.markdown-preview a { color: #00FF41; text-decoration: underline; }
+.markdown-preview a { color: var(--color-accent-steel, #94A3B8); text-decoration: underline; }
 .markdown-preview a:hover { opacity: 0.8; }
 
 /* ── Skeleton Shimmer ────────────────────────────── */
@@ -78,11 +89,19 @@ body {
 .animate-slide-out-right { animation: slide-out-right 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-dropdown-in { animation: dropdown-in 120ms ease-out both; }
 
+/* ── Shared Focus Ring Utility ───────────────────── */
+
+.focus-ring {
+  @apply focus-visible:border-border-active focus-visible:outline-none
+         focus-visible:ring-2 focus-visible:ring-white/20
+         focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg;
+}
+
 /* ── Global Focus Ring ────────────────────────────── */
 
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #050505, 0 0 0 4px rgba(0, 255, 65, 0.4);
+  box-shadow: 0 0 0 2px #050505, 0 0 0 4px rgba(255, 255, 255, 0.4);
 }
 
 /* Reduced motion */

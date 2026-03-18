@@ -180,7 +180,7 @@ export function JournalTimeline() {
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border rounded-lg">
         <select
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
           value={typeFilter()}
           onChange={(e) => setTypeFilter(e.currentTarget.value)}
         >
@@ -190,7 +190,7 @@ export function JournalTimeline() {
         </select>
 
         <select
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
           value={tagFilter()}
           onChange={(e) => setTagFilter(e.currentTarget.value)}
         >
@@ -202,14 +202,14 @@ export function JournalTimeline() {
 
         <input
           type="date"
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
           value={dateFrom()}
           onInput={(e) => setDateFrom(e.currentTarget.value)}
           placeholder="From"
         />
         <input
           type="date"
-          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-visible:border-border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-green/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+          class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
           value={dateTo()}
           onInput={(e) => setDateTo(e.currentTarget.value)}
           placeholder="To"
