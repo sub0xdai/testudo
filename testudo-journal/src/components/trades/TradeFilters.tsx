@@ -1,9 +1,5 @@
-import { createSignal } from 'solid-js'
-
 export interface TradeFilterState {
   side?: string
-  symbol?: string
-  exchange?: string
   tag?: string
 }
 
@@ -11,8 +7,6 @@ export function TradeFilters(props: {
   filters: TradeFilterState
   onChange: (f: TradeFilterState) => void
 }) {
-  const [symbol, setSymbol] = createSignal(props.filters.symbol ?? '')
-
   function toggleSide(side: string) {
     props.onChange({
       ...props.filters,
@@ -46,33 +40,6 @@ export function TradeFilters(props: {
         </button>
       </div>
 
-      {/* Symbol search */}
-      <input
-        type="text"
-        placeholder="SYMBOL"
-        value={symbol()}
-        onInput={(e) => setSymbol(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            props.onChange({ ...props.filters, symbol: symbol() || undefined })
-          }
-        }}
-        onBlur={() => props.onChange({ ...props.filters, symbol: symbol() || undefined })}
-        class="w-28 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus-ring"
-      />
-
-      {/* Exchange dropdown */}
-      <select
-        value={props.filters.exchange ?? ''}
-        onChange={(e) => props.onChange({ ...props.filters, exchange: e.currentTarget.value || undefined })}
-        class="px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono focus-ring appearance-none cursor-pointer"
-      >
-        <option value="">ALL EXCH</option>
-        <option value="WOO">WOO</option>
-        <option value="BINANCE">BINANCE</option>
-        <option value="HYPERLIQUID">HL</option>
-      </select>
-
       {/* Tag filter */}
       <input
         type="text"
@@ -83,7 +50,7 @@ export function TradeFilters(props: {
       />
 
       {/* Clear */}
-      {(props.filters.side || props.filters.symbol || props.filters.exchange || props.filters.tag) && (
+      {(props.filters.side || props.filters.tag) && (
         <button
           class="px-2 py-1 text-xs font-mono text-text-secondary hover:text-signal-red transition-colors"
           onClick={() => props.onChange({})}

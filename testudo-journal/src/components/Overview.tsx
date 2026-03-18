@@ -3,7 +3,6 @@ import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { HeroEquityCurve } from './HeroEquityCurve'
 import { ChartSelector } from './ChartSelector'
-import { GhostAnnotation } from './GhostAnnotation'
 import type { StatItem } from './StatCard'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve } from '../api/client'
@@ -108,7 +107,6 @@ export function Overview() {
       {/* Main 2-column layout */}
       <Show when={stats() && !stats.loading}>
         <div class="mb-4">
-          <GhostAnnotation text="ACCOUNT_OVERVIEW" />
           <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight">OVERVIEW</h1>
         </div>
 
