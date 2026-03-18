@@ -2,6 +2,7 @@ import { createResource, Show } from 'solid-js'
 import { StatSection } from './StatSection'
 import { HeroEquityCurve } from './HeroEquityCurve'
 import { ChartSelector } from './ChartSelector'
+import { GhostAnnotation } from './GhostAnnotation'
 import type { StatItem } from './StatCard'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve } from '../api/client'
@@ -73,6 +74,11 @@ export function Overview() {
 
       {/* Main 2-column layout */}
       <Show when={stats() && !stats.loading}>
+        <div class="mb-4">
+          <GhostAnnotation text="ACCOUNT_OVERVIEW" />
+          <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight">OVERVIEW</h1>
+        </div>
+
         {/* Mobile: condensed stats strip */}
         <div class="md:hidden mb-4">
           <div class="flex items-baseline gap-3 mb-2">
