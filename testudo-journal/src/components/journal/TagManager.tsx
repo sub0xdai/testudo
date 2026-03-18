@@ -134,7 +134,7 @@ export function TagManager(props: {
                     </For>
                   </div>
                   <input
-                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary focus-ring"
+                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary"
                     value={editName()}
                     onInput={(e) => setEditName(e.currentTarget.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
@@ -179,7 +179,7 @@ export function TagManager(props: {
           <div class="flex gap-2">
             <input
               placeholder="New tag name..."
-              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus-ring"
+              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
               value={newName()}
               onInput={(e) => setNewName(e.currentTarget.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}

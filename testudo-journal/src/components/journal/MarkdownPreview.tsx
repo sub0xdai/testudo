@@ -1,5 +1,6 @@
 import { createMemo } from 'solid-js'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 marked.setOptions({
   breaks: true,
@@ -9,7 +10,8 @@ marked.setOptions({
 export function MarkdownPreview(props: { content: string }) {
   const html = createMemo(() => {
     if (!props.content.trim()) return '<p class="text-text-tertiary">No content</p>'
-    return marked.parse(props.content, { async: false }) as string
+    const raw = marked.parse(props.content, { async: false }) as string
+    return DOMPurify.sanitize(raw)
   })
 
   return (

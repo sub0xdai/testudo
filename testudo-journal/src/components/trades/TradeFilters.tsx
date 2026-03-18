@@ -48,7 +48,7 @@ export function TradeFilters(props: {
           placeholder="TAG"
           value={props.filters.tag ?? ''}
           onInput={(e) => props.onChange({ ...props.filters, tag: e.currentTarget.value || undefined })}
-          class="w-24 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary focus-ring"
+          class="w-24 px-2 py-1 bg-container-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary"
         />
       </label>
 

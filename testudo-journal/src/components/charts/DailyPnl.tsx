@@ -6,8 +6,9 @@ import { fetchDailyPnl } from '../../api/client'
 import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
 
 export function DailyPnl() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchDailyPnl)
+  const { filters, setFilters } = useFilters()
+  const [data, { refetch }] = createResource(filters, fetchDailyPnl)
+  const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   let container!: HTMLDivElement
   let chart: IChartApi | undefined
@@ -64,7 +65,7 @@ export function DailyPnl() {
   })
 
   return (
-    <ChartContainer title="DAILY P&L" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="DAILY P&L" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div ref={container!} />
     </ChartContainer>
   )

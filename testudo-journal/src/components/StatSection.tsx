@@ -1,5 +1,10 @@
 import { For } from 'solid-js'
-import type { StatItem } from './StatCard'
+
+export interface StatItem {
+  label: string
+  value: string
+  colorClass?: string
+}
 
 interface StatSectionProps {
   title: string

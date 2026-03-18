@@ -81,7 +81,7 @@ export function SymbolSearch(props: {
   return (
     <div class="relative">
       <button
-        class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded flex items-center gap-1.5 hover:border-text-secondary transition-colors min-w-[120px] text-left focus-visible:border-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-main-bg"
+        class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded flex items-center gap-1.5 hover:border-text-secondary transition-colors min-w-[120px] text-left"
         onClick={() => hasSymbols() && openDropdown()}
         aria-haspopup="listbox"
         aria-expanded={open()}
@@ -102,7 +102,7 @@ export function SymbolSearch(props: {
               ref={inputRef}
               type="text"
               placeholder="Search symbols..."
-              class="w-full bg-container-bg border border-container-border text-text-primary font-mono text-xs px-2 py-1.5 rounded focus-visible:border-text-secondary focus-visible:outline-none placeholder:text-text-tertiary"
+              class="w-full bg-container-bg border border-container-border text-text-primary font-mono text-xs px-2 py-1.5 rounded placeholder:text-text-tertiary"
               value={search()}
               onInput={(e) => handleInput(e.currentTarget.value)}
               onKeyDown={onKeyDown}

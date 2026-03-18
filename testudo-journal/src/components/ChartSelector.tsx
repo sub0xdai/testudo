@@ -24,7 +24,8 @@ export function ChartSelector() {
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
-          class="font-mono text-xs border border-container-border bg-elevated text-text-primary px-3 py-1.5 focus-ring"
+          class="font-mono text-xs border border-container-border bg-elevated text-text-primary px-3 py-1.5"
+          aria-label="Select chart type"
         >
           {CHART_OPTIONS.map((opt) => (
             <option value={opt.value}>{opt.label}</option>

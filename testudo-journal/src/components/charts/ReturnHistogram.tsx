@@ -8,8 +8,9 @@ import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, BarController)
 
 export function ReturnHistogram() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchReturnDistribution)
+  const { filters, setFilters } = useFilters()
+  const [data, { refetch }] = createResource(filters, fetchReturnDistribution)
+  const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   let canvas!: HTMLCanvasElement
   let chart: Chart<'bar'> | undefined
@@ -65,7 +66,7 @@ export function ReturnHistogram() {
   })
 
   return (
-    <ChartContainer title="RETURN DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="RETURN DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div class="h-56"><canvas ref={canvas!} /></div>
     </ChartContainer>
   )

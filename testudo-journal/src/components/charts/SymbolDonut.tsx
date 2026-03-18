@@ -8,8 +8,9 @@ import { TAG_PALETTE, CHART_BG } from '../../lib/tokens'
 Chart.register(ArcElement, Tooltip, Legend, DoughnutController)
 
 export function SymbolDonut() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchSymbolBreakdown)
+  const { filters, setFilters } = useFilters()
+  const [data, { refetch }] = createResource(filters, fetchSymbolBreakdown)
+  const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   let canvas!: HTMLCanvasElement
   let chart: Chart<'doughnut'> | undefined
@@ -53,7 +54,7 @@ export function SymbolDonut() {
   })
 
   return (
-    <ChartContainer title="SYMBOL DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="SYMBOL DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div class="h-56"><canvas ref={canvas!} /></div>
     </ChartContainer>
   )

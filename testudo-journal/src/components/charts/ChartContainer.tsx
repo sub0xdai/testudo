@@ -7,6 +7,9 @@ interface ChartContainerProps {
   empty: boolean
   error?: string
   class?: string
+  hasActiveFilters?: boolean
+  onClearFilters?: () => void
+  onRetry?: () => void
   children: JSX.Element
 }
 
@@ -39,13 +42,34 @@ export function ChartContainer(props: ChartContainerProps) {
               FAILED TO LOAD
             </span>
             <p class="font-mono text-xs text-text-tertiary mt-1">{props.error}</p>
+            <Show when={props.onRetry}>
+              <button
+                class="mt-3 font-mono text-xs text-text-secondary hover:text-text-primary transition-colors border border-container-border px-3 py-1.5 rounded"
+                onClick={props.onRetry}
+              >
+                Retry
+              </button>
+            </Show>
           </div>
         </div>
       </Show>
 
       <Show when={!props.loading && !props.error && props.empty}>
-        <div class="flex items-center justify-center h-48">
-          <div class="font-mono text-xs text-text-tertiary">NO DATA</div>
+        <div class="flex flex-col items-center justify-center h-48 text-center">
+          <p class="font-mono text-xs text-text-tertiary mb-1">
+            No {props.title.toLowerCase()} data
+          </p>
+          <Show when={props.hasActiveFilters}>
+            <p class="font-mono text-xs text-text-tertiary mb-3">
+              Try adjusting your filters
+            </p>
+            <button
+              class="font-mono text-xs text-text-secondary hover:text-text-primary transition-colors"
+              onClick={props.onClearFilters}
+            >
+              Clear filters
+            </button>
+          </Show>
         </div>
       </Show>
 

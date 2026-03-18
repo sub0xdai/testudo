@@ -182,7 +182,7 @@ export function JournalTimeline() {
         <label class="flex items-center gap-1.5">
           <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Type</span>
           <select
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
             value={typeFilter()}
             onChange={(e) => setTypeFilter(e.currentTarget.value)}
           >
@@ -195,7 +195,7 @@ export function JournalTimeline() {
         <label class="flex items-center gap-1.5">
           <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
           <select
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
             value={tagFilter()}
             onChange={(e) => setTagFilter(e.currentTarget.value)}
           >
@@ -210,7 +210,7 @@ export function JournalTimeline() {
           <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">From</span>
           <input
             type="date"
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
             value={dateFrom()}
             onInput={(e) => setDateFrom(e.currentTarget.value)}
           />
@@ -219,7 +219,7 @@ export function JournalTimeline() {
           <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">To</span>
           <input
             type="date"
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary focus-ring"
+            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
             value={dateTo()}
             onInput={(e) => setDateTo(e.currentTarget.value)}
           />

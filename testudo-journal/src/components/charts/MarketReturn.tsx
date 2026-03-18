@@ -8,8 +8,9 @@ import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, BarController)
 
 export function MarketReturn() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchSymbolBreakdown)
+  const { filters, setFilters } = useFilters()
+  const [data, { refetch }] = createResource(filters, fetchSymbolBreakdown)
+  const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   let canvas!: HTMLCanvasElement
   let chart: Chart<'bar'> | undefined
@@ -73,7 +74,7 @@ export function MarketReturn() {
   })
 
   return (
-    <ChartContainer title="MARKET RETURN" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="MARKET RETURN" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div class="h-56"><canvas ref={canvas!} /></div>
     </ChartContainer>
   )

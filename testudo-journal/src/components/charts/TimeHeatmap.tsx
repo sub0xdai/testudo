@@ -17,8 +17,9 @@ function intensityColor(count: number, maxCount: number): string {
 }
 
 export function TimeHeatmap() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchTimeDistribution)
+  const { filters, setFilters } = useFilters()
+  const [data, { refetch }] = createResource(filters, fetchTimeDistribution)
+  const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   function grid() {
     const d = data()
@@ -42,7 +43,7 @@ export function TimeHeatmap() {
   }
 
   return (
-    <ChartContainer title="TIME DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="TIME DISTRIBUTION" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div class="overflow-x-auto">
         <div class="min-w-[500px]">
           {/* Hour labels */}

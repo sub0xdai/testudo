@@ -8,8 +8,9 @@ import { CHART_BG, signalGreenAlpha, signalRedAlpha } from '../../lib/tokens'
 Chart.register(PointElement, LinearScale, Tooltip, ScatterController)
 
 export function DurationScatter() {
-  const { filters } = useFilters()
-  const [data] = createResource(filters, fetchDurationProfit)
+  const { filters, setFilters } = useFilters()
+  const [data, { refetch }] = createResource(filters, fetchDurationProfit)
+  const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   let canvas!: HTMLCanvasElement
   let chart: Chart<'scatter'> | undefined
@@ -79,7 +80,7 @@ export function DurationScatter() {
   })
 
   return (
-    <ChartContainer title="DURATION / PROFIT" loading={data.loading} empty={!data()?.data?.length}>
+    <ChartContainer title="DURATION / PROFIT" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div class="h-56"><canvas ref={canvas!} /></div>
     </ChartContainer>
   )

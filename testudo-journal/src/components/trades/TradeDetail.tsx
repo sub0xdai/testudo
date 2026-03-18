@@ -280,7 +280,7 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                     }}
                     onBlur={() => { if (notesDirty()) saveNotes() }}
                     placeholder="Quick note..."
-                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none focus-ring"
+                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none"
                   />
                   <Show when={notesDirty()}>
                     <button

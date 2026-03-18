@@ -1,4 +1,4 @@
-import { Show, For } from 'solid-js'
+import { Show, For, createSignal, onCleanup } from 'solid-js'
 import type { JournalEntry, JournalTag } from '../../api/client'
 import { MarkdownPreview } from './MarkdownPreview'
 import { TagBadge } from '../trades/TagBadge'
@@ -26,6 +26,21 @@ export function EntryCard(props: {
   onDelete: () => void
 }) {
   const typeStyle = () => TYPE_STYLES[props.entry.entry_type] ?? TYPE_STYLES['note']
+
+  const [confirmDelete, setConfirmDelete] = createSignal(false)
+  let deleteTimer: number | undefined
+
+  function handleDeleteClick() {
+    if (confirmDelete()) {
+      props.onDelete()
+      setConfirmDelete(false)
+    } else {
+      setConfirmDelete(true)
+      deleteTimer = window.setTimeout(() => setConfirmDelete(false), 3000)
+    }
+  }
+
+  onCleanup(() => clearTimeout(deleteTimer))
 
   return (
     <div class="bg-container-bg border border-container-border rounded-lg overflow-hidden hover:border-container-border/80 transition-colors">
@@ -84,10 +99,14 @@ export function EntryCard(props: {
             [Edit]
           </button>
           <button
-            class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors"
-            onClick={props.onDelete}
+            class={`font-mono text-xs transition-colors ${
+              confirmDelete()
+                ? 'text-signal-red'
+                : 'text-text-tertiary hover:text-signal-red'
+            }`}
+            onClick={handleDeleteClick}
           >
-            [Delete]
+            {confirmDelete() ? '[Confirm?]' : '[Delete]'}
           </button>
         </div>
       </div>

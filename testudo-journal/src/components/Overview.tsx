@@ -4,7 +4,7 @@ import { StatSection } from './StatSection'
 import { HeroEquityCurve } from './HeroEquityCurve'
 import { ChartSelector } from './ChartSelector'
 import { PageSubHeader } from './PageSubHeader'
-import type { StatItem } from './StatCard'
+import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, streakSign } from '../lib/formatters'
@@ -12,7 +12,7 @@ import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, s
 export function Overview() {
   const { filters } = useFilters()
 
-  const [stats] = createResource(filters, fetchOverview)
+  const [stats, { refetch: refetchStats }] = createResource(filters, fetchOverview)
   const [equity] = createResource(filters, fetchEquityCurve)
 
   function accountItems(): StatItem[] {
@@ -103,7 +103,13 @@ export function Overview() {
       <Show when={stats.error}>
         <div role="alert" aria-live="assertive" class="bg-elevated border border-container-border p-8 text-center">
           <p class="font-mono text-signal-red text-sm mb-2">FAILED TO LOAD STATS</p>
-          <p class="font-mono text-text-tertiary text-xs">{String(stats.error)}</p>
+          <p class="font-mono text-text-tertiary text-xs mb-4">{String(stats.error)}</p>
+          <button
+            class="font-mono text-xs text-text-secondary hover:text-text-primary transition-colors border border-container-border px-3 py-1.5 rounded"
+            onClick={() => refetchStats()}
+          >
+            Retry
+          </button>
         </div>
       </Show>
 
