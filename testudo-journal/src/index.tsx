@@ -16,7 +16,7 @@ const root = document.getElementById('root')
 render(
   () => (
     <FilterProvider>
-      <Router base="/journal" root={Layout}>
+      <Router base="/desk" root={Layout}>
         <Route path="/" component={Overview} />
         <Route path="/charts" component={Charts} />
         <Route path="/trades" component={Trades} />
