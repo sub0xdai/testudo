@@ -136,14 +136,14 @@ export default function QuickTrade() {
         />
       </div>
 
-      {/* Side Toggle */}
+      {/* Side Toggle — UXP-17: white invert for decorative toggle */}
       <div>
         <label class="block text-[11px] text-text-secondary font-sans font-medium mb-1.5" id="qt-side-label">Side</label>
         <div class="flex gap-2" role="radiogroup" aria-labelledby="qt-side-label">
           <button
-            class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider rounded-xl ${
+            class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider ${
               side() === "LONG"
-                ? "bg-signal-green/15 text-signal-green border-signal-green/30"
+                ? "bg-white text-[#050505] border-white"
                 : "text-text-dim"
             }`}
             role="radio"
@@ -152,9 +152,9 @@ export default function QuickTrade() {
             data-testid="qt-side-long"
           >LONG</button>
           <button
-            class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider rounded-xl ${
+            class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider ${
               side() === "SHORT"
-                ? "bg-signal-red/15 text-signal-red border-signal-red/30"
+                ? "bg-white text-[#050505] border-white"
                 : "text-text-dim"
             }`}
             role="radio"
@@ -211,7 +211,7 @@ export default function QuickTrade() {
         </div>
       </div>
 
-      {/* R:R */}
+      {/* R:R — trading data, KEEP signal colors */}
       <Show when={isValid()}>
         <div class="flex justify-between items-center py-2 border-t border-border-subtle">
           <span class="text-[12px] text-text-secondary font-sans font-semibold tracking-wider uppercase">R:R</span>
@@ -219,7 +219,7 @@ export default function QuickTrade() {
         </div>
       </Show>
 
-      {/* Balance Summary */}
+      {/* Balance Summary — trading data, KEEP signal colors */}
       <Show when={isValid() && available() !== null}>
         <div class="space-y-1 py-2 border-t border-border-subtle">
           <div class="flex justify-between">
@@ -237,7 +237,7 @@ export default function QuickTrade() {
         </div>
       </Show>
 
-      {/* Status message */}
+      {/* Status message — trading feedback, KEEP signal colors */}
       <Show when={status()}>
         {(s) => (
           <div role="alert" class={`text-[12px] font-sans font-semibold text-center py-1 ${
@@ -248,13 +248,11 @@ export default function QuickTrade() {
         )}
       </Show>
 
-      {/* Confirm Button */}
+      {/* Confirm Button — UXP-17: white outline instead of signal colors */}
       <button
-        class={`w-full py-3 text-[13px] font-bold tracking-widest rounded-xl transition-colors ${
+        class={`w-full py-3 text-[13px] font-bold tracking-widest transition-colors ${
           isValid() && !submitting()
-            ? side() === "LONG"
-              ? "bg-signal-green/15 text-signal-green border-signal-green/30 hover:bg-signal-green/25"
-              : "bg-signal-red/15 text-signal-red border-signal-red/30 hover:bg-signal-red/25"
+            ? "border-white text-white hover:bg-white hover:text-[#050505]"
             : "opacity-30 cursor-not-allowed"
         }`}
         onClick={handleConfirm}

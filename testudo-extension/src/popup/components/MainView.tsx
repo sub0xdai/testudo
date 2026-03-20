@@ -139,7 +139,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
               Balance
             </span>
             <Show when={exchangeName()}>
-              <span class="text-[10px] font-bold text-accent-green bg-accent-green/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
+              {/* UXP-17: white badge instead of accent-green */}
+              <span class="text-[10px] font-bold text-white bg-white/10 px-1.5 py-0.5 tracking-wider uppercase">
                 {exchangeName()}
               </span>
             </Show>
@@ -155,12 +156,13 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                   when={!balanceLoading() && noExchange()}
                   fallback={<span class="balance-loading text-white/60">$--</span>}
                 >
-                  <div class="mx-4 my-3 p-4 rounded-lg border border-white/10 text-center">
+                  <div class="mx-4 my-3 p-4 border border-white/10 text-center">
                     <p class="text-sm text-text-dim mb-2">
                       {exchangeMode() === "dex" ? "No wallet connected" : "No CEX exchange linked"}
                     </p>
+                    {/* UXP-17: white outline instead of accent bg */}
                     <button
-                      class="px-4 py-1.5 text-xs font-medium rounded bg-accent/20 text-accent hover:bg-accent/30 transition border-0 cursor-pointer"
+                      class="px-4 py-1.5 text-xs font-medium border border-white text-white hover:bg-white hover:text-[#050505] transition cursor-pointer"
                       onClick={() => window.open(`${WEB_APP_URL}/account?source=extension`, "_blank")}
                       data-testid="connect-account-cta"
                     >
@@ -177,7 +179,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
           <Show when={balanceLoading()}>
             <span class="text-[12px] text-text-dim font-sans mt-1">Fetching balance...</span>
           </Show>
-          {/* Delta line: available / locked breakdown */}
+          {/* Delta line: available / locked breakdown — KEEP: trading data */}
           <Show when={!balanceLoading() && available() !== null}>
             <div class="flex items-center gap-2 mt-2">
               <span class="text-[12px] text-signal-green font-medium">

@@ -16,14 +16,14 @@ function StaticArcGauge() {
     if (t < 0.5) {
       const p = t / 0.5;
       const r = Math.round(16 + (245 - 16) * p);
-      const g = Math.round(185 + (158 - 185) * p);
-      const b = Math.round(129 + (11 - 129) * p);
+      const g = Math.round(185 + (245 - 185) * p);
+      const b = Math.round(129 + (245 - 129) * p);
       return `rgb(${r},${g},${b})`;
     }
     const p = (t - 0.5) / 0.5;
-    const r = Math.round(245 + (239 - 245) * p);
-    const g = Math.round(158 + (68 - 158) * p);
-    const b = Math.round(11 + (68 - 11) * p);
+    const r = Math.round(245 + (245 - 245) * p);
+    const g = Math.round(245 + (245 - 245) * p);
+    const b = Math.round(245 + (245 - 245) * p);
     return `rgb(${r},${g},${b})`;
   }
 
@@ -60,7 +60,7 @@ function StaticArcGauge() {
 
 function MockToggleCard(props: { label: string; detail: string }) {
   return (
-    <div class="bg-bg-panel rounded-xl border border-border-subtle">
+    <div class="bg-bg-panel border border-border-subtle">
       <div class="flex items-center justify-between px-4 py-3">
         <span class="text-[13px] font-sans font-semibold text-text-primary">{props.label}</span>
         <span class="text-[11px] font-mono font-bold text-signal-green tracking-wider">ON</span>
@@ -75,14 +75,15 @@ function MockToggleCard(props: { label: string; detail: string }) {
 export default function LoginPreview() {
   return (
     <div class="flex flex-col h-full bg-bg-core text-text-primary font-mono">
-      {/* Mock header bar */}
+      {/* Mock header bar — UXP-17: white dots instead of signal-green */}
       <div class="flex items-center justify-between px-5 py-2.5">
         <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-signal-green" />
-          <span class="w-2 h-2 rounded-full bg-signal-green opacity-50" />
+          <span class="w-2 h-2 rounded-full bg-white" />
+          <span class="w-2 h-2 rounded-full bg-white opacity-50" />
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-[11px] font-mono font-bold text-accent-green bg-accent-green/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
+          {/* UXP-17: white badge instead of accent-green */}
+          <span class="text-[11px] font-mono font-bold text-white bg-white/10 px-1.5 py-0.5 tracking-wider uppercase">
             WOO
           </span>
           <span class="text-text-dim">
@@ -100,7 +101,8 @@ export default function LoginPreview() {
         <div class="flex flex-col items-center pt-5 pb-2">
           <div class="flex items-center gap-2 mb-2">
             <span class="text-[12px] font-medium text-white/70 tracking-widest uppercase">Balance</span>
-            <span class="text-[10px] font-bold text-accent-green bg-accent-green/15 px-1.5 py-0.5 rounded tracking-wider uppercase">
+            {/* UXP-17: white badge instead of accent-green */}
+            <span class="text-[10px] font-bold text-white bg-white/10 px-1.5 py-0.5 tracking-wider uppercase">
               WOO
             </span>
           </div>
@@ -111,6 +113,7 @@ export default function LoginPreview() {
             $12,450.00
           </span>
           <div class="flex items-center gap-2 mt-2">
+            {/* KEEP: available balance is trading data */}
             <span class="text-[12px] text-signal-green font-medium">$10,200.00 available</span>
             <span class="text-text-dim">&middot;</span>
             <span class="text-[12px] text-text-secondary">$2,250.00 locked</span>
@@ -121,14 +124,15 @@ export default function LoginPreview() {
 
       {/* Mock tab bar */}
       <nav>
-        <div class="flex mx-5 my-2 bg-bg-panel rounded-xl p-1">
-          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide rounded-lg text-center tab-active">Trade</span>
-          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide rounded-lg text-center tab-inactive">Quick</span>
-          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide rounded-lg text-center tab-inactive">
+        <div class="flex mx-5 my-2 bg-bg-panel p-1">
+          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-active">Trade</span>
+          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">Quick</span>
+          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">
             Positions
-            <span class="ml-1.5 text-[11px] font-mono text-signal-green bg-signal-green/10 px-1.5 py-0.5 rounded-full">2</span>
+            {/* UXP-17: white count badge */}
+            <span class="ml-1.5 text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">2</span>
           </span>
-          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide rounded-lg text-center tab-inactive">Account</span>
+          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">Account</span>
         </div>
       </nav>
 

@@ -58,7 +58,7 @@ export default function AuthSection(props: {
         <Show when={props.onBack}>
           <div class="w-full max-w-[440px] flex items-center gap-3 mb-2">
             <button
-              class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-white/5"
+              class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-white/5"
               onClick={props.onBack}
               data-testid="auth-back"
               title="Back"
@@ -95,7 +95,7 @@ export default function AuthSection(props: {
             <Show when={error()}>
               <div
                 role="alert"
-                class="text-[12px] text-signal-red font-mono py-2.5 px-3.5 mb-4 border border-signal-red/20 bg-signal-red/5 rounded-md"
+                class="text-[12px] text-signal-red font-mono py-2.5 px-3.5 mb-4 border border-signal-red/20 bg-signal-red/5"
                 data-testid="login-error"
               >
                 {error()}
@@ -126,9 +126,10 @@ export default function AuthSection(props: {
                 <label for="field-password" class="text-[11px] text-text-secondary font-mono font-medium tracking-wider uppercase">
                   Password
                 </label>
+                {/* UXP-17: white hover instead of signal-green */}
                 <button
                   type="button"
-                  class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-signal-green transition-colors border-0 bg-transparent p-0"
+                  class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-white transition-colors border-0 bg-transparent p-0"
                   onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
                 >
                   FORGOT?
@@ -165,13 +166,11 @@ export default function AuthSection(props: {
               </div>
             </div>
 
-            {/* Submit */}
+            {/* Submit — UXP-17: white outline instead of signal-green bg */}
             <button
-              class="w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono border-0 mt-6 flex items-center justify-center gap-2.5 rounded-md bg-signal-green hover:bg-signal-green/90"
-              style={{
-                color: "#000000",
-                opacity: loading() ? "0.7" : "1",
-              }}
+              class={`w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono mt-6 flex items-center justify-center gap-2.5 border border-white text-white hover:bg-white hover:text-[#050505] transition-colors ${
+                loading() ? "opacity-70" : ""
+              }`}
               onClick={handleSubmit}
               disabled={loading()}
               data-testid="login-btn"
@@ -180,8 +179,8 @@ export default function AuthSection(props: {
                 <span
                   class="inline-block w-3.5 h-3.5 border-2 animate-spin"
                   style={{
-                    "border-color": "rgba(11,14,17,0.3)",
-                    "border-top-color": "var(--color-bg-core)",
+                    "border-color": "rgba(255,255,255,0.3)",
+                    "border-top-color": "white",
                     "border-radius": "50%",
                   }}
                 />
@@ -192,7 +191,7 @@ export default function AuthSection(props: {
             {/* Register link */}
             <div class="flex flex-col gap-2 mt-5">
               <button
-                class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-white rounded-md"
+                class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-white"
                 onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/register` })}
                 data-testid="create-account-btn"
               >

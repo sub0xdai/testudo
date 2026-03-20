@@ -40,7 +40,7 @@ export default function HeaderBar(props: HeaderBarProps) {
           <ExchangeToggle />
           <ExchangeSelector />
           <button
-            class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
+            class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-bg-elevated"
             onClick={props.onOpenSettings}
             data-testid="settings-btn"
             title="Settings"
@@ -55,7 +55,7 @@ export default function HeaderBar(props: HeaderBarProps) {
       <Show when={sidecarStatus() === "unreachable"}>
         <div
           role="alert"
-          class="mx-5 mb-2 px-3 py-2 rounded-lg text-[11px] font-sans font-medium text-signal-orange bg-signal-orange/10 border border-signal-orange/20"
+          class="mx-5 mb-2 px-3 py-2 text-[11px] font-sans font-medium text-signal-orange bg-signal-orange/10 border border-signal-orange/20"
           data-testid="sidecar-warning-banner"
         >
           Live trading unavailable — exchange connection lost

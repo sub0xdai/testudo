@@ -45,7 +45,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
       {/* Header */}
       <div class="flex items-center gap-3 px-5 py-3.5">
         <button
-          class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-primary hover:bg-bg-elevated"
+          class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-bg-elevated"
           onClick={props.onBack}
           data-testid="settings-back"
           title="Back"
@@ -133,7 +133,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
               <div class="space-y-3">
                 <p class="text-xs text-text-dim font-sans">Paper mode — no account</p>
                 <button
-                  class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
+                  class="w-full py-2.5 text-xs font-bold tracking-widest font-sans border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
                   onClick={handleLogout}
                   data-testid="sign-in-btn"
                 >
@@ -146,8 +146,9 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
               <p class="text-[13px] font-mono text-text-secondary" data-testid="settings-email">
                 {auth.email()}
               </p>
+              {/* UXP-17: white outline instead of signal-red */}
               <button
-                class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-signal-red text-signal-red hover:bg-signal-red hover:text-white"
+                class="w-full py-2.5 text-xs font-bold tracking-widest font-sans border-white/30 text-white hover:bg-white hover:text-[#050505]"
                 onClick={handleLogout}
                 data-testid="logout-btn"
               >
@@ -164,7 +165,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
               Exchange Accounts
             </label>
             <button
-              class="w-full py-2.5 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
+              class="w-full py-2.5 text-xs font-bold tracking-widest font-sans border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
               onClick={() => {
                 const base = webUrl().replace(/\/$/, '');
                 window.open(`${base}/account`, '_blank');
@@ -178,7 +179,7 @@ export default function SettingsView(props: { onBack: () => void; onLogout: () =
             </p>
 
             <button
-              class="w-full py-2.5 mt-3 text-xs font-bold tracking-widest font-sans rounded-xl border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
+              class="w-full py-2.5 mt-3 text-xs font-bold tracking-widest font-sans border-accent-steel/40 text-accent-steel hover:bg-accent-steel/10"
               onClick={() => {
                 const base = webUrl().replace(/\/$/, '');
                 window.open(`${base}/account`, '_blank');

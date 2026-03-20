@@ -144,7 +144,7 @@ export default function TradeManagement() {
 
       {/* Break-even Toggle Card */}
       <div
-        class={`bg-bg-panel rounded-xl border transition-colors duration-200 ${
+        class={`bg-bg-panel border transition-colors duration-200 ${
           preset().break_even_enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="be-slider"
@@ -154,7 +154,7 @@ export default function TradeManagement() {
             Break-Even Trigger
           </span>
           <button
-            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans rounded-full border ${
+            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans border ${
               preset().break_even_enabled
                 ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"
@@ -208,7 +208,7 @@ export default function TradeManagement() {
 
       {/* Trailing Stop Toggle Card */}
       <div
-        class={`bg-bg-panel rounded-xl border transition-colors duration-200 ${
+        class={`bg-bg-panel border transition-colors duration-200 ${
           preset().trailing_stop.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="trailing-card"
@@ -218,7 +218,7 @@ export default function TradeManagement() {
             Trailing Stop
           </span>
           <button
-            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans rounded-full border ${
+            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans border ${
               preset().trailing_stop.enabled
                 ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"
@@ -287,7 +287,7 @@ export default function TradeManagement() {
 
       {/* Partial TP Toggle Card */}
       <div
-        class={`bg-bg-panel rounded-xl border transition-colors duration-200 ${
+        class={`bg-bg-panel border transition-colors duration-200 ${
           preset().partial_tp.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
         }`}
         data-testid="partial-tp-card"
@@ -297,7 +297,7 @@ export default function TradeManagement() {
             Partial Take Profit
           </span>
           <button
-            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans rounded-full border ${
+            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans border ${
               preset().partial_tp.enabled
                 ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
                 : "text-text-dim border-border-subtle bg-bg-elevated"

@@ -113,11 +113,11 @@ export default function ExchangeSelector() {
   return (
     <Show when={filteredAccounts().length > 0}>
       <div class="relative" data-exchange-selector data-testid="exchange-selector">
-        {/* Trigger pill */}
+        {/* Trigger pill — UXP-17: white instead of accent-green */}
         <button
-          class={`flex items-center gap-1.5 px-2.5 py-1 min-h-[44px] text-[11px] font-bold tracking-wider border-0 rounded-md font-sans transition-colors ${
+          class={`flex items-center gap-1.5 px-2.5 py-1 min-h-[44px] text-[11px] font-bold tracking-wider border-0 font-sans transition-colors ${
             activeAccount()
-              ? "bg-accent-green/10 text-accent-green hover:bg-accent-green/20"
+              ? "bg-white/10 text-white hover:bg-white/20"
               : "bg-bg-panel text-text-dim hover:text-text-secondary"
           }`}
           onClick={() => setOpen(!open())}
@@ -135,7 +135,7 @@ export default function ExchangeSelector() {
 
         {/* Dropdown */}
         <Show when={open()}>
-          <div role="listbox" aria-label="Exchange accounts" class="absolute top-full right-0 mt-1 min-w-[140px] bg-bg-elevated border border-border-subtle rounded-lg shadow-lg z-50 overflow-hidden">
+          <div role="listbox" aria-label="Exchange accounts" class="absolute top-full right-0 mt-1 min-w-[140px] bg-bg-elevated border border-border-subtle shadow-lg z-50 overflow-hidden">
             <For each={filteredAccounts()}>
               {(account) => (
                 <button
@@ -143,15 +143,16 @@ export default function ExchangeSelector() {
                   aria-selected={account.id === activeId()}
                   class={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-[11px] font-sans border-0 transition-colors ${
                     account.id === activeId()
-                      ? "bg-accent-green/10 text-accent-green font-bold"
+                      ? "bg-white/10 text-white font-bold"
                       : "text-text-secondary hover:bg-bg-panel hover:text-text-primary"
                   }`}
                   onClick={() => selectAccount(account.id)}
                 >
+                  {/* UXP-17: white indicator dot */}
                   <span
                     aria-hidden="true"
                     class={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                      account.id === activeId() ? "bg-accent-green" : "bg-text-dim"
+                      account.id === activeId() ? "bg-white" : "bg-text-dim"
                     }`}
                   />
                   <span class="truncate">{capitalize(account.exchange_name)}</span>

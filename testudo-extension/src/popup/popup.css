@@ -26,27 +26,28 @@
 }
 
 /* --- Design Tokens (Tailwind v4 @theme) --- */
+/* UXP-17: Monochrome-first — pure blacks, gray borders, signal colors for data only */
 @theme {
-    --color-bg-core: #0b0e11;
-    --color-bg-panel: #151921;
-    --color-bg-elevated: #1e2329;
-    --color-bg-hover: #2b3139;
-    --color-bg-surface: #181e25;
-    --color-border-subtle: rgba(255, 255, 255, 0.05);
-    --color-border-active: rgba(255, 255, 255, 0.1);
-    --color-border-grid: rgba(255, 255, 255, 0.06);
+    --color-bg-core: #050505;
+    --color-bg-panel: #0A0A0A;
+    --color-bg-elevated: #111111;
+    --color-bg-hover: #1A1A1A;
+    --color-bg-surface: #0F0F0F;
+    --color-border-subtle: #3F3F46;
+    --color-border-active: #52525B;
+    --color-border-grid: #27272A;
     --color-accent-steel: #94a3b8;
-    --color-signal-green: #4ade80;
-    --color-signal-green-dim: rgba(74, 222, 128, 0.12);
-    --color-signal-red: #ef4444;
-    --color-signal-red-dim: rgba(239, 68, 68, 0.12);
+    --color-signal-green: #00FF41;
+    --color-signal-green-dim: rgba(0, 255, 65, 0.12);
+    --color-signal-red: #FF003C;
+    --color-signal-red-dim: rgba(255, 0, 60, 0.12);
     --color-signal-orange: #f59e0b;
     --color-signal-orange-dim: rgba(245, 158, 11, 0.12);
-    --color-accent-green: #4ade80;
+    --color-accent-green: #00FF41;
     --color-signal-blue: #3b82f6;
     --color-text-primary: #ffffff;
-    --color-text-secondary: #9ca3af;
-    --color-text-dim: #6b7280;
+    --color-text-secondary: #888888;
+    --color-text-dim: #555555;
     --font-family-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
     --font-family-mono: "Space Mono", ui-monospace, monospace;
 }
@@ -103,7 +104,7 @@
     ) {
         background: var(--color-bg-elevated);
         border: 1px solid var(--color-border-subtle);
-        border-radius: 12px;
+        border-radius: 0;
         color: var(--color-text-primary);
         font-family: var(--font-family-sans);
         font-size: 14px;
@@ -135,7 +136,7 @@
     select {
         background: var(--color-bg-elevated);
         border: 1px solid var(--color-border-subtle);
-        border-radius: 12px;
+        border-radius: 0;
         color: var(--color-text-primary);
         font-family: var(--font-family-sans);
         font-size: 14px;
@@ -167,11 +168,11 @@
         color: var(--color-text-primary);
     }
 
-    /* --- Button Base Styles --- */
+    /* --- Button Base Styles (UXP-17: white-bordered outline, invert on hover) --- */
     button {
         background: transparent;
         border: 1px solid var(--color-border-subtle);
-        border-radius: 10px;
+        border-radius: 0;
         color: var(--color-text-primary);
         font-family: var(--font-family-sans);
         letter-spacing: 0.04em;
@@ -183,8 +184,9 @@
     }
 
     button:hover {
-        background: var(--color-bg-elevated);
-        border-color: var(--color-border-active);
+        background: #ffffff;
+        border-color: #ffffff;
+        color: #050505;
     }
 
     button:disabled {
@@ -309,7 +311,7 @@
     .value-input-box {
         background: var(--color-bg-elevated);
         border: 1px solid var(--color-border-subtle);
-        border-radius: 10px;
+        border-radius: 0;
         padding: 4px 10px;
         display: inline-flex;
         align-items: center;
@@ -380,21 +382,17 @@
     .info-grid-cell {
         background: var(--color-bg-panel);
         border: 1px solid var(--color-border-subtle);
-        border-radius: 12px;
+        border-radius: 0;
         padding: 12px 14px;
     }
 
     /* --- Position Card Accents --- */
     .accent-long {
         border-left: 3px solid var(--color-signal-green);
-        border-top-left-radius: 3px;
-        border-bottom-left-radius: 3px;
     }
 
     .accent-short {
         border-left: 3px solid var(--color-signal-red);
-        border-top-left-radius: 3px;
-        border-bottom-left-radius: 3px;
     }
 
     /* --- Gradient Text Utility --- */
@@ -420,9 +418,9 @@
         z-index: 0;
         background: linear-gradient(
             to bottom,
-            rgba(21, 25, 33, 0.92) 0%,
-            rgba(21, 25, 33, 0.8) 50%,
-            rgba(21, 25, 33, 0.65) 100%
+            rgba(10, 10, 10, 0.92) 0%,
+            rgba(10, 10, 10, 0.8) 50%,
+            rgba(10, 10, 10, 0.65) 100%
         );
         pointer-events: none;
     }
@@ -446,11 +444,11 @@
     }
 
     .login-glass-card {
-        background: rgba(11, 14, 17, 0.82);
+        background: rgba(5, 5, 5, 0.85);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 16px;
+        border: 1px solid #3F3F46;
+        border-radius: 0;
         box-shadow:
             0 8px 32px rgba(0, 0, 0, 0.4),
             inset 0 1px 0 rgba(255, 255, 255, 0.04);

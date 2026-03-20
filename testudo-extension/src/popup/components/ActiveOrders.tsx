@@ -170,8 +170,9 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         </h2>
         <div class="flex items-center gap-1">
           <Show when={trades().length > 0}>
+            {/* UXP-17: white outline instead of signal-red */}
             <button
-              class="px-2 py-1 text-[9px] font-bold tracking-wider text-signal-red bg-signal-red/10 rounded hover:bg-signal-red/20 transition-colors disabled:opacity-50"
+              class="px-2 py-1 text-[9px] font-bold tracking-wider text-white border border-white/30 hover:bg-white hover:text-[#050505] transition-colors disabled:opacity-50"
               onClick={handleCleanup}
               disabled={cleaning()}
               title="Cancel all tracked positions"
@@ -180,7 +181,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
             </button>
           </Show>
           <button
-            class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
+            class="icon-btn border-0 text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
             onClick={fetchTrades}
             title="Refresh"
             data-testid="refresh-orders"
@@ -218,11 +219,12 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <Show when={!exchangeLoading() && exchangeData() && (exchangeData()!.positions.length > 0 || exchangeData()!.open_orders.length > 0)}>
           <div class="mb-3">
             <div class="flex items-center gap-2 mb-3">
-              <span class="w-2 h-2 rounded-full bg-signal-blue" />
+              {/* UXP-17: white indicator dot */}
+              <span class="w-2 h-2 rounded-full bg-white" />
               <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
                 From Exchange
               </span>
-              <span class="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded">
+              <span class="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 ">
                 {exchangeData()!.exchange_name}
               </span>
             </div>
@@ -237,17 +239,19 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                 <span class="text-[11px] text-text-dim font-sans font-medium uppercase tracking-wider">
                   Positions
                 </span>
-                <span class="text-[11px] font-mono text-signal-blue bg-signal-blue/10 px-1.5 py-0.5 rounded-full">
+                {/* UXP-17: white count badge */}
+                <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
                   {exchangeData()!.positions.length}
                 </span>
               </div>
               <div class="space-y-2">
                 <For each={exchangeData()!.positions}>
                   {(pos) => (
-                    <div class="bg-bg-panel border border-border-subtle rounded-xl p-3">
+                    <div class="bg-bg-panel border border-border-subtle p-3">
                       <div class="flex items-center justify-between mb-1">
                         <span class="text-[13px] font-mono font-medium text-text-primary">{pos.symbol}</span>
-                        <span class={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded ${pos.side.toLowerCase() === "long" ? "text-signal-green bg-signal-green/10" : "text-signal-red bg-signal-red/10"}`}>
+                        {/* KEEP: position side is trading data */}
+                        <span class={`text-[11px] font-mono font-semibold px-2 py-0.5 ${pos.side.toLowerCase() === "long" ? "text-signal-green bg-signal-green/10" : "text-signal-red bg-signal-red/10"}`}>
                           {pos.side}
                         </span>
                       </div>
@@ -261,6 +265,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                           <p class="text-text-secondary">{pos.entry_price}</p>
                         </div>
                         <div>
+                          {/* KEEP: P&L is trading data */}
                           <span class="text-text-dim">uPnL</span>
                           <p class={parseFloat(pos.unrealized_pnl) >= 0 ? "text-signal-green" : "text-signal-red"}>
                             {parseFloat(pos.unrealized_pnl) >= 0 ? "+" : ""}{parseFloat(pos.unrealized_pnl).toFixed(2)}
@@ -270,8 +275,9 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                       <div class="flex items-center justify-end mt-2 pt-2 border-t border-border-subtle">
                         <Show when={confirmingClose()?.symbol === pos.symbol && confirmingClose()?.side === pos.side}
                           fallback={
+                            /* UXP-17: white outline for close button */
                             <button
-                              class="px-3 py-1.5 text-[10px] font-bold tracking-wider text-signal-red bg-signal-red/10 rounded-md hover:bg-signal-red/20 transition-colors disabled:opacity-50"
+                              class="px-3 py-1.5 text-[10px] font-bold tracking-wider text-white border border-white/30 hover:bg-white hover:text-[#050505] transition-colors disabled:opacity-50"
                               onClick={() => setConfirmingClose(pos)}
                               disabled={closingPosition() === pos.symbol}
                             >
@@ -283,14 +289,15 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                             <span class="text-[10px] text-text-dim font-mono">
                               Close {pos.contracts} {pos.symbol}?
                             </span>
+                            {/* UXP-17: white outline for confirm YES */}
                             <button
-                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-signal-red bg-signal-red/20 rounded hover:bg-signal-red/30 transition-colors"
+                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-white border border-white/30 hover:bg-white hover:text-[#050505] transition-colors"
                               onClick={() => handleClosePosition(pos)}
                             >
                               YES
                             </button>
                             <button
-                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-text-dim bg-bg-elevated rounded hover:bg-bg-panel transition-colors"
+                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-text-dim bg-bg-elevated hover:bg-bg-panel transition-colors"
                               onClick={() => setConfirmingClose(null)}
                             >
                               NO
@@ -311,21 +318,23 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                 <span class="text-[11px] text-text-dim font-sans font-medium uppercase tracking-wider">
                   Open Orders
                 </span>
-                <span class="text-[11px] font-mono text-signal-orange bg-signal-orange/10 px-1.5 py-0.5 rounded-full">
+                {/* UXP-17: white count badge */}
+                <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
                   {exchangeData()!.open_orders.length}
                 </span>
               </div>
               <div class="space-y-2">
                 <For each={exchangeData()!.open_orders}>
                   {(order) => (
-                    <div class="bg-bg-panel border border-border-subtle rounded-xl p-3">
+                    <div class="bg-bg-panel border border-border-subtle p-3">
                       <div class="flex items-center justify-between mb-1">
                         <span class="text-[12px] font-mono text-text-primary">{order.symbol}</span>
                         <div class="flex items-center gap-1.5">
-                          <span class={`text-[10px] font-mono px-1.5 py-0.5 rounded ${order.side.toLowerCase() === "buy" ? "text-signal-green bg-signal-green/10" : "text-signal-red bg-signal-red/10"}`}>
+                          {/* KEEP: order side is trading data */}
+                          <span class={`text-[10px] font-mono px-1.5 py-0.5 ${order.side.toLowerCase() === "buy" ? "text-signal-green bg-signal-green/10" : "text-signal-red bg-signal-red/10"}`}>
                             {order.side}
                           </span>
-                          <span class="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded">
+                          <span class="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 ">
                             {order.type}
                           </span>
                         </div>
@@ -359,7 +368,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         {/* True empty state — no tracked trades AND no exchange positions */}
         <Show when={!exchangeLoading() && (!exchangeData() || (exchangeData()!.positions.length === 0 && exchangeData()!.open_orders.length === 0))}>
           <div class="flex flex-col items-center justify-center py-12" data-testid="empty-positions">
-            <div class="w-12 h-12 rounded-2xl bg-bg-panel border border-border-subtle flex items-center justify-center mb-4">
+            <div class="w-12 h-12 bg-bg-panel border border-border-subtle flex items-center justify-center mb-4">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-text-dim">
                 <path d="M3 3h18v18H3z" />
                 <path d="M3 9h18M9 21V9" />
@@ -367,7 +376,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
             </div>
             <p class="text-[14px] font-sans font-medium text-text-secondary">No active positions</p>
             <p class="text-[12px] text-text-dim font-sans mt-2 text-center leading-relaxed">
-              Place a trade from TradingView (<kbd class="text-[11px] font-mono text-text-secondary bg-bg-elevated px-1.5 py-0.5 rounded border border-border-subtle">Alt+X</kbd>)
+              Place a trade from TradingView (<kbd class="text-[11px] font-mono text-text-secondary bg-bg-elevated px-1.5 py-0.5 border border-border-subtle">Alt+X</kbd>)
             </p>
           </div>
         </Show>
@@ -377,11 +386,13 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       <Show when={!loading() && !error() && positions().length > 0}>
         <div class="mb-4">
           <div class="flex items-center gap-2 mb-3">
-            <span class="w-2 h-2 rounded-full bg-signal-green" />
+            {/* UXP-17: white indicator dot */}
+            <span class="w-2 h-2 rounded-full bg-white" />
             <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
               Active
             </span>
-            <span class="text-[11px] font-mono text-signal-green bg-signal-green/10 px-1.5 py-0.5 rounded-full">
+            {/* UXP-17: white count badge */}
+            <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
               {positions().length}
             </span>
           </div>
@@ -403,11 +414,13 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       <Show when={!loading() && !error() && pendingOrders().length > 0}>
         <div>
           <div class="flex items-center gap-2 mb-3">
-            <span class="w-2 h-2 rounded-full bg-signal-orange animate-pulse" />
+            {/* UXP-17: white indicator dot */}
+            <span class="w-2 h-2 rounded-full bg-white animate-pulse" />
             <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
               Pending
             </span>
-            <span class="text-[11px] font-mono text-signal-orange bg-signal-orange/10 px-1.5 py-0.5 rounded-full">
+            {/* UXP-17: white count badge */}
+            <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
               {pendingOrders().length}
             </span>
           </div>
