@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: '/charts', label: 'ANALYSIS' },
   { path: '/trades', label: 'TRADES' },
   { path: '/journal', label: 'JOURNAL' },
+  { path: null, label: 'HOME', external: true },
 ]
 
 export function Layout(props: { children: JSX.Element }) {
@@ -23,15 +24,24 @@ export function Layout(props: { children: JSX.Element }) {
           <nav class="hidden md:flex items-center gap-6">
             <For each={NAV_ITEMS}>
               {(item) => (
-                <A
-                  href={item.path}
-                  end={item.path === '/'}
-                  class="font-mono text-xs tracking-wider transition-colors"
-                  activeClass="text-text-primary"
-                  inactiveClass="text-text-secondary hover:text-text-primary"
-                >
-                  {item.label}
-                </A>
+                item.external ? (
+                  <a
+                    href="/"
+                    class="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <A
+                    href={item.path!}
+                    end={item.path === '/'}
+                    class="font-mono text-xs tracking-wider transition-colors"
+                    activeClass="text-text-primary"
+                    inactiveClass="text-text-secondary hover:text-text-primary"
+                  >
+                    {item.label}
+                  </A>
+                )
               )}
             </For>
           </nav>
@@ -52,16 +62,26 @@ export function Layout(props: { children: JSX.Element }) {
           <nav class="md:hidden border-t border-container-border py-2 bg-main-bg/95 backdrop-blur-sm">
             <For each={NAV_ITEMS}>
               {(item) => (
-                <A
-                  href={item.path}
-                  end={item.path === '/'}
-                  class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider transition-colors flex items-center"
-                  activeClass="text-text-primary"
-                  inactiveClass="text-text-secondary hover:text-text-primary"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {item.label}
-                </A>
+                item.external ? (
+                  <a
+                    href="/"
+                    class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider text-text-secondary hover:text-text-primary transition-colors flex items-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <A
+                    href={item.path!}
+                    end={item.path === '/'}
+                    class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider transition-colors flex items-center"
+                    activeClass="text-text-primary"
+                    inactiveClass="text-text-secondary hover:text-text-primary"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                  </A>
+                )
               )}
             </For>
           </nav>

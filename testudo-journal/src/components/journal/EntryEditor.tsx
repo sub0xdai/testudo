@@ -221,7 +221,7 @@ export function EntryEditor(props: {
         role="dialog"
         aria-modal="true"
         aria-labelledby="entry-editor-title"
-        class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-4xl max-h-[95vh] flex flex-col ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
+        class={`relative bg-elevated border border-container-border w-full max-w-4xl max-h-[95vh] flex flex-col ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
       >
         {/* Compact metadata strip */}
         <div class="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-container-border flex-shrink-0">

@@ -80,7 +80,7 @@ export function TagManager(props: {
         role="dialog"
         aria-modal="true"
         aria-labelledby="tag-manager-title"
-        class={`relative bg-elevated border border-container-border rounded-lg w-full max-w-md p-6 ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
+        class={`relative bg-elevated border border-container-border w-full max-w-md p-6 ${closing() ? 'animate-scale-out' : 'animate-scale-in'}`}
       >
         <div class="flex items-center justify-between mb-6">
           <h2 id="tag-manager-title" class="font-display text-sm tracking-section text-text-primary uppercase">Tag Manager</h2>

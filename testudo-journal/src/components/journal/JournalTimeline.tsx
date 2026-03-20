@@ -178,7 +178,7 @@ export function JournalTimeline() {
       </div>
 
       {/* Filters */}
-      <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border rounded-lg">
+      <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border">
         <label class="flex items-center gap-1.5">
           <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Type</span>
           <select
@@ -240,7 +240,7 @@ export function JournalTimeline() {
         <div class="space-y-3">
           <For each={[1, 2, 3]}>
             {() => (
-              <div class="bg-container-bg border border-container-border rounded-lg overflow-hidden">
+              <div class="bg-container-bg border border-container-border overflow-hidden">
                 {/* Header bar with left accent */}
                 <div class="px-4 py-2 flex items-center gap-3 border-b border-container-border" style={{ 'border-left': '3px solid rgba(148, 163, 184, 0.3)' }}>
                   <SkeletonBar width="56px" height="18px" />

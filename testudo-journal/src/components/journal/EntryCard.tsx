@@ -43,7 +43,7 @@ export function EntryCard(props: {
   onCleanup(() => clearTimeout(deleteTimer))
 
   return (
-    <div class="bg-container-bg border border-container-border rounded-lg overflow-hidden hover:border-container-border/80 transition-colors">
+    <div class="bg-container-bg border border-container-border overflow-hidden hover:border-container-border/80 transition-colors">
       {/* Header bar with type badge */}
       <div
         class="px-4 py-2 flex items-center gap-3 border-b border-container-border"

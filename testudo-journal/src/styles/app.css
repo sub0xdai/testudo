@@ -60,8 +60,8 @@ body {
 .markdown-preview ul, .markdown-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
 .markdown-preview li { margin: 0.25rem 0; }
 .markdown-preview blockquote { border-left: 2px solid var(--color-container-border, #3F3F46); padding-left: 1rem; color: var(--color-text-secondary, #888888); margin: 0.5rem 0; }
-.markdown-preview code { font-family: 'Space Mono', monospace; background: var(--color-container-bg, #1A1A1A); padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.85em; }
-.markdown-preview pre { background: var(--color-container-bg, #1A1A1A); border: 1px solid var(--color-container-border, #3F3F46); border-radius: 6px; padding: 1rem; margin: 0.5rem 0; overflow-x: auto; }
+.markdown-preview code { font-family: 'Space Mono', monospace; background: var(--color-container-bg, #1A1A1A); padding: 0.15rem 0.4rem; border-radius: 0; font-size: 0.85em; }
+.markdown-preview pre { background: var(--color-container-bg, #1A1A1A); border: 1px solid var(--color-container-border, #3F3F46); border-radius: 0; padding: 1rem; margin: 0.5rem 0; overflow-x: auto; }
 .markdown-preview pre code { background: none; padding: 0; }
 .markdown-preview a { color: var(--color-accent-steel, #94A3B8); text-decoration: underline; }
 .markdown-preview a:hover { opacity: 0.8; }
