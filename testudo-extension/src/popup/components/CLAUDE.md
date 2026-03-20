@@ -23,4 +23,10 @@
 |----|------|---|-------|------|
 | #2981 | 2:23 PM | 🟣 | Active orders component displays 124-line positions list with WebSocket updates and cancel actions | ~775 |
 | #2977 | 2:21 PM | 🟣 | Main popup view implements 389-line MainView.tsx with balance panel, risk gauge, and four-tab interface | ~382 |
+
+### Mar 19, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4866 | 3:53 PM | 🔴 | Fixed extension balance display to recognize USDC as settlement currency | ~331 |
 </claude-mem-context>

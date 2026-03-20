@@ -56,7 +56,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     setBalanceLoading(false);
   }
 
-  const usdt = () => balance()?.find((b) => b.asset === "USDT");
+  const usdt = () => balance()?.find((b) => b.asset === "USDT" || b.asset === "USDC");
   const available = () => (usdt() ? parseFloat(usdt()!.available) : null);
   const locked = () => (usdt() ? parseFloat(usdt()!.locked) : null);
   const total = () => {

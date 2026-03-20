@@ -6,6 +6,16 @@ import { ORDER_EVENT_STYLES } from "./types";
 
 export type ModalResult = "confirm" | "dismiss";
 
+// --- Shared toast CSS (used by both modal Shadow DOM and standalone toasts) ---
+
+const TOAST_CSS = `
+  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .toast.visible { opacity: 1; }
+  .toast.success { background: rgba(0, 255, 65, 0.15); color: #00FF41; border: 1px solid rgba(0, 255, 65, 0.4); backdrop-filter: blur(12px); }
+  .toast.error { background: rgba(255, 0, 60, 0.85); color: #fff; border: 1px solid rgba(255, 0, 60, 0.9); }
+  .toast.info { background: #111111; color: #888888; border: 1px solid #3F3F46; backdrop-filter: blur(12px); }
+`;
+
 // --- Styles (injected into Shadow DOM) ---
 
 const fontBaseUrl = typeof chrome !== "undefined" && chrome.runtime?.getURL
@@ -135,11 +145,7 @@ const MODAL_STYLES = `
   .balance-value.margin { color: var(--color-signal-orange); }
   .balance-value.risk { color: var(--color-signal-red); }
   .balance-value.muted { color: var(--color-text-dim); font-style: italic; font-size: 12px; }
-  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-  .toast.visible { opacity: 1; }
-  .toast.success { background: rgba(0, 255, 65, 0.1); color: var(--color-signal-green); border: 1px solid rgba(0, 255, 65, 0.3); }
-  .toast.error { background: rgba(255, 0, 60, 0.1); color: var(--color-signal-red); border: 1px solid rgba(255, 0, 60, 0.3); }
-  .toast.info { background: var(--color-bg-elevated); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+  ${TOAST_CSS}
 `;
 
 // --- Modal lifecycle ---
@@ -238,18 +244,8 @@ export function isVisible(): boolean {
 // --- Toast Notifications ---
 
 const TOAST_STYLES = `
-  .toast {
-    position: fixed; top: 20px; right: 20px;
-    padding: 12px 18px; border-radius: 6px;
-    font-family: 'Space Grotesk', system-ui, sans-serif;
-    font-size: 13px; font-weight: 600; color: #fff;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    z-index: 100000; opacity: 0; transition: opacity 0.3s;
-  }
-  .toast.visible { opacity: 1; }
-  .toast.success { background: rgba(0, 255, 65, 0.1); color: #00FF41; border: 1px solid rgba(0, 255, 65, 0.3); }
-  .toast.error { background: rgba(255, 0, 60, 0.1); color: #FF003C; border: 1px solid rgba(255, 0, 60, 0.3); }
-  .toast.info { background: #111111; color: #888888; border: 1px solid #3F3F46; }
+  .toast { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  ${TOAST_CSS}
 `;
 
 export type ToastStyle = "success" | "error" | "info";
@@ -284,6 +280,7 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
 
   requestAnimationFrame(() => toast.classList.add("visible"));
 
+  const duration = type === "error" ? 5000 : 3000;
   setTimeout(() => {
     toast.classList.remove("visible");
     setTimeout(() => {
@@ -291,7 +288,7 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
       const idx = activeToasts.indexOf(host);
       if (idx !== -1) activeToasts.splice(idx, 1);
     }, 300);
-  }, 2000);
+  }, duration);
 }
 
 export function showOrderToast(eventType: string, message: string): void {

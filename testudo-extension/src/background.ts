@@ -529,6 +529,34 @@ async function cancelTrade(tradeId: string, retried = false): Promise<BackendRes
   }
 }
 
+async function cleanupTrades(retried = false): Promise<BackendResponse> {
+  const settings = await getSettings();
+  const url = `${settings.backendUrl}/api/v1/trades/cleanup`;
+
+  const tokens = await getTokens();
+  if (!tokens || tokens.expires_in <= 0) {
+    return { success: false, error: "Authentication required" };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${tokens.access_token}` },
+    });
+    if (!response.ok) {
+      if (response.status === 401 && !retried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) return cleanupTrades(true);
+      }
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { success: false, error: msg };
+  }
+}
+
 // --- Registration (EXT-15 FR-2) ---
 
 async function register(email: string, password: string): Promise<{ success: boolean; error?: string }> {
@@ -1198,6 +1226,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   if (msg.type === "CANCEL_TRADE") {
     return cancelTrade(msg.tradeId);
+  }
+
+  if (msg.type === "CLEANUP_TRADES") {
+    return cleanupTrades();
   }
 
   // EXT-19: GET_BALANCE always fetches live balance from active exchange

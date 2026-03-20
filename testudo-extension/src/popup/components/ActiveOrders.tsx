@@ -18,6 +18,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   const [cancelling, setCancelling] = createSignal("");
   const [closingPosition, setClosingPosition] = createSignal("");
   const [confirmingClose, setConfirmingClose] = createSignal<ExchangePosition | null>(null);
+  const [cleaning, setCleaning] = createSignal(false);
 
   async function fetchExchangePositions() {
     setExchangeLoading(true);
@@ -107,6 +108,27 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
     }
   }
 
+  async function handleCleanup() {
+    setCleaning(true);
+    setCancelError("");
+    try {
+      const response = await browser.runtime.sendMessage({ type: "CLEANUP_TRADES" }) as {
+        success: boolean;
+        error?: string;
+      };
+      if (response.success) {
+        fetchTrades();
+        props.onBalanceRefresh?.();
+      } else {
+        setCancelError(response.error || "Cleanup failed");
+      }
+    } catch {
+      setCancelError("Failed to cleanup");
+    } finally {
+      setCleaning(false);
+    }
+  }
+
   let fetchTradesTimer: ReturnType<typeof setTimeout> | null = null;
 
   function handleMessage(message: unknown) {
@@ -146,19 +168,31 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <h2 class="text-[13px] text-text-primary font-sans font-medium m-0">
           Positions
         </h2>
-        <button
-          class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
-          onClick={fetchTrades}
-          title="Refresh"
-          data-testid="refresh-orders"
-        >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-            <path d="M21 21v-5h-5" />
-          </svg>
-        </button>
+        <div class="flex items-center gap-1">
+          <Show when={trades().length > 0}>
+            <button
+              class="px-2 py-1 text-[9px] font-bold tracking-wider text-signal-red bg-signal-red/10 rounded hover:bg-signal-red/20 transition-colors disabled:opacity-50"
+              onClick={handleCleanup}
+              disabled={cleaning()}
+              title="Cancel all tracked positions"
+            >
+              {cleaning() ? "..." : "CLEAR ALL"}
+            </button>
+          </Show>
+          <button
+            class="icon-btn border-0 rounded-lg text-text-dim hover:text-text-secondary hover:bg-bg-elevated"
+            onClick={fetchTrades}
+            title="Refresh"
+            data-testid="refresh-orders"
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+              <path d="M21 21v-5h-5" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <Show when={loading()}>
