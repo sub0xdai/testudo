@@ -260,17 +260,18 @@ async function apiRequest(
   }
 }
 
-async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
-  const result = await apiRequest("/api/v1/auth/login", {
-    method: "POST", body: { email, password },
-  });
+async function authenticate(endpoint: string, email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  const result = await apiRequest(endpoint, { method: "POST", body: { email, password } });
   if (!result.ok) return { success: false, error: result.error };
-
   const parsed = LoginResponseSchema.safeParse(result.raw);
   if (!parsed.success) return { success: false, error: "Unexpected server response" };
   await storeTokens(parsed.data.tokens);
   scheduleTokenRefresh(parsed.data.tokens.expires_in);
   return { success: true };
+}
+
+function login(email: string, password: string) {
+  return authenticate("/api/v1/auth/login", email, password);
 }
 
 let refreshInFlight: Promise<boolean> | null = null;
@@ -474,17 +475,8 @@ async function cleanupTrades(): Promise<BackendResponse> {
 
 // --- Registration (EXT-15 FR-2) ---
 
-async function register(email: string, password: string): Promise<{ success: boolean; error?: string }> {
-  const result = await apiRequest("/api/v1/auth/register", {
-    method: "POST", body: { email, password },
-  });
-  if (!result.ok) return { success: false, error: result.error };
-
-  const parsed = LoginResponseSchema.safeParse(result.raw);
-  if (!parsed.success) return { success: false, error: "Unexpected server response" };
-  await storeTokens(parsed.data.tokens);
-  scheduleTokenRefresh(parsed.data.tokens.expires_in);
-  return { success: true };
+function register(email: string, password: string) {
+  return authenticate("/api/v1/auth/register", email, password);
 }
 
 // --- Password Reset (AUD-08 FR-5) ---
