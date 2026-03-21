@@ -198,35 +198,79 @@ async function clearTokens(): Promise<void> {
   await browser.storage.local.remove(["accessToken", "refreshToken", "tokenExpiry"]);
 }
 
-async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+// --- Shared API Request Helper ---
+
+type AuthMode = "hard" | "soft" | "none";
+
+interface ApiOpts {
+  method?: string;
+  body?: unknown;
+  auth?: AuthMode;
+  authError?: string;
+  timeout?: number;
+}
+
+type ApiResult = { ok: true; raw: unknown } | { ok: false; error: string };
+
+async function apiRequest(
+  endpoint: string,
+  opts: ApiOpts = {},
+  retried = false,
+): Promise<ApiResult> {
+  const { method, body, auth = "none", authError, timeout } = opts;
   const settings = await getSettings();
+  const tokens = await getTokens();
+
+  if (auth === "hard" && (!tokens || tokens.expires_in <= 0)) {
+    return { ok: false, error: authError || "Authentication required" };
+  }
+
+  const headers: Record<string, string> = {};
+  if (auth === "hard" || (auth === "soft" && tokens && tokens.expires_in > 0)) {
+    headers["Authorization"] = `Bearer ${tokens!.access_token}`;
+  }
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) init.body = JSON.stringify(body);
+  if (timeout) init.signal = AbortSignal.timeout(timeout);
+
   try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    const response = await fetch(`${settings.backendUrl}${endpoint}`, init);
 
     if (!response.ok) {
+      if (response.status === 401 && !retried && auth !== "none") {
+        const canRetry = auth === "hard" || (tokens && tokens.expires_in > 0);
+        if (canRetry) {
+          const refreshed = await refreshAccessToken();
+          if (refreshed) return apiRequest(endpoint, opts, true);
+        }
+      }
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
-      if (!json.success) {
-        return { success: false, error: `HTTP ${response.status}` };
-      }
-      return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
+      const errorMsg = json.success ? (json.data.error || json.data.message) : undefined;
+      return { ok: false, error: errorMsg || `HTTP ${response.status}` };
     }
 
-    const parsed = LoginResponseSchema.safeParse(await response.json());
-    if (!parsed.success) {
-      return { success: false, error: "Unexpected server response" };
-    }
-    await storeTokens(parsed.data.tokens);
-    scheduleTokenRefresh(parsed.data.tokens.expires_in);
-    return { success: true };
+    const raw = await response.json().catch(() => ({}));
+    return { ok: true, raw };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Login failed";
-    return { success: false, error: msg };
+    const msg = err instanceof Error ? err.message : "Network error";
+    return { ok: false, error: msg };
   }
+}
+
+async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  const result = await apiRequest("/api/v1/auth/login", {
+    method: "POST", body: { email, password },
+  });
+  if (!result.ok) return { success: false, error: result.error };
+
+  const parsed = LoginResponseSchema.safeParse(result.raw);
+  if (!parsed.success) return { success: false, error: "Unexpected server response" };
+  await storeTokens(parsed.data.tokens);
+  scheduleTokenRefresh(parsed.data.tokens.expires_in);
+  return { success: true };
 }
 
 let refreshInFlight: Promise<boolean> | null = null;
@@ -370,78 +414,34 @@ async function migrateActiveExchangeId(): Promise<void> {
 
 let tradeInFlight = false;
 
-async function executeTrade(payload: RuntimeTradePayload, retried = false): Promise<BackendResponse> {
-  if (tradeInFlight && !retried) {
-    return { success: false, error: "Trade already in progress" };
-  }
-  if (!retried) tradeInFlight = true;
+async function executeTrade(payload: RuntimeTradePayload): Promise<BackendResponse> {
+  if (tradeInFlight) return { success: false, error: "Trade already in progress" };
+  tradeInFlight = true;
 
   try {
-  const settings = await getSettings();
-  const url = `${settings.backendUrl}/api/v1/trades`;
+    const activeExchangeId = payload.exchange_account_id || await getActiveExchangeId();
+    const body: Record<string, unknown> = {
+      symbol: normalizeSymbol(payload.symbol),
+      side: mapSide(payload.side),
+      entry_price: payload.entry.toString(),
+      stop_loss_price: payload.stop.toString(),
+      take_profit_price: payload.target.toString(),
+      management: payload.management,
+    };
+    if (activeExchangeId) body.exchange_account_id = activeExchangeId;
 
-  const activeExchangeId = payload.exchange_account_id || await getActiveExchangeId();
-
-  const body: Record<string, unknown> = {
-    symbol: normalizeSymbol(payload.symbol),
-    side: mapSide(payload.side),
-    entry_price: payload.entry.toString(),
-    stop_loss_price: payload.stop.toString(),
-    take_profit_price: payload.target.toString(),
-    management: payload.management,
-  };
-
-  if (activeExchangeId) {
-    body.exchange_account_id = activeExchangeId;
-  }
-
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required — please log in" };
-  }
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${tokens.access_token}`,
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
+    const result = await apiRequest("/api/v1/trades", {
+      method: "POST", body, auth: "hard",
+      authError: "Authentication required — please log in",
     });
+    if (!result.ok) return { success: false, error: result.error };
 
-    if (!response.ok) {
-      const raw = await response.json().catch(() => ({}));
-      console.error("[executeTrade] HTTP error:", response.status, raw);
-      const json = ErrorResponseSchema.safeParse(raw);
-
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return executeTrade(payload, true);
-        }
-      }
-      const errorMsg = json.success ? (json.data.error || json.data.message) : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    const raw = await response.json().catch(() => ({}));
-    console.log("[executeTrade] response:", JSON.stringify(raw).slice(0, 500));
-    const normalized = normalizeBackendAck(raw);
+    const normalized = normalizeBackendAck(result.raw);
     const validated = BackendResponseSchema.safeParse(normalized);
-    if (!validated.success) {
-      console.error("[executeTrade] validation failed:", validated.error.message);
-      return { success: false, error: "Malformed trade response" };
-    }
+    if (!validated.success) return { success: false, error: "Malformed trade response" };
     return validated.data;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
   } finally {
-    if (!retried) tradeInFlight = false;
+    tradeInFlight = false;
   }
 }
 
@@ -490,131 +490,49 @@ async function listTrades(retried = false): Promise<{ success: boolean; data?: T
   }
 }
 
-async function cancelTrade(tradeId: string, retried = false): Promise<BackendResponse> {
-  const settings = await getSettings();
-  const url = `${settings.backendUrl}/api/v1/trades/${tradeId}`;
+async function cancelTrade(tradeId: string): Promise<BackendResponse> {
+  const result = await apiRequest(`/api/v1/trades/${tradeId}`, {
+    method: "DELETE", auth: "hard",
+  });
+  if (!result.ok) return { success: false, error: result.error };
 
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required" };
-  }
-
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${tokens.access_token}`,
-  };
-
-  try {
-    const response = await fetch(url, { method: "DELETE", headers });
-    if (!response.ok) {
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return cancelTrade(tradeId, true);
-      }
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      const errorMsg = json.success ? json.data.error : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    const raw = await response.json().catch(() => ({}));
-    const normalized = normalizeBackendAck(raw);
-    const validated = BackendResponseSchema.safeParse(normalized);
-    if (!validated.success) {
-      return { success: false, error: "Malformed cancel response" };
-    }
-    return validated.data;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const normalized = normalizeBackendAck(result.raw);
+  const validated = BackendResponseSchema.safeParse(normalized);
+  if (!validated.success) return { success: false, error: "Malformed cancel response" };
+  return validated.data;
 }
 
-async function cleanupTrades(retried = false): Promise<BackendResponse> {
-  const settings = await getSettings();
-  const url = `${settings.backendUrl}/api/v1/trades/cleanup`;
-
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required" };
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${tokens.access_token}` },
-    });
-    if (!response.ok) {
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return cleanupTrades(true);
-      }
-      return { success: false, error: `HTTP ${response.status}` };
-    }
-    return { success: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+async function cleanupTrades(): Promise<BackendResponse> {
+  const result = await apiRequest("/api/v1/trades/cleanup", {
+    method: "POST", auth: "hard",
+  });
+  if (!result.ok) return { success: false, error: result.error };
+  return { success: true };
 }
 
 // --- Registration (EXT-15 FR-2) ---
 
 async function register(email: string, password: string): Promise<{ success: boolean; error?: string }> {
-  const settings = await getSettings();
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+  const result = await apiRequest("/api/v1/auth/register", {
+    method: "POST", body: { email, password },
+  });
+  if (!result.ok) return { success: false, error: result.error };
 
-    if (!response.ok) {
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      if (!json.success) {
-        return { success: false, error: `HTTP ${response.status}` };
-      }
-      return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
-    }
-
-    const parsed = LoginResponseSchema.safeParse(await response.json());
-    if (!parsed.success) {
-      return { success: false, error: "Unexpected server response" };
-    }
-    await storeTokens(parsed.data.tokens);
-    scheduleTokenRefresh(parsed.data.tokens.expires_in);
-    return { success: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Registration failed";
-    return { success: false, error: msg };
-  }
+  const parsed = LoginResponseSchema.safeParse(result.raw);
+  if (!parsed.success) return { success: false, error: "Unexpected server response" };
+  await storeTokens(parsed.data.tokens);
+  scheduleTokenRefresh(parsed.data.tokens.expires_in);
+  return { success: true };
 }
 
 // --- Password Reset (AUD-08 FR-5) ---
 
 async function forgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
-  const settings = await getSettings();
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/auth/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-
-    if (!response.ok) {
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      if (!json.success) {
-        return { success: false, error: `HTTP ${response.status}` };
-      }
-      return { success: false, error: json.data.message || json.data.error || `HTTP ${response.status}` };
-    }
-
-    return { success: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Request failed";
-    return { success: false, error: msg };
-  }
+  const result = await apiRequest("/api/v1/auth/forgot-password", {
+    method: "POST", body: { email },
+  });
+  if (!result.ok) return { success: false, error: result.error };
+  return { success: true };
 }
 
 // --- Exchange Account Management (EXT-15 FR-4) ---
@@ -686,223 +604,76 @@ async function listExchangeAccounts(retried = false): Promise<{ success: boolean
   }
 }
 
-async function addExchangeAccount(payload: AddExchangeAccountPayload, retried = false): Promise<{ success: boolean; data?: ExchangeAccount; error?: string }> {
-  const settings = await getSettings();
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  }
+async function addExchangeAccount(payload: AddExchangeAccountPayload): Promise<{ success: boolean; data?: ExchangeAccount; error?: string }> {
+  const result = await apiRequest("/api/v1/exchanges/accounts", {
+    method: "POST", body: payload, auth: "soft",
+  });
+  if (!result.ok) return { success: false, error: result.error };
 
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return addExchangeAccount(payload, true);
-      }
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      const errorMsg = json.success ? json.data.error : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    const raw = await response.json().catch(() => ({}));
-    const json = AddExchangeAccountResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed add account response" };
-    }
-    return { success: true, data: json.data.data };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const json = AddExchangeAccountResponseSchema.safeParse(result.raw);
+  if (!json.success) return { success: false, error: "Malformed add account response" };
+  return { success: true, data: json.data.data };
 }
 
-async function deleteExchangeAccount(accountId: string, retried = false): Promise<{ success: boolean; error?: string }> {
-  const settings = await getSettings();
-  const headers: Record<string, string> = {};
-  const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  }
-
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts/${accountId}`, {
-      method: "DELETE",
-      headers,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return deleteExchangeAccount(accountId, true);
-      }
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      const errorMsg = json.success ? json.data.error : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    return { success: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+async function deleteExchangeAccount(accountId: string): Promise<{ success: boolean; error?: string }> {
+  const result = await apiRequest(`/api/v1/exchanges/accounts/${accountId}`, {
+    method: "DELETE", auth: "soft",
+  });
+  if (!result.ok) return { success: false, error: result.error };
+  return { success: true };
 }
 
-async function testExchangeConnection(accountId: string, retried = false): Promise<{ success: boolean; data?: TestConnectionResult; error?: string }> {
-  const settings = await getSettings();
-  const headers: Record<string, string> = {};
-  const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  }
+async function testExchangeConnection(accountId: string): Promise<{ success: boolean; data?: TestConnectionResult; error?: string }> {
+  const result = await apiRequest(`/api/v1/exchanges/accounts/${accountId}/test`, {
+    method: "POST", auth: "soft",
+  });
+  if (!result.ok) return { success: false, error: result.error };
 
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts/${accountId}/test`, {
-      method: "POST",
-      headers,
-    });
-    const raw = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const errJson = ErrorResponseSchema.safeParse(raw);
-      if (response.status === 401 && tokens && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return testExchangeConnection(accountId, true);
-      }
-      return { success: false, error: (errJson.success && errJson.data.error) || `HTTP ${response.status}` };
-    }
-
-    const json = TestConnectionResultSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed connection test response" };
-    }
-
-    return { success: true, data: json.data };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const json = TestConnectionResultSchema.safeParse(result.raw);
+  if (!json.success) return { success: false, error: "Malformed connection test response" };
+  return { success: true, data: json.data };
 }
 
 // --- EXT-19: Live Exchange Balance (always from active exchange) ---
 
-async function getLiveBalance(retried = false): Promise<{ success: boolean; data?: LiveBalanceResponse; error?: string }> {
+async function getLiveBalance(): Promise<{ success: boolean; data?: LiveBalanceResponse; error?: string }> {
   let activeId = await getActiveExchangeId();
   if (!activeId) {
     activeId = await ensureActiveExchange();
-    if (!activeId) {
-      return { success: false, error: "No active exchange selected" };
-    }
+    if (!activeId) return { success: false, error: "No active exchange selected" };
   }
 
-  const settings = await getSettings();
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required for live balance" };
-  }
+  const result = await apiRequest(`/api/v1/exchanges/accounts/${activeId}/balance`, {
+    auth: "hard", authError: "Authentication required for live balance", timeout: 10000,
+  });
+  if (!result.ok) return { success: false, error: result.error };
 
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${tokens.access_token}`,
-  };
+  const json = ExchangeBalanceApiResponseSchema.safeParse(result.raw);
+  if (!json.success) return { success: false, error: "Malformed balance response" };
 
-  try {
-    const response = await fetch(
-      `${settings.backendUrl}/api/v1/exchanges/accounts/${activeId}/balance`,
-      { headers, signal: AbortSignal.timeout(10000) },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return getLiveBalance(true);
-      }
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      const errorMsg = json.success ? (json.data.message || json.data.error) : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    const raw = await response.json().catch(() => ({}));
-    const json = ExchangeBalanceApiResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed balance response" };
-    }
-
-    const balances: BalanceResponse[] = json.data.balances.map((b) => ({
-      asset: b.asset,
-      available: b.free,
-      locked: b.used,
-    }));
-
-    return {
-      success: true,
-      data: {
-        exchange_name: json.data.exchange_name,
-        balances,
-      },
-    };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const balances: BalanceResponse[] = json.data.balances.map((b) => ({
+    asset: b.asset, available: b.free, locked: b.used,
+  }));
+  return { success: true, data: { exchange_name: json.data.exchange_name, balances } };
 }
 
 // --- Exchange Positions (live fallback) ---
 
-async function fetchExchangePositions(retried = false): Promise<{ success: boolean; data?: ExchangePositionsResponse; error?: string }> {
+async function fetchExchangePositions(): Promise<{ success: boolean; data?: ExchangePositionsResponse; error?: string }> {
   let activeId = await getActiveExchangeId();
   if (!activeId) {
     activeId = await ensureActiveExchange();
-    if (!activeId) {
-      return { success: false, error: "No active exchange selected" };
-    }
+    if (!activeId) return { success: false, error: "No active exchange selected" };
   }
 
-  const settings = await getSettings();
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required" };
-  }
+  const result = await apiRequest(`/api/v1/exchanges/accounts/${activeId}/positions`, {
+    auth: "hard", timeout: 15000,
+  });
+  if (!result.ok) return { success: false, error: result.error };
 
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${tokens.access_token}`,
-  };
-
-  try {
-    const response = await fetch(
-      `${settings.backendUrl}/api/v1/exchanges/accounts/${activeId}/positions`,
-      { headers, signal: AbortSignal.timeout(15000) },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return fetchExchangePositions(true);
-      }
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      const errorMsg = json.success ? (json.data.message || json.data.error) : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    const raw = await response.json().catch(() => ({}));
-    const json = ExchangePositionsApiResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed positions response" };
-    }
-
-    return { success: true, data: json.data };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const json = ExchangePositionsApiResponseSchema.safeParse(result.raw);
+  if (!json.success) return { success: false, error: "Malformed positions response" };
+  return { success: true, data: json.data };
 }
 
 // --- EXT-34: Close Exchange Position ---
@@ -911,52 +682,18 @@ async function closeExchangePosition(
   symbol: string,
   side: string,
   contracts: string,
-  retried = false,
 ): Promise<{ success: boolean; error?: string }> {
   let activeId = await getActiveExchangeId();
   if (!activeId) {
     activeId = await ensureActiveExchange();
-    if (!activeId) {
-      return { success: false, error: "No active exchange selected" };
-    }
+    if (!activeId) return { success: false, error: "No active exchange selected" };
   }
 
-  const settings = await getSettings();
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required" };
-  }
-
-  try {
-    const response = await fetch(
-      `${settings.backendUrl}/api/v1/exchanges/accounts/${activeId}/close-position`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${tokens.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ symbol, side, contracts }),
-        signal: AbortSignal.timeout(30000),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return closeExchangePosition(symbol, side, contracts, true);
-      }
-      const raw = await response.json().catch(() => ({}));
-      const json = ErrorResponseSchema.safeParse(raw);
-      const errorMsg = json.success ? (json.data.message || json.data.error) : undefined;
-      return { success: false, error: errorMsg || `HTTP ${response.status}` };
-    }
-
-    return { success: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const result = await apiRequest(`/api/v1/exchanges/accounts/${activeId}/close-position`, {
+    method: "POST", body: { symbol, side, contracts }, auth: "hard", timeout: 30000,
+  });
+  if (!result.ok) return { success: false, error: result.error };
+  return { success: true };
 }
 
 // --- Sidecar Health Polling (EXT-16 FR-2) ---
@@ -1139,8 +876,8 @@ function disconnectWebSocket(): void {
 let cachedContentTabs: browser.Tabs.Tab[] | null = null;
 const CONTENT_TAB_URLS = ["*://*.tradingview.com/*", "*://*.dexscreener.com/*", "*://*.gmx.io/*", "*://*.bybit.com/*"];
 
-browser.tabs.onCreated.addListener(() => { cachedContentTabs = null; });
-browser.tabs.onRemoved.addListener(() => { cachedContentTabs = null; });
+browser.tabs.onCreated?.addListener(() => { cachedContentTabs = null; });
+browser.tabs.onRemoved?.addListener(() => { cachedContentTabs = null; });
 
 async function getContentTabs(): Promise<browser.Tabs.Tab[]> {
   if (!cachedContentTabs) {
