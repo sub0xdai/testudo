@@ -6,6 +6,7 @@ import PositionCard from "./PositionCard";
 interface ActiveOrdersProps {
   onCountChange?: (activeCount: number, pendingCount: number) => void;
   onBalanceRefresh?: () => void;
+  isDex?: boolean;
 }
 
 export default function ActiveOrders(props: ActiveOrdersProps) {
@@ -403,6 +404,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                   trade={trade}
                   onCancel={handleCancel}
                   cancelling={cancelling() === trade.id}
+                  isDex={props.isDex}
                 />
               )}
             </For>
@@ -431,6 +433,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                   trade={trade}
                   onCancel={handleCancel}
                   cancelling={cancelling() === trade.id}
+                  isDex={props.isDex}
                 />
               )}
             </For>

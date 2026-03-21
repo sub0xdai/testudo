@@ -231,6 +231,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
               setPendingCount(pending);
             }}
             onBalanceRefresh={fetchBalance}
+            isDex={exchangeMode() === "dex"}
           />
           </div>
         </Show>

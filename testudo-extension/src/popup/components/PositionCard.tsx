@@ -5,6 +5,7 @@ interface PositionCardProps {
   trade: TradeGroupResponse;
   onCancel: (tradeId: string) => void;
   cancelling?: boolean;
+  isDex?: boolean;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -133,18 +134,29 @@ export default function PositionCard(props: PositionCardProps) {
             Trail: {props.trade.trailing_stop_enabled === true ? "ON" : "OFF"}
           </span>
         </div>
-        {/* UXP-17: white border instead of signal-red for cancel button */}
-        <button
-          class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans border-white ${
-            props.cancelling ? "opacity-50 cursor-wait" : "text-white hover:bg-white hover:text-[#050505]"
-          }`}
-          onClick={() => props.onCancel(props.trade.id)}
-          disabled={props.cancelling}
-          data-testid="cancel-order"
-          title="Cancel trade"
+        <Show
+          when={!props.isDex}
+          fallback={
+            <span
+              class="text-[9px] text-text-dim font-sans italic cursor-help"
+              title="Close positions directly on the exchange. The extension manages entry, SL, and TP placement."
+            >
+              manage on exchange
+            </span>
+          }
         >
-          {props.cancelling ? "..." : "CANCEL"}
-        </button>
+          <button
+            class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans border-white ${
+              props.cancelling ? "opacity-50 cursor-wait" : "text-white hover:bg-white hover:text-[#050505]"
+            }`}
+            onClick={() => props.onCancel(props.trade.id)}
+            disabled={props.cancelling}
+            data-testid="cancel-order"
+            title="Cancel trade"
+          >
+            {props.cancelling ? "..." : "CANCEL"}
+          </button>
+        </Show>
       </div>
     </div>
   );
