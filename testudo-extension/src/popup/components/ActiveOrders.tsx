@@ -48,8 +48,10 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       if (response.success && response.data) {
         setTrades(response.data);
         setError("");
-        // No auto-fallback to exchange positions — user can refresh manually
-        if (response.data.length > 0) {
+        if (response.data.length === 0) {
+          setCancelError(""); // Clear stale errors before fallback
+          fetchExchangePositions();
+        } else {
           setExchangeData(null);
         }
       } else {
