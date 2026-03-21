@@ -210,7 +210,7 @@ interface ApiOpts {
   timeout?: number;
 }
 
-type ApiResult = { ok: true; raw: unknown } | { ok: false; error: string };
+type ApiResult = { ok: true; raw: unknown } | { ok: false; error: string; httpError?: boolean };
 
 async function apiRequest(
   endpoint: string,
@@ -249,7 +249,7 @@ async function apiRequest(
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
       const errorMsg = json.success ? (json.data.error || json.data.message) : undefined;
-      return { ok: false, error: errorMsg || `HTTP ${response.status}` };
+      return { ok: false, error: errorMsg || `HTTP ${response.status}`, httpError: true };
     }
 
     const raw = await response.json().catch(() => ({}));
@@ -290,27 +290,21 @@ async function doRefresh(): Promise<boolean> {
   const tokens = await getTokens();
   if (!tokens) return false;
 
-  const settings = await getSettings();
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: tokens.refresh_token }),
-    });
+  const result = await apiRequest("/api/v1/auth/refresh", {
+    method: "POST",
+    body: { refresh_token: tokens.refresh_token },
+  });
 
-    if (!response.ok) {
-      await clearTokens();
-      return false;
-    }
-
-    const parsed = RefreshResponseSchema.safeParse(await response.json());
-    if (!parsed.success) return false;
-    await storeTokens(parsed.data.tokens);
-    scheduleTokenRefresh(parsed.data.tokens.expires_in);
-    return true;
-  } catch {
+  if (!result.ok) {
+    if (result.httpError) await clearTokens();
     return false;
   }
+
+  const parsed = RefreshResponseSchema.safeParse(result.raw);
+  if (!parsed.success) return false;
+  await storeTokens(parsed.data.tokens);
+  scheduleTokenRefresh(parsed.data.tokens.expires_in);
+  return true;
 }
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
