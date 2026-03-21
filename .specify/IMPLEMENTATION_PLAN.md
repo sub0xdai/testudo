@@ -1,87 +1,41 @@
 # Implementation Plan
 
-> Last updated: 2026-02-08
-> Current spec: EXT-06-websocket (COMPLETE)
-> Phase: 4 (Browser Extension - Testudo Sniper)
+> Last updated: 2026-03-21
+> Current spec: HL-11-status-transition-fix
+> Phase: COMPLETE
 
 ---
 
-## Active Phase: Testudo Sniper Extension (EXT-01 through EXT-06)
-
-### Spec Progress
-
-| Spec | Status | Notes |
-|------|--------|-------|
-| EXT-01 Extension Scaffold | COMPLETE | Manifest V3, esbuild, Chrome+Firefox |
-| EXT-02 DOM Scraper | COMPLETE | 3-strategy scraper with fallbacks |
-| EXT-03 Confirmation Modal | COMPLETE | Shadow DOM modal, Alt+X hotkey, R:R display |
-| EXT-04 REST Execution | COMPLETE | REST via background worker, symbol normalization, position sizing |
-| EXT-05 Auth & Live | COMPLETE | Dual auth, login UI, token refresh, BinanceAdapter, LIVE double-confirm |
-| EXT-06 WebSocket | COMPLETE | WS client in background worker, auto-reconnect, status indicator, order notifications |
-
-### Architecture
-
-- **Directory:** `testudo-extension/`
-- **Build:** TypeScript + esbuild → `dist/chrome/` + `dist/firefox/`
-- **Communication:** REST (POST /trades) + WebSocket (ws-stream port 4000 for real-time order updates)
-- **Dependencies:** webextension-polyfill for cross-browser compat
-
-### Discoveries
-
-- TradingView uses obfuscated class names — must use data attributes and structural patterns
-- `#header-toolbar-symbol-search` for ticker, `button[data-value][aria-checked="true"]` for timeframe
-- Position tool dialogs appear in `#overlap-manager-root`
-- Content scripts can't fetch cross-origin in MV3 — must route through background worker
-- Backend uses `BTC_USDT` format (underscore-separated), TradingView uses `BTCUSDT` (concatenated)
-- Backend requires `quantity` field — calculated client-side: `risk_amount / stop_distance`
-- Backend side values: `"buy"` / `"sell"` (not LONG/SHORT)
-- ws-stream server runs on separate port (4000), uses PostgreSQL LISTEN/NOTIFY, supports `order.{user_id}` private channels
-- Manifest V3 service workers have native WebSocket support — no polyfill needed
-
----
-
-## Previous Phase: 008-shadow-fill-engine (COMPLETE)
+## Active Spec: HL-11-status-transition-fix
 
 ### Tasks
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| T1.1 | Add `get_active_symbols()` to ShadowEngine | complete | |
-| T1.2 | Add test for `get_active_symbols()` | complete | |
-| T2.1 | Create `PriceFeedService` in `services/price_feed.rs` | complete | |
-| T2.2 | Export from `services/mod.rs` | complete | |
-| T2.3 | Spawn in `router/main.rs` at startup | complete | |
-| T2.4 | Add integration test (mock ticker -> order fills) | complete | |
-| T3.1 | Replace hardcoded balance in `trade_management.rs` | complete | |
-| T3.2 | Verify risk calculation uses actual balance | complete | |
-| T4.1 | Update `OpenOrders.tsx` badge for pending vs filled | complete | |
+| T1 | Normalize `ExchangeDataStatus` to CCXT strings in `exchange_api.rs` (FR-1) | complete | Extracted `normalize_status()` helper |
+| T2 | Fix `cleanup_stale_trades()` — only Pending groups + cancel exchange orders (FR-3, FR-4) | complete | Filter `Pending` only, cancel entry/SL/TP exchange orders |
+| T3 | Add unit tests for status normalization (FR-5, FR-6) | complete | 6 tests: Filled, Success, Resting, WaitingForTrigger, WaitingForFill, Error |
+| T4 | Validate — `cargo clippy --all-targets && cargo test` | complete | 970 tests pass, 0 failures |
+| T5 | Update state files and commit | complete | |
+
+### Discoveries
+
+- `ExchangeDataStatus` has 6 variants: `Success`, `WaitingForFill`, `WaitingForTrigger`, `Error(String)`, `Resting(RestingOrder)`, `Filled(FilledOrder)` — from `hyperliquid-sdk-rs 0.1.2`
+- `WaitingForFill` exists in the SDK but was only referenced in comments before this fix
+- `cancel_order` on `TradeManagerService` takes `(user_id, order_id, symbol, exchange_account_id)` — all available from `OrderGroup` fields
+
+### Blockers
+
+None.
 
 ---
 
 ## Completed Specs
 
-| Spec | Completion Date | Notes |
-|------|-----------------|-------|
-| 001-deprecate-legacy-engine | 2026-01-20 | Shadow Engine routing |
-| 002-panic-prevention | 2026-01-20 | Result propagation |
-| 003-risk-enforcement | 2026-01-20 | risk_validated field |
-| 004-read-compute-write | 2026-01-20 | Lock-minimizing pattern |
-| 005-atomic-cascades | 2026-01-21 | TransactionContext |
-| 006-execution-latency | 2026-01-26 | 3μs avg, 70k orders/sec |
-| 007-redis-to-postgres | 2026-01-31 | Unified data layer, pg_queue crate |
-| 008-shadow-fill-engine | 2026-02-07 | Price feed, balance wiring, UI labels |
+| Spec | Completion Date |
+|------|-----------------|
+| HL-11-status-transition-fix | 2026-03-21 |
 
 ---
 
-## Next Up
-
-Phase 3 candidates after 008:
-
-- Analytics Dashboard (P&L tracking, win rate, drawdown)
-- Multi-Strategy Support (strategy registry in Decision Loop)
-- Live Exchange Integration (production Binance Futures)
-- Mobile Optimization (responsive position tool, touch gestures)
-
----
-
-*This file is persistent state. Ralph updates it each iteration.*
+*This file is persistent state. Vox updates it each iteration.*
