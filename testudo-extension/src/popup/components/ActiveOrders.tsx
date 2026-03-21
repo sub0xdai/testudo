@@ -19,7 +19,6 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
   const [closingPosition, setClosingPosition] = createSignal("");
   const [confirmingClose, setConfirmingClose] = createSignal<ExchangePosition | null>(null);
   const [cleaning, setCleaning] = createSignal(false);
-  const [justCancelled, setJustCancelled] = createSignal(false);
 
   async function fetchExchangePositions() {
     setExchangeLoading(true);
@@ -49,10 +48,8 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       if (response.success && response.data) {
         setTrades(response.data);
         setError("");
-        // If no tracked trades and user didn't just cancel, try exchange fallback
-        if (response.data.length === 0 && !justCancelled()) {
-          fetchExchangePositions();
-        } else {
+        // No auto-fallback to exchange positions — user can refresh manually
+        if (response.data.length > 0) {
           setExchangeData(null);
         }
       } else {
@@ -73,7 +70,6 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         error?: string;
       };
       if (response.success) {
-        setJustCancelled(true);
         fetchTrades();
         props.onBalanceRefresh?.();
       } else {
@@ -119,7 +115,6 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         error?: string;
       };
       if (response.success) {
-        setJustCancelled(true);
         fetchTrades();
         props.onBalanceRefresh?.();
       } else {
