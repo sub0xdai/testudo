@@ -247,6 +247,7 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
     side: z.enum(["long", "short"]),
     contracts: z.string(),
   }),
+  z.object({ type: z.literal("CLEANUP_TRADES") }),
   z.object({ type: z.literal("GET_EXCHANGE_MODE") }),
   z.object({ type: z.literal("SET_EXCHANGE_MODE"), mode: z.enum(["cex", "dex"]) }),
   z.object({
