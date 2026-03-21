@@ -447,47 +447,15 @@ async function executeTrade(payload: RuntimeTradePayload): Promise<BackendRespon
 
 // --- Trade Listing (Active Orders) ---
 
-async function listTrades(retried = false): Promise<{ success: boolean; data?: TradeGroupResponse[]; error?: string }> {
-  const settings = await getSettings();
-  const url = `${settings.backendUrl}/api/v1/trades`;
+async function listTrades(): Promise<{ success: boolean; data?: TradeGroupResponse[]; error?: string }> {
+  const result = await apiRequest("/api/v1/trades", { auth: "hard" });
+  if (!result.ok) return { success: false, error: result.error };
 
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { success: false, error: "Authentication required" };
-  }
-
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${tokens.access_token}`,
-  };
-
-  try {
-    const response = await fetch(url, { headers });
-    const raw = await response.json().catch(() => ({}));
-    const normalized = normalizeTradeListResponse(raw);
-
-    if (!response.ok) {
-      if (response.status === 401 && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return listTrades(true);
-      }
-      const msg = normalized.error || `HTTP ${response.status}`;
-      return { success: false, error: msg };
-    }
-
-    const validated = TradeListResponseSchema.safeParse(normalized);
-    if (!validated.success) {
-      return { success: false, error: "Malformed trade list response" };
-    }
-
-    if (!validated.data.success) {
-      return { success: false, error: validated.data.error || "Trade list request failed" };
-    }
-
-    return { success: true, data: validated.data.data || [] };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const normalized = normalizeTradeListResponse(result.raw);
+  const validated = TradeListResponseSchema.safeParse(normalized);
+  if (!validated.success) return { success: false, error: "Malformed trade list response" };
+  if (!validated.data.success) return { success: false, error: validated.data.error || "Trade list request failed" };
+  return { success: true, data: validated.data.data || [] };
 }
 
 async function cancelTrade(tradeId: string): Promise<BackendResponse> {
@@ -537,71 +505,28 @@ async function forgotPassword(email: string): Promise<{ success: boolean; error?
 
 // --- Exchange Account Management (EXT-15 FR-4) ---
 
-async function listExchanges(retried = false): Promise<{ success: boolean; data?: ExchangeInfo[]; error?: string }> {
-  const settings = await getSettings();
-  const headers: Record<string, string> = {};
-  const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  }
+async function listExchanges(): Promise<{ success: boolean; data?: ExchangeInfo[]; error?: string }> {
+  const result = await apiRequest("/api/v1/exchanges", { auth: "soft" });
+  if (!result.ok) return { success: false, error: result.error };
 
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges`, { headers });
-    const raw = await response.json().catch(() => ({}));
-    const json = ListExchangesResponseSchema.safeParse(raw);
-    if (!json.success) {
-      return { success: false, error: "Malformed exchanges response" };
-    }
-
-    if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return listExchanges(true);
-      }
-      return { success: false, error: json.data.error || `HTTP ${response.status}` };
-    }
-
-    return { success: true, data: json.data.exchanges || [] };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
-  }
+  const json = ListExchangesResponseSchema.safeParse(result.raw);
+  if (!json.success) return { success: false, error: "Malformed exchanges response" };
+  return { success: true, data: json.data.exchanges || [] };
 }
 
-async function listExchangeAccounts(retried = false): Promise<{ success: boolean; data?: ExchangeAccount[]; error?: string }> {
-  const settings = await getSettings();
-  const headers: Record<string, string> = {};
-  const tokens = await getTokens();
-  if (tokens && tokens.expires_in > 0) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
-  }
+async function listExchangeAccounts(): Promise<{ success: boolean; data?: ExchangeAccount[]; error?: string }> {
+  const result = await apiRequest("/api/v1/exchanges/accounts", { auth: "soft" });
+  if (!result.ok) return { success: false, error: result.error };
 
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/exchanges/accounts`, { headers });
-    if (!response.ok) {
-      if (response.status === 401 && tokens && !retried) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) return listExchangeAccounts(true);
-      }
-      const errRaw = await response.json().catch(() => ({}));
-      const errJson = ErrorResponseSchema.safeParse(errRaw);
-      return { success: false, error: (errJson.success && errJson.data.error) || `HTTP ${response.status}` };
-    }
-
-    const raw = await response.json().catch(() => ([]));
-    console.log("[listExchangeAccounts] raw response:", JSON.stringify(raw).slice(0, 500));
-    const json = ExchangeAccountsResponseSchema.safeParse(raw);
-    if (!json.success) {
-      console.error("[listExchangeAccounts] schema parse failed:", json.error.issues);
-      return { success: false, error: "Malformed exchange accounts response" };
-    }
-    const accounts = Array.isArray(json.data) ? json.data : (json.data.data || json.data.accounts || []);
-    console.log("[listExchangeAccounts] parsed accounts:", accounts.length, accounts.map(a => a.exchange_name));
-    return { success: true, data: accounts };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error";
-    return { success: false, error: msg };
+  console.log("[listExchangeAccounts] raw response:", JSON.stringify(result.raw).slice(0, 500));
+  const json = ExchangeAccountsResponseSchema.safeParse(result.raw);
+  if (!json.success) {
+    console.error("[listExchangeAccounts] schema parse failed:", json.error.issues);
+    return { success: false, error: "Malformed exchange accounts response" };
   }
+  const accounts = Array.isArray(json.data) ? json.data : (json.data.data || json.data.accounts || []);
+  console.log("[listExchangeAccounts] parsed accounts:", accounts.length, accounts.map(a => a.exchange_name));
+  return { success: true, data: accounts };
 }
 
 async function addExchangeAccount(payload: AddExchangeAccountPayload): Promise<{ success: boolean; data?: ExchangeAccount; error?: string }> {
