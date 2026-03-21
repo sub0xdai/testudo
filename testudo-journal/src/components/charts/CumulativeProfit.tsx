@@ -2,7 +2,8 @@ import { onMount, onCleanup, createEffect } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, AreaSeries } from 'lightweight-charts'
 import { ChartContainer } from './ChartContainer'
 import type { EquityPoint } from '../../api/client'
-import { SIGNAL_GREEN, CHART_BG, signalGreenAlpha } from '../../lib/tokens'
+import { getSignalGreen, getChartBg, signalGreenAlpha, getGridLineColor, getCrosshairColor, getTextTertiary } from '../../lib/tokens'
+import { onThemeChange } from '../../lib/theme-observer'
 
 export function CumulativeProfit(props: {
   data?: { data: EquityPoint[] }
@@ -14,39 +15,54 @@ export function CumulativeProfit(props: {
   let chart: IChartApi | undefined
   let series: ISeriesApi<'Area'> | undefined
 
-  onMount(() => {
+  function initChart() {
+    chart?.remove()
     chart = createChart(container, {
       width: container.clientWidth,
       height: 250,
       layout: {
-        background: { color: CHART_BG },
-        textColor: '#555555',
+        background: { color: getChartBg() },
+        textColor: getTextTertiary(),
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: '#1A1A1A' },
-        horzLines: { color: '#1A1A1A' },
+        vertLines: { color: getGridLineColor() },
+        horzLines: { color: getGridLineColor() },
       },
-      rightPriceScale: { borderColor: '#3F3F46' },
-      timeScale: { borderColor: '#3F3F46' },
+      rightPriceScale: { borderColor: getCrosshairColor() },
+      timeScale: { borderColor: getCrosshairColor() },
     })
 
     series = chart.addSeries(AreaSeries, {
       topColor: signalGreenAlpha(0.3),
       bottomColor: signalGreenAlpha(0.02),
-      lineColor: SIGNAL_GREEN,
+      lineColor: getSignalGreen(),
       lineWidth: 2,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })
+  }
 
-    const observer = new ResizeObserver(() => {
+  onMount(() => {
+    initChart()
+
+    const resizeObserver = new ResizeObserver(() => {
       chart?.applyOptions({ width: container.clientWidth })
     })
-    observer.observe(container)
+    resizeObserver.observe(container)
+
+    const unsubTheme = onThemeChange(() => {
+      const d = props.data
+      initChart()
+      if (d?.data?.length && series) {
+        series.setData(d.data.map((p) => ({ time: p.date as string, value: parseFloat(p.cumulative_pnl) })))
+        chart?.timeScale().fitContent()
+      }
+    })
 
     onCleanup(() => {
-      observer.disconnect()
+      resizeObserver.disconnect()
+      unsubTheme()
       chart?.remove()
     })
   })

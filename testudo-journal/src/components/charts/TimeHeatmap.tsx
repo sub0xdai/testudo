@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchTimeDistribution } from '../../api/client'
-import { SIGNAL_GREEN } from '../../lib/tokens'
+import { getSignalGreen, getBgHover } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -64,7 +64,7 @@ export function TimeHeatmap() {
         top: 'center',
         itemHeight: 100,
         textStyle: { color: '#555555', fontSize: 10 },
-        inRange: { color: ['#1A1A1A', SIGNAL_GREEN] },
+        inRange: { color: [getBgHover(), getSignalGreen()] },
       },
       series: [{
         type: 'heatmap',

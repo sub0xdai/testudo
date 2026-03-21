@@ -11,9 +11,9 @@ export type ModalResult = "confirm" | "dismiss";
 const TOAST_CSS = `
   .toast { position: fixed; top: 20px; right: 20px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
   .toast.visible { opacity: 1; }
-  .toast.success { background: rgba(0, 255, 65, 0.15); color: #00FF41; border: 1px solid rgba(0, 255, 65, 0.4); backdrop-filter: blur(12px); }
-  .toast.error { background: rgba(255, 0, 60, 0.85); color: #fff; border: 1px solid rgba(255, 0, 60, 0.9); }
-  .toast.info { background: #111111; color: #888888; border: 1px solid #3F3F46; backdrop-filter: blur(12px); }
+  .toast.success { background: color-mix(in srgb, var(--color-signal-green) 15%, transparent); color: var(--color-signal-green); border: 1px solid color-mix(in srgb, var(--color-signal-green) 40%, transparent); backdrop-filter: blur(12px); }
+  .toast.error { background: color-mix(in srgb, var(--color-signal-red) 85%, transparent); color: #fff; border: 1px solid color-mix(in srgb, var(--color-signal-red) 90%, transparent); }
+  .toast.info { background: var(--color-bg-elevated); color: var(--color-text-secondary); border: 1px solid var(--color-border); backdrop-filter: blur(12px); }
 `;
 
 // --- Styles (injected into Shadow DOM) ---
@@ -59,16 +59,31 @@ const MODAL_STYLES = `
     --color-text-secondary: #888888;
     --color-text-dim: #555555;
     --color-accent-steel: #94a3b8;
+    --color-accent-primary: #c4735a;
     --color-bg-core: #050505;
     --color-bg-panel: #0A0A0A;
     --color-bg-elevated: #111111;
     --color-border: #3F3F46;
   }
+  :host-context([data-theme="light"]) {
+    --color-signal-green: #1a7a2e;
+    --color-signal-red: #b8002a;
+    --color-signal-orange: #d97706;
+    --color-text-primary: #1a1714;
+    --color-text-secondary: #6b6458;
+    --color-text-dim: #9a9285;
+    --color-accent-steel: #64748b;
+    --color-accent-primary: #9e5a44;
+    --color-bg-core: #f5f0e8;
+    --color-bg-panel: #faf7f2;
+    --color-bg-elevated: #fffcf7;
+    --color-border: #d4cdc2;
+  }
   .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   .panel {
     position: relative;
     overflow: hidden;
-    background-color: rgba(10, 10, 10, 0.95);
+    background-color: color-mix(in srgb, var(--color-bg-panel) 95%, transparent);
     border: 1px solid var(--color-border);
     border-radius: 0;
     padding: 22px 26px;
@@ -97,7 +112,7 @@ const MODAL_STYLES = `
     padding: 8px 12px;
     font-size: 14px;
     font-family: 'Space Mono', ui-monospace, monospace;
-    color: #fff;
+    color: var(--color-text-primary);
     outline: none;
     transition: border-color 0.15s;
     box-sizing: border-box;
@@ -118,7 +133,7 @@ const MODAL_STYLES = `
   .field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .field-wrapper { position: relative; flex: 1; }
   .label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; min-width: 50px; }
-  .value { font-size: 14px; font-family: 'Space Mono', ui-monospace, monospace; color: #fff; font-weight: 500; }
+  .value { font-size: 14px; font-family: 'Space Mono', ui-monospace, monospace; color: var(--color-text-primary); font-weight: 500; }
   .divider { border: none; border-top: 1px solid var(--color-border); margin: 14px 0; }
   .rr-row { display: flex; justify-content: space-between; align-items: center; }
   .rr-label { font-size: 13px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
@@ -140,7 +155,7 @@ const MODAL_STYLES = `
   .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
   .balance-label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
   .balance-value { font-size: 14px; font-family: 'Space Mono', ui-monospace, monospace; color: var(--color-signal-green); font-weight: 500; }
-  .balance-value.size { color: #fff; font-weight: 600; }
+  .balance-value.size { color: var(--color-text-primary); font-weight: 600; }
   .balance-value.leverage { color: var(--color-accent-steel); }
   .balance-value.margin { color: var(--color-signal-orange); }
   .balance-value.risk { color: var(--color-signal-red); }
@@ -243,7 +258,25 @@ export function isVisible(): boolean {
 
 // --- Toast Notifications ---
 
+const TOAST_THEME_VARS = `
+  :host {
+    --color-signal-green: #00FF41;
+    --color-signal-red: #FF003C;
+    --color-text-secondary: #888888;
+    --color-bg-elevated: #111111;
+    --color-border: #3F3F46;
+  }
+  :host-context([data-theme="light"]) {
+    --color-signal-green: #1a7a2e;
+    --color-signal-red: #b8002a;
+    --color-text-secondary: #6b6458;
+    --color-bg-elevated: #fffcf7;
+    --color-border: #d4cdc2;
+  }
+`;
+
 const TOAST_STYLES = `
+  ${TOAST_THEME_VARS}
   .toast { font-family: 'Space Grotesk', system-ui, sans-serif; }
   ${TOAST_CSS}
 `;

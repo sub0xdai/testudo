@@ -3,14 +3,17 @@ import type { JournalEntry, JournalTag } from '../../api/client'
 import { MarkdownPreview } from './MarkdownPreview'
 import { TagBadge } from '../trades/TagBadge'
 import { exportEntry } from '../../lib/export'
-import { ENTRY_TYPE_COLORS } from '../../lib/tokens'
+import { getEntryTypeColors } from '../../lib/tokens'
 
-const TYPE_STYLES: Record<string, { color: string; label: string }> = {
-  'note': { color: ENTRY_TYPE_COLORS['note'], label: 'NOTE' },
-  'pre-trade': { color: ENTRY_TYPE_COLORS['pre-trade'], label: 'PRE-TRADE' },
-  'post-trade': { color: ENTRY_TYPE_COLORS['post-trade'], label: 'POST-TRADE' },
-  'daily-review': { color: ENTRY_TYPE_COLORS['daily-review'], label: 'DAILY' },
-  'weekly-review': { color: ENTRY_TYPE_COLORS['weekly-review'], label: 'WEEKLY' },
+function getTypeStyles(): Record<string, { color: string; label: string }> {
+  const colors = getEntryTypeColors()
+  return {
+    'note': { color: colors['note'], label: 'NOTE' },
+    'pre-trade': { color: colors['pre-trade'], label: 'PRE-TRADE' },
+    'post-trade': { color: colors['post-trade'], label: 'POST-TRADE' },
+    'daily-review': { color: colors['daily-review'], label: 'DAILY' },
+    'weekly-review': { color: colors['weekly-review'], label: 'WEEKLY' },
+  }
 }
 
 function formatTime(iso: string): string {
@@ -25,7 +28,10 @@ export function EntryCard(props: {
   onEdit: () => void
   onDelete: () => void
 }) {
-  const typeStyle = () => TYPE_STYLES[props.entry.entry_type] ?? TYPE_STYLES['note']
+  const typeStyle = () => {
+    const styles = getTypeStyles()
+    return styles[props.entry.entry_type] ?? styles['note']
+  }
 
   const [confirmDelete, setConfirmDelete] = createSignal(false)
   let deleteTimer: number | undefined

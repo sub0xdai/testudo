@@ -47,7 +47,7 @@ function StaticArcGauge() {
         ))}
       </svg>
       <div class="absolute bottom-0 flex flex-col items-center mb-1">
-        <span class="text-4xl font-bold text-white tracking-tighter" style={{ "font-family": "var(--font-family-mono)" }}>
+        <span class="text-4xl font-bold text-text-primary tracking-tighter" style={{ "font-family": "var(--font-family-mono)" }}>
           18.1%
         </span>
         <span class="text-[11px] uppercase tracking-widest text-text-secondary mt-1">
@@ -78,12 +78,12 @@ export default function LoginPreview() {
       {/* Mock header bar — UXP-17: white dots instead of signal-green */}
       <div class="flex items-center justify-between px-5 py-2.5">
         <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-white" />
-          <span class="w-2 h-2 rounded-full bg-white opacity-50" />
+          <span class="w-2 h-2 rounded-full bg-text-primary" />
+          <span class="w-2 h-2 rounded-full bg-text-primary opacity-50" />
         </div>
         <div class="flex items-center gap-2">
           {/* UXP-17: white badge instead of accent-green */}
-          <span class="text-[11px] font-mono font-bold text-white bg-white/10 px-1.5 py-0.5 tracking-wider uppercase">
+          <span class="text-[11px] font-mono font-bold text-text-primary bg-text-primary/10 px-1.5 py-0.5 tracking-wider uppercase">
             WOO
           </span>
           <span class="text-text-dim">
@@ -100,15 +100,15 @@ export default function LoginPreview() {
         <div class="balance-panel-overlay" />
         <div class="flex flex-col items-center pt-5 pb-2">
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-[12px] font-medium text-white/70 tracking-widest uppercase">Balance</span>
+            <span class="text-[12px] font-medium text-text-primary/70 tracking-widest uppercase">Balance</span>
             {/* UXP-17: white badge instead of accent-green */}
-            <span class="text-[10px] font-bold text-white bg-white/10 px-1.5 py-0.5 tracking-wider uppercase">
+            <span class="text-[10px] font-bold text-text-primary bg-text-primary/10 px-1.5 py-0.5 tracking-wider uppercase">
               WOO
             </span>
           </div>
           <span
-            class="text-[42px] font-bold text-white tracking-tight leading-none"
-            style={{ "text-shadow": "0 1px 8px rgba(0,0,0,0.6)" }}
+            class="text-[42px] font-bold text-text-primary tracking-tight leading-none"
+            style={{ "text-shadow": "0 2px 8px color-mix(in srgb, var(--color-bg-core) 60%, transparent)" }}
           >
             $12,450.00
           </span>
@@ -130,7 +130,7 @@ export default function LoginPreview() {
           <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">
             Positions
             {/* UXP-17: white count badge */}
-            <span class="ml-1.5 text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">2</span>
+            <span class="ml-1.5 text-[11px] font-mono text-text-primary bg-text-primary/10 px-1.5 py-0.5">2</span>
           </span>
           <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">Account</span>
         </div>

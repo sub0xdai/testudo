@@ -57,7 +57,7 @@ export default function PositionCard(props: PositionCardProps) {
       {/* Row 1: Symbol + Direction + Status — KEEP: trading data colors */}
       <div class="flex items-center justify-between mb-2.5">
         <div class="flex items-center gap-2.5">
-          <span class="text-[14px] font-mono font-bold text-white truncate max-w-[120px]" data-testid="position-symbol">
+          <span class="text-[14px] font-mono font-bold text-text-primary truncate max-w-[120px]" data-testid="position-symbol">
             {props.trade.symbol}
           </span>
           <span
@@ -146,8 +146,8 @@ export default function PositionCard(props: PositionCardProps) {
           }
         >
           <button
-            class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans border-white ${
-              props.cancelling ? "opacity-50 cursor-wait" : "text-white hover:bg-white hover:text-[#050505]"
+            class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans border-text-primary ${
+              props.cancelling ? "opacity-50 cursor-wait" : "text-text-primary hover:bg-text-primary hover:text-bg-core"
             }`}
             onClick={() => props.onCancel(props.trade.id)}
             disabled={props.cancelling}

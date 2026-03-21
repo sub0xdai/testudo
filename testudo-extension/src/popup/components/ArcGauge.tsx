@@ -14,19 +14,48 @@ const RADIUS = 85;
 const CENTER = 100;
 const DOT_RADIUS = 3.5;
 
-/** Interpolate color along green → amber → red gradient at position t (0-1) */
+/** Read a CSS custom property value from :root, with fallback */
+const getColor = (name: string, fallback: string) => {
+  if (typeof document === 'undefined') return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+};
+
+/** Interpolate color along green -> amber -> red gradient at position t (0-1) */
 function tickColor(t: number): string {
+  const green = getColor('--color-signal-green', '#00FF41');
+  const orange = getColor('--color-signal-orange', '#f59e0b');
+  const red = getColor('--color-signal-red', '#FF003C');
+
+  // Parse hex/named colors to RGB for interpolation
+  function parseColor(c: string): [number, number, number] {
+    const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+    if (ctx) {
+      ctx.fillStyle = c;
+      const hex = ctx.fillStyle;
+      const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+      if (m) return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+    }
+    // Fallback: try direct hex parse
+    const m = c.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+    return [128, 128, 128];
+  }
+
+  const [gr, gg, gb] = parseColor(green);
+  const [or, og, ob] = parseColor(orange);
+  const [rr, rg, rb] = parseColor(red);
+
   if (t < 0.5) {
     const p = t / 0.5;
-    const r = Math.round(16 + (245 - 16) * p);
-    const g = Math.round(185 + (158 - 185) * p);
-    const b = Math.round(129 + (11 - 129) * p);
+    const r = Math.round(gr + (or - gr) * p);
+    const g = Math.round(gg + (og - gg) * p);
+    const b = Math.round(gb + (ob - gb) * p);
     return `rgb(${r},${g},${b})`;
   }
   const p = (t - 0.5) / 0.5;
-  const r = Math.round(245 + (239 - 245) * p);
-  const g = Math.round(158 + (68 - 158) * p);
-  const b = Math.round(11 + (68 - 11) * p);
+  const r = Math.round(or + (rr - or) * p);
+  const g = Math.round(og + (rg - og) * p);
+  const b = Math.round(ob + (rb - ob) * p);
   return `rgb(${r},${g},${b})`;
 }
 
@@ -66,12 +95,18 @@ export default function ArcGauge(props: ArcGaugeProps) {
             const dist = () => Math.abs(i - activeTickIndex());
 
             // All dots show gradient color; muted baseline, bright near needle
+            // Light theme uses higher base opacity for visibility on beige
+            const isLightTheme = () =>
+              typeof document !== 'undefined' &&
+              document.documentElement.getAttribute('data-theme') === 'light';
+
             const opacity = () => {
+              const base = isLightTheme() ? 0.45 : 0.25;
               if (isNeedle()) return 1;
               const d = dist();
-              if (d <= 1) return 0.8;
-              if (d <= 3) return 0.5;
-              return 0.25;
+              if (d <= 1) return 0.9;
+              if (d <= 3) return 0.65;
+              return base;
             };
 
             const r = () => isNeedle() ? DOT_RADIUS + 1.5 : DOT_RADIUS;
@@ -93,7 +128,7 @@ export default function ArcGauge(props: ArcGaugeProps) {
 
       {/* Gauge center text */}
       <div class="absolute bottom-0 flex flex-col items-center mb-1">
-        <span class="text-4xl font-bold text-white tracking-tighter" style={{ "font-family": "var(--font-family-mono)" }}>
+        <span class="text-4xl font-bold text-text-primary tracking-tighter" style={{ "font-family": "var(--font-family-mono)" }}>
           {props.exposure.toFixed(1)}%
         </span>
         <span class="text-[11px] uppercase tracking-widest text-text-secondary mt-1">

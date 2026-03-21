@@ -143,7 +143,7 @@ export default function QuickTrade() {
           <button
             class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider ${
               side() === "LONG"
-                ? "bg-white text-[#050505] border-white"
+                ? "bg-text-primary text-bg-core border-text-primary"
                 : "text-text-dim"
             }`}
             role="radio"
@@ -154,7 +154,7 @@ export default function QuickTrade() {
           <button
             class={`flex-1 py-2 min-h-[44px] text-[12px] font-bold tracking-wider ${
               side() === "SHORT"
-                ? "bg-white text-[#050505] border-white"
+                ? "bg-text-primary text-bg-core border-text-primary"
                 : "text-text-dim"
             }`}
             role="radio"
@@ -224,7 +224,7 @@ export default function QuickTrade() {
         <div class="space-y-1 py-2 border-t border-border-subtle">
           <div class="flex justify-between">
             <span class="text-[11px] text-text-secondary font-sans">Size</span>
-            <span class="text-[13px] font-mono text-white font-semibold">{positionSize()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+            <span class="text-[13px] font-mono text-text-primary font-semibold">{positionSize()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-[11px] text-text-secondary font-sans">Margin</span>
@@ -252,7 +252,7 @@ export default function QuickTrade() {
       <button
         class={`w-full py-3 text-[13px] font-bold tracking-widest transition-colors ${
           isValid() && !submitting()
-            ? "border-white text-white hover:bg-white hover:text-[#050505]"
+            ? "border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core"
             : "opacity-30 cursor-not-allowed"
         }`}
         onClick={handleConfirm}

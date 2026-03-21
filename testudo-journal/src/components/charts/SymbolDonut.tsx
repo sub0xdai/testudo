@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchSymbolBreakdown } from '../../api/client'
-import { TAG_PALETTE } from '../../lib/tokens'
+import { getTagPalette } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function SymbolDonut() {
@@ -14,6 +14,8 @@ export function SymbolDonut() {
   const option = createMemo((): EChartsOption | undefined => {
     const d = data()
     if (!d?.data?.length) return undefined
+
+    const palette = getTagPalette()
 
     return {
       tooltip: {
@@ -40,7 +42,7 @@ export function SymbolDonut() {
         data: d.data.map((s, i) => ({
           name: s.symbol,
           value: s.trade_count,
-          itemStyle: { color: TAG_PALETTE[i % TAG_PALETTE.length] },
+          itemStyle: { color: palette[i % palette.length] },
         })),
       }],
     }

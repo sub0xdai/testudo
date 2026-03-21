@@ -15,15 +15,18 @@ import { TradeSelector } from './TradeSelector'
 import { TagSelector } from './TagSelector'
 import { exportEntry } from '../../lib/export'
 import { createFocusTrap } from '../../lib/createFocusTrap'
-import { ENTRY_TYPE_COLORS, CLOSE_ANIMATION_MS } from '../../lib/tokens'
+import { getEntryTypeColors, CLOSE_ANIMATION_MS } from '../../lib/tokens'
 
-const ENTRY_TYPES = [
-  { value: 'note', label: 'Note', color: ENTRY_TYPE_COLORS['note'] },
-  { value: 'pre-trade', label: 'Pre-Trade', color: ENTRY_TYPE_COLORS['pre-trade'] },
-  { value: 'post-trade', label: 'Post-Trade', color: ENTRY_TYPE_COLORS['post-trade'] },
-  { value: 'daily-review', label: 'Daily', color: ENTRY_TYPE_COLORS['daily-review'] },
-  { value: 'weekly-review', label: 'Weekly', color: ENTRY_TYPE_COLORS['weekly-review'] },
-]
+function getEntryTypes() {
+  const colors = getEntryTypeColors()
+  return [
+    { value: 'note', label: 'Note', color: colors['note'] },
+    { value: 'pre-trade', label: 'Pre-Trade', color: colors['pre-trade'] },
+    { value: 'post-trade', label: 'Post-Trade', color: colors['post-trade'] },
+    { value: 'daily-review', label: 'Daily', color: colors['daily-review'] },
+    { value: 'weekly-review', label: 'Weekly', color: colors['weekly-review'] },
+  ]
+}
 
 export function EntryEditor(props: {
   entry?: JournalEntry
@@ -58,7 +61,10 @@ export function EntryEditor(props: {
 
   const [allTags] = createResource(fetchTags)
 
-  const typeColor = () => ENTRY_TYPES.find((t) => t.value === entryType())?.color ?? '#94a3b8'
+  const typeColor = () => {
+    const types = getEntryTypes()
+    return types.find((t) => t.value === entryType())?.color ?? '#94a3b8'
+  }
 
   // Keyboard shortcuts
   function handleKeyDown(e: KeyboardEvent) {
@@ -232,7 +238,7 @@ export function EntryEditor(props: {
               value={entryType()}
               onChange={(e) => setEntryType(e.currentTarget.value)}
             >
-              {ENTRY_TYPES.map((t) => (
+              {getEntryTypes().map((t) => (
                 <option value={t.value}>{t.label}</option>
               ))}
             </select>

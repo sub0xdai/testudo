@@ -1,8 +1,10 @@
 import type { JournalTag } from '../../api/client'
-import { TAG_PALETTE } from '../../lib/tokens'
+import { getTagPalette } from '../../lib/tokens'
 
 function tagColor(tag: JournalTag, index: number): string {
-  return tag.color || TAG_PALETTE[index % TAG_PALETTE.length]
+  if (tag.color) return tag.color
+  const palette = getTagPalette()
+  return palette[index % palette.length]
 }
 
 export function TagBadge(props: { tag: JournalTag; index?: number; onRemove?: () => void }) {

@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchSymbolBreakdown } from '../../api/client'
-import { SIGNAL_GREEN, SIGNAL_RED } from '../../lib/tokens'
+import { getSignalGreen, getSignalRed } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function MarketReturn() {
@@ -39,7 +39,7 @@ export function MarketReturn() {
         type: 'bar',
         data: sorted.map((s) => {
           const val = parseFloat(s.total_pnl)
-          return { value: val, itemStyle: { color: val >= 0 ? SIGNAL_GREEN : SIGNAL_RED } }
+          return { value: val, itemStyle: { color: val >= 0 ? getSignalGreen() : getSignalRed() } }
         }),
         barMaxWidth: 16,
       }],

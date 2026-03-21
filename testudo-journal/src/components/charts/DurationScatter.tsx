@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchDurationProfit } from '../../api/client'
-import { signalGreenAlpha, signalRedAlpha } from '../../lib/tokens'
+import { signalGreenAlpha, signalRedAlpha, getTextTertiary } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function DurationScatter() {
@@ -39,14 +39,14 @@ export function DurationScatter() {
         name: 'DURATION (HRS)',
         nameLocation: 'center',
         nameGap: 25,
-        nameTextStyle: { color: '#555555', fontSize: 10 },
+        nameTextStyle: { color: getTextTertiary(), fontSize: 10 },
       },
       yAxis: {
         type: 'value',
         name: 'P&L ($)',
         nameLocation: 'center',
         nameGap: 40,
-        nameTextStyle: { color: '#555555', fontSize: 10 },
+        nameTextStyle: { color: getTextTertiary(), fontSize: 10 },
       },
       series: [{
         type: 'scatter',

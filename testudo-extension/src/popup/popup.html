@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=520, initial-scale=1.0">
   <title>Testudo</title>
+  <script>
+    let t = localStorage.getItem('testudo-theme');
+    if (t === 'soft-dark') { t = 'amoled'; localStorage.setItem('testudo-theme', t); }
+    if (t && t !== 'amoled') document.documentElement.setAttribute('data-theme', t);
+  </script>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body style="width:520px;height:680px;margin:0;padding:0;overflow:hidden">

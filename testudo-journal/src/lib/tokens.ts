@@ -1,32 +1,135 @@
 // Single source of truth for all design tokens used in JS chart configs
-// CSS variables in app.css mirror these for Tailwind utility access
+// Reads from CSS custom properties at runtime, with fallbacks for SSR/testing
 
-// Signal colors
-export const SIGNAL_GREEN = '#00FF41'
-export const SIGNAL_RED = '#FF003C'
-export const SIGNAL_AMBER = '#F59E0B'
+// ── Helpers ──────────────────────────────────────────────────────────
 
-// Derived rgba variants for chart fills
-export const signalGreenAlpha = (a: number) => `rgba(0, 255, 65, ${a})`
-export const signalRedAlpha = (a: number) => `rgba(255, 0, 60, ${a})`
-
-// Chart background
-export const CHART_BG = '#111111'
-
-// Tag color palette — used by TagBadge, TagManager, SymbolDonut
-export const TAG_PALETTE = [
-  '#00FF41', '#FF003C', '#3B82F6', '#F59E0B',
-  '#8B5CF6', '#EC4899', '#06B6D4', '#10B981',
-]
-
-// Entry type colors
-export const ENTRY_TYPE_COLORS: Record<string, string> = {
-  'note': '#94A3B8',
-  'pre-trade': '#F59E0B',
-  'post-trade': '#22C55E',
-  'daily-review': '#888888',
-  'weekly-review': '#888888',
+/** Read a CSS var and return rgb(r, g, b) string */
+function getCSSVarRGB(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return `rgb(${fallback})`
+  const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  if (!val) return `rgb(${fallback})`
+  const parts = val.split(' ').map(Number)
+  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+    return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`
+  }
+  return `rgb(${fallback})`
 }
 
-// Animation timing
+/** Read a CSS var and return raw space-separated channels (for alpha compositing) */
+function getCSSVarRaw(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return val || fallback
+}
+
+// ── Signal colors ────────────────────────────────────────────────────
+
+export function getSignalGreen(): string {
+  return getCSSVarRGB('--signal-green', '0, 255, 65')
+}
+
+export function getSignalRed(): string {
+  return getCSSVarRGB('--signal-red', '255, 0, 60')
+}
+
+export function getSignalAmber(): string {
+  return getCSSVarRGB('--signal-amber', '245, 158, 11')
+}
+
+// ── Background colors ────────────────────────────────────────────────
+
+export function getChartBg(): string {
+  return getCSSVarRGB('--bg-elevated', '17, 17, 17')
+}
+
+export function getBgCore(): string {
+  return getCSSVarRGB('--bg-core', '5, 5, 5')
+}
+
+export function getBgPanel(): string {
+  return getCSSVarRGB('--bg-panel', '10, 10, 10')
+}
+
+export function getBgHover(): string {
+  return getCSSVarRGB('--bg-hover', '26, 26, 26')
+}
+
+// ── Text colors ──────────────────────────────────────────────────────
+
+export function getTextPrimary(): string {
+  return getCSSVarRGB('--text-primary', '255, 255, 255')
+}
+
+export function getTextSecondary(): string {
+  return getCSSVarRGB('--text-secondary', '136, 136, 136')
+}
+
+export function getTextTertiary(): string {
+  return getCSSVarRGB('--text-tertiary', '85, 85, 85')
+}
+
+// ── Border / accent ──────────────────────────────────────────────────
+
+export function getBorder(): string {
+  return getCSSVarRGB('--border', '63, 63, 70')
+}
+
+export function getAccentSteel(): string {
+  return getCSSVarRGB('--accent-steel', '148, 163, 184')
+}
+
+// ── Alpha variants (read raw channels for rgba composition) ──────────
+
+export function signalGreenAlpha(a: number): string {
+  const raw = getCSSVarRaw('--signal-green', '0 255 65')
+  const parts = raw.split(' ').map(Number)
+  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+    return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
+  }
+  return `rgba(0, 255, 65, ${a})`
+}
+
+export function signalRedAlpha(a: number): string {
+  const raw = getCSSVarRaw('--signal-red', '255 0 60')
+  const parts = raw.split(' ').map(Number)
+  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+    return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
+  }
+  return `rgba(255, 0, 60, ${a})`
+}
+
+// ── Tag color palette ────────────────────────────────────────────────
+// First three entries map to signal colors, rest are decorative/categorical
+
+export function getTagPalette(): string[] {
+  return [
+    getSignalGreen(), getSignalRed(), '#3B82F6', getSignalAmber(),
+    '#8B5CF6', '#EC4899', '#06B6D4', '#10B981',
+  ]
+}
+
+// ── Entry type colors ────────────────────────────────────────────────
+
+export function getEntryTypeColors(): Record<string, string> {
+  return {
+    'note': getAccentSteel(),
+    'pre-trade': getSignalAmber(),
+    'post-trade': getSignalGreen(),
+    'daily-review': getTextSecondary(),
+    'weekly-review': getTextSecondary(),
+  }
+}
+
+// ── Grid / axis colors for lightweight-charts ────────────────────────
+
+export function getGridLineColor(): string {
+  return getCSSVarRGB('--bg-hover', '26, 26, 26')
+}
+
+export function getCrosshairColor(): string {
+  return getBorder()
+}
+
+// ── Animation timing ─────────────────────────────────────────────────
+
 export const CLOSE_ANIMATION_MS = 200

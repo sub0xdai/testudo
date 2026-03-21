@@ -117,7 +117,7 @@ export default function ExchangeSelector() {
         <button
           class={`flex items-center gap-1.5 px-2.5 py-1 min-h-[44px] text-[11px] font-bold tracking-wider border-0 font-sans transition-colors ${
             activeAccount()
-              ? "bg-white/10 text-white hover:bg-white/20"
+              ? "bg-text-primary/10 text-text-primary hover:bg-text-primary/20"
               : "bg-bg-panel text-text-dim hover:text-text-secondary"
           }`}
           onClick={() => setOpen(!open())}
@@ -143,7 +143,7 @@ export default function ExchangeSelector() {
                   aria-selected={account.id === activeId()}
                   class={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-[11px] font-sans border-0 transition-colors ${
                     account.id === activeId()
-                      ? "bg-white/10 text-white font-bold"
+                      ? "bg-text-primary/10 text-text-primary font-bold"
                       : "text-text-secondary hover:bg-bg-panel hover:text-text-primary"
                   }`}
                   onClick={() => selectAccount(account.id)}
@@ -152,7 +152,7 @@ export default function ExchangeSelector() {
                   <span
                     aria-hidden="true"
                     class={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                      account.id === activeId() ? "bg-white" : "bg-text-dim"
+                      account.id === activeId() ? "bg-text-primary" : "bg-text-dim"
                     }`}
                   />
                   <span class="truncate">{capitalize(account.exchange_name)}</span>

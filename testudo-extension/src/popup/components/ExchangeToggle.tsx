@@ -52,7 +52,7 @@ export default function ExchangeToggle() {
             aria-checked={mode() === m.value}
             class={`px-2.5 py-1 text-[11px] font-bold tracking-wider border-0 transition-colors cursor-pointer ${
               mode() === m.value
-                ? "bg-white/10 text-white"
+                ? "bg-text-primary/10 text-text-primary"
                 : "text-text-dim hover:text-text-secondary bg-transparent"
             }`}
             onClick={() => switchMode(m.value)}

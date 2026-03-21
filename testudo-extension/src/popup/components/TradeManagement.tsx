@@ -30,7 +30,7 @@ export default function TradeManagement() {
     return `background: linear-gradient(to right, var(--color-accent-steel) 0%, var(--color-accent-steel) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
   }
 
-  /** Traffic light gradient for risk: muted green → amber → red with smooth blending */
+  /** Traffic light gradient for risk: muted green -> amber -> red with smooth blending */
   function riskSliderStyle(value: number): string {
     const pct = ((value - 0.1) / (10 - 0.1)) * 100;
     // Muted palette
@@ -39,8 +39,8 @@ export default function TradeManagement() {
     const red   = "rgba(239, 68, 68, 0.55)";
     const dark  = "var(--color-bg-elevated)";
     // Zone midpoints on the track for smooth blending
-    const z1 = ((2 - 0.1) / (10 - 0.1)) * 100;   // ~19% green→amber transition
-    const z2 = ((5 - 0.1) / (10 - 0.1)) * 100;   // ~50% amber→red transition
+    const z1 = ((2 - 0.1) / (10 - 0.1)) * 100;   // ~19% green->amber transition
+    const z2 = ((5 - 0.1) / (10 - 0.1)) * 100;   // ~50% amber->red transition
 
     if (pct <= z1) {
       return `background: linear-gradient(to right, ${green} 0%, ${green} ${pct}%, ${dark} ${pct}%)`;
@@ -60,7 +60,7 @@ export default function TradeManagement() {
 
   return (
     <div class="space-y-5 px-5 py-4" data-testid="trade-management">
-      {/* Risk % Slider — traffic light: green ≤2, orange ≤5, red >5 */}
+      {/* Risk % Slider — traffic light: green <=2, orange <=5, red >5 */}
       <div data-testid="risk-slider">
         <label for="field-risk-percent" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Risk Per Trade</span>
@@ -145,7 +145,7 @@ export default function TradeManagement() {
       {/* Break-even Toggle Card */}
       <div
         class={`bg-bg-panel border transition-colors duration-200 ${
-          preset().break_even_enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
+          preset().break_even_enabled ? "border-accent-steel/30 glow-steel" : "border-text-primary/10"
         }`}
         data-testid="be-slider"
       >
@@ -209,7 +209,7 @@ export default function TradeManagement() {
       {/* Trailing Stop Toggle Card */}
       <div
         class={`bg-bg-panel border transition-colors duration-200 ${
-          preset().trailing_stop.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
+          preset().trailing_stop.enabled ? "border-accent-steel/30 glow-steel" : "border-text-primary/10"
         }`}
         data-testid="trailing-card"
       >
@@ -288,7 +288,7 @@ export default function TradeManagement() {
       {/* Partial TP Toggle Card */}
       <div
         class={`bg-bg-panel border transition-colors duration-200 ${
-          preset().partial_tp.enabled ? "border-accent-steel/30 glow-steel" : "border-white/10"
+          preset().partial_tp.enabled ? "border-accent-steel/30 glow-steel" : "border-text-primary/10"
         }`}
         data-testid="partial-tp-card"
       >

@@ -135,34 +135,34 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         <div class="balance-panel-overlay" aria-hidden="true" />
         <div class="flex flex-col items-center pt-5 pb-2">
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-[12px] font-medium text-white/70 tracking-widest uppercase">
+            <span class="text-[12px] font-medium text-text-primary/70 tracking-widest uppercase">
               Balance
             </span>
             <Show when={exchangeName()}>
               {/* UXP-17: white badge instead of accent-green */}
-              <span class="text-[10px] font-bold text-white bg-white/10 px-1.5 py-0.5 tracking-wider uppercase">
+              <span class="text-[10px] font-bold text-text-primary bg-text-primary/10 px-1.5 py-0.5 tracking-wider uppercase">
                 {exchangeName()}
               </span>
             </Show>
           </div>
           <span
-            class="text-[42px] font-bold text-white tracking-tight leading-none"
-            style={{ "text-shadow": "0 1px 8px rgba(0,0,0,0.6)" }}
+            class="text-[42px] font-bold text-text-primary tracking-tight leading-none"
+            style={{ "text-shadow": "0 2px 8px color-mix(in srgb, var(--color-bg-core) 60%, transparent)" }}
           >
             <Show
               when={!balanceLoading() && total() !== null}
               fallback={
                 <Show
                   when={!balanceLoading() && noExchange()}
-                  fallback={<span class="balance-loading text-white/60">$--</span>}
+                  fallback={<span class="balance-loading text-text-primary/60">$--</span>}
                 >
-                  <div class="mx-4 my-3 p-4 border border-white/10 text-center">
+                  <div class="mx-4 my-3 p-4 border border-text-primary/10 text-center">
                     <p class="text-sm text-text-dim mb-2">
                       {exchangeMode() === "dex" ? "No wallet connected" : "No CEX exchange linked"}
                     </p>
                     {/* UXP-17: white outline instead of accent bg */}
                     <button
-                      class="px-4 py-1.5 text-xs font-medium border border-white text-white hover:bg-white hover:text-[#050505] transition cursor-pointer"
+                      class="px-4 py-1.5 text-xs font-medium border border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core transition cursor-pointer"
                       onClick={() => window.open(`${WEB_APP_URL}/account?source=extension`, "_blank")}
                       data-testid="connect-account-cta"
                     >
@@ -282,7 +282,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
                     <span class="block text-[11px] text-text-secondary font-sans font-medium mb-1">
                       Positions
                     </span>
-                    <span class="text-[15px] text-white font-mono font-bold">
+                    <span class="text-[15px] text-text-primary font-mono font-bold">
                       {positionCount()}
                     </span>
                   </div>

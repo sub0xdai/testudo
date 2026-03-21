@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchReturnDistribution } from '../../api/client'
-import { SIGNAL_GREEN, SIGNAL_RED } from '../../lib/tokens'
+import { getSignalGreen, getSignalRed } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function ReturnHistogram() {
@@ -37,7 +37,7 @@ export function ReturnHistogram() {
           const num = parseFloat(b.bucket)
           return {
             value: b.count,
-            itemStyle: { color: isNaN(num) || num >= 0 ? SIGNAL_GREEN : SIGNAL_RED },
+            itemStyle: { color: isNaN(num) || num >= 0 ? getSignalGreen() : getSignalRed() },
           }
         }),
         barGap: '0%',

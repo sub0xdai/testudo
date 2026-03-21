@@ -2,7 +2,8 @@ import { onMount, onCleanup, createEffect, Show } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, LineSeries, AreaSeries } from 'lightweight-charts'
 import type { EquityPoint } from '../api/client'
 import { SkeletonBar } from './SkeletonBar'
-import { SIGNAL_GREEN, signalRedAlpha } from '../lib/tokens'
+import { getSignalGreen, signalRedAlpha, getGridLineColor, getCrosshairColor, getTextTertiary } from '../lib/tokens'
+import { onThemeChange } from '../lib/theme-observer'
 
 interface HeroEquityCurveProps {
   data: EquityPoint[] | undefined
@@ -15,30 +16,31 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
   let equityLine: ISeriesApi<'Line'> | undefined
   let drawdownArea: ISeriesApi<'Area'> | undefined
 
-  onMount(() => {
+  function initChart() {
+    chart?.remove()
     chart = createChart(container, {
       width: container.clientWidth,
       height: 400,
       layout: {
         background: { color: 'transparent' },
-        textColor: '#555555',
+        textColor: getTextTertiary(),
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: '#1A1A1A' },
-        horzLines: { color: '#1A1A1A' },
+        vertLines: { color: getGridLineColor() },
+        horzLines: { color: getGridLineColor() },
       },
       crosshair: {
-        vertLine: { color: '#3F3F46' },
-        horzLine: { color: '#3F3F46' },
+        vertLine: { color: getCrosshairColor() },
+        horzLine: { color: getCrosshairColor() },
       },
-      rightPriceScale: { borderColor: '#3F3F46' },
-      timeScale: { borderColor: '#3F3F46' },
+      rightPriceScale: { borderColor: getCrosshairColor() },
+      timeScale: { borderColor: getCrosshairColor() },
     })
 
     equityLine = chart.addSeries(LineSeries, {
-      color: SIGNAL_GREEN,
+      color: getSignalGreen(),
       lineWidth: 2,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })
@@ -50,14 +52,29 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
       lineWidth: 1,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })
+  }
 
-    const observer = new ResizeObserver(() => {
+  onMount(() => {
+    initChart()
+
+    const resizeObserver = new ResizeObserver(() => {
       chart?.applyOptions({ width: container.clientWidth })
     })
-    observer.observe(container)
+    resizeObserver.observe(container)
+
+    const unsubTheme = onThemeChange(() => {
+      const d = props.data
+      initChart()
+      if (d?.length && equityLine && drawdownArea) {
+        equityLine.setData(d.map((p) => ({ time: p.date as string, value: parseFloat(p.cumulative_pnl) })))
+        drawdownArea.setData(d.map((p) => ({ time: p.date as string, value: -parseFloat(p.drawdown) })))
+        chart?.timeScale().fitContent()
+      }
+    })
 
     onCleanup(() => {
-      observer.disconnect()
+      resizeObserver.disconnect()
+      unsubTheme()
       chart?.remove()
     })
   })

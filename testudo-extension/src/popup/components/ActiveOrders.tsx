@@ -173,7 +173,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
           <Show when={trades().length > 0}>
             {/* UXP-17: white outline instead of signal-red */}
             <button
-              class="px-2 py-1 text-[9px] font-bold tracking-wider text-white border border-white/30 hover:bg-white hover:text-[#050505] transition-colors disabled:opacity-50"
+              class="px-2 py-1 text-[9px] font-bold tracking-wider text-text-primary border border-text-primary/30 hover:bg-text-primary hover:text-bg-core transition-colors disabled:opacity-50"
               onClick={handleCleanup}
               disabled={cleaning()}
               title="Cancel all tracked positions"
@@ -221,7 +221,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
           <div class="mb-3">
             <div class="flex items-center gap-2 mb-3">
               {/* UXP-17: white indicator dot */}
-              <span class="w-2 h-2 rounded-full bg-white" />
+              <span class="w-2 h-2 rounded-full bg-text-primary" />
               <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
                 From Exchange
               </span>
@@ -241,7 +241,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                   Positions
                 </span>
                 {/* UXP-17: white count badge */}
-                <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
+                <span class="text-[11px] font-mono text-text-primary bg-text-primary/10 px-1.5 py-0.5">
                   {exchangeData()!.positions.length}
                 </span>
               </div>
@@ -278,7 +278,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                           fallback={
                             /* UXP-17: white outline for close button */
                             <button
-                              class="px-3 py-1.5 text-[10px] font-bold tracking-wider text-white border border-white/30 hover:bg-white hover:text-[#050505] transition-colors disabled:opacity-50"
+                              class="px-3 py-1.5 text-[10px] font-bold tracking-wider text-text-primary border border-text-primary/30 hover:bg-text-primary hover:text-bg-core transition-colors disabled:opacity-50"
                               onClick={() => setConfirmingClose(pos)}
                               disabled={closingPosition() === pos.symbol}
                             >
@@ -292,7 +292,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                             </span>
                             {/* UXP-17: white outline for confirm YES */}
                             <button
-                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-white border border-white/30 hover:bg-white hover:text-[#050505] transition-colors"
+                              class="px-2 py-1 text-[10px] font-bold tracking-wider text-text-primary border border-text-primary/30 hover:bg-text-primary hover:text-bg-core transition-colors"
                               onClick={() => handleClosePosition(pos)}
                             >
                               YES
@@ -320,7 +320,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                   Open Orders
                 </span>
                 {/* UXP-17: white count badge */}
-                <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
+                <span class="text-[11px] font-mono text-text-primary bg-text-primary/10 px-1.5 py-0.5">
                   {exchangeData()!.open_orders.length}
                 </span>
               </div>
@@ -388,12 +388,12 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <div class="mb-4">
           <div class="flex items-center gap-2 mb-3">
             {/* UXP-17: white indicator dot */}
-            <span class="w-2 h-2 rounded-full bg-white" />
+            <span class="w-2 h-2 rounded-full bg-text-primary" />
             <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
               Active
             </span>
             {/* UXP-17: white count badge */}
-            <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
+            <span class="text-[11px] font-mono text-text-primary bg-text-primary/10 px-1.5 py-0.5">
               {positions().length}
             </span>
           </div>
@@ -417,12 +417,12 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
         <div>
           <div class="flex items-center gap-2 mb-3">
             {/* UXP-17: white indicator dot */}
-            <span class="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span class="w-2 h-2 rounded-full bg-text-primary animate-pulse" />
             <span class="text-[12px] text-text-secondary font-sans font-medium uppercase tracking-wider">
               Pending
             </span>
             {/* UXP-17: white count badge */}
-            <span class="text-[11px] font-mono text-white bg-white/10 px-1.5 py-0.5">
+            <span class="text-[11px] font-mono text-text-primary bg-text-primary/10 px-1.5 py-0.5">
               {pendingOrders().length}
             </span>
           </div>

@@ -58,7 +58,7 @@ export default function AuthSection(props: {
         <Show when={props.onBack}>
           <div class="w-full max-w-[440px] flex items-center gap-3 mb-2">
             <button
-              class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-white/5"
+              class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-text-primary/5"
               onClick={props.onBack}
               data-testid="auth-back"
               title="Back"
@@ -73,7 +73,7 @@ export default function AuthSection(props: {
         <div class="login-glass-card w-full max-w-[440px] px-8 py-8">
           {/* Logo */}
           <div class="flex flex-col items-center">
-            <h1 class="text-3xl font-sans font-bold tracking-[0.25em] text-white mb-1">
+            <h1 class="text-3xl font-sans font-bold tracking-[0.25em] text-text-primary mb-1">
               TESTUDO
             </h1>
             <p class="text-[11px] text-text-dim font-mono tracking-[0.35em] mb-8 uppercase">
@@ -129,7 +129,7 @@ export default function AuthSection(props: {
                 {/* UXP-17: white hover instead of signal-green */}
                 <button
                   type="button"
-                  class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-white transition-colors border-0 bg-transparent p-0"
+                  class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-text-primary transition-colors border-0 bg-transparent p-0"
                   onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
                 >
                   FORGOT?
@@ -168,7 +168,7 @@ export default function AuthSection(props: {
 
             {/* Submit — UXP-17: white outline instead of signal-green bg */}
             <button
-              class={`w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono mt-6 flex items-center justify-center gap-2.5 border border-white text-white hover:bg-white hover:text-[#050505] transition-colors ${
+              class={`w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono mt-6 flex items-center justify-center gap-2.5 border border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core transition-colors ${
                 loading() ? "opacity-70" : ""
               }`}
               onClick={handleSubmit}
@@ -191,7 +191,7 @@ export default function AuthSection(props: {
             {/* Register link */}
             <div class="flex flex-col gap-2 mt-5">
               <button
-                class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-white"
+                class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-text-primary"
                 onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/register` })}
                 data-testid="create-account-btn"
               >

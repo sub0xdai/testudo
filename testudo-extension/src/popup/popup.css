@@ -37,6 +37,7 @@
     --color-border-active: #52525B;
     --color-border-grid: #27272A;
     --color-accent-steel: #94a3b8;
+    --color-accent-primary: #c4735a;
     --color-signal-green: #00FF41;
     --color-signal-green-dim: rgba(0, 255, 65, 0.12);
     --color-signal-red: #FF003C;
@@ -50,6 +51,32 @@
     --color-text-dim: #555555;
     --font-family-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
     --font-family-mono: "Space Mono", ui-monospace, monospace;
+}
+
+/* --- Theme Overrides (UXP-18: Multi-Theme Support) --- */
+/* Light: warm paper tones, WCAG AA darkened signals */
+[data-theme="light"] {
+    --color-bg-core: #f5f0e8;
+    --color-bg-panel: #faf7f2;
+    --color-bg-elevated: #fffcf7;
+    --color-bg-hover: #ebe5db;
+    --color-bg-surface: #fdf9f4;
+    --color-border-subtle: #b4ada2;
+    --color-border-active: #8a8278;
+    --color-border-grid: #c8c1b6;
+    --color-accent-steel: #505d70;
+    --color-accent-primary: #9e5a44;
+    --color-signal-green: #146426;
+    --color-signal-green-dim: rgba(20, 100, 38, 0.15);
+    --color-signal-red: #a00024;
+    --color-signal-red-dim: rgba(160, 0, 36, 0.15);
+    --color-signal-orange: #be6405;
+    --color-signal-orange-dim: rgba(190, 100, 5, 0.15);
+    --color-accent-green: #146426;
+    --color-signal-blue: #1d4ed8;
+    --color-text-primary: #1a1714;
+    --color-text-secondary: #524c42;
+    --color-text-dim: #787166;
 }
 
 /* ============================================================
@@ -184,9 +211,9 @@
     }
 
     button:hover {
-        background: #ffffff;
-        border-color: #ffffff;
-        color: #050505;
+        background: var(--color-text-primary);
+        border-color: var(--color-text-primary);
+        color: var(--color-bg-core);
     }
 
     button:disabled {
@@ -418,11 +445,21 @@
         z-index: 0;
         background: linear-gradient(
             to bottom,
-            rgba(10, 10, 10, 0.92) 0%,
-            rgba(10, 10, 10, 0.8) 50%,
-            rgba(10, 10, 10, 0.65) 100%
+            color-mix(in srgb, var(--color-bg-core) 92%, transparent) 0%,
+            color-mix(in srgb, var(--color-bg-core) 80%, transparent) 50%,
+            color-mix(in srgb, var(--color-bg-core) 65%, transparent) 100%
         );
         pointer-events: none;
+    }
+
+    /* T8: Light theme balance panel overlay — heavier opacity for readability */
+    [data-theme="light"] .balance-panel > .balance-panel-overlay {
+        background: linear-gradient(
+            to bottom,
+            color-mix(in srgb, var(--color-bg-core) 92%, transparent) 0%,
+            color-mix(in srgb, var(--color-bg-core) 88%, transparent) 50%,
+            color-mix(in srgb, var(--color-bg-core) 85%, transparent) 100%
+        );
     }
 
     .balance-panel > * {
@@ -444,14 +481,28 @@
     }
 
     .login-glass-card {
-        background: rgba(5, 5, 5, 0.85);
+        background: color-mix(in srgb, var(--color-bg-core) 85%, transparent);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        border: 1px solid #3F3F46;
+        border: 1px solid var(--color-border-subtle);
         border-radius: 0;
         box-shadow:
             0 8px 32px rgba(0, 0, 0, 0.4),
             inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    /* T9: Light theme card depth — softer shadow + subtle border */
+    [data-theme="light"] .card-depth {
+        box-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.08),
+            0 0 0 1px var(--color-border-subtle);
+    }
+
+    /* T9: Light theme login glass card — lighter shadow */
+    [data-theme="light"] .login-glass-card {
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(0, 0, 0, 0.04);
     }
 }
 

@@ -3,7 +3,8 @@ import { createChart, type IChartApi, type ISeriesApi, HistogramSeries } from 'l
 import { ChartContainer } from './ChartContainer'
 import { useFilters } from '../filterContext'
 import { fetchDailyPnl } from '../../api/client'
-import { SIGNAL_GREEN, SIGNAL_RED, CHART_BG } from '../../lib/tokens'
+import { getSignalGreen, getSignalRed, getChartBg, getGridLineColor, getCrosshairColor, getTextTertiary } from '../../lib/tokens'
+import { onThemeChange } from '../../lib/theme-observer'
 
 export function DailyPnl() {
   const { filters, setFilters } = useFilters()
@@ -14,35 +15,53 @@ export function DailyPnl() {
   let chart: IChartApi | undefined
   let series: ISeriesApi<'Histogram'> | undefined
 
-  onMount(() => {
+  function initChart() {
+    chart?.remove()
     chart = createChart(container, {
       width: container.clientWidth,
       height: 250,
       layout: {
-        background: { color: CHART_BG },
-        textColor: '#555555',
+        background: { color: getChartBg() },
+        textColor: getTextTertiary(),
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: '#1A1A1A' },
-        horzLines: { color: '#1A1A1A' },
+        vertLines: { color: getGridLineColor() },
+        horzLines: { color: getGridLineColor() },
       },
-      rightPriceScale: { borderColor: '#3F3F46' },
-      timeScale: { borderColor: '#3F3F46' },
+      rightPriceScale: { borderColor: getCrosshairColor() },
+      timeScale: { borderColor: getCrosshairColor() },
     })
 
     series = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })
+  }
 
-    const observer = new ResizeObserver(() => {
+  onMount(() => {
+    initChart()
+
+    const resizeObserver = new ResizeObserver(() => {
       chart?.applyOptions({ width: container.clientWidth })
     })
-    observer.observe(container)
+    resizeObserver.observe(container)
+
+    const unsubTheme = onThemeChange(() => {
+      initChart()
+      const d = data()
+      if (d?.data?.length && series) {
+        series.setData(d.data.map((p) => {
+          const value = parseFloat(p.pnl)
+          return { time: p.date as string, value, color: value >= 0 ? getSignalGreen() : getSignalRed() }
+        }))
+        chart?.timeScale().fitContent()
+      }
+    })
 
     onCleanup(() => {
-      observer.disconnect()
+      resizeObserver.disconnect()
+      unsubTheme()
       chart?.remove()
     })
   })
@@ -56,7 +75,7 @@ export function DailyPnl() {
       return {
         time: p.date as string,
         value,
-        color: value >= 0 ? SIGNAL_GREEN : SIGNAL_RED,
+        color: value >= 0 ? getSignalGreen() : getSignalRed(),
       }
     })
 

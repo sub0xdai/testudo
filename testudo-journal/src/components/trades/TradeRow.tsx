@@ -17,7 +17,7 @@ export function TradeRow(props: {
 
   return (
     <tr
-      class="border-b border-container-border/30 hover:bg-elevated cursor-pointer transition-colors even:bg-white/[0.02]"
+      class="border-b border-container-border/30 hover:bg-elevated cursor-pointer transition-colors even:bg-text-primary/[0.02]"
       onClick={props.onClick}
     >
       <td class="px-3 py-2.5 text-xs font-mono text-text-secondary whitespace-nowrap">

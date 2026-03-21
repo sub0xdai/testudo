@@ -2,15 +2,16 @@ import { createSignal, Show, For } from 'solid-js'
 import { createTag, updateTag, deleteTag, type JournalTag } from '../../api/client'
 import { useEscapeClose } from '../../lib/useEscapeClose'
 import { createFocusTrap } from '../../lib/createFocusTrap'
-import { TAG_PALETTE, CLOSE_ANIMATION_MS } from '../../lib/tokens'
+import { getTagPalette, CLOSE_ANIMATION_MS } from '../../lib/tokens'
 
 export function TagManager(props: {
   tags: JournalTag[]
   onUpdate: () => void
   onClose: () => void
 }) {
+  const palette = () => getTagPalette()
   const [newName, setNewName] = createSignal('')
-  const [newColor, setNewColor] = createSignal(TAG_PALETTE[0])
+  const [newColor, setNewColor] = createSignal(getTagPalette()[0])
   const [editingId, setEditingId] = createSignal<string | null>(null)
   const [editName, setEditName] = createSignal('')
   const [editColor, setEditColor] = createSignal('')
@@ -69,7 +70,7 @@ export function TagManager(props: {
   function startEdit(tag: JournalTag) {
     setEditingId(tag.id)
     setEditName(tag.name)
-    setEditColor(tag.color || TAG_PALETTE[0])
+    setEditColor(tag.color || getTagPalette()[0])
   }
 
   return (
@@ -121,11 +122,11 @@ export function TagManager(props: {
               >
                 <div class="flex items-center gap-2 px-3 py-2 rounded border border-border-active">
                   <div class="flex gap-1 flex-shrink-0">
-                    <For each={TAG_PALETTE}>
+                    <For each={palette()}>
                       {(c) => (
                         <button
                           class="w-4 h-4 rounded-full border transition-transform"
-                          classList={{ 'scale-125 border-white': editColor() === c, 'border-transparent': editColor() !== c }}
+                          classList={{ 'scale-125 border-border-active': editColor() === c, 'border-transparent': editColor() !== c }}
                           style={{ background: c }}
                           onClick={() => setEditColor(c)}
                           aria-label={`Color ${c}`}
@@ -164,11 +165,11 @@ export function TagManager(props: {
         {/* New tag */}
         <div class="border-t border-container-border pt-4">
           <div class="flex gap-1 mb-3">
-            <For each={TAG_PALETTE}>
+            <For each={palette()}>
               {(c) => (
                 <button
                   class="w-5 h-5 rounded-full border transition-transform"
-                  classList={{ 'scale-125 border-white': newColor() === c, 'border-transparent': newColor() !== c }}
+                  classList={{ 'scale-125 border-border-active': newColor() === c, 'border-transparent': newColor() !== c }}
                   style={{ background: c }}
                   onClick={() => setNewColor(c)}
                   aria-label={`Color ${c}`}

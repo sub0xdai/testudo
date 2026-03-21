@@ -115,7 +115,7 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
                 <button
                   class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
                     preset() === p.key
-                      ? 'bg-white/10 text-text-primary'
+                      ? 'bg-text-primary/10 text-text-primary'
                       : 'text-text-tertiary hover:text-text-primary'
                   }`}
                   onClick={() => selectPreset(p.key)}

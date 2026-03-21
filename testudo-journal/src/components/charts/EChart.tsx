@@ -1,6 +1,7 @@
 import { onMount, onCleanup, createEffect, type Accessor } from 'solid-js'
 import { echarts } from '../../lib/echarts-setup'
-import { TESTUDO_THEME } from '../../lib/echarts-theme'
+import { TESTUDO_THEME, registerTestudoTheme } from '../../lib/echarts-theme'
+import { onThemeChange } from '../../lib/theme-observer'
 import type { EChartsOption } from 'echarts'
 
 interface EChartProps {
@@ -12,15 +13,30 @@ interface EChartProps {
 export function EChart(props: EChartProps) {
   let container!: HTMLDivElement
   let chart: ReturnType<typeof echarts.init> | undefined
+  let lastOption: EChartsOption | undefined
+
+  function initChart() {
+    chart?.dispose()
+    registerTestudoTheme()
+    chart = echarts.init(container, TESTUDO_THEME)
+    if (lastOption) {
+      chart.setOption(lastOption, { notMerge: true })
+    }
+  }
 
   onMount(() => {
-    chart = echarts.init(container, TESTUDO_THEME)
+    initChart()
 
-    const observer = new ResizeObserver(() => chart?.resize())
-    observer.observe(container)
+    const resizeObserver = new ResizeObserver(() => chart?.resize())
+    resizeObserver.observe(container)
+
+    const unsubTheme = onThemeChange(() => {
+      initChart()
+    })
 
     onCleanup(() => {
-      observer.disconnect()
+      resizeObserver.disconnect()
+      unsubTheme()
       chart?.dispose()
     })
   })
@@ -28,6 +44,7 @@ export function EChart(props: EChartProps) {
   createEffect(() => {
     const opt = props.option()
     if (opt && chart) {
+      lastOption = opt
       chart.setOption(opt, { notMerge: true })
     }
   })
