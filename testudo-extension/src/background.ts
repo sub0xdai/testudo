@@ -633,21 +633,10 @@ function setSidecarStatus(status: SidecarStatus): void {
 }
 
 async function checkSidecarHealth(): Promise<void> {
-  const settings = await getSettings();
-  try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/health/sidecar`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (response.ok) {
-      const raw = await response.json().catch(() => ({}));
-      const json = SidecarHealthResponseSchema.safeParse(raw);
-      setSidecarStatus(json.success && json.data.status === "healthy" ? "healthy" : "unreachable");
-    } else {
-      setSidecarStatus("unreachable");
-    }
-  } catch {
-    setSidecarStatus("unreachable");
-  }
+  const result = await apiRequest("/api/v1/health/sidecar", { timeout: 5000 });
+  if (!result.ok) { setSidecarStatus("unreachable"); return; }
+  const json = SidecarHealthResponseSchema.safeParse(result.raw);
+  setSidecarStatus(json.success && json.data.status === "healthy" ? "healthy" : "unreachable");
 }
 
 let sidecarHealthTimer: ReturnType<typeof setInterval> | null = null;
