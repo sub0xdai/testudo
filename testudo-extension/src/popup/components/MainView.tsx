@@ -209,8 +209,8 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         pendingCount={pendingCount()}
       />
 
-      {/* Content */}
-      <main class="flex-1 min-h-0 scroll-area">
+      {/* Content — "control deck" with denser background */}
+      <main class="flex-1 min-h-0 scroll-area bg-bg-panel">
         <Show when={activeTab() === "trade"}>
           <div role="tabpanel" id="panel-trade" aria-labelledby="tab-trade">
             <TradeManagement />

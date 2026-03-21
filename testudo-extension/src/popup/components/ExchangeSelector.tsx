@@ -113,24 +113,18 @@ export default function ExchangeSelector() {
   return (
     <Show when={filteredAccounts().length > 0}>
       <div class="relative" data-exchange-selector data-testid="exchange-selector">
-        {/* Trigger pill — UXP-17: white instead of accent-green */}
         <button
-          class={`flex items-center gap-1.5 px-2.5 py-1 min-h-[44px] text-[11px] font-bold tracking-wider border-0 font-sans transition-colors ${
-            activeAccount()
-              ? "bg-text-primary/10 text-text-primary hover:bg-text-primary/20"
-              : "bg-bg-panel text-text-dim hover:text-text-secondary"
-          }`}
+          class="flex items-center justify-between gap-2 px-3 h-8 min-w-[100px] border border-border-subtle text-[11px] font-bold tracking-wider font-sans transition-colors cursor-pointer text-text-primary hover:bg-bg-elevated"
           onClick={() => setOpen(!open())}
           onKeyDown={(e) => { if (e.key === "Escape" && open()) { e.preventDefault(); setOpen(false); } }}
           title="Switch exchange account"
           aria-haspopup="listbox"
           aria-expanded={open()}
         >
-          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M8 9l4-4 4 4" />
-            <path d="M16 15l-4 4-4-4" />
-          </svg>
           <span class="max-w-[80px] truncate">{activeLabel()}</span>
+          <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z" />
+          </svg>
         </button>
 
         {/* Dropdown */}

@@ -28,14 +28,14 @@
 /* --- Design Tokens (Tailwind v4 @theme) --- */
 /* UXP-17: Monochrome-first — pure blacks, gray borders, signal colors for data only */
 @theme {
-    --color-bg-core: #050505;
-    --color-bg-panel: #0A0A0A;
-    --color-bg-elevated: #111111;
-    --color-bg-hover: #1A1A1A;
-    --color-bg-surface: #0F0F0F;
-    --color-border-subtle: #3F3F46;
-    --color-border-active: #52525B;
-    --color-border-grid: #27272A;
+    --color-bg-core: #0a0a0a;
+    --color-bg-panel: #161616;
+    --color-bg-elevated: #1e1e1e;
+    --color-bg-hover: #282828;
+    --color-bg-surface: #121212;
+    --color-border-subtle: #323232;
+    --color-border-active: #444444;
+    --color-border-grid: #2a2a2a;
     --color-accent-steel: #94a3b8;
     --color-accent-primary: #c4735a;
     --color-signal-green: #00FF41;
@@ -46,9 +46,9 @@
     --color-signal-orange-dim: rgba(245, 158, 11, 0.12);
     --color-accent-green: #00FF41;
     --color-signal-blue: #3b82f6;
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #888888;
-    --color-text-dim: #555555;
+    --color-text-primary: #ededed;
+    --color-text-secondary: #999999;
+    --color-text-dim: #666666;
     --font-family-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
     --font-family-mono: "Space Mono", ui-monospace, monospace;
 }
@@ -57,8 +57,8 @@
 /* Light: warm paper tones, WCAG AA darkened signals */
 [data-theme="light"] {
     --color-bg-core: #f5f0e8;
-    --color-bg-panel: #faf7f2;
-    --color-bg-elevated: #fffcf7;
+    --color-bg-panel: #e8e3d7;
+    --color-bg-elevated: #f0ebe2;
     --color-bg-hover: #ebe5db;
     --color-bg-surface: #fdf9f4;
     --color-border-subtle: #b4ada2;
@@ -83,17 +83,11 @@
    @layer base — element-level resets, overridable by utilities
    ============================================================ */
 @layer base {
-    /* --- Thin custom scrollbars --- */
+    /* --- Hidden scrollbars — content scrolls, no visual track --- */
     * {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(148,163,184,0.3) transparent;
+        scrollbar-width: none;
     }
-    *::-webkit-scrollbar { width: 6px; }
-    *::-webkit-scrollbar-track { background: transparent; }
-    *::-webkit-scrollbar-thumb {
-        background: rgba(148,163,184,0.3);
-        border-radius: 3px;
-    }
+    *::-webkit-scrollbar { display: none; }
 
     /* --- Global Resets --- */
     html,
@@ -233,31 +227,32 @@
         -webkit-appearance: none;
         appearance: none;
         width: 100%;
-        height: 4px;
-        background: var(--color-bg-elevated);
+        height: 6px;
+        background: var(--color-border-subtle);
         border-radius: 999px;
         outline: none;
         cursor: pointer;
         border: none;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
-        width: 16px;
-        height: 16px;
-        background: var(--color-accent-steel);
+        width: 14px;
+        height: 20px;
+        background: var(--color-text-primary);
         border: none;
-        border-radius: 50%;
+        border-radius: 1px;
         cursor: grab;
-        box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent-steel) 30%, transparent);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
         transition:
             box-shadow 150ms ease,
             transform 150ms ease;
     }
 
     input[type="range"]::-webkit-slider-thumb:hover {
-        box-shadow: 0 2px 12px color-mix(in srgb, var(--color-accent-steel) 50%, transparent);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         transform: scale(1.1);
     }
 
@@ -267,19 +262,20 @@
     }
 
     input[type="range"]::-moz-range-thumb {
-        width: 16px;
-        height: 16px;
-        background: var(--color-accent-steel);
+        width: 14px;
+        height: 20px;
+        background: var(--color-text-primary);
         border: none;
-        border-radius: 50%;
+        border-radius: 1px;
         cursor: grab;
-        box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent-steel) 30%, transparent);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     }
 
     input[type="range"]::-moz-range-track {
-        height: 4px;
-        background: var(--color-bg-elevated);
+        height: 6px;
+        background: var(--color-border-subtle);
         border-radius: 999px;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -300,6 +296,7 @@
     .tab-active {
         color: var(--color-text-primary);
         background: var(--color-bg-elevated);
+        border-top: 2px solid var(--color-text-primary);
     }
 
     .tab-inactive {
@@ -336,7 +333,7 @@
 
     /* --- Value Input Box --- */
     .value-input-box {
-        background: var(--color-bg-elevated);
+        background: var(--color-bg-hover);
         border: 1px solid var(--color-border-subtle);
         border-radius: 0;
         padding: 4px 10px;
@@ -504,6 +501,7 @@
             0 8px 32px rgba(0, 0, 0, 0.1),
             inset 0 1px 0 rgba(0, 0, 0, 0.04);
     }
+
 }
 
 /* --- Keyframes (outside layers) --- */

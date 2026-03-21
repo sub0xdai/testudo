@@ -40,19 +40,21 @@ export default function ExchangeToggle() {
 
   return (
     <div
-      class="flex items-center bg-bg-panel p-[3px] gap-0"
+      class="flex items-center h-8 border border-border-subtle"
       data-testid="exchange-toggle"
       role="radiogroup"
       aria-label="Exchange mode"
     >
       <For each={MODES}>
-        {(m) => (
+        {(m, i) => (
           <button
             role="radio"
             aria-checked={mode() === m.value}
-            class={`px-2.5 py-1 text-[11px] font-bold tracking-wider border-0 transition-colors cursor-pointer ${
+            class={`h-full px-3 text-[11px] font-bold tracking-wider border-0 transition-colors cursor-pointer ${
+              i() > 0 ? "border-l border-border-subtle" : ""
+            } ${
               mode() === m.value
-                ? "bg-text-primary/10 text-text-primary"
+                ? "bg-text-primary text-bg-core"
                 : "text-text-dim hover:text-text-secondary bg-transparent"
             }`}
             onClick={() => switchMode(m.value)}

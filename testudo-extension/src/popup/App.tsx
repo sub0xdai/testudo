@@ -1,4 +1,4 @@
-import { createSignal, Match, Switch } from "solid-js";
+import { createSignal, Match, Switch, onMount } from "solid-js";
 import browser from "webextension-polyfill";
 import { AuthProvider } from "./context/AuthContext";
 import AuthSection from "./components/AuthSection";
@@ -10,6 +10,15 @@ type View = "auth" | "main" | "settings";
 export default function App() {
   const [view, setViewRaw] = createSignal<View>("auth");
   const [cameFromMain, setCameFromMain] = createSignal(false);
+
+  // Restore theme from browser.storage.local on every popup open
+  onMount(async () => {
+    const stored = await browser.storage.local.get("testudo-theme");
+    const theme = stored["testudo-theme"] as string | undefined;
+    if (theme && theme !== "amoled") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  });
 
   function setView(v: View) {
     setViewRaw(v);

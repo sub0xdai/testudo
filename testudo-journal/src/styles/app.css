@@ -4,21 +4,21 @@
 
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
-  --bg-core: 5 5 5;
-  --bg-panel: 10 10 10;
-  --bg-elevated: 17 17 17;
-  --bg-hover: 26 26 26;
-  --border: 63 63 70;
-  --border-active-accent: 255 255 255;
+  --bg-core: 10 10 10;
+  --bg-panel: 22 22 22;
+  --bg-elevated: 30 30 30;
+  --bg-hover: 40 40 40;
+  --border: 50 50 50;
+  --border-active-accent: 237 237 237;
   --accent-steel: 148 163 184;
   --accent-steel-hover: 203 213 225;
   --accent-primary: 196 115 90;
   --signal-green: 0 255 65;
   --signal-red: 255 0 60;
   --signal-amber: 245 158 11;
-  --text-primary: 255 255 255;
-  --text-secondary: 136 136 136;
-  --text-tertiary: 85 85 85;
+  --text-primary: 237 237 237;
+  --text-secondary: 153 153 153;
+  --text-tertiary: 102 102 102;
 
   /* Layout */
   --header-h: 57px;
@@ -47,7 +47,9 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  scrollbar-width: none;
 }
+*::-webkit-scrollbar { display: none; }
 
 html {
   scroll-behavior: smooth;

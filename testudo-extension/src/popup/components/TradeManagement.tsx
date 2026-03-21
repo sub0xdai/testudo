@@ -61,7 +61,7 @@ export default function TradeManagement() {
   return (
     <div class="space-y-5 px-5 py-4" data-testid="trade-management">
       {/* Risk % Slider — traffic light: green <=2, orange <=5, red >5 */}
-      <div data-testid="risk-slider">
+      <div data-testid="risk-slider" class="border border-border-subtle p-4 bg-bg-surface">
         <label for="field-risk-percent" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Risk Per Trade</span>
           <div class="value-input-box">
@@ -104,7 +104,7 @@ export default function TradeManagement() {
       <div class="divider" />
 
       {/* Leverage Slider — 1x to 125x (Binance Futures max) */}
-      <div data-testid="leverage-slider">
+      <div data-testid="leverage-slider" class="border border-border-subtle p-4 bg-bg-surface">
         <label for="field-leverage" class="flex items-center justify-between mb-3">
           <span class="text-[14px] text-text-primary font-sans font-semibold">Leverage</span>
           <div class="value-input-box">
