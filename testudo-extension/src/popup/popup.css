@@ -429,6 +429,11 @@
         font-family: var(--font-family-mono);
     }
 
+    /* --- Balance Text Shadow (soft glow against background image) --- */
+    .text-shadow-balance {
+        text-shadow: 0 2px 8px color-mix(in srgb, var(--color-bg-core) 60%, transparent);
+    }
+
     /* --- Balance Panel (Hadrian's Wall texture) --- */
     .balance-panel {
         position: relative;

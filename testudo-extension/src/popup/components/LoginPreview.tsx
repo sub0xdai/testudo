@@ -107,8 +107,7 @@ export default function LoginPreview() {
             </span>
           </div>
           <span
-            class="text-[42px] font-bold text-text-primary tracking-tight leading-none"
-            style={{ "text-shadow": "0 2px 8px color-mix(in srgb, var(--color-bg-core) 60%, transparent)" }}
+            class="text-[42px] font-bold text-text-primary tracking-tight leading-none text-shadow-balance"
           >
             $12,450.00
           </span>
