@@ -135,6 +135,12 @@
 - **Custom utility required**: Created `.font-family-mono { font-family: var(--font-family-mono); }` in `@layer components` to bridge the naming gap. This avoids inline `style={{ "font-family": "var(--font-family-mono)" }}` while preserving the correct font.
 - **Root cause**: The popup.css `@theme` uses `--font-family-*` convention (matching CSS spec naming), but Tailwind v4 utilities expect `--font-*` shorthand. The base styles (`body`, `input`, `select`, `button`) reference `--font-family-sans`/`--font-family-mono` directly, so renaming the theme vars would require updating all base style references.
 
+### 2026-03-22 — UXP-19-features-layout
+- **Hero + compact list beats terminal log**: The landing page already uses ghost annotations (`// SYSTEM_CAPABILITIES`, `// core_module`) as a terminal metaphor. Adding a second terminal-style feature list (Option B) would create competing metaphors. Option A (hero feature + compact secondary list) adds hierarchy without a new visual language.
+- **`border-text-primary` for visual dominance**: Primary feature uses `border-text-primary` instead of `border-container-border` — brighter border creates immediate visual weight difference. Secondary features use `border-l` only (left border, no full box).
+- **Ghost annotation as authenticity signal**: The hero block includes `// core_module — position_sizer.rs` referencing the actual Rust backend file. This ties the marketing surface to the real codebase, reinforcing the brutalist "this is real" aesthetic.
+- **font-mono preserved intentionally**: UXP-23 spec handles the mono→display typography migration. This spec only changes layout structure to avoid scope creep between specs.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
