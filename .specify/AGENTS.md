@@ -185,4 +185,12 @@
 - **Markdown stripping for preview column**: Simple regex chain (images → links → formatting chars → newlines) produces clean 80-char previews. No need for a full markdown parser — the preview is intentionally lossy.
 - **Removed `rounded` from buttons**: Spec requires "zero-radius, monochrome-first aesthetic". Existing buttons had `rounded` class. Removed from view toggle, export, tags, and new entry buttons to match.
 
+### 2026-03-22 — JNL-17-nested-collections
+- **localStorage prototype viable**: No backend `/journal/collections` endpoints exist. localStorage persistence with flat array + client-side `buildTree()` satisfies all CRUD + nesting requirements. Migration to backend requires swapping `readAll()`/`writeAll()` calls in `lib/collections.ts` for API calls — single file change.
+- **Collection state in JournalTimeline, not Journal.tsx**: Journal.tsx is a 12-line wrapper. Lifting collection state there would require passing 10+ props. Keeping `activeCollection`, `collections`, `sidebarCollapsed` signals inside JournalTimeline matches the pattern from JNL-16 (viewMode lives there too).
+- **Filter bridge is one-directional on select**: Clicking a collection writes its saved `filters` to the existing `typeFilter`, `tagFilter`, `dateFrom`, `dateTo` signals. Manual filter changes after selection still work (they override the collection's preset). "Clear" resets both filters and active collection.
+- **Max depth enforcement**: `getDepth()` walks `parent_id` chain. `createCollection()` and `updateCollection()` throw if depth would reach 3. UI hides "+" button at depth 2 via `getCollectionDepth()` check.
+- **Sidebar collapse uses vertical text rotation**: When collapsed, sidebar becomes an 8px-wide strip with "Collections" text rotated 90° via `rotate-90` class. This preserves affordance while minimizing space on mobile.
+- **"Save Current Filters" in sidebar footer**: Only appears when filters are active (`hasActiveFilters()` check). Auto-generates name from active filter values (e.g., "post-trade + breakout"). Avoids a modal — creates immediately, user can rename inline.
+
 *This file grows as Vox learns. Never delete entries.*

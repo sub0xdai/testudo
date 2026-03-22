@@ -11,8 +11,14 @@ import { EntryCard } from './EntryCard'
 import { EntryEditor } from './EntryEditor'
 import { TagManager } from './TagManager'
 import { DatabaseTable } from './DatabaseTable'
+import { CollectionSidebar } from './CollectionSidebar'
 import { SkeletonBar } from '../SkeletonBar'
 import { exportEntries } from '../../lib/export'
+import {
+  getCollections,
+  type JournalCollection,
+  type CollectionFilters,
+} from '../../lib/collections'
 
 type ViewMode = 'table' | 'cards'
 
@@ -52,6 +58,39 @@ export function JournalTimeline() {
   const [viewMode, setViewMode] = createSignal<ViewMode>('table')
   const [exporting, setExporting] = createSignal(false)
   const [exportProgress, setExportProgress] = createSignal('')
+
+  // Collection state
+  const [collections, setCollections] = createSignal<JournalCollection[]>(getCollections())
+  const [activeCollection, setActiveCollection] = createSignal<JournalCollection | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = createSignal(false)
+
+  function refreshCollections() {
+    setCollections(getCollections())
+  }
+
+  function handleSelectCollection(collection: JournalCollection | null) {
+    setActiveCollection(collection)
+    if (collection) {
+      // Apply collection's saved filters
+      setTypeFilter(collection.filters.entry_type ?? '')
+      setTagFilter(collection.filters.tag_name ?? '')
+      setDateFrom(collection.filters.date_from ?? '')
+      setDateTo(collection.filters.date_to ?? '')
+    } else {
+      // "All Entries" — clear filters
+      setTypeFilter('')
+      setTagFilter('')
+      setDateFrom('')
+      setDateTo('')
+    }
+  }
+
+  const currentFilters = (): CollectionFilters => ({
+    entry_type: typeFilter() || undefined,
+    tag_name: tagFilter() || undefined,
+    date_from: dateFrom() || undefined,
+    date_to: dateTo() || undefined,
+  })
 
   // Fetch all entries (large limit for client-side filtering)
   const [entriesData, { refetch }] = createResource(
@@ -177,205 +216,227 @@ export function JournalTimeline() {
     setExportProgress('')
   }
 
+  function handleClearFilters() {
+    setTypeFilter('')
+    setTagFilter('')
+    setDateFrom('')
+    setDateTo('')
+    setActiveCollection(null)
+  }
+
   return (
-    <div>
-      {/* Header */}
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="font-display text-lg font-bold tracking-wider text-text-primary">
-          JOURNAL
-        </h2>
-        <div class="flex items-center gap-2">
-          {/* View toggle */}
-          <div class="flex border border-container-border">
+    <div class="flex" style={{ 'min-height': '400px' }}>
+      {/* Sidebar */}
+      <CollectionSidebar
+        collections={collections()}
+        activeId={activeCollection()?.id ?? null}
+        onSelect={handleSelectCollection}
+        onChange={refreshCollections}
+        collapsed={sidebarCollapsed()}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed())}
+        currentFilters={currentFilters()}
+      />
+
+      {/* Main content */}
+      <div class="flex-1 min-w-0">
+        {/* Header */}
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="font-display text-lg font-bold tracking-wider text-text-primary">
+            {activeCollection()?.name ?? 'JOURNAL'}
+          </h2>
+          <div class="flex items-center gap-2">
+            {/* View toggle */}
+            <div class="flex border border-container-border">
+              <button
+                class="px-2 py-1.5 font-mono text-xs transition-colors"
+                classList={{
+                  'bg-text-primary text-main-bg': viewMode() === 'table',
+                  'text-text-tertiary hover:text-text-primary': viewMode() !== 'table',
+                }}
+                onClick={() => setViewMode('table')}
+                title="Table view"
+              >
+                Table
+              </button>
+              <button
+                class="px-2 py-1.5 font-mono text-xs border-l border-container-border transition-colors"
+                classList={{
+                  'bg-text-primary text-main-bg': viewMode() === 'cards',
+                  'text-text-tertiary hover:text-text-primary': viewMode() !== 'cards',
+                }}
+                onClick={() => setViewMode('cards')}
+                title="Card view"
+              >
+                Cards
+              </button>
+            </div>
+            <Show when={exporting()}>
+              <span class="font-mono text-xs text-text-tertiary">Exporting {exportProgress()}...</span>
+            </Show>
             <button
-              class="px-2 py-1.5 font-mono text-xs transition-colors"
-              classList={{
-                'bg-text-primary text-main-bg': viewMode() === 'table',
-                'text-text-tertiary hover:text-text-primary': viewMode() !== 'table',
-              }}
-              onClick={() => setViewMode('table')}
-              title="Table view"
+              class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleBulkExport}
+              disabled={exporting() || filteredEntries().length === 0}
             >
-              Table
+              Export All
             </button>
             <button
-              class="px-2 py-1.5 font-mono text-xs border-l border-container-border transition-colors"
-              classList={{
-                'bg-text-primary text-main-bg': viewMode() === 'cards',
-                'text-text-tertiary hover:text-text-primary': viewMode() !== 'cards',
-              }}
-              onClick={() => setViewMode('cards')}
-              title="Card view"
+              class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors"
+              onClick={() => setShowTagManager(true)}
             >
-              Cards
+              Tags
+            </button>
+            <button
+              class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
+              onClick={handleNewEntry}
+            >
+              + New Entry
             </button>
           </div>
-          <Show when={exporting()}>
-            <span class="font-mono text-xs text-text-tertiary">Exporting {exportProgress()}...</span>
-          </Show>
-          <button
-            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleBulkExport}
-            disabled={exporting() || filteredEntries().length === 0}
-          >
-            Export All
-          </button>
-          <button
-            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors"
-            onClick={() => setShowTagManager(true)}
-          >
-            Tags
-          </button>
-          <button
-            class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
-            onClick={handleNewEntry}
-          >
-            + New Entry
-          </button>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border">
-        <label class="flex items-center gap-1.5">
-          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Type</span>
-          <select
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
-            value={typeFilter()}
-            onChange={(e) => setTypeFilter(e.currentTarget.value)}
-          >
-            <For each={ENTRY_TYPE_OPTIONS}>
-              {(opt) => <option value={opt.value}>{opt.label}</option>}
-            </For>
-          </select>
-        </label>
-
-        <label class="flex items-center gap-1.5">
-          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
-          <select
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
-            value={tagFilter()}
-            onChange={(e) => setTagFilter(e.currentTarget.value)}
-          >
-            <option value="">All Tags</option>
-            <For each={tags() ?? []}>
-              {(tag) => <option value={tag.name}>{tag.name}</option>}
-            </For>
-          </select>
-        </label>
-
-        <label class="flex items-center gap-1.5">
-          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">From</span>
-          <input
-            type="date"
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
-            value={dateFrom()}
-            onInput={(e) => setDateFrom(e.currentTarget.value)}
-          />
-        </label>
-        <label class="flex items-center gap-1.5">
-          <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">To</span>
-          <input
-            type="date"
-            class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
-            value={dateTo()}
-            onInput={(e) => setDateTo(e.currentTarget.value)}
-          />
-        </label>
-
-        <Show when={typeFilter() || tagFilter() || dateFrom() || dateTo()}>
-          <button
-            class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
-            onClick={() => { setTypeFilter(''); setTagFilter(''); setDateFrom(''); setDateTo('') }}
-          >
-            [Clear]
-          </button>
-        </Show>
-      </div>
-
-      {/* Loading state — structural skeleton */}
-      <Show when={entriesData.loading}>
-        <div class="space-y-3">
-          <For each={[1, 2, 3]}>
-            {() => (
-              <div class="bg-container-bg border border-container-border overflow-hidden">
-                {/* Header bar with left accent */}
-                <div class="px-4 py-2 flex items-center gap-3 border-b border-container-border" style={{ 'border-left': '3px solid rgba(148, 163, 184, 0.3)' }}>
-                  <SkeletonBar width="56px" height="18px" />
-                  <SkeletonBar width="140px" height="14px" />
-                </div>
-                {/* Body lines */}
-                <div class="px-4 py-3 space-y-2">
-                  <SkeletonBar width="100%" />
-                  <SkeletonBar width="85%" />
-                  <SkeletonBar width="60%" />
-                </div>
-                {/* Footer */}
-                <div class="px-4 py-2 border-t border-container-border flex justify-between">
-                  <SkeletonBar width="48px" height="10px" />
-                  <SkeletonBar width="64px" height="10px" />
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
-
-      {/* Empty state */}
-      <Show when={!entriesData.loading && filteredEntries().length === 0}>
-        <div class="text-center py-16">
-          <div class="font-mono text-text-tertiary text-sm mb-4">NO ENTRIES YET</div>
-          <button
-            class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
-            onClick={handleNewEntry}
-          >
-            Write your first entry
-          </button>
-        </div>
-      </Show>
-
-      {/* Content: Table or Cards */}
-      <Show when={!entriesData.loading && filteredEntries().length > 0}>
-        <Show
-          when={viewMode() === 'table'}
-          fallback={
-            <div class="space-y-8">
-              <For each={grouped()}>
-                {([date, entries]) => (
-                  <div>
-                    <div class="flex items-center gap-4 mb-4">
-                      <div class="h-px bg-container-border flex-1" />
-                      <span class="font-mono text-xs text-text-tertiary tracking-wider">{date}</span>
-                      <div class="h-px bg-container-border flex-1" />
-                    </div>
-                    <div class="space-y-3">
-                      <For each={entries}>
-                        {(entry) => (
-                          <EntryCard
-                            entry={entry}
-                            tags={getEntryTags(entry)}
-                            tradeLabel={getTradeLabel(entry)}
-                            onEdit={() => handleEdit(entry)}
-                            onDelete={() => handleDelete(entry)}
-                          />
-                        )}
-                      </For>
-                    </div>
-                  </div>
-                )}
+        {/* Filters */}
+        <div class="flex flex-wrap gap-3 mb-6 p-4 bg-container-bg border border-container-border">
+          <label class="flex items-center gap-1.5">
+            <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Type</span>
+            <select
+              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              value={typeFilter()}
+              onChange={(e) => setTypeFilter(e.currentTarget.value)}
+            >
+              <For each={ENTRY_TYPE_OPTIONS}>
+                {(opt) => <option value={opt.value}>{opt.label}</option>}
               </For>
-            </div>
-          }
-        >
-          <DatabaseTable
-            entries={filteredEntries()}
-            getEntryTags={getEntryTags}
-            getTradeLabel={getTradeLabel}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+            </select>
+          </label>
+
+          <label class="flex items-center gap-1.5">
+            <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
+            <select
+              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              value={tagFilter()}
+              onChange={(e) => setTagFilter(e.currentTarget.value)}
+            >
+              <option value="">All Tags</option>
+              <For each={tags() ?? []}>
+                {(tag) => <option value={tag.name}>{tag.name}</option>}
+              </For>
+            </select>
+          </label>
+
+          <label class="flex items-center gap-1.5">
+            <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">From</span>
+            <input
+              type="date"
+              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              value={dateFrom()}
+              onInput={(e) => setDateFrom(e.currentTarget.value)}
+            />
+          </label>
+          <label class="flex items-center gap-1.5">
+            <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">To</span>
+            <input
+              type="date"
+              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              value={dateTo()}
+              onInput={(e) => setDateTo(e.currentTarget.value)}
+            />
+          </label>
+
+          <Show when={typeFilter() || tagFilter() || dateFrom() || dateTo()}>
+            <button
+              class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+              onClick={handleClearFilters}
+            >
+              [Clear]
+            </button>
+          </Show>
+        </div>
+
+        {/* Loading state — structural skeleton */}
+        <Show when={entriesData.loading}>
+          <div class="space-y-3">
+            <For each={[1, 2, 3]}>
+              {() => (
+                <div class="bg-container-bg border border-container-border overflow-hidden">
+                  {/* Header bar with left accent */}
+                  <div class="px-4 py-2 flex items-center gap-3 border-b border-container-border" style={{ 'border-left': '3px solid rgba(148, 163, 184, 0.3)' }}>
+                    <SkeletonBar width="56px" height="18px" />
+                    <SkeletonBar width="140px" height="14px" />
+                  </div>
+                  {/* Body lines */}
+                  <div class="px-4 py-3 space-y-2">
+                    <SkeletonBar width="100%" />
+                    <SkeletonBar width="85%" />
+                    <SkeletonBar width="60%" />
+                  </div>
+                  {/* Footer */}
+                  <div class="px-4 py-2 border-t border-container-border flex justify-between">
+                    <SkeletonBar width="48px" height="10px" />
+                    <SkeletonBar width="64px" height="10px" />
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
         </Show>
-      </Show>
+
+        {/* Empty state */}
+        <Show when={!entriesData.loading && filteredEntries().length === 0}>
+          <div class="text-center py-16">
+            <div class="font-mono text-text-tertiary text-sm mb-4">NO ENTRIES YET</div>
+            <button
+              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
+              onClick={handleNewEntry}
+            >
+              Write your first entry
+            </button>
+          </div>
+        </Show>
+
+        {/* Content: Table or Cards */}
+        <Show when={!entriesData.loading && filteredEntries().length > 0}>
+          <Show
+            when={viewMode() === 'table'}
+            fallback={
+              <div class="space-y-8">
+                <For each={grouped()}>
+                  {([date, entries]) => (
+                    <div>
+                      <div class="flex items-center gap-4 mb-4">
+                        <div class="h-px bg-container-border flex-1" />
+                        <span class="font-mono text-xs text-text-tertiary tracking-wider">{date}</span>
+                        <div class="h-px bg-container-border flex-1" />
+                      </div>
+                      <div class="space-y-3">
+                        <For each={entries}>
+                          {(entry) => (
+                            <EntryCard
+                              entry={entry}
+                              tags={getEntryTags(entry)}
+                              tradeLabel={getTradeLabel(entry)}
+                              onEdit={() => handleEdit(entry)}
+                              onDelete={() => handleDelete(entry)}
+                            />
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  )}
+                </For>
+              </div>
+            }
+          >
+            <DatabaseTable
+              entries={filteredEntries()}
+              getEntryTags={getEntryTags}
+              getTradeLabel={getTradeLabel}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </Show>
+        </Show>
+      </div>
 
       {/* Editor modal */}
       <Show when={showEditor()}>

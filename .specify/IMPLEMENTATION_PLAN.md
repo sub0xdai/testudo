@@ -1,30 +1,31 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: JNL-16-database-view
+> Current spec: JNL-17-nested-collections
 > Phase: BUILD
 
 ---
 
-## Active Spec: JNL-16-database-view
+## Active Spec: JNL-17-nested-collections
 
-Transform journal from timeline to sortable, filterable database table view.
+Nested collections for hierarchical journal organization — saved database views with tree navigation.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Create DatabaseTable.tsx — sortable columns, client-side pagination, bulk selection, row click, type badges | complete | high | — |
-| T2 | Integrate DatabaseTable into JournalTimeline — view toggle, sort/page state, conditional render | complete | medium | T1 |
-| T3 | Build validation + commit | complete | low | T2 |
+| T1 | Collection data model + localStorage persistence — types, CRUD helpers, tree builder in `lib/collections.ts` | complete | medium | — |
+| T2 | CollectionSidebar component — tree navigation with expand/collapse, rename, delete, create sub-collection | complete | high | T1 |
+| T3 | Journal layout integration — sidebar + content flex layout in JournalTimeline, collection→filter bridge, "Save as Collection" button | complete | high | T1, T2 |
+| T4 | Build validation + commit | complete | low | T3 |
 
 ### Key Decisions
 
-- **Client-side sorting + pagination**: Backend `fetchEntries` only supports `page`/`limit`/`tradeId`. No server-side sort/filter. Risk #1 mitigation: client-side on 200 entries is acceptable.
-- **DatabaseTable as pure display component**: Receives entries, tag/trade-label accessors, and callbacks from JournalTimeline. Sort/page state lives inside DatabaseTable.
-- **View toggle in JournalTimeline**: Keep all data fetching, filtering, modals in JournalTimeline. Swap display layer (cards vs table) based on viewMode signal. Minimal refactor.
-- **Shift-click bulk selection**: Track lastClickedIndex for range selection. Selected IDs exposed for future bulk actions (delete, export, tag).
-- **Preview column = plain text**: Strip markdown, show first 80 chars. No MarkdownPreview in table rows (performance).
+- **localStorage prototype**: No backend collection endpoints exist. Use localStorage for persistence (spec Risk #1 mitigation). Data model matches spec's `JournalCollection` interface for future backend migration.
+- **Collection state in JournalTimeline**: JournalTimeline already owns all filter state, data fetching, and modals. Adding collection state here avoids lifting 10+ props to Journal.tsx. Sidebar renders as a sibling inside JournalTimeline's flex container.
+- **Flat storage, client-side tree**: Collections stored as flat array in localStorage. `buildTree()` constructs hierarchy from `parent_id` references. Max 3 levels enforced in UI (hide "Add sub-collection" at depth 3).
+- **Filter bridge**: Selecting a collection applies its saved `filters` to JournalTimeline's existing `typeFilter`, `tagFilter`, `dateFrom`, `dateTo` signals. "All Entries" clears all filters.
+- **No backend changes**: Pure frontend feature. When backend adds `/journal/collections` endpoints, swap localStorage calls for API calls in `lib/collections.ts`.
 
 ---
 
@@ -43,6 +44,7 @@ Transform journal from timeline to sortable, filterable database table view.
 | UXP-21-light-theme-parity | 2026-03-22 |
 | JNL-14-markdown-hardening | 2026-03-22 |
 | JNL-15-export-with-images | 2026-03-22 |
+| JNL-16-database-view | 2026-03-22 |
 
 ---
 
