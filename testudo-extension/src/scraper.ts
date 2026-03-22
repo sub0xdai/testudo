@@ -2,8 +2,10 @@
 // Extracts trade setup data from TradingView's Long/Short Position drawing tools.
 // Uses multiple selector strategies with fallbacks for resilience.
 
-import browser from "webextension-polyfill";
 import type { ScraperHealthRecord, ChartApiHealth } from "./types";
+
+// MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
+const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
 
 export interface TradeSetup {
   symbol: string;

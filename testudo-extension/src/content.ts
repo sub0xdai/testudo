@@ -1,5 +1,7 @@
-import browser from "webextension-polyfill";
 import { scrapeTradeSetup, scrapeSymbol } from "./scraper";
+
+// MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
+const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
 import type { TradeSetup } from "./scraper";
 import { showModal, showOrderToast, showToast, isVisible } from "./modal";
 import type { ModalResult } from "./modal";

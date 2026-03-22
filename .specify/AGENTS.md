@@ -120,6 +120,16 @@
 - **No functionality change**: All 6 scraper strategies, telemetry recording, and chart API health detection work identically. Build passes for Chrome and Firefox.
 - **Lesson**: Audit ALL transitive dependencies in content scripts. Content scripts run on every page load — even one `import { z } from "zod"` anywhere in the dependency graph pulls the entire library into the bundle. Background scripts (which also use Zod) are unaffected since they load once.
 
+### 2026-03-22 — bundle-size optimization: Remove webextension-polyfill from content scripts
+- **webextension-polyfill was 16.5% of content.js bundle**: 9.3kb out of 57.9kb. Imported by both `content.ts` and `scraper.ts`.
+- **MV3 makes the polyfill unnecessary for content scripts**: Chrome MV3 `chrome.*` APIs return Promises natively (since Chrome 110+). Firefox MV3 has native `browser.*` namespace. The polyfill's main purpose — wrapping callback-based Chrome APIs in Promises — is redundant in MV3.
+- **Content script uses only 4 APIs**: `runtime.sendMessage()`, `runtime.onMessage.addListener()`, `storage.local.get()`, `storage.local.set()`. All Promise-based in both Chrome MV3 and Firefox MV3.
+- **Replacement**: Single line `const browser = (globalThis as any).browser ?? (globalThis as any).chrome;` in each file. Firefox uses its native `browser`, Chrome falls back to `chrome`.
+- **Result**: content.js dropped from 57,984 → 47,832 bytes (17.5% reduction, -10,152 bytes).
+- **Cumulative**: content.js from 368,141 (baseline) → 47,832 (87.0% total reduction).
+- **Background script still uses polyfill**: The polyfill remains in background.ts, popup, and other non-content-script modules where its broader API coverage is still used. This change is content-script-only.
+- **Lesson**: For content scripts with minimal API surface, prefer native MV3 APIs over polyfills. The polyfill is only needed when targeting MV2 or using many different browser extension APIs.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
