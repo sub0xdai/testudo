@@ -94,7 +94,7 @@ export function EntryCard(props: {
         <div class="flex gap-2">
           <button
             class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
-            onClick={() => exportEntry(props.entry, props.tags)}
+            onClick={() => { exportEntry(props.entry, props.tags) }}
           >
             [Export]
           </button>

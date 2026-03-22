@@ -1,27 +1,28 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: JNL-14-markdown-hardening
+> Current spec: JNL-15-export-with-images
 > Phase: BUILD
 
 ---
 
-## Active Spec: JNL-14-markdown-hardening
+## Active Spec: JNL-15-export-with-images
 
-Harden markdown preview CSS (img/hr), scope scrollbar hiding, add attach button, allow textarea resize.
+Self-contained export with base64-embedded images + bulk export with progress indicator.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | CSS hardening — img/hr rules in .markdown-preview, scope scrollbar hiding to body only | complete | low | — |
-| T2 | EntryEditor UX — attach image button in tab bar, textarea resize-y | complete | low | — |
+| T1 | Rewrite export.ts — inlineImages, blobToBase64, async exportEntry, buildFrontmatter, exportEntries + update callers for async | complete | medium | — |
+| T2 | Add bulk export button + progress indicator to JournalTimeline.tsx | complete | low | T1 |
+| T3 | Build validation + commit | complete | low | T2 |
 
 ### Key Decisions
 
-- **All changes in single iteration**: Spec is small (2 files, ~20 lines of changes). Both tasks implemented together since they're independent and trivial.
-- **Scrollbar scoping**: Moved `scrollbar-width: none` from `*` to `body` selector. Editor textarea and preview pane now show native scrollbars. The `body` rule already existed (for font/background) so added the scrollbar properties there.
-- **Attach button as label+hidden input**: SolidJS `<label>` wrapping a hidden `<input type="file">` — clicking "Attach" text triggers the file picker. Reuses existing `uploadAndInsert()` function.
+- **exportEntry becomes async**: Callers don't need explicit error handling since `inlineImages` catches fetch failures internally. EntryCard wraps in void-returning arrow; EntryEditor awaits.
+- **tagMap built from tradeDetailCache**: Bulk export reuses `getEntryTags()` to build the `Record<string, JournalTag[]>` map, no new API calls needed.
+- **Progress as simple string signal**: `"3 / 12"` format shown inline next to Export All button during export. Clears on completion.
 
 ---
 
@@ -39,6 +40,7 @@ Harden markdown preview CSS (img/hr), scope scrollbar hiding, add attach button,
 | UXP-23-landing-typography | 2026-03-22 |
 | UXP-21-light-theme-parity | 2026-03-22 |
 | JNL-14-markdown-hardening | 2026-03-22 |
+| JNL-15-export-with-images | 2026-03-22 |
 
 ---
 

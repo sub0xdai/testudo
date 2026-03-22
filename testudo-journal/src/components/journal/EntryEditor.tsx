@@ -194,9 +194,9 @@ export function EntryEditor(props: {
     setDragging(false)
   }
 
-  function handleExport() {
+  async function handleExport() {
     if (props.entry) {
-      exportEntry(props.entry, selectedTags())
+      await exportEntry(props.entry, selectedTags())
     } else {
       // Export current draft
       const draft: JournalEntry = {
@@ -210,7 +210,7 @@ export function EntryEditor(props: {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      exportEntry(draft, selectedTags())
+      await exportEntry(draft, selectedTags())
     }
   }
 

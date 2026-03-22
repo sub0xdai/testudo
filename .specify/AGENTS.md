@@ -171,4 +171,10 @@
 - **SolidJS label+hidden-input pattern**: For file upload triggers, `<label><input type="file" class="hidden" onChange={...} /></label>` works without `for`/`id` attributes since the input is a child of the label. Reset `e.currentTarget.value = ''` after upload to allow re-selecting the same file.
 - **Journal CSS uses space-separated RGB tokens**: Same `rgb(var(--border))` pattern as extension and web. Image border rule follows existing pattern from `.markdown-preview pre` which already uses `border: 1px solid rgb(var(--border))`.
 
+### 2026-03-22 — JNL-15-export-with-images
+- **FileReader for base64 conversion**: `FileReader.readAsDataURL()` produces `data:image/png;base64,...` strings that embed directly into markdown `![alt](data:...)` syntax. Works in all markdown viewers (VS Code, Obsidian, Typora, GitHub).
+- **String.replace only replaces first match**: `result.replace(full, ...)` is safe here because each match is processed sequentially from `matchAll` — the full match string includes the unique URL, so duplicates aren't an issue unless the same image URL appears multiple times with the same alt text. If that becomes an issue, would need `replaceAll` or index-based replacement.
+- **Async migration is minimal**: Making `exportEntry` async only affects 2 callers. EntryCard's onClick doesn't need await (fire-and-forget is fine since errors are caught internally). EntryEditor awaits for cleanliness but doesn't use the result.
+- **Bulk export tagMap from cache**: `JournalTimeline` already loads trade details (including tags) into `tradeDetailCache` as entries render. The `getEntryTags()` helper pulls from this cache, so bulk export doesn't need additional API calls — it just builds the `Record<string, JournalTag[]>` from what's already loaded.
+
 *This file grows as Vox learns. Never delete entries.*

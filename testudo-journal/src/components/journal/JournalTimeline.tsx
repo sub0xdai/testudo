@@ -11,6 +11,7 @@ import { EntryCard } from './EntryCard'
 import { EntryEditor } from './EntryEditor'
 import { TagManager } from './TagManager'
 import { SkeletonBar } from '../SkeletonBar'
+import { exportEntries } from '../../lib/export'
 
 const ENTRY_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -45,6 +46,8 @@ export function JournalTimeline() {
   const [showEditor, setShowEditor] = createSignal(false)
   const [editingEntry, setEditingEntry] = createSignal<JournalEntry | null>(null)
   const [showTagManager, setShowTagManager] = createSignal(false)
+  const [exporting, setExporting] = createSignal(false)
+  const [exportProgress, setExportProgress] = createSignal('')
 
   // Fetch all entries (large limit for client-side filtering)
   const [entriesData, { refetch }] = createResource(
@@ -154,6 +157,22 @@ export function JournalTimeline() {
     return `${symbol} ${date}`
   }
 
+  async function handleBulkExport() {
+    const entries = filteredEntries()
+    if (!entries.length) return
+    setExporting(true)
+    setExportProgress(`0 / ${entries.length}`)
+    const tagMap: Record<string, JournalTag[]> = {}
+    for (const entry of entries) {
+      tagMap[entry.id] = getEntryTags(entry)
+    }
+    await exportEntries(entries, tagMap, (current, total) => {
+      setExportProgress(`${current} / ${total}`)
+    })
+    setExporting(false)
+    setExportProgress('')
+  }
+
   return (
     <div>
       {/* Header */}
@@ -161,7 +180,17 @@ export function JournalTimeline() {
         <h2 class="font-display text-lg font-bold tracking-wider text-text-primary">
           JOURNAL
         </h2>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-2">
+          <Show when={exporting()}>
+            <span class="font-mono text-xs text-text-tertiary">Exporting {exportProgress()}...</span>
+          </Show>
+          <button
+            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs rounded hover:border-border-active hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleBulkExport}
+            disabled={exporting() || filteredEntries().length === 0}
+          >
+            Export All
+          </button>
           <button
             class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs rounded hover:border-border-active hover:text-text-primary transition-colors"
             onClick={() => setShowTagManager(true)}
