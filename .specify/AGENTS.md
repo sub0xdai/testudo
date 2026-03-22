@@ -112,6 +112,14 @@
 - **No test changes**: Same 7 pre-existing failures, 70 passing. Test captures `onMessage.addListener` from bootstrap — unchanged.
 - **Decomposition complete**: All acceptance criteria met. background.ts <100 lines, 6 modules extracted, no circular imports, build passes, tests unchanged.
 
+### 2026-03-22 — bundle-size optimization: Remove Zod from content.js
+- **Zod v4 was 85% of content.js bundle**: 304kb out of 358kb. Imported only by `scraper.ts` for 4 trivial schemas (`PositionToolDataSchema`, `TradeSetupSchema`, `ScraperHealthRecordSchema`, `ScraperHealthHistorySchema`).
+- **Zod v4 bundles ALL locales**: Unlike v3, Zod v4 includes ~30 locale files (he, ru, ta, th, be, km, ka, uk, hy, bg, ur, ar, mk, fa...) plus JSON schema processors, regex library — none used by scraper's simple `.safeParse()` calls.
+- **Plain validators are equivalent**: The 4 schemas only used `.safeParse()` checking positive numbers, string length, enum membership, nullable integers with range. Replaced with ~50 lines of plain TypeScript runtime checks. Identical validation behavior.
+- **Result**: content.js dropped from 368,141 → 57,984 bytes (84.3% reduction, -310,157 bytes).
+- **No functionality change**: All 6 scraper strategies, telemetry recording, and chart API health detection work identically. Build passes for Chrome and Firefox.
+- **Lesson**: Audit ALL transitive dependencies in content scripts. Content scripts run on every page load — even one `import { z } from "zod"` anywhere in the dependency graph pulls the entire library into the bundle. Background scripts (which also use Zod) are unaffected since they load once.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*

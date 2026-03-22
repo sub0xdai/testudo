@@ -3,7 +3,6 @@
 // Uses multiple selector strategies with fallbacks for resilience.
 
 import browser from "webextension-polyfill";
-import { z } from "zod";
 import type { ScraperHealthRecord, ChartApiHealth } from "./types";
 
 export interface TradeSetup {
@@ -119,29 +118,52 @@ interface PositionToolData {
   side: "LONG" | "SHORT";
 }
 
-const PositionToolDataSchema = z.object({
-  entry: z.number().positive(),
-  stop: z.number().positive(),
-  target: z.number().positive(),
-  side: z.enum(["LONG", "SHORT"]),
-});
+function isPositiveNumber(v: unknown): v is number {
+  return typeof v === "number" && v > 0;
+}
 
-const TradeSetupSchema = z.object({
-  symbol: z.string().min(1),
-  side: z.enum(["LONG", "SHORT"]),
-  entry: z.number().positive(),
-  stop: z.number().positive(),
-  target: z.number().positive(),
-  timeframe: z.string().min(1),
-});
+function isValidSide(v: unknown): v is "LONG" | "SHORT" {
+  return v === "LONG" || v === "SHORT";
+}
 
-const ScraperHealthRecordSchema = z.object({
-  timestamp: z.number(),
-  strategyUsed: z.number().int().min(0).max(5).nullable(),
-  success: z.boolean(),
-});
+function validatePositionToolData(v: unknown): { success: true; data: PositionToolData } | { success: false } {
+  if (!v || typeof v !== "object") return { success: false };
+  const o = v as Record<string, unknown>;
+  if (isPositiveNumber(o.entry) && isPositiveNumber(o.stop) && isPositiveNumber(o.target) && isValidSide(o.side)) {
+    return { success: true, data: { entry: o.entry, stop: o.stop, target: o.target, side: o.side } };
+  }
+  return { success: false };
+}
 
-const ScraperHealthHistorySchema = z.array(ScraperHealthRecordSchema);
+function validateTradeSetup(v: unknown): { success: true; data: TradeSetup } | { success: false; error: string } {
+  if (!v || typeof v !== "object") return { success: false, error: "not an object" };
+  const o = v as Record<string, unknown>;
+  if (
+    typeof o.symbol === "string" && o.symbol.length >= 1 &&
+    isValidSide(o.side) &&
+    isPositiveNumber(o.entry) && isPositiveNumber(o.stop) && isPositiveNumber(o.target) &&
+    typeof o.timeframe === "string" && o.timeframe.length >= 1
+  ) {
+    return { success: true, data: { symbol: o.symbol, side: o.side, entry: o.entry, stop: o.stop, target: o.target, timeframe: o.timeframe } };
+  }
+  return { success: false, error: "invalid trade setup fields" };
+}
+
+function validateHealthHistory(v: unknown): { success: true; data: ScraperHealthRecord[] } | { success: false } {
+  if (!Array.isArray(v)) return { success: false };
+  const valid: ScraperHealthRecord[] = [];
+  for (const item of v) {
+    if (
+      item && typeof item === "object" &&
+      typeof item.timestamp === "number" &&
+      typeof item.success === "boolean" &&
+      (item.strategyUsed === null || (typeof item.strategyUsed === "number" && Number.isInteger(item.strategyUsed) && item.strategyUsed >= 0 && item.strategyUsed <= 5))
+    ) {
+      valid.push({ timestamp: item.timestamp, strategyUsed: item.strategyUsed, success: item.success });
+    }
+  }
+  return { success: true, data: valid };
+}
 
 // --- Strategy 0: Zero-flash — TradingView internal chart API ---
 // Reads position tool data directly from window.TradingViewApi.activeChart()
@@ -496,7 +518,7 @@ export function scrapeTradeSetup(strategiesOnly?: number[]): TradeSetup | null {
     if (!strategy) continue;
     try {
       const result = strategy();
-      const parsedResult = PositionToolDataSchema.safeParse(result);
+      const parsedResult = validatePositionToolData(result);
       if (parsedResult.success) {
         const symbol = scrapeSymbol();
         if (!symbol) {
@@ -508,7 +530,7 @@ export function scrapeTradeSetup(strategiesOnly?: number[]): TradeSetup | null {
         const timeframe = scrapeTimeframe();
         recordScraperResult(i);
 
-        const tradeSetup = TradeSetupSchema.safeParse({
+        const tradeSetup = validateTradeSetup({
           symbol,
           side: parsedResult.data.side,
           entry: parsedResult.data.entry,
@@ -572,7 +594,7 @@ function recordScraperResult(strategyUsed: number | null): void {
 
   telemetryQueue = telemetryQueue.then(async () => {
     const stored = await browser.storage.local.get(["scraperHealth"]);
-    const historyResult = ScraperHealthHistorySchema.safeParse(stored.scraperHealth);
+    const historyResult = validateHealthHistory(stored.scraperHealth);
     const history = historyResult.success ? historyResult.data : [];
     history.push(record);
     const trimmed = history.slice(-SCRAPER_HEALTH_MAX);
