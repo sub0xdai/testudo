@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
-import type { Settings, AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult, ExchangePositionsResponse } from "./types";
+import type { AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult, ExchangePositionsResponse } from "./types";
 import {
-  DEFAULT_SETTINGS, WS_BASE_RECONNECT_DELAY,
+  WS_BASE_RECONNECT_DELAY,
   normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
   getExchangeType,
 } from "./utils";
@@ -20,16 +20,15 @@ import {
   JwtSubPayloadSchema,
   RefreshResponseSchema,
   RuntimeMessageSchema,
-  SettingsSchema,
   SidecarHealthResponseSchema,
   SidecarStreamDataSchema,
-  StoredSettingsSchema,
   StoredTokensSchema,
   TestConnectionResultSchema,
   TradeGroupResponseSchema,
   TradeListResponseSchema,
   WebSocketMessageSchema,
 } from "./schemas";
+import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./background/storage";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
@@ -140,26 +139,6 @@ function normalizeTradeListResponse(raw: unknown): BackendResponse {
   return { success: false, data: null, error: "Malformed trade list response" };
 }
 
-async function getSettings(): Promise<Settings> {
-  const stored = await browser.storage.local.get(["backendUrl", "wsUrl"]);
-  const parsed = StoredSettingsSchema.safeParse(stored);
-
-  if (!parsed.success) {
-    return { ...DEFAULT_SETTINGS };
-  }
-
-  const candidate = {
-    backendUrl: parsed.data.backendUrl || DEFAULT_SETTINGS.backendUrl,
-    wsUrl: parsed.data.wsUrl || DEFAULT_SETTINGS.wsUrl,
-  };
-
-  const validated = SettingsSchema.safeParse(candidate);
-  if (!validated.success) {
-    return { ...DEFAULT_SETTINGS };
-  }
-
-  return validated.data;
-}
 
 browser.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings();
@@ -335,30 +314,6 @@ async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string
   }
 }
 
-// --- Active Exchange Selection (EXT-32: per-mode active exchange) ---
-
-async function getExchangeMode(): Promise<ExchangeMode> {
-  const stored = await browser.storage.local.get("exchangeMode");
-  const mode = stored.exchangeMode;
-  return mode === "dex" ? "dex" : "cex";
-}
-
-async function getActiveExchangeId(): Promise<string | null> {
-  const mode = await getExchangeMode();
-  const key = mode === "dex" ? "activeDexAccountId" : "activeCexAccountId";
-  const stored = await browser.storage.local.get(key);
-  return (stored[key] as string) || null;
-}
-
-async function setActiveExchangeId(id: string | null): Promise<void> {
-  const mode = await getExchangeMode();
-  const key = mode === "dex" ? "activeDexAccountId" : "activeCexAccountId";
-  if (id) {
-    await browser.storage.local.set({ [key]: id });
-  } else {
-    await browser.storage.local.remove([key]);
-  }
-}
 
 async function ensureActiveExchange(): Promise<string | null> {
   const tokens = await getTokens();
