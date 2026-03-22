@@ -5,11 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TESTUDO | Trading Journal</title>
+    <script>
+      let t = localStorage.getItem('testudo-theme');
+      if (t === 'soft-dark') { t = 'amoled'; localStorage.setItem('testudo-theme', t); }
+      if (t && t !== 'amoled') document.documentElement.setAttribute('data-theme', t);
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/journal/assets/index-D3FGKlzR.js"></script>
-    <link rel="stylesheet" crossorigin href="/journal/assets/index-BHjatUDP.css">
+    <script type="module" crossorigin src="/desk/assets/index-DMzI2OFS.js"></script>
+    <link rel="stylesheet" crossorigin href="/desk/assets/index-BN7unu6x.css">
   </head>
   <body>
     <div id="root"></div>
