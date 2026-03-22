@@ -424,6 +424,11 @@
         color: var(--color-accent-steel);
     }
 
+    /* --- Font Family Utility (Space Mono via @theme token) --- */
+    .font-family-mono {
+        font-family: var(--font-family-mono);
+    }
+
     /* --- Balance Panel (Hadrian's Wall texture) --- */
     .balance-panel {
         position: relative;

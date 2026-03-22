@@ -130,6 +130,11 @@
 - **Background script still uses polyfill**: The polyfill remains in background.ts, popup, and other non-content-script modules where its broader API coverage is still used. This change is content-script-only.
 - **Lesson**: For content scripts with minimal API surface, prefer native MV3 APIs over polyfills. The polyfill is only needed when targeting MV2 or using many different browser extension APIs.
 
+### 2026-03-22 — css-dedup optimization: Tailwind v4 font variable naming mismatch
+- **`@theme` `--font-family-mono` ≠ Tailwind `font-mono`**: The `@theme` block defines `--font-family-mono: "Space Mono", ...` but Tailwind v4's `font-mono` utility maps to `--font-mono` (the Tailwind default: `ui-monospace, SFMono-Regular, Menlo, ...`). Using `font-mono` class would silently change the font from Space Mono to the system monospace stack.
+- **Custom utility required**: Created `.font-family-mono { font-family: var(--font-family-mono); }` in `@layer components` to bridge the naming gap. This avoids inline `style={{ "font-family": "var(--font-family-mono)" }}` while preserving the correct font.
+- **Root cause**: The popup.css `@theme` uses `--font-family-*` convention (matching CSS spec naming), but Tailwind v4 utilities expect `--font-*` shorthand. The base styles (`body`, `input`, `select`, `button`) reference `--font-family-sans`/`--font-family-mono` directly, so renaming the theme vars would require updating all base style references.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*

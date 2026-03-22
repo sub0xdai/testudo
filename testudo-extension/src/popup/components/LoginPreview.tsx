@@ -47,7 +47,7 @@ function StaticArcGauge() {
         ))}
       </svg>
       <div class="absolute bottom-0 flex flex-col items-center mb-1">
-        <span class="text-4xl font-bold text-text-primary tracking-tighter" style={{ "font-family": "var(--font-family-mono)" }}>
+        <span class="text-4xl font-bold text-text-primary tracking-tighter font-family-mono">
           18.1%
         </span>
         <span class="text-[11px] uppercase tracking-widest text-text-secondary mt-1">

@@ -1,0 +1,2 @@
+iteration	hypothesis	result	notes
+1	Replace inline style={{ "font-family": "var(--font-family-mono)" }} with .font-family-mono utility class in ArcGauge.tsx and LoginPreview.tsx	accepted	Added .font-family-mono utility in popup.css @layer components. Removed 2 inline style declarations. Note: Tailwind v4 font-mono maps to --font-mono (default stack), NOT --font-family-mono (Space Mono) — custom utility required.
