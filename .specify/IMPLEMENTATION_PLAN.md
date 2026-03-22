@@ -38,7 +38,7 @@ background.ts → handlers.ts, api.ts, auth.ts, websocket.ts, sidecar.ts
 | storage.ts | `getSettings`, `getExchangeMode`, `getActiveExchangeId`, `setActiveExchangeId` | Removed `ensureActiveExchange`, `migrateActiveExchangeId`, `getAuthStatus` |
 | auth.ts | `getTokens`, `storeTokens`, `clearTokens`, `refreshAccessToken`, `doRefresh`, `scheduleTokenRefresh`, `getAuthStatus` | Added `getAuthStatus`; `doRefresh` uses raw fetch |
 | api.ts | `apiRequest`, `normalizeBackendAck`, `normalizeTradeListResponse`, `authenticate`, `login`, `register`, `forgotPassword`, `executeTrade`, `listTrades`, `cancelTrade`, `cleanupTrades`, `listExchanges`, `listExchangeAccounts`, `addExchangeAccount`, `deleteExchangeAccount`, `testExchangeConnection`, `getLiveBalance`, `fetchExchangePositions`, `closeExchangePosition`, `ensureActiveExchange`, `migrateActiveExchangeId` | Added `ensureActiveExchange`, `migrateActiveExchangeId` |
-| websocket.ts | `getUserId`, `setWsState`, `connectWebSocket`, `scheduleReconnect`, `disconnectWebSocket`, `getContentTabs`, `forwardOrderUpdate`, `debouncedConnectWebSocket` | No change |
+| websocket.ts | `connectWebSocket`, `disconnectWebSocket`, `debouncedConnectWebSocket`, `getWsState`, `getWsReconnectTimer`, `resetReconnectDelay`, `onSidecarHealth` | Added state accessors + sidecar health callback setter; internal: `getUserId`, `setWsState`, `scheduleReconnect`, `getContentTabs`, `forwardOrderUpdate` |
 | sidecar.ts | `setSidecarStatus`, `checkSidecarHealth`, `startSidecarHealthPolling`, `stopSidecarHealthPolling` | No change |
 | handlers.ts | 28 `handle*` functions + `messageHandlers` dispatch map | No change |
 
@@ -49,7 +49,7 @@ background.ts → handlers.ts, api.ts, auth.ts, websocket.ts, sidecar.ts
 | T1 | Extract `src/background/storage.ts` — 4 storage/settings functions | complete | simple | — |
 | T2 | Extract `src/background/auth.ts` — 7 auth functions, refactor `doRefresh` to raw fetch | complete | medium | T1 |
 | T3 | Extract `src/background/api.ts` — 21 API functions + normalizers + exchange helpers, types | complete | medium | T1, T2 |
-| T4 | Extract `src/background/websocket.ts` — 8 WS functions + tab cache + listeners | pending | medium | T1, T2 |
+| T4 | Extract `src/background/websocket.ts` — 8 WS functions + tab cache + listeners | complete | medium | T1, T2 |
 | T5 | Extract `src/background/sidecar.ts` — 4 sidecar functions + SidecarStatus type | pending | simple | T3 |
 | T6 | Extract `src/background/handlers.ts` — 28 handlers + dispatch map + types | pending | medium | T1-T5 |
 | T7 | Reduce `src/background.ts` to bootstrap (<100 lines) | pending | simple | T1-T6 |

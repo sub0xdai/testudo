@@ -89,6 +89,13 @@
 - **`getExchangeMode` still needed in bootstrap**: `handleGetExchangeMode` and `handleSetExchangeMode` still reference `getExchangeMode` from storage.ts — must keep in storage import even though most exchange logic moved to api.ts.
 - **No test changes**: Module mocking continues to work across the new import graph. Same 7 pre-existing failures, 70 passing.
 
+### 2026-03-22 — EXT-38-background-decomposition (Build T4)
+- **Sidecar health callback pattern**: `connectWebSocket`'s `ws.onmessage` handler calls `setSidecarStatus()` for sidecar.health stream messages. Since websocket.ts shouldn't depend on sidecar (not yet extracted), used injectable callback: `onSidecarHealth(handler)` setter in websocket.ts, wired by bootstrap via `onSidecarHealth(setSidecarStatus)`. Type-safe: callback accepts `"healthy" | "unreachable"` (subset of `SidecarStatus`).
+- **State accessor exports**: `handleWsStatus` needed direct access to `wsState` and `wsReconnectTimer` (module-private in websocket.ts). Added `getWsState()`, `getWsReconnectTimer()`, and `resetReconnectDelay()` exports instead of exposing mutable state.
+- **Tab listeners run at import time**: `browser.tabs.onCreated/onRemoved` listeners that invalidate `cachedContentTabs` execute when websocket.ts module is first imported. This is safe because the cache variable is module-scoped and the listeners only null it out. No explicit init function needed.
+- **Line reduction**: background.ts reduced from 481→320 lines (-34%). websocket.ts is 175 lines containing 7 exported functions and 7 module-scoped state variables.
+- **No test changes**: Same pre-existing failures (vi.stubGlobal compat, Playwright runner, legacy storage keys). Build passes for both Chrome and Firefox targets.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
