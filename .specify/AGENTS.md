@@ -68,6 +68,12 @@
 - **Pre-existing test failures (7)**: `EXECUTE_TRADE` missing `break_even_enabled`, token refresh mutex vitest compat, and 5 `ensureActiveExchange` tests using legacy `activeExchangeId` key instead of per-mode `activeCexAccountId`/`activeDexAccountId`. None related to decomposition.
 - **Unused imports cleanup**: Extracting `getSettings` to storage.ts made `Settings` type, `DEFAULT_SETTINGS`, `SettingsSchema`, `StoredSettingsSchema` unused in background.ts — removed from imports.
 
+### 2026-03-22 — EXT-38-background-decomposition (Build T2)
+- **doRefresh reverted to raw fetch**: Successfully broke auth↔api circular dependency. The refresh endpoint only needs `refresh_token` in body (no JWT header), so raw `fetch` + `getSettings()` is sufficient. Behavior preserved: clears tokens on HTTP error, returns false on network error without clearing.
+- **clearRefreshTimer helper**: `handleLogout` directly accessed `refreshTimer` variable. Added `clearRefreshTimer()` export to auth.ts so logout handler doesn't need private state access.
+- **Unused imports cleanup (T2)**: Extracting auth functions made `AuthTokens`, `LoginResponse` types, `calculateRefreshDelay` util, `ExchangeMode` type, and 4 schema imports (`AuthTokensSchema`, `StoredTokensSchema`, `JwtEmailPayloadSchema`, `RefreshResponseSchema`) unused in background.ts — all removed. `LoginResponseSchema` stays (used by `authenticate()`).
+- **Line reduction**: background.ts reduced by ~70 lines (998→~928). auth.ts is 109 lines.
+
 ### 2026-03-22 — EXT-38-background-decomposition (Planning)
 - **Circular dep: auth ↔ api**: `doRefresh()` was migrated to `apiRequest()` (commit 27728c2) with `auth: "none"`. Since `apiRequest` calls `refreshAccessToken` on 401, this creates auth → api → auth cycle. Fix: revert `doRefresh` to raw `fetch` + `getSettings()` — refresh endpoint only needs the refresh token in body, not JWT.
 - **Circular dep: storage ↔ api**: Spec placed `ensureActiveExchange()` and `migrateActiveExchangeId()` in storage.ts, but both call `listExchangeAccounts()` (api.ts), while `apiRequest()` needs `getSettings()` (storage.ts). Fix: move both to api.ts.

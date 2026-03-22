@@ -1,14 +1,12 @@
 import browser from "webextension-polyfill";
-import type { AuthTokens, LoginResponse, TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult, ExchangePositionsResponse } from "./types";
+import type { TradePayload, BackendResponse, WsState, TradeGroupResponse, BalanceResponse, LiveBalanceResponse, ExchangeInfo, ExchangeAccount, AddExchangeAccountPayload, TestConnectionResult, ExchangePositionsResponse } from "./types";
 import {
   WS_BASE_RECONNECT_DELAY,
-  normalizeSymbol, mapSide, calculateRefreshDelay, nextReconnectDelay,
+  normalizeSymbol, mapSide, nextReconnectDelay,
   getExchangeType,
 } from "./utils";
-import type { ExchangeMode } from "./utils";
 import {
   AddExchangeAccountResponseSchema,
-  AuthTokensSchema,
   BackendResponseSchema,
   ErrorResponseSchema,
   ExchangeAccountsResponseSchema,
@@ -16,19 +14,17 @@ import {
   ExchangePositionsApiResponseSchema,
   ListExchangesResponseSchema,
   LoginResponseSchema,
-  JwtEmailPayloadSchema,
   JwtSubPayloadSchema,
-  RefreshResponseSchema,
   RuntimeMessageSchema,
   SidecarHealthResponseSchema,
   SidecarStreamDataSchema,
-  StoredTokensSchema,
   TestConnectionResultSchema,
   TradeGroupResponseSchema,
   TradeListResponseSchema,
   WebSocketMessageSchema,
 } from "./schemas";
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./background/storage";
+import { getTokens, storeTokens, clearTokens, refreshAccessToken, scheduleTokenRefresh, clearRefreshTimer, getAuthStatus } from "./background/auth";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
@@ -148,35 +144,6 @@ browser.runtime.onInstalled.addListener(async () => {
   console.log("Testudo Sniper installed", settings);
 });
 
-// --- Auth Token Management (EXT-05 FR-2, FR-3, FR-7) ---
-
-async function getTokens(): Promise<AuthTokens | null> {
-  const stored = await browser.storage.local.get(["accessToken", "refreshToken", "tokenExpiry"]);
-  const parsed = StoredTokensSchema.safeParse(stored);
-  if (!parsed.success) return null;
-
-  const tokens = {
-    access_token: parsed.data.accessToken,
-    refresh_token: parsed.data.refreshToken,
-    expires_in: (parsed.data.tokenExpiry || 0) - Math.floor(Date.now() / 1000),
-  };
-
-  const validated = AuthTokensSchema.safeParse(tokens);
-  return validated.success ? validated.data : null;
-}
-
-async function storeTokens(tokens: AuthTokens): Promise<void> {
-  await browser.storage.local.set({
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token,
-    tokenExpiry: Math.floor(Date.now() / 1000) + tokens.expires_in,
-  });
-}
-
-async function clearTokens(): Promise<void> {
-  await browser.storage.local.remove(["accessToken", "refreshToken", "tokenExpiry"]);
-}
-
 // --- Shared API Request Helper ---
 
 type AuthMode = "hard" | "soft" | "none";
@@ -252,68 +219,6 @@ async function authenticate(endpoint: string, email: string, password: string): 
 function login(email: string, password: string) {
   return authenticate("/api/v1/auth/login", email, password);
 }
-
-let refreshInFlight: Promise<boolean> | null = null;
-
-async function refreshAccessToken(): Promise<boolean> {
-  if (refreshInFlight) return refreshInFlight;
-
-  refreshInFlight = doRefresh();
-  try {
-    return await refreshInFlight;
-  } finally {
-    refreshInFlight = null;
-  }
-}
-
-async function doRefresh(): Promise<boolean> {
-  const tokens = await getTokens();
-  if (!tokens) return false;
-
-  const result = await apiRequest("/api/v1/auth/refresh", {
-    method: "POST",
-    body: { refresh_token: tokens.refresh_token },
-  });
-
-  if (!result.ok) {
-    if (result.httpError) await clearTokens();
-    return false;
-  }
-
-  const parsed = RefreshResponseSchema.safeParse(result.raw);
-  if (!parsed.success) return false;
-  await storeTokens(parsed.data.tokens);
-  scheduleTokenRefresh(parsed.data.tokens.expires_in);
-  return true;
-}
-
-let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-
-function scheduleTokenRefresh(expiresIn: number): void {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  const refreshDelay = calculateRefreshDelay(expiresIn);
-  refreshTimer = setTimeout(() => {
-    refreshAccessToken();
-  }, refreshDelay);
-}
-
-async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string }> {
-  const tokens = await getTokens();
-  if (!tokens || tokens.expires_in <= 0) {
-    return { authenticated: false };
-  }
-  try {
-    const payloadRaw = JSON.parse(atob(tokens.access_token.split(".")[1] || ""));
-    const payload = JwtEmailPayloadSchema.safeParse(payloadRaw);
-    if (!payload.success) {
-      return { authenticated: true };
-    }
-    return { authenticated: true, email: payload.data.email };
-  } catch {
-    return { authenticated: true };
-  }
-}
-
 
 async function ensureActiveExchange(): Promise<string | null> {
   const tokens = await getTokens();
@@ -787,10 +692,7 @@ function handleRegister(msg: ParsedMessage): Promise<unknown> {
 }
 
 function handleLogout(): Promise<unknown> {
-  if (refreshTimer) {
-    clearTimeout(refreshTimer);
-    refreshTimer = null;
-  }
+  clearRefreshTimer();
   disconnectWebSocket();
   stopSidecarHealthPolling();
   return clearTokens().then(() => ({ success: true }));
