@@ -1,26 +1,26 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: UXP-20-strip-glassmorphism
+> Current spec: UXP-23-landing-typography
 > Phase: BUILD
 
 ---
 
-## Active Spec: UXP-20-strip-glassmorphism
+## Active Spec: UXP-23-landing-typography
 
-Remove all `backdrop-blur` glassmorphism from landing page. Increase background opacity to 95%.
+Reserve monospace for data/annotations, use Space Grotesk (font-display) for landing page body text.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Remove backdrop-blur from all landing page components, increase opacity to 95% | complete | simple | — |
+| T1 | Replace font-mono with font-display on all body/paragraph text in Hero, Features, and Pricing | complete | simple | — |
 
 ### Key Decisions
 
-- **Glass variant removed from Card.tsx**: No callers used `variant="glass"` — removed the variant entirely instead of making it match solid.
-- **Features.tsx already clean**: UXP-19 layout refactor had already removed glassmorphism from Features section.
-- **Header at 90% opacity**: Spec-recommended value for fixed header — sufficient to obscure scrolling content without blur.
+- **Pricing feature list items changed**: List items like "Risk engine + position sizing" are persuasive body copy, not data — switched to font-display.
+- **Section headings kept mono**: Short headings like "CORE [SYSTEMS]" and "[PRICING]" are terminal-aesthetic titles, not paragraph text.
+- **Feature labels kept mono**: Short labels like "DEX + CEX" serve as data identifiers, not body copy.
 
 ---
 
@@ -35,6 +35,7 @@ Remove all `backdrop-blur` glassmorphism from landing page. Increase background 
 | UXP-19-features-layout | 2026-03-22 |
 | UXP-22-signal-color-calibration | 2026-03-22 |
 | UXP-20-strip-glassmorphism | 2026-03-22 |
+| UXP-23-landing-typography | 2026-03-22 |
 
 ---
 

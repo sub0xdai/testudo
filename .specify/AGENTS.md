@@ -152,6 +152,11 @@
 - **Card.tsx glass variant unused**: The `variant="glass"` option existed but had zero callers. Removed entirely rather than making it match `solid` — dead code elimination over backwards compatibility.
 - **4 files, not 5**: Spec listed 5 files but Features.tsx needed no changes. Actual changes: Card.tsx (variant removal), Header.tsx (60%→90% opacity), Hero.tsx (60%→95% opacity), Pricing.tsx (90%→95% opacity).
 
+### 2026-03-22 — UXP-23-landing-typography
+- **Pricing feature list items are body copy**: Items like "Risk engine + position sizing" are persuasive descriptions, not data labels — changed to `font-display` even though they're short. The distinction is semantic role (persuading vs displaying data), not word count.
+- **Section headings stay mono**: Short headings like `CORE [SYSTEMS]` and `[PRICING]` use terminal bracket notation as intentional aesthetic — these are title elements, not paragraph text. The >20 word acceptance criterion confirms headings don't need changing.
+- **5 class replacements across 3 files**: Hero tagline, Features primary + secondary descriptions, Pricing subtitle + feature list. All remaining `font-mono` usages (ghost annotations, price ticker, CTA buttons, feature labels, footer) are intentional terminal-aesthetic or data-display elements.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
