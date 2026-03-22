@@ -48,7 +48,7 @@ background.ts → handlers.ts, api.ts, auth.ts, websocket.ts, sidecar.ts
 |----|------|--------|------------|------------|
 | T1 | Extract `src/background/storage.ts` — 4 storage/settings functions | complete | simple | — |
 | T2 | Extract `src/background/auth.ts` — 7 auth functions, refactor `doRefresh` to raw fetch | complete | medium | T1 |
-| T3 | Extract `src/background/api.ts` — 21 API functions + normalizers + exchange helpers, types | pending | medium | T1, T2 |
+| T3 | Extract `src/background/api.ts` — 21 API functions + normalizers + exchange helpers, types | complete | medium | T1, T2 |
 | T4 | Extract `src/background/websocket.ts` — 8 WS functions + tab cache + listeners | pending | medium | T1, T2 |
 | T5 | Extract `src/background/sidecar.ts` — 4 sidecar functions + SidecarStatus type | pending | simple | T3 |
 | T6 | Extract `src/background/handlers.ts` — 28 handlers + dispatch map + types | pending | medium | T1-T5 |

@@ -83,6 +83,12 @@
 - **Test compatibility**: `background.test.ts` does `await import("./background")` and captures `onMessage.addListener`. Bootstrap still registers this listener, so tests work unchanged. `_disconnectWebSocket` re-exported from bootstrap.
 - **Build compatibility**: esbuild entrypoint `src/background.ts` unchanged. esbuild follows import graph through `src/background/` modules automatically. No config changes.
 
+### 2026-03-22 — EXT-38-background-decomposition (Build T3)
+- **Largest extraction**: api.ts is 457 lines — the biggest module, containing all HTTP API wrappers, normalizers, trade execution, and exchange management. Background.ts reduced from 900→481 lines.
+- **`authenticate` not re-exported**: `authenticate()` is only used by `login()` and `register()` (both in api.ts), so it doesn't need to be imported back into background.ts. Only `login` and `register` are needed in handler functions.
+- **`getExchangeMode` still needed in bootstrap**: `handleGetExchangeMode` and `handleSetExchangeMode` still reference `getExchangeMode` from storage.ts — must keep in storage import even though most exchange logic moved to api.ts.
+- **No test changes**: Module mocking continues to work across the new import graph. Same 7 pre-existing failures, 70 passing.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
