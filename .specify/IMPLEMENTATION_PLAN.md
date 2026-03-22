@@ -51,9 +51,9 @@ background.ts → handlers.ts, api.ts, auth.ts, websocket.ts, sidecar.ts
 | T3 | Extract `src/background/api.ts` — 21 API functions + normalizers + exchange helpers, types | complete | medium | T1, T2 |
 | T4 | Extract `src/background/websocket.ts` — 8 WS functions + tab cache + listeners | complete | medium | T1, T2 |
 | T5 | Extract `src/background/sidecar.ts` — 4 sidecar functions + SidecarStatus type | complete | simple | T3 |
-| T6 | Extract `src/background/handlers.ts` — 28 handlers + dispatch map + types | pending | medium | T1-T5 |
-| T7 | Reduce `src/background.ts` to bootstrap (<100 lines) | pending | simple | T1-T6 |
-| T8 | Verify build + test, fix any issues | pending | simple | T7 |
+| T6 | Extract `src/background/handlers.ts` — 28 handlers + dispatch map + types | complete | medium | T1-T5 |
+| T7 | Reduce `src/background.ts` to bootstrap (<100 lines) | complete | simple | T1-T6 |
+| T8 | Verify build + test, fix any issues | complete | simple | T7 |
 
 ### State Variable Placement
 

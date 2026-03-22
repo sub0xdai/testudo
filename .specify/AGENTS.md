@@ -103,6 +103,15 @@
 - **Line reduction**: background.ts reduced from 320→286 lines (-11%). Cumulative from monolith: 1043→286 (73% reduction with T1-T5 complete).
 - **No test changes**: Same 7 pre-existing failures, 70 passing.
 
+### 2026-03-22 — EXT-38-background-decomposition (Build T6-T8)
+- **T6+T7+T8 completed in single pass**: Extracting handlers.ts (T6) naturally reduced background.ts to 61 lines (T7), and build+test validation passed immediately (T8). All three tasks were interdependent — no value in separate iterations.
+- **handlers.ts is 228 lines**: Contains all 28 handler functions, the dispatch map, and 3 type definitions (`ParsedMessage`, `MessageHandler`, `MsgOf`). Imports from all 5 extracted modules + `webextension-polyfill` (for `handleSetExchangeMode` and `handleAccountLinked` which use `browser.storage.local.set` directly).
+- **Bootstrap at 61 lines**: background.ts now only contains: imports, unhandled rejection listener, onInstalled handler, onMessage listener (using imported `messageHandlers`), startup sequence (migrate → refresh → connect), sidecar health wiring, storage.onChanged listener, and test export.
+- **No RuntimeMessageSchema import in handlers.ts**: Used `import type` since handlers.ts only needs the type for `ParsedMessage` derivation, not the runtime value. The actual `safeParse` call stays in bootstrap's `onMessage` listener.
+- **Final module sizes**: storage.ts (~55), auth.ts (~109), api.ts (~457), websocket.ts (~175), sidecar.ts (~44), handlers.ts (~228), background.ts (~61). Total: ~1129 lines across 7 files vs original 1043-line monolith — ~8% overhead from module boundaries.
+- **No test changes**: Same 7 pre-existing failures, 70 passing. Test captures `onMessage.addListener` from bootstrap — unchanged.
+- **Decomposition complete**: All acceptance criteria met. background.ts <100 lines, 6 modules extracted, no circular imports, build passes, tests unchanged.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
