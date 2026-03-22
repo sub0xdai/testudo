@@ -1,27 +1,27 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: UXP-19-features-layout
+> Current spec: UXP-22-signal-color-calibration
 > Phase: BUILD
 
 ---
 
-## Active Spec: UXP-19-features-layout
+## Active Spec: UXP-22-signal-color-calibration
 
-Break features section out of uniform card grid into asymmetric hero + compact layout.
+Recalibrate dark theme signal green (#00FF41→#22C55E) and red (#FF003C→#EF4444) across all surfaces.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Replace uniform 2-col grid with hero feature + compact border-left secondary list | complete | simple | — |
+| T1 | Update all signal color definitions across extension, web, and journal | complete | simple | — |
 
 ### Key Decisions
 
-- **RISK ENGINE as hero**: Core value prop (automated position sizing) — gets full-width treatment with `border-text-primary` (brighter than `border-container-border`), `font-display` heading, and ghost annotation referencing actual codebase (`position_sizer.rs`).
-- **Option A chosen**: Hero + compact list over terminal/log aesthetic. Terminal style would clash with the ghost annotations already present — two competing metaphors. Hero + compact gives clear hierarchy without adding a new visual language.
-- **No backdrop-blur**: Removed per UXP-20 cross-reference in acceptance criteria. Solid backgrounds only.
-- **font-mono preserved on descriptions**: UXP-23 will handle the mono→display typography migration. This change is layout-only.
+- **#22C55E for green**: Tailwind green-500. Saturation 72% vs 100%. Still vivid, no halation on AMOLED.
+- **#EF4444 for red**: Tailwind red-500. Saturation 70% vs 100%. Unmistakably red.
+- **Journal included**: Spec only mentioned extension+web, but journal shares the same design tokens. Updating for consistency.
+- **Light theme unchanged**: Already uses reduced-saturation values (#146426, #a00024).
 
 ---
 
@@ -34,6 +34,7 @@ Break features section out of uniform card grid into asymmetric hero + compact l
 | EXT-37-message-dispatch-refactor | 2026-03-22 |
 | EXT-38-background-decomposition | 2026-03-22 |
 | UXP-19-features-layout | 2026-03-22 |
+| UXP-22-signal-color-calibration | 2026-03-22 |
 
 ---
 

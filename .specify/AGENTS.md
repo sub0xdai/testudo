@@ -141,6 +141,12 @@
 - **Ghost annotation as authenticity signal**: The hero block includes `// core_module — position_sizer.rs` referencing the actual Rust backend file. This ties the marketing surface to the real codebase, reinforcing the brutalist "this is real" aesthetic.
 - **font-mono preserved intentionally**: UXP-23 spec handles the mono→display typography migration. This spec only changes layout structure to avoid scope creep between specs.
 
+### 2026-03-22 — UXP-22-signal-color-calibration
+- **7 source files, 3 surfaces**: Signal colors defined in extension (popup.css, modal.tsx, ArcGauge.tsx), web (index.css, main.tsx), and journal (app.css, tokens.ts). Spec only listed 5 files — journal was missed. Always grep to find all occurrences.
+- **Journal tokens.ts has dual fallbacks**: Both `getCSSVarRGB` fallback strings (comma-separated) and `getCSSVarRaw` fallback strings (space-separated) plus hardcoded `rgba()` fallback returns. Three places per color to update.
+- **Build artifact lag**: `testudo-journal/dist/` retains old colors in pre-built CSS until journal is rebuilt. Not a source code issue but shows up in grep.
+- **RainbowKit accent**: `testudo-web/src/main.tsx` passes signal green as `accentColor` to `darkTheme()` — easy to miss since it's in a config call, not CSS.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*

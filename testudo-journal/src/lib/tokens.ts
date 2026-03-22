@@ -25,11 +25,11 @@ function getCSSVarRaw(name: string, fallback: string): string {
 // ── Signal colors ────────────────────────────────────────────────────
 
 export function getSignalGreen(): string {
-  return getCSSVarRGB('--signal-green', '0, 255, 65')
+  return getCSSVarRGB('--signal-green', '34, 197, 94')
 }
 
 export function getSignalRed(): string {
-  return getCSSVarRGB('--signal-red', '255, 0, 60')
+  return getCSSVarRGB('--signal-red', '239, 68, 68')
 }
 
 export function getSignalAmber(): string {
@@ -81,21 +81,21 @@ export function getAccentSteel(): string {
 // ── Alpha variants (read raw channels for rgba composition) ──────────
 
 export function signalGreenAlpha(a: number): string {
-  const raw = getCSSVarRaw('--signal-green', '0 255 65')
+  const raw = getCSSVarRaw('--signal-green', '34 197 94')
   const parts = raw.split(' ').map(Number)
   if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
     return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
   }
-  return `rgba(0, 255, 65, ${a})`
+  return `rgba(34, 197, 94, ${a})`
 }
 
 export function signalRedAlpha(a: number): string {
-  const raw = getCSSVarRaw('--signal-red', '255 0 60')
+  const raw = getCSSVarRaw('--signal-red', '239 68 68')
   const parts = raw.split(' ').map(Number)
   if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
     return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
   }
-  return `rgba(255, 0, 60, ${a})`
+  return `rgba(239, 68, 68, ${a})`
 }
 
 // ── Tag color palette ────────────────────────────────────────────────

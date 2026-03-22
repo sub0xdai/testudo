@@ -52,8 +52,8 @@ const MODAL_STYLES = `
     justify-content: center;
     font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    --color-signal-green: #00FF41;
-    --color-signal-red: #FF003C;
+    --color-signal-green: #22C55E;
+    --color-signal-red: #EF4444;
     --color-signal-orange: #f59e0b;
     --color-text-primary: #ffffff;
     --color-text-secondary: #888888;
@@ -260,8 +260,8 @@ export function isVisible(): boolean {
 
 const TOAST_THEME_VARS = `
   :host {
-    --color-signal-green: #00FF41;
-    --color-signal-red: #FF003C;
+    --color-signal-green: #22C55E;
+    --color-signal-red: #EF4444;
     --color-text-secondary: #888888;
     --color-bg-elevated: #111111;
     --color-border: #3F3F46;

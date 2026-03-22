@@ -22,9 +22,9 @@ const getColor = (name: string, fallback: string) => {
 
 /** Interpolate color along green -> amber -> red gradient at position t (0-1) */
 function tickColor(t: number): string {
-  const green = getColor('--color-signal-green', '#00FF41');
+  const green = getColor('--color-signal-green', '#22C55E');
   const orange = getColor('--color-signal-orange', '#f59e0b');
-  const red = getColor('--color-signal-red', '#FF003C');
+  const red = getColor('--color-signal-red', '#EF4444');
 
   // Parse hex/named colors to RGB for interpolation
   function parseColor(c: string): [number, number, number] {
