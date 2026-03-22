@@ -332,6 +332,19 @@ export function EntryEditor(props: {
             <Show when={uploading()}>
               <span class="font-mono text-xs text-text-tertiary">Uploading...</span>
             </Show>
+            <label class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors cursor-pointer">
+              Attach
+              <input
+                type="file"
+                accept="image/*"
+                class="hidden"
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0]
+                  if (file) uploadAndInsert(file)
+                  e.currentTarget.value = ''
+                }}
+              />
+            </label>
             <button
               class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
               onClick={handleExport}
@@ -356,7 +369,7 @@ export function EntryEditor(props: {
           >
             <textarea
               ref={textareaRef!}
-              class={`w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary resize-none min-h-[400px] ${dragging() ? 'border-text-primary border-dashed' : ''}`}
+              class={`w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary resize-y min-h-[400px] ${dragging() ? 'border-text-primary border-dashed' : ''}`}
               style={{ 'border-left': `3px solid ${typeColor()}` }}
               placeholder="Write your journal entry in markdown... Paste images or drag files here."
               value={body()}

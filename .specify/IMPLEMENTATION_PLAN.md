@@ -1,30 +1,27 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: UXP-21-light-theme-parity
+> Current spec: JNL-14-markdown-hardening
 > Phase: BUILD
 
 ---
 
-## Active Spec: UXP-21-light-theme-parity
+## Active Spec: JNL-14-markdown-hardening
 
-Give light theme atmospheric parity with dark — spotlight, texture overlay, heavier borders, dynamic RainbowKit theme.
+Harden markdown preview CSS (img/hr), scope scrollbar hiding, add attach button, allow textarea resize.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Create ThemeContext, lift theme state from Header, wire dynamic RainbowKit theme | complete | medium | — |
-| T2 | Enable light theme atmospheric effects — spotlight, texture overlay, heavier borders, background visibility | complete | medium | — |
+| T1 | CSS hardening — img/hr rules in .markdown-preview, scope scrollbar hiding to body only | complete | low | — |
+| T2 | EntryEditor UX — attach image button in tab bar, textarea resize-y | complete | low | — |
 
 ### Key Decisions
 
-- **ThemeContext created**: Lifted theme state from Header.tsx to a new ThemeContext.tsx. Header was managing its own state with getStoredTheme/applyTheme/cycleTheme — all moved to context so RainbowKitProvider can consume the reactive theme value.
-- **RainbowKitThemeWrapper component**: Created a wrapper inside main.tsx that reads `useTheme()` and computes the RainbowKit theme prop. RainbowKitProvider must be a child of ThemeProvider for this to work. Light theme uses `borderRadius: 'none'` to match brutalist aesthetic.
-- **Light theme accent color**: Dark uses `#22C55E` (signal green), light uses `#146426` (darker forest green) for better contrast on cream backgrounds.
-- **Spotlight enabled in both themes**: Removed the `isLight` conditional that disabled mouse tracking. Light spotlight uses 0.70→0.92 opacity range (darker center, lighter edge) vs dark's transparent→0.95.
-- **Texture overlay replaces conditional scan-lines**: Instead of `!isLight && <div className="scan-lines" />`, now renders `isLight ? 'texture-grain' : 'scan-lines'` unconditionally. Light texture uses `--text-primary` at 4% opacity for paper grain effect.
-- **Heavier borders via CSS overrides**: Used `[data-theme="light"] .border { border-width: 2px; }` targeting Tailwind utilities. Simpler than custom properties since no component changes needed.
+- **All changes in single iteration**: Spec is small (2 files, ~20 lines of changes). Both tasks implemented together since they're independent and trivial.
+- **Scrollbar scoping**: Moved `scrollbar-width: none` from `*` to `body` selector. Editor textarea and preview pane now show native scrollbars. The `body` rule already existed (for font/background) so added the scrollbar properties there.
+- **Attach button as label+hidden input**: SolidJS `<label>` wrapping a hidden `<input type="file">` — clicking "Attach" text triggers the file picker. Reuses existing `uploadAndInsert()` function.
 
 ---
 
@@ -41,6 +38,7 @@ Give light theme atmospheric parity with dark — spotlight, texture overlay, he
 | UXP-20-strip-glassmorphism | 2026-03-22 |
 | UXP-23-landing-typography | 2026-03-22 |
 | UXP-21-light-theme-parity | 2026-03-22 |
+| JNL-14-markdown-hardening | 2026-03-22 |
 
 ---
 

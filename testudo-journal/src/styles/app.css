@@ -47,9 +47,12 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+body {
   scrollbar-width: none;
 }
-*::-webkit-scrollbar { display: none; }
+body::-webkit-scrollbar { display: none; }
 
 html {
   scroll-behavior: smooth;
@@ -84,6 +87,8 @@ body {
 .markdown-preview pre code { background: none; padding: 0; }
 .markdown-preview a { color: rgb(var(--accent-steel)); text-decoration: underline; }
 .markdown-preview a:hover { opacity: 0.8; }
+.markdown-preview img { max-width: 100%; height: auto; margin: 0.5rem 0; border: 1px solid rgb(var(--border)); }
+.markdown-preview hr { border: none; border-top: 1px solid rgb(var(--border)); margin: 1rem 0; }
 
 /* ── Skeleton Shimmer ────────────────────────────── */
 

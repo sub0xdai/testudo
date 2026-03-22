@@ -166,4 +166,9 @@
 
 ---
 
+### 2026-03-22 — JNL-14-markdown-hardening
+- **Scrollbar `*` selector hid ALL scrollbars**: The journal used `* { scrollbar-width: none }` which suppressed scrollbars on every element including the editor textarea and preview pane. Moving to `body` selector preserves the hidden page-level scrollbar while letting internal scroll containers show native scrollbars.
+- **SolidJS label+hidden-input pattern**: For file upload triggers, `<label><input type="file" class="hidden" onChange={...} /></label>` works without `for`/`id` attributes since the input is a child of the label. Reset `e.currentTarget.value = ''` after upload to allow re-selecting the same file.
+- **Journal CSS uses space-separated RGB tokens**: Same `rgb(var(--border))` pattern as extension and web. Image border rule follows existing pattern from `.markdown-preview pre` which already uses `border: 1px solid rgb(var(--border))`.
+
 *This file grows as Vox learns. Never delete entries.*
