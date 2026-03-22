@@ -1,27 +1,26 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: UXP-22-signal-color-calibration
+> Current spec: UXP-20-strip-glassmorphism
 > Phase: BUILD
 
 ---
 
-## Active Spec: UXP-22-signal-color-calibration
+## Active Spec: UXP-20-strip-glassmorphism
 
-Recalibrate dark theme signal green (#00FF41→#22C55E) and red (#FF003C→#EF4444) across all surfaces.
+Remove all `backdrop-blur` glassmorphism from landing page. Increase background opacity to 95%.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Update all signal color definitions across extension, web, and journal | complete | simple | — |
+| T1 | Remove backdrop-blur from all landing page components, increase opacity to 95% | complete | simple | — |
 
 ### Key Decisions
 
-- **#22C55E for green**: Tailwind green-500. Saturation 72% vs 100%. Still vivid, no halation on AMOLED.
-- **#EF4444 for red**: Tailwind red-500. Saturation 70% vs 100%. Unmistakably red.
-- **Journal included**: Spec only mentioned extension+web, but journal shares the same design tokens. Updating for consistency.
-- **Light theme unchanged**: Already uses reduced-saturation values (#146426, #a00024).
+- **Glass variant removed from Card.tsx**: No callers used `variant="glass"` — removed the variant entirely instead of making it match solid.
+- **Features.tsx already clean**: UXP-19 layout refactor had already removed glassmorphism from Features section.
+- **Header at 90% opacity**: Spec-recommended value for fixed header — sufficient to obscure scrolling content without blur.
 
 ---
 
@@ -35,6 +34,7 @@ Recalibrate dark theme signal green (#00FF41→#22C55E) and red (#FF003C→#EF44
 | EXT-38-background-decomposition | 2026-03-22 |
 | UXP-19-features-layout | 2026-03-22 |
 | UXP-22-signal-color-calibration | 2026-03-22 |
+| UXP-20-strip-glassmorphism | 2026-03-22 |
 
 ---
 

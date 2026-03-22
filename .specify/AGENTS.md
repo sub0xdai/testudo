@@ -147,6 +147,11 @@
 - **Build artifact lag**: `testudo-journal/dist/` retains old colors in pre-built CSS until journal is rebuilt. Not a source code issue but shows up in grep.
 - **RainbowKit accent**: `testudo-web/src/main.tsx` passes signal green as `accentColor` to `darkTheme()` — easy to miss since it's in a config call, not CSS.
 
+### 2026-03-22 — UXP-20-strip-glassmorphism
+- **Features.tsx already clean**: UXP-19 layout refactor removed glassmorphism from feature cards before this spec ran. Spec's FR-1 was already satisfied — always verify current state before implementing spec line items.
+- **Card.tsx glass variant unused**: The `variant="glass"` option existed but had zero callers. Removed entirely rather than making it match `solid` — dead code elimination over backwards compatibility.
+- **4 files, not 5**: Spec listed 5 files but Features.tsx needed no changes. Actual changes: Card.tsx (variant removal), Header.tsx (60%→90% opacity), Hero.tsx (60%→95% opacity), Pricing.tsx (90%→95% opacity).
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
