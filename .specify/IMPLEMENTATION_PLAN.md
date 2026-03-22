@@ -1,28 +1,30 @@
 # Implementation Plan
 
 > Last updated: 2026-03-22
-> Current spec: JNL-15-export-with-images
+> Current spec: JNL-16-database-view
 > Phase: BUILD
 
 ---
 
-## Active Spec: JNL-15-export-with-images
+## Active Spec: JNL-16-database-view
 
-Self-contained export with base64-embedded images + bulk export with progress indicator.
+Transform journal from timeline to sortable, filterable database table view.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Rewrite export.ts — inlineImages, blobToBase64, async exportEntry, buildFrontmatter, exportEntries + update callers for async | complete | medium | — |
-| T2 | Add bulk export button + progress indicator to JournalTimeline.tsx | complete | low | T1 |
+| T1 | Create DatabaseTable.tsx — sortable columns, client-side pagination, bulk selection, row click, type badges | complete | high | — |
+| T2 | Integrate DatabaseTable into JournalTimeline — view toggle, sort/page state, conditional render | complete | medium | T1 |
 | T3 | Build validation + commit | complete | low | T2 |
 
 ### Key Decisions
 
-- **exportEntry becomes async**: Callers don't need explicit error handling since `inlineImages` catches fetch failures internally. EntryCard wraps in void-returning arrow; EntryEditor awaits.
-- **tagMap built from tradeDetailCache**: Bulk export reuses `getEntryTags()` to build the `Record<string, JournalTag[]>` map, no new API calls needed.
-- **Progress as simple string signal**: `"3 / 12"` format shown inline next to Export All button during export. Clears on completion.
+- **Client-side sorting + pagination**: Backend `fetchEntries` only supports `page`/`limit`/`tradeId`. No server-side sort/filter. Risk #1 mitigation: client-side on 200 entries is acceptable.
+- **DatabaseTable as pure display component**: Receives entries, tag/trade-label accessors, and callbacks from JournalTimeline. Sort/page state lives inside DatabaseTable.
+- **View toggle in JournalTimeline**: Keep all data fetching, filtering, modals in JournalTimeline. Swap display layer (cards vs table) based on viewMode signal. Minimal refactor.
+- **Shift-click bulk selection**: Track lastClickedIndex for range selection. Selected IDs exposed for future bulk actions (delete, export, tag).
+- **Preview column = plain text**: Strip markdown, show first 80 chars. No MarkdownPreview in table rows (performance).
 
 ---
 

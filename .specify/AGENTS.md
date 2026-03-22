@@ -177,4 +177,12 @@
 - **Async migration is minimal**: Making `exportEntry` async only affects 2 callers. EntryCard's onClick doesn't need await (fire-and-forget is fine since errors are caught internally). EntryEditor awaits for cleanliness but doesn't use the result.
 - **Bulk export tagMap from cache**: `JournalTimeline` already loads trade details (including tags) into `tradeDetailCache` as entries render. The `getEntryTags()` helper pulls from this cache, so bulk export doesn't need additional API calls — it just builds the `Record<string, JournalTag[]>` from what's already loaded.
 
+### 2026-03-22 — JNL-16-database-view
+- **Client-side sorting is sufficient for <500 entries**: Backend `fetchEntries` only supports `page`/`limit`/`tradeId` query params — no `sort_by`, `sort_dir`, or `entry_type` filtering. Client-side sort on 200-entry fetch (current limit) is imperceptible. Server-side sorting can be added later when entry counts warrant it.
+- **Asset column sorts via accessor, not entry field**: `entry.trade_id` maps to a symbol via `tradeDetailCache`. For sort comparisons, the `getTradeLabel` accessor is called per-entry. This is fine for <500 entries but would need denormalization for larger datasets.
+- **View toggle lives in JournalTimeline, not Journal.tsx**: Journal.tsx is a 12-line wrapper. Lifting state to Journal.tsx would require passing 10+ props/callbacks. Keeping viewMode inside JournalTimeline alongside existing filter/data state is simpler — no refactor needed.
+- **SolidJS `classList` for toggle buttons**: `classList={{ 'bg-text-primary text-main-bg': viewMode() === 'table', 'text-text-tertiary hover:text-text-primary': viewMode() !== 'table' }}` cleanly toggles active/inactive styling. More idiomatic than ternary in `class` string.
+- **Markdown stripping for preview column**: Simple regex chain (images → links → formatting chars → newlines) produces clean 80-char previews. No need for a full markdown parser — the preview is intentionally lossy.
+- **Removed `rounded` from buttons**: Spec requires "zero-radius, monochrome-first aesthetic". Existing buttons had `rounded` class. Removed from view toggle, export, tags, and new entry buttons to match.
+
 *This file grows as Vox learns. Never delete entries.*

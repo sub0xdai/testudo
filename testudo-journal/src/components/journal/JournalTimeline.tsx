@@ -10,8 +10,11 @@ import {
 import { EntryCard } from './EntryCard'
 import { EntryEditor } from './EntryEditor'
 import { TagManager } from './TagManager'
+import { DatabaseTable } from './DatabaseTable'
 import { SkeletonBar } from '../SkeletonBar'
 import { exportEntries } from '../../lib/export'
+
+type ViewMode = 'table' | 'cards'
 
 const ENTRY_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -46,6 +49,7 @@ export function JournalTimeline() {
   const [showEditor, setShowEditor] = createSignal(false)
   const [editingEntry, setEditingEntry] = createSignal<JournalEntry | null>(null)
   const [showTagManager, setShowTagManager] = createSignal(false)
+  const [viewMode, setViewMode] = createSignal<ViewMode>('table')
   const [exporting, setExporting] = createSignal(false)
   const [exportProgress, setExportProgress] = createSignal('')
 
@@ -181,24 +185,49 @@ export function JournalTimeline() {
           JOURNAL
         </h2>
         <div class="flex items-center gap-2">
+          {/* View toggle */}
+          <div class="flex border border-container-border">
+            <button
+              class="px-2 py-1.5 font-mono text-xs transition-colors"
+              classList={{
+                'bg-text-primary text-main-bg': viewMode() === 'table',
+                'text-text-tertiary hover:text-text-primary': viewMode() !== 'table',
+              }}
+              onClick={() => setViewMode('table')}
+              title="Table view"
+            >
+              Table
+            </button>
+            <button
+              class="px-2 py-1.5 font-mono text-xs border-l border-container-border transition-colors"
+              classList={{
+                'bg-text-primary text-main-bg': viewMode() === 'cards',
+                'text-text-tertiary hover:text-text-primary': viewMode() !== 'cards',
+              }}
+              onClick={() => setViewMode('cards')}
+              title="Card view"
+            >
+              Cards
+            </button>
+          </div>
           <Show when={exporting()}>
             <span class="font-mono text-xs text-text-tertiary">Exporting {exportProgress()}...</span>
           </Show>
           <button
-            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs rounded hover:border-border-active hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleBulkExport}
             disabled={exporting() || filteredEntries().length === 0}
           >
             Export All
           </button>
           <button
-            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs rounded hover:border-border-active hover:text-text-primary transition-colors"
+            class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors"
             onClick={() => setShowTagManager(true)}
           >
             Tags
           </button>
           <button
-            class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors"
+            class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
             onClick={handleNewEntry}
           >
             + New Entry
@@ -297,7 +326,7 @@ export function JournalTimeline() {
         <div class="text-center py-16">
           <div class="font-mono text-text-tertiary text-sm mb-4">NO ENTRIES YET</div>
           <button
-            class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors"
+            class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
             onClick={handleNewEntry}
           >
             Write your first entry
@@ -305,37 +334,47 @@ export function JournalTimeline() {
         </div>
       </Show>
 
-      {/* Timeline */}
+      {/* Content: Table or Cards */}
       <Show when={!entriesData.loading && filteredEntries().length > 0}>
-        <div class="space-y-8">
-          <For each={grouped()}>
-            {([date, entries]) => (
-              <div>
-                {/* Date separator */}
-                <div class="flex items-center gap-4 mb-4">
-                  <div class="h-px bg-container-border flex-1" />
-                  <span class="font-mono text-xs text-text-tertiary tracking-wider">{date}</span>
-                  <div class="h-px bg-container-border flex-1" />
-                </div>
-
-                {/* Entries for this date */}
-                <div class="space-y-3">
-                  <For each={entries}>
-                    {(entry) => (
-                      <EntryCard
-                        entry={entry}
-                        tags={getEntryTags(entry)}
-                        tradeLabel={getTradeLabel(entry)}
-                        onEdit={() => handleEdit(entry)}
-                        onDelete={() => handleDelete(entry)}
-                      />
-                    )}
-                  </For>
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
+        <Show
+          when={viewMode() === 'table'}
+          fallback={
+            <div class="space-y-8">
+              <For each={grouped()}>
+                {([date, entries]) => (
+                  <div>
+                    <div class="flex items-center gap-4 mb-4">
+                      <div class="h-px bg-container-border flex-1" />
+                      <span class="font-mono text-xs text-text-tertiary tracking-wider">{date}</span>
+                      <div class="h-px bg-container-border flex-1" />
+                    </div>
+                    <div class="space-y-3">
+                      <For each={entries}>
+                        {(entry) => (
+                          <EntryCard
+                            entry={entry}
+                            tags={getEntryTags(entry)}
+                            tradeLabel={getTradeLabel(entry)}
+                            onEdit={() => handleEdit(entry)}
+                            onDelete={() => handleDelete(entry)}
+                          />
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                )}
+              </For>
+            </div>
+          }
+        >
+          <DatabaseTable
+            entries={filteredEntries()}
+            getEntryTags={getEntryTags}
+            getTradeLabel={getTradeLabel}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </Show>
       </Show>
 
       {/* Editor modal */}
