@@ -193,4 +193,12 @@
 - **Sidebar collapse uses vertical text rotation**: When collapsed, sidebar becomes an 8px-wide strip with "Collections" text rotated 90° via `rotate-90` class. This preserves affordance while minimizing space on mobile.
 - **"Save Current Filters" in sidebar footer**: Only appears when filters are active (`hasActiveFilters()` check). Auto-generates name from active filter values (e.g., "post-trade + breakout"). Avoids a modal — creates immediately, user can rename inline.
 
+### 2026-03-22 — JNL-18-storage-quotas
+- **DB row before file write prevents quota desync**: Insert `journal_images` row first (reserves quota), then write file. On write failure, rollback the DB row. If reversed (file first, then DB), a failed insert leaves an untracked file consuming disk but not counted against quota.
+- **`ErrorResponse::with_details` for structured errors**: Quota exceeded errors include `{ used_bytes, quota_bytes, remaining_bytes }` in the `details` field. Frontend `UploadError` class captures this structured data so the UI can show specific numbers without parsing the message string.
+- **`UploadError` extends `Error` for type narrowing**: Frontend uses `instanceof UploadError` to distinguish quota errors from generic upload failures. The `code` field matches backend's `error` field (e.g., `"quota_exceeded"`).
+- **StorageBar uses `createResource` with refresh key**: Passing `storageRefreshKey()` as the source parameter to `createResource` triggers a re-fetch whenever the key increments. EntryEditor calls `onStorageChange` after successful upload to bump the key.
+- **No backfill for existing images**: Existing uploaded images (pre-JNL-18) won't have `journal_images` rows. They're "free" — not counted against quota. This avoids a complex migration scanning the filesystem. New uploads are tracked going forward.
+- **Image deletion is best-effort for filesystem**: DB row deletion is the source of truth for quota reclamation. File deletion is wrapped in a non-failing log — if the file was already removed or the path is invalid, quota is still freed.
+
 *This file grows as Vox learns. Never delete entries.*

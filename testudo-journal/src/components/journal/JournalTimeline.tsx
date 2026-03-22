@@ -12,6 +12,7 @@ import { EntryEditor } from './EntryEditor'
 import { TagManager } from './TagManager'
 import { DatabaseTable } from './DatabaseTable'
 import { CollectionSidebar } from './CollectionSidebar'
+import { StorageBar } from './StorageBar'
 import { SkeletonBar } from '../SkeletonBar'
 import { exportEntries } from '../../lib/export'
 import {
@@ -58,6 +59,8 @@ export function JournalTimeline() {
   const [viewMode, setViewMode] = createSignal<ViewMode>('table')
   const [exporting, setExporting] = createSignal(false)
   const [exportProgress, setExportProgress] = createSignal('')
+  const [storageRefreshKey, setStorageRefreshKey] = createSignal(0)
+  const refreshStorage = () => setStorageRefreshKey((k) => k + 1)
 
   // Collection state
   const [collections, setCollections] = createSignal<JournalCollection[]>(getCollections())
@@ -241,9 +244,12 @@ export function JournalTimeline() {
       <div class="flex-1 min-w-0">
         {/* Header */}
         <div class="flex items-center justify-between mb-6">
-          <h2 class="font-display text-lg font-bold tracking-wider text-text-primary">
-            {activeCollection()?.name ?? 'JOURNAL'}
-          </h2>
+          <div class="flex items-center gap-4">
+            <h2 class="font-display text-lg font-bold tracking-wider text-text-primary">
+              {activeCollection()?.name ?? 'JOURNAL'}
+            </h2>
+            <StorageBar refreshKey={storageRefreshKey()} />
+          </div>
           <div class="flex items-center gap-2">
             {/* View toggle */}
             <div class="flex border border-container-border">
@@ -445,6 +451,7 @@ export function JournalTimeline() {
           linkedTags={editingEntry() ? getEntryTags(editingEntry()!) : undefined}
           onSave={handleEditorSave}
           onClose={() => { setShowEditor(false); setEditingEntry(null) }}
+          onStorageChange={refreshStorage}
         />
       </Show>
 

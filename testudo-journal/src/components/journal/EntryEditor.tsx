@@ -6,6 +6,7 @@ import {
   addTradeTags,
   removeTradeTag,
   uploadJournalImage,
+  UploadError,
   type JournalEntry,
   type JournalTag,
   type JournalTrade,
@@ -34,6 +35,7 @@ export function EntryEditor(props: {
   linkedTags?: JournalTag[]
   onSave: () => void
   onClose: () => void
+  onStorageChange?: () => void
 }) {
   const isEdit = () => !!props.entry
   let textareaRef!: HTMLTextAreaElement
@@ -157,8 +159,13 @@ export function EntryEditor(props: {
       } else {
         setBody((prev) => prev + insertion)
       }
+      props.onStorageChange?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed')
+      if (e instanceof UploadError && e.code === 'quota_exceeded') {
+        setError(e.message)
+      } else {
+        setError(e instanceof Error ? e.message : 'Upload failed')
+      }
     }
     setUploading(false)
   }

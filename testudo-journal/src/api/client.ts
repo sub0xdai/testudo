@@ -383,7 +383,7 @@ export async function deleteTag(tagId: string): Promise<void> {
   })
 }
 
-// --- Image upload ---
+// --- Image upload + storage (JNL-18) ---
 
 export async function uploadJournalImage(file: File): Promise<{ url: string }> {
   const formData = new FormData()
@@ -395,7 +395,38 @@ export async function uploadJournalImage(file: File): Promise<{ url: string }> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: `Upload failed: ${res.status}` }))
-    throw new Error(err.message || `Upload failed: ${res.status}`)
+    throw new UploadError(
+      err.message || `Upload failed: ${res.status}`,
+      err.error,
+      err.details,
+    )
   }
   return res.json()
+}
+
+export class UploadError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public details?: { used_bytes?: number; quota_bytes?: number; remaining_bytes?: number },
+  ) {
+    super(message)
+    this.name = 'UploadError'
+  }
+}
+
+export interface StorageUsage {
+  used_bytes: number
+  quota_bytes: number
+  image_count: number
+}
+
+export async function fetchStorageUsage(): Promise<StorageUsage> {
+  return fetchCrud<StorageUsage>('storage')
+}
+
+export async function deleteImage(imageId: string): Promise<void> {
+  await fetchCrud<{ deleted: boolean }>(`images/${imageId}`, {
+    method: 'DELETE',
+  })
 }
