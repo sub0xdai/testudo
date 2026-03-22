@@ -96,6 +96,13 @@
 - **Line reduction**: background.ts reduced from 481→320 lines (-34%). websocket.ts is 175 lines containing 7 exported functions and 7 module-scoped state variables.
 - **No test changes**: Same pre-existing failures (vi.stubGlobal compat, Playwright runner, legacy storage keys). Build passes for both Chrome and Firefox targets.
 
+### 2026-03-22 — EXT-38-background-decomposition (Build T5)
+- **Simplest extraction**: sidecar.ts is 44 lines — the smallest module. Contains 4 exported functions (`setSidecarStatus`, `getSidecarStatus`, `checkSidecarHealth`, `startSidecarHealthPolling`, `stopSidecarHealthPolling`), the `SidecarStatus` type, and 3 module-scoped state variables.
+- **Added `getSidecarStatus()` accessor**: `handleSidecarStatus` previously read `sidecarStatus` directly. Added accessor function to avoid exposing mutable module state, consistent with websocket.ts pattern (`getWsState()`).
+- **`apiRequest` removed from bootstrap imports**: With sidecar extraction, `apiRequest` is no longer used directly in background.ts — only in api.ts (internally) and sidecar.ts. Cleaned from imports.
+- **Line reduction**: background.ts reduced from 320→286 lines (-11%). Cumulative from monolith: 1043→286 (73% reduction with T1-T5 complete).
+- **No test changes**: Same 7 pre-existing failures, 70 passing.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*

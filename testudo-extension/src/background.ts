@@ -1,12 +1,10 @@
 import browser from "webextension-polyfill";
 import {
   RuntimeMessageSchema,
-  SidecarHealthResponseSchema,
 } from "./schemas";
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./background/storage";
 import { getTokens, clearTokens, refreshAccessToken, scheduleTokenRefresh, clearRefreshTimer, getAuthStatus } from "./background/auth";
 import {
-  apiRequest,
   login,
   register,
   forgotPassword,
@@ -34,6 +32,12 @@ import {
   resetReconnectDelay,
   onSidecarHealth,
 } from "./background/websocket";
+import {
+  setSidecarStatus,
+  getSidecarStatus,
+  startSidecarHealthPolling,
+  stopSidecarHealthPolling,
+} from "./background/sidecar";
 
 // Background service worker — manages settings, auth, REST dispatch, and WebSocket connection.
 
@@ -49,44 +53,6 @@ browser.runtime.onInstalled.addListener(async () => {
   await browser.storage.local.set({ ...settings });
   console.log("Testudo Sniper installed", settings);
 });
-
-// --- Sidecar Health Polling (EXT-16 FR-2) ---
-
-export type SidecarStatus = "unknown" | "healthy" | "unreachable";
-let sidecarStatus: SidecarStatus = "unknown";
-
-function setSidecarStatus(status: SidecarStatus): void {
-  if (status === sidecarStatus) return;
-  sidecarStatus = status;
-  browser.runtime.sendMessage({ type: "SIDECAR_STATUS_CHANGED", status }).catch(() => {});
-}
-
-async function checkSidecarHealth(): Promise<void> {
-  const result = await apiRequest("/api/v1/health/sidecar", { timeout: 5000 });
-  if (!result.ok) { setSidecarStatus("unreachable"); return; }
-  const json = SidecarHealthResponseSchema.safeParse(result.raw);
-  setSidecarStatus(json.success && json.data.status === "healthy" ? "healthy" : "unreachable");
-}
-
-let sidecarHealthTimer: ReturnType<typeof setInterval> | null = null;
-let sidecarHealthInitialTimer: ReturnType<typeof setTimeout> | null = null;
-
-function startSidecarHealthPolling(): void {
-  if (sidecarHealthTimer) return;
-  sidecarHealthInitialTimer = setTimeout(checkSidecarHealth, 5000);
-  sidecarHealthTimer = setInterval(checkSidecarHealth, 30000);
-}
-
-function stopSidecarHealthPolling(): void {
-  if (sidecarHealthInitialTimer) {
-    clearTimeout(sidecarHealthInitialTimer);
-    sidecarHealthInitialTimer = null;
-  }
-  if (sidecarHealthTimer) {
-    clearInterval(sidecarHealthTimer);
-    sidecarHealthTimer = null;
-  }
-}
 
 // --- Message Handlers ---
 
@@ -210,7 +176,7 @@ function handleTokenSyncedFromWeb(): Promise<unknown> {
 }
 
 function handleSidecarStatus(): Promise<unknown> {
-  return Promise.resolve({ status: sidecarStatus });
+  return Promise.resolve({ status: getSidecarStatus() });
 }
 
 function handleExchangePositions(): Promise<unknown> {
