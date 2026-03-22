@@ -157,6 +157,13 @@
 - **Section headings stay mono**: Short headings like `CORE [SYSTEMS]` and `[PRICING]` use terminal bracket notation as intentional aesthetic — these are title elements, not paragraph text. The >20 word acceptance criterion confirms headings don't need changing.
 - **5 class replacements across 3 files**: Hero tagline, Features primary + secondary descriptions, Pricing subtitle + feature list. All remaining `font-mono` usages (ghost annotations, price ticker, CTA buttons, feature labels, footer) are intentional terminal-aesthetic or data-display elements.
 
+### 2026-03-22 — UXP-21-light-theme-parity
+- **ThemeContext lifted from Header**: Theme state (`getStoredTheme`, `applyTheme`, `cycleTheme`) was duplicated knowledge in Header.tsx. Extracting to ThemeContext.tsx enables any component (including RainbowKit wrapper in main.tsx) to read and react to theme changes. Header.tsx dropped from 130→103 lines.
+- **RainbowKitProvider requires wrapper component**: Can't call `useTheme()` inside `createRoot().render()` directly — hooks only work inside components. Created `RainbowKitThemeWrapper` as a thin component between `ThemeProvider` and `RainbowKitProvider` to bridge the gap.
+- **Mouse tracking unconditional**: Previously `isLight` guarded the mousemove listener — mouse tracking only ran in dark mode. Removed the guard since both themes now use the spotlight. The `useEffect` no longer depends on `isLight` (changed to `[]` deps), preventing listener teardown/re-attach on theme toggle.
+- **Light theme borders via CSS attribute selectors**: `[data-theme="light"] .border { border-width: 2px; }` overrides Tailwind's generated `border-width: 1px` with higher specificity (0-2-0 vs 0-1-0). Covers `.border`, `.border-b`, `.border-l`, `.border-t`, `.border-r`. No component changes needed.
+- **Texture grain uses `--text-primary` not `--bg-core`**: Dark scan-lines use `--bg-core` at 15% opacity because the overlay should darken. Light texture uses `--text-primary` at 4% opacity because the grain should add subtle dark marks on the cream background. Using `--bg-core` would be invisible (cream on cream).
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
