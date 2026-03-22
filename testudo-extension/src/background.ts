@@ -801,171 +801,208 @@ function forwardOrderUpdate(data: unknown): void {
   browser.runtime.sendMessage({ type: "WS_ORDER_UPDATE", data }).catch(() => {});
 }
 
-// --- Message Router ---
+// --- Message Handlers ---
+
+type ParsedMessage = ReturnType<typeof RuntimeMessageSchema.parse>;
+type MessageHandler = (msg: ParsedMessage) => Promise<unknown> | unknown;
+type MsgOf<T extends ParsedMessage["type"]> = Extract<ParsedMessage, { type: T }>;
+
+function handleGetSettings(): Promise<unknown> {
+  return getSettings();
+}
+
+function handleExecuteTrade(msg: ParsedMessage): Promise<unknown> {
+  return executeTrade((msg as MsgOf<"EXECUTE_TRADE">).payload);
+}
+
+function handleLogin(msg: ParsedMessage): Promise<unknown> {
+  const { email, password } = msg as MsgOf<"LOGIN">;
+  return login(email, password).then(async (result) => {
+    if (result.success) await ensureActiveExchange();
+    return result;
+  });
+}
+
+function handleRegister(msg: ParsedMessage): Promise<unknown> {
+  const { email, password } = msg as MsgOf<"REGISTER">;
+  return register(email, password).then(async (result) => {
+    if (result.success) await ensureActiveExchange();
+    return result;
+  });
+}
+
+function handleLogout(): Promise<unknown> {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+  disconnectWebSocket();
+  stopSidecarHealthPolling();
+  return clearTokens().then(() => ({ success: true }));
+}
+
+function handleAuthStatus(): Promise<unknown> {
+  return getAuthStatus();
+}
+
+function handleRefreshToken(): Promise<unknown> {
+  return refreshAccessToken().then((ok) => ({ success: ok }));
+}
+
+function handleWsStatus(): Promise<unknown> {
+  // Auto-reconnect if disconnected when popup queries status
+  if (wsState === "disconnected" && !wsReconnectTimer) {
+    wsReconnectDelay = WS_BASE_RECONNECT_DELAY;
+    connectWebSocket();
+  }
+  return Promise.resolve({ state: wsState });
+}
+
+function handleWsReconnect(): Promise<unknown> {
+  connectWebSocket();
+  return Promise.resolve({ success: true });
+}
+
+function handleListTrades(): Promise<unknown> {
+  return listTrades();
+}
+
+function handleCancelTrade(msg: ParsedMessage): Promise<unknown> {
+  return cancelTrade((msg as MsgOf<"CANCEL_TRADE">).tradeId);
+}
+
+function handleCleanupTrades(): Promise<unknown> {
+  return cleanupTrades();
+}
+
+function handleGetBalance(): Promise<unknown> {
+  return getLiveBalance();
+}
+
+function handleListExchanges(): Promise<unknown> {
+  return listExchanges();
+}
+
+function handleListExchangeAccounts(): Promise<unknown> {
+  return listExchangeAccounts();
+}
+
+function handleAddExchangeAccount(msg: ParsedMessage): Promise<unknown> {
+  return addExchangeAccount((msg as MsgOf<"ADD_EXCHANGE_ACCOUNT">).payload).then((result) => {
+    if (result.success) ensureActiveExchange();
+    return result;
+  });
+}
+
+function handleDeleteExchangeAccount(msg: ParsedMessage): Promise<unknown> {
+  return deleteExchangeAccount((msg as MsgOf<"DELETE_EXCHANGE_ACCOUNT">).accountId).then(async (result) => {
+    if (result.success) await ensureActiveExchange();
+    return result;
+  });
+}
+
+function handleTestExchangeConnection(msg: ParsedMessage): Promise<unknown> {
+  return testExchangeConnection((msg as MsgOf<"TEST_EXCHANGE_CONNECTION">).accountId);
+}
+
+function handleGetActiveExchange(): Promise<unknown> {
+  return getActiveExchangeId().then((id) => ({ exchangeId: id }));
+}
+
+function handleSetActiveExchange(msg: ParsedMessage): Promise<unknown> {
+  return setActiveExchangeId((msg as MsgOf<"SET_ACTIVE_EXCHANGE">).exchangeId).then(() => ({ success: true }));
+}
+
+function handleTokenSyncedFromWeb(): Promise<unknown> {
+  return getTokens().then((tokens) => {
+    if (tokens && tokens.expires_in > 0) {
+      scheduleTokenRefresh(tokens.expires_in);
+      ensureActiveExchange();
+      debouncedConnectWebSocket();
+    }
+    return { success: true };
+  });
+}
+
+function handleSidecarStatus(): Promise<unknown> {
+  return Promise.resolve({ status: sidecarStatus });
+}
+
+function handleExchangePositions(): Promise<unknown> {
+  return fetchExchangePositions();
+}
+
+function handleCloseExchangePosition(msg: ParsedMessage): Promise<unknown> {
+  const { symbol, side, contracts } = msg as MsgOf<"CLOSE_EXCHANGE_POSITION">;
+  return closeExchangePosition(symbol, side, contracts);
+}
+
+function handleForgotPassword(msg: ParsedMessage): Promise<unknown> {
+  return forgotPassword((msg as MsgOf<"FORGOT_PASSWORD">).email);
+}
+
+function handleGetExchangeMode(): Promise<unknown> {
+  return getExchangeMode().then((mode) => ({ mode }));
+}
+
+function handleSetExchangeMode(msg: ParsedMessage): Promise<unknown> {
+  return browser.storage.local.set({ exchangeMode: (msg as MsgOf<"SET_EXCHANGE_MODE">).mode }).then(async () => {
+    await ensureActiveExchange();
+    return { success: true };
+  });
+}
+
+function handleAccountLinked(): Promise<unknown> {
+  return (async () => {
+    // Small delay to allow backend to persist the account
+    await new Promise((r) => setTimeout(r, 500));
+    const result = await listExchangeAccounts();
+    if (result.success && result.data) {
+      await browser.storage.local.set({ exchangeAccounts: result.data });
+    }
+    await ensureActiveExchange();
+    return { success: true };
+  })();
+}
+
+// --- Message Dispatch ---
+
+const messageHandlers: Record<string, MessageHandler> = {
+  GET_SETTINGS: handleGetSettings,
+  EXECUTE_TRADE: handleExecuteTrade,
+  LOGIN: handleLogin,
+  REGISTER: handleRegister,
+  LOGOUT: handleLogout,
+  AUTH_STATUS: handleAuthStatus,
+  REFRESH_TOKEN: handleRefreshToken,
+  WS_STATUS: handleWsStatus,
+  WS_RECONNECT: handleWsReconnect,
+  LIST_TRADES: handleListTrades,
+  CANCEL_TRADE: handleCancelTrade,
+  CLEANUP_TRADES: handleCleanupTrades,
+  GET_BALANCE: handleGetBalance,
+  LIST_EXCHANGES: handleListExchanges,
+  LIST_EXCHANGE_ACCOUNTS: handleListExchangeAccounts,
+  ADD_EXCHANGE_ACCOUNT: handleAddExchangeAccount,
+  DELETE_EXCHANGE_ACCOUNT: handleDeleteExchangeAccount,
+  TEST_EXCHANGE_CONNECTION: handleTestExchangeConnection,
+  GET_ACTIVE_EXCHANGE: handleGetActiveExchange,
+  SET_ACTIVE_EXCHANGE: handleSetActiveExchange,
+  TOKEN_SYNCED_FROM_WEB: handleTokenSyncedFromWeb,
+  SIDECAR_STATUS: handleSidecarStatus,
+  EXCHANGE_POSITIONS: handleExchangePositions,
+  CLOSE_EXCHANGE_POSITION: handleCloseExchangePosition,
+  FORGOT_PASSWORD: handleForgotPassword,
+  GET_EXCHANGE_MODE: handleGetExchangeMode,
+  SET_EXCHANGE_MODE: handleSetExchangeMode,
+  ACCOUNT_LINKED: handleAccountLinked,
+};
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const parsed = RuntimeMessageSchema.safeParse(message);
-  if (!parsed.success) {
-    return undefined;
-  }
-  const msg = parsed.data;
-
-  if (msg.type === "GET_SETTINGS") {
-    return getSettings();
-  }
-
-  if (msg.type === "EXECUTE_TRADE") {
-    return executeTrade(msg.payload);
-  }
-
-  if (msg.type === "LOGIN") {
-    return login(msg.email, msg.password).then(async (result) => {
-      if (result.success) await ensureActiveExchange();
-      return result;
-    });
-  }
-
-  if (msg.type === "LOGOUT") {
-    if (refreshTimer) {
-      clearTimeout(refreshTimer);
-      refreshTimer = null;
-    }
-    disconnectWebSocket();
-    stopSidecarHealthPolling();
-    return clearTokens().then(() => ({ success: true }));
-  }
-
-  if (msg.type === "AUTH_STATUS") {
-    return getAuthStatus();
-  }
-
-  if (msg.type === "REFRESH_TOKEN") {
-    return refreshAccessToken().then((ok) => ({ success: ok }));
-  }
-
-  if (msg.type === "WS_STATUS") {
-    // Auto-reconnect if disconnected when popup queries status
-    if (wsState === "disconnected" && !wsReconnectTimer) {
-      wsReconnectDelay = WS_BASE_RECONNECT_DELAY;
-      connectWebSocket();
-    }
-    return Promise.resolve({ state: wsState });
-  }
-
-  if (msg.type === "WS_RECONNECT") {
-    connectWebSocket();
-    return Promise.resolve({ success: true });
-  }
-
-  if (msg.type === "LIST_TRADES") {
-    return listTrades();
-  }
-
-  if (msg.type === "CANCEL_TRADE") {
-    return cancelTrade(msg.tradeId);
-  }
-
-  if (msg.type === "CLEANUP_TRADES") {
-    return cleanupTrades();
-  }
-
-  // EXT-19: GET_BALANCE always fetches live balance from active exchange
-  if (msg.type === "GET_BALANCE") {
-    return getLiveBalance();
-  }
-
-  if (msg.type === "REGISTER") {
-    return register(msg.email, msg.password).then(async (result) => {
-      if (result.success) await ensureActiveExchange();
-      return result;
-    });
-  }
-
-  if (msg.type === "LIST_EXCHANGES") {
-    return listExchanges();
-  }
-
-  if (msg.type === "LIST_EXCHANGE_ACCOUNTS") {
-    return listExchangeAccounts();
-  }
-
-  if (msg.type === "ADD_EXCHANGE_ACCOUNT") {
-    return addExchangeAccount(msg.payload).then((result) => {
-      if (result.success) ensureActiveExchange();
-      return result;
-    });
-  }
-
-  if (msg.type === "DELETE_EXCHANGE_ACCOUNT") {
-    return deleteExchangeAccount(msg.accountId).then(async (result) => {
-      if (result.success) await ensureActiveExchange();
-      return result;
-    });
-  }
-
-  if (msg.type === "TEST_EXCHANGE_CONNECTION") {
-    return testExchangeConnection(msg.accountId);
-  }
-
-  if (msg.type === "GET_ACTIVE_EXCHANGE") {
-    return getActiveExchangeId().then((id) => ({ exchangeId: id }));
-  }
-
-  if (msg.type === "SET_ACTIVE_EXCHANGE") {
-    return setActiveExchangeId(msg.exchangeId).then(() => ({ success: true }));
-  }
-
-  if (msg.type === "TOKEN_SYNCED_FROM_WEB") {
-    return getTokens().then((tokens) => {
-      if (tokens && tokens.expires_in > 0) {
-        scheduleTokenRefresh(tokens.expires_in);
-        ensureActiveExchange();
-        debouncedConnectWebSocket();
-      }
-      return { success: true };
-    });
-  }
-
-  if (msg.type === "SIDECAR_STATUS") {
-    return Promise.resolve({ status: sidecarStatus });
-  }
-
-  if (msg.type === "EXCHANGE_POSITIONS") {
-    return fetchExchangePositions();
-  }
-
-  if (msg.type === "CLOSE_EXCHANGE_POSITION") {
-    return closeExchangePosition(msg.symbol, msg.side, msg.contracts);
-  }
-
-  if (msg.type === "FORGOT_PASSWORD") {
-    return forgotPassword(msg.email);
-  }
-
-  if (msg.type === "GET_EXCHANGE_MODE") {
-    return getExchangeMode().then((mode) => ({ mode }));
-  }
-
-  if (msg.type === "SET_EXCHANGE_MODE") {
-    return browser.storage.local.set({ exchangeMode: msg.mode }).then(async () => {
-      await ensureActiveExchange();
-      return { success: true };
-    });
-  }
-
-  // EXT-33: Handle wallet connection event from web app via token-sync content script
-  if (msg.type === "ACCOUNT_LINKED") {
-    return (async () => {
-      // Small delay to allow backend to persist the account
-      await new Promise((r) => setTimeout(r, 500));
-      const result = await listExchangeAccounts();
-      if (result.success && result.data) {
-        await browser.storage.local.set({ exchangeAccounts: result.data });
-      }
-      await ensureActiveExchange();
-      return { success: true };
-    })();
-  }
+  if (!parsed.success) return undefined;
+  const handler = messageHandlers[parsed.data.type];
+  return handler ? handler(parsed.data) : undefined;
 });
 
 // On startup, migrate legacy exchange ID, schedule token refresh, then connect WebSocket

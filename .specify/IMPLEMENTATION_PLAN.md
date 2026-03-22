@@ -1,21 +1,16 @@
 # Implementation Plan
 
-> Last updated: 2026-03-21
-> Current spec: UXP-18-multi-theme
-> Phase: READY FOR BUILD
+> Last updated: 2026-03-22
+> Current spec: EXT-37-message-dispatch-refactor
+> Phase: COMPLETE
 
 ---
 
-## Active Spec: UXP-18-multi-theme
+## Active Spec: EXT-37-message-dispatch-refactor
 
-Plan: `.specify/specs/UXP-18-multi-theme/plan.md`
+Single-task spec: Replace if/else message handler chain with typed dispatch map.
 
-13 tasks across 4 batches. No blockers.
-
-Key decisions:
-- AD-2: RGB channels pattern for Tailwind v3 opacity modifier support
-- AD-4: Dispose + re-init charts on theme change (MutationObserver)
-- AD-5: CSS-only theme variants in Shadow DOM (no JS color mapping)
+Status: **complete**
 
 ---
 
@@ -24,6 +19,8 @@ Key decisions:
 | Spec | Completion Date |
 |------|-----------------|
 | HL-11-status-transition-fix | 2026-03-21 |
+| UXP-18-multi-theme | 2026-03-21 |
+| EXT-37-message-dispatch-refactor | 2026-03-22 |
 
 ---
 
