@@ -92,7 +92,14 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
         timeframe: "manual",
       } : null);
 
-      showModal(initialSetup, management, handleModalResult, balance, activeExchangeName);
+      // Read theme before opening modal (sync with extension popup)
+      let theme: string | undefined;
+      try {
+        const stored = await browser.storage.local.get("testudo-theme");
+        theme = stored["testudo-theme"] as string | undefined;
+      } catch { /* default dark */ }
+
+      showModal(initialSetup, management, handleModalResult, balance, activeExchangeName, theme);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("Extension context invalidated")) {

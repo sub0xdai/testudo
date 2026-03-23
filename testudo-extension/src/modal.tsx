@@ -174,22 +174,16 @@ export function showModal(
   onResult: (result: ModalResult, setup: TradeSetup | null) => void,
   balance: BalanceResponse[] | null = null,
   activeExchange: string | null = null,
+  theme?: string,
 ): void {
   dismiss();
 
   const host = document.createElement("div");
   host.id = "testudo-sniper-modal";
-  const shadow = host.attachShadow({ mode: "open" });
-
-  // Apply extension theme to shadow host
-  if (typeof chrome !== "undefined" && chrome.storage?.local) {
-    chrome.storage.local.get("testudo-theme", (result: Record<string, string>) => {
-      const theme = result["testudo-theme"];
-      if (theme && theme !== "amoled") {
-        host.setAttribute("data-theme", theme);
-      }
-    });
+  if (theme && theme !== "amoled") {
+    host.setAttribute("data-theme", theme);
   }
+  const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
   style.textContent = MODAL_STYLES;
