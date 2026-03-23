@@ -1,4 +1,4 @@
-export type TabId = "trade" | "quick" | "positions" | "account";
+export type TabId = "trade" | "positions" | "account";
 
 interface TabBarProps {
   activeTab: TabId;
@@ -10,7 +10,6 @@ interface TabBarProps {
 export default function TabBar(props: TabBarProps) {
   const tabs: { id: TabId; label: string; testId: string }[] = [
     { id: "trade", label: "Trade", testId: "tab-trade" },
-    { id: "quick", label: "Quick", testId: "tab-quick" },
     { id: "positions", label: "Positions", testId: "tab-positions" },
     { id: "account", label: "Account", testId: "tab-account" },
   ];

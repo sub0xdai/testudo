@@ -125,7 +125,6 @@ export default function LoginPreview() {
       <nav>
         <div class="flex mx-5 my-2 bg-bg-panel p-1">
           <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-active">Trade</span>
-          <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">Quick</span>
           <span class="flex-1 py-2 text-[13px] font-sans font-semibold tracking-wide text-center tab-inactive">
             Positions
             {/* UXP-17: white count badge */}

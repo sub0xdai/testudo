@@ -166,15 +166,19 @@ export function Overview() {
               </div>
             </div>
 
-            {/* Hero Equity Curve — borderless, min 400px */}
+            {/* Hero Equity Curve */}
+            <div class="px-6 pt-4">
+              <span class="font-display text-xs tracking-section text-text-tertiary uppercase">EQUITY CURVE</span>
+            </div>
             <HeroEquityCurve
               data={equity()?.data}
               loading={equity.loading}
             />
 
-            {/* Secondary chart selector */}
-            <div class="p-6">
-              <ChartSelector />
+            {/* Chart selectors — 2-column grid */}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+              <ChartSelector defaultChart="symbol" equityData={equity()} equityLoading={equity.loading} />
+              <ChartSelector defaultChart="daily-pnl" equityData={equity()} equityLoading={equity.loading} />
             </div>
           </div>
         </div>

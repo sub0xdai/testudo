@@ -43,6 +43,14 @@
   --text-tertiary: 120 113 102;
 }
 
+/* --- Background overlay (Hadrian's Wall) --- */
+.bg-overlay {
+  background: rgb(var(--bg-core) / 0.88);
+}
+[data-theme="light"] .bg-overlay {
+  background: rgb(var(--bg-core) / 0.82);
+}
+
 * {
   margin: 0;
   padding: 0;

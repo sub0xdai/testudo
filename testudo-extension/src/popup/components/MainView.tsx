@@ -5,7 +5,6 @@ import HeaderBar from "./HeaderBar";
 import ArcGauge from "./ArcGauge";
 import TabBar, { type TabId } from "./TabBar";
 import TradeManagement from "./TradeManagement";
-import QuickTrade from "./QuickTrade";
 import ActiveOrders from "./ActiveOrders";
 import { WEB_APP_URL, type ExchangeMode } from "../../utils";
 import type { BalanceResponse, LiveBalanceResponse } from "../../types";
@@ -17,7 +16,7 @@ function formatBalance(value: number): string {
   });
 }
 
-export default function MainView(props: { onOpenSettings: () => void }) {
+export default function MainView(props: { onLogout: () => void }) {
   const auth = useAuth();
   const [activeTab, setActiveTabRaw] = createSignal<TabId>("trade");
 
@@ -127,7 +126,7 @@ export default function MainView(props: { onOpenSettings: () => void }) {
     <div class="flex flex-col h-full">
       {/* Slim toolbar */}
       <header>
-        <HeaderBar onOpenSettings={props.onOpenSettings} />
+        <HeaderBar onLogout={props.onLogout} />
       </header>
 
       {/* Wallet-style balance panel */}
@@ -213,12 +212,6 @@ export default function MainView(props: { onOpenSettings: () => void }) {
         <Show when={activeTab() === "trade"}>
           <div role="tabpanel" id="panel-trade" aria-labelledby="tab-trade">
             <TradeManagement />
-          </div>
-        </Show>
-
-        <Show when={activeTab() === "quick"}>
-          <div role="tabpanel" id="panel-quick" aria-labelledby="tab-quick">
-            <QuickTrade />
           </div>
         </Show>
 

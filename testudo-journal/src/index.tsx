@@ -4,7 +4,6 @@ import { Router, Route } from '@solidjs/router'
 import { FilterProvider } from './components/filterContext'
 import { Layout } from './components/Layout'
 import { Overview } from './components/Overview'
-import { Charts } from './components/Charts'
 import { Trades } from './pages/Trades'
 import { Journal } from './pages/Journal'
 import './lib/echarts-setup'
@@ -18,7 +17,6 @@ render(
     <FilterProvider>
       <Router base="/desk" root={Layout}>
         <Route path="/" component={Overview} />
-        <Route path="/charts" component={Charts} />
         <Route path="/trades" component={Trades} />
         <Route path="/journal" component={Journal} />
       </Router>

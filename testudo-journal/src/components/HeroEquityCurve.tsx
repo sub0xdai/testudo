@@ -2,7 +2,7 @@ import { onMount, onCleanup, createEffect, Show } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, LineSeries, AreaSeries } from 'lightweight-charts'
 import type { EquityPoint } from '../api/client'
 import { SkeletonBar } from './SkeletonBar'
-import { getSignalGreen, signalRedAlpha, getGridLineColor, getCrosshairColor, getTextTertiary } from '../lib/tokens'
+import { getSignalGreen, signalRedAlpha, getGridLineColor, getCrosshairColor, getTextTertiary, getChartBg } from '../lib/tokens'
 import { onThemeChange } from '../lib/theme-observer'
 
 interface HeroEquityCurveProps {
@@ -22,7 +22,7 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
       width: container.clientWidth,
       height: 400,
       layout: {
-        background: { color: 'transparent' },
+        background: { color: getChartBg() },
         textColor: getTextTertiary(),
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,

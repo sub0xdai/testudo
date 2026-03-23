@@ -3,7 +3,6 @@ import { A } from '@solidjs/router'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
-  { path: '/charts', label: 'ANALYSIS' },
   { path: '/trades', label: 'TRADES' },
   { path: '/journal', label: 'JOURNAL' },
   { path: null, label: 'HOME', external: true },
@@ -45,7 +44,21 @@ export function Layout(props: { children: JSX.Element }) {
   }
 
   return (
-    <div class="min-h-screen bg-main-bg text-text-primary">
+    <div class="min-h-screen text-text-primary">
+      {/* Hadrian's Wall background — shared with landing page */}
+      <div class="fixed inset-0 z-0">
+        <div
+          class="absolute inset-0"
+          style={{
+            "background-image": "url(/Roman-testudo-Trajan-column-966204074.jpg)",
+            "background-size": "cover",
+            "background-position": "center",
+            "background-repeat": "no-repeat",
+          }}
+        />
+        <div class="absolute inset-0 bg-overlay" />
+      </div>
+
       <header class="fixed top-0 left-0 right-0 z-50 bg-main-bg/60 backdrop-blur-sm border-b border-container-border/30">
         <div class="max-w-[1400px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -149,7 +162,7 @@ export function Layout(props: { children: JSX.Element }) {
       {/* Spacer for fixed header */}
       <div style={{ height: 'var(--header-h)' }} />
 
-      <main class="max-w-[1400px] mx-auto px-6 py-6">
+      <main class="relative z-10 max-w-[1400px] mx-auto px-6 py-6">
         {props.children}
       </main>
     </div>

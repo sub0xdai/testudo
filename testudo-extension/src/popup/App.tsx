@@ -3,9 +3,8 @@ import browser from "webextension-polyfill";
 import { AuthProvider } from "./context/AuthContext";
 import AuthSection from "./components/AuthSection";
 import MainView from "./components/MainView";
-import SettingsView from "./components/SettingsView";
 
-type View = "auth" | "main" | "settings";
+type View = "auth" | "main";
 
 export default function App() {
   const [view, setViewRaw] = createSignal<View>("auth");
@@ -27,9 +26,7 @@ export default function App() {
 
   async function handleReady(authed: boolean) {
     if (authed) {
-      const stored = await browser.storage.local.get(["popupView"]);
-      const saved = stored.popupView as View | undefined;
-      setViewRaw(saved === "settings" ? "settings" : "main");
+      setViewRaw("main");
     } else {
       setViewRaw("auth");
     }
@@ -51,13 +48,7 @@ export default function App() {
             />
           </Match>
           <Match when={view() === "main"}>
-            <MainView onOpenSettings={() => setView("settings")} />
-          </Match>
-          <Match when={view() === "settings"}>
-            <SettingsView
-              onBack={() => setView("main")}
-              onLogout={goToAuth}
-            />
+            <MainView onLogout={goToAuth} />
           </Match>
         </Switch>
       </AuthProvider>

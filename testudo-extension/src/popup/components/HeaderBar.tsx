@@ -1,18 +1,22 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import browser from "webextension-polyfill";
+import { useAuth } from "../context/AuthContext";
 import ExchangeToggle from "./ExchangeToggle";
 import ExchangeSelector from "./ExchangeSelector";
+import { WEB_APP_URL } from "../../utils";
 
 type SidecarStatus = "unknown" | "healthy" | "unreachable";
 type ThemeKey = "amoled" | "light";
 
 interface HeaderBarProps {
-  onOpenSettings: () => void;
+  onLogout: () => void;
 }
 
 export default function HeaderBar(props: HeaderBarProps) {
+  const auth = useAuth();
   const [sidecarStatus, setSidecarStatus] = createSignal<SidecarStatus>("unknown");
   const [theme, setTheme] = createSignal<ThemeKey>("amoled");
+  const [menuOpen, setMenuOpen] = createSignal(false);
 
   function handleMessage(message: unknown) {
     const msg = message as { type: string; status?: SidecarStatus };
@@ -21,10 +25,18 @@ export default function HeaderBar(props: HeaderBarProps) {
     }
   }
 
+  function handleClickOutside(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest("[data-menu-container]")) {
+      setMenuOpen(false);
+    }
+  }
+
   onMount(async () => {
     const sidecarRes = await browser.runtime.sendMessage({ type: "SIDECAR_STATUS" }) as { status: SidecarStatus };
     setSidecarStatus(sidecarRes?.status || "unknown");
     browser.runtime.onMessage.addListener(handleMessage);
+    document.addEventListener("click", handleClickOutside);
 
     const stored = await browser.storage.local.get("testudo-theme");
     const t = stored["testudo-theme"] as ThemeKey | undefined;
@@ -33,6 +45,7 @@ export default function HeaderBar(props: HeaderBarProps) {
 
   onCleanup(() => {
     browser.runtime.onMessage.removeListener(handleMessage);
+    document.removeEventListener("click", handleClickOutside);
   });
 
   function toggleTheme() {
@@ -47,6 +60,12 @@ export default function HeaderBar(props: HeaderBarProps) {
     }
   }
 
+  async function handleLogout() {
+    setMenuOpen(false);
+    await auth.logout();
+    props.onLogout();
+  }
+
   return (
     <>
       <div data-testid="header-bar" class="flex items-center justify-between px-4 h-11 border-b border-border-subtle">
@@ -56,7 +75,7 @@ export default function HeaderBar(props: HeaderBarProps) {
             TESTUDO
           </span>
           <button
-            class="text-text-secondary hover:text-text-primary transition-colors border-0 bg-transparent cursor-pointer p-0"
+            class="text-text-secondary hover:text-text-primary hover:bg-transparent hover:border-0 transition-colors border-0 bg-transparent cursor-pointer p-0"
             onClick={toggleTheme}
             title={`Theme: ${theme() === "amoled" ? "Dark" : "Light"}`}
             aria-label="Toggle theme"
@@ -81,21 +100,69 @@ export default function HeaderBar(props: HeaderBarProps) {
           </button>
         </div>
 
-        {/* Right: controls + settings */}
+        {/* Right: controls + menu */}
         <div class="flex items-center gap-1.5">
           <ExchangeToggle />
           <ExchangeSelector />
-          <button
-            class="flex items-center justify-center w-8 h-8 border border-border-subtle text-text-primary hover:bg-bg-elevated transition-colors cursor-pointer bg-transparent"
-            onClick={props.onOpenSettings}
-            data-testid="settings-btn"
-            title="Settings"
-          >
-            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
+          <div class="relative" data-menu-container>
+            <button
+              class="flex items-center justify-center w-8 h-8 p-0 border border-border-subtle text-text-primary hover:text-text-primary hover:bg-bg-elevated transition-colors cursor-pointer bg-transparent"
+              onClick={() => setMenuOpen(!menuOpen())}
+              data-testid="menu-btn"
+              title="Menu"
+              aria-haspopup="true"
+              aria-expanded={menuOpen()}
+            >
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+
+            <Show when={menuOpen()}>
+              <div
+                class="absolute right-0 top-full mt-1 w-48 bg-bg-elevated border border-border-subtle shadow-lg z-50"
+                role="menu"
+                data-testid="header-menu"
+              >
+                <Show
+                  when={auth.authenticated()}
+                  fallback={
+                    <button
+                      role="menuitem"
+                      class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-text-primary hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                      onClick={() => { setMenuOpen(false); props.onLogout(); }}
+                      data-testid="menu-sign-in"
+                    >
+                      Sign In
+                    </button>
+                  }
+                >
+                  <div class="px-4 py-2.5 text-[11px] font-mono text-text-dim truncate border-b border-border-subtle">
+                    {auth.email()}
+                  </div>
+                  <button
+                    role="menuitem"
+                    class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-text-primary hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                    onClick={() => { setMenuOpen(false); window.open(`${WEB_APP_URL}/account?source=extension`, "_blank"); }}
+                    data-testid="menu-manage-account"
+                  >
+                    Manage Account
+                  </button>
+                  <div class="border-t border-border-subtle" />
+                  <button
+                    role="menuitem"
+                    class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-signal-red hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                    onClick={handleLogout}
+                    data-testid="menu-logout"
+                  >
+                    Log Out
+                  </button>
+                </Show>
+              </div>
+            </Show>
+          </div>
         </div>
       </div>
 

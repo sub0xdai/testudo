@@ -65,7 +65,7 @@ const MODAL_STYLES = `
     --color-bg-elevated: #111111;
     --color-border: #3F3F46;
   }
-  :host-context([data-theme="light"]) {
+  :host([data-theme="light"]) {
     --color-signal-green: #1a7a2e;
     --color-signal-red: #b8002a;
     --color-signal-orange: #d97706;
@@ -181,6 +181,16 @@ export function showModal(
   host.id = "testudo-sniper-modal";
   const shadow = host.attachShadow({ mode: "open" });
 
+  // Apply extension theme to shadow host
+  if (typeof chrome !== "undefined" && chrome.storage?.local) {
+    chrome.storage.local.get("testudo-theme", (result: Record<string, string>) => {
+      const theme = result["testudo-theme"];
+      if (theme && theme !== "amoled") {
+        host.setAttribute("data-theme", theme);
+      }
+    });
+  }
+
   const style = document.createElement("style");
   style.textContent = MODAL_STYLES;
   shadow.appendChild(style);
@@ -266,7 +276,7 @@ const TOAST_THEME_VARS = `
     --color-bg-elevated: #111111;
     --color-border: #3F3F46;
   }
-  :host-context([data-theme="light"]) {
+  :host([data-theme="light"]) {
     --color-signal-green: #1a7a2e;
     --color-signal-red: #b8002a;
     --color-text-secondary: #6b6458;
@@ -296,6 +306,16 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
   const host = document.createElement("div");
   host.id = "testudo-sniper-toast";
   const shadow = host.attachShadow({ mode: "open" });
+
+  // Apply extension theme to toast host
+  if (typeof chrome !== "undefined" && chrome.storage?.local) {
+    chrome.storage.local.get("testudo-theme", (result: Record<string, string>) => {
+      const theme = result["testudo-theme"];
+      if (theme && theme !== "amoled") {
+        host.setAttribute("data-theme", theme);
+      }
+    });
+  }
 
   const style = document.createElement("style");
   style.textContent = TOAST_STYLES;
