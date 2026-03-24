@@ -1,7 +1,44 @@
-import { createSignal, createResource, Show, type JSX } from 'solid-js'
+import { createSignal, createResource, Show, For, type JSX } from 'solid-js'
 import { useFilters } from './filterContext'
 import { FilterPopout } from './FilterPopout'
 import { fetchFilterOptions } from '../api/client'
+
+type Preset = '1w' | '1m' | '3m' | 'ytd' | 'all'
+
+const PRESETS: { key: Preset; label: string }[] = [
+  { key: '1w', label: '1W' },
+  { key: '1m', label: '1M' },
+  { key: '3m', label: '3M' },
+  { key: 'ytd', label: 'YTD' },
+  { key: 'all', label: 'ALL' },
+]
+
+function computeDateFrom(key: Preset): string | undefined {
+  const now = new Date()
+  switch (key) {
+    case '1w': {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 7)
+      return d.toISOString().slice(0, 10)
+    }
+    case '1m': {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 30)
+      return d.toISOString().slice(0, 10)
+    }
+    case '3m': {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 90)
+      return d.toISOString().slice(0, 10)
+    }
+    case 'ytd':
+      return `${now.getFullYear()}-01-01`
+    case 'all':
+      return undefined
+    default:
+      return undefined
+  }
+}
 
 interface PageSubHeaderProps {
   title: string
@@ -11,6 +48,7 @@ interface PageSubHeaderProps {
 export function PageSubHeader(props: PageSubHeaderProps) {
   const { filters, setFilters } = useFilters()
   const [showPopout, setShowPopout] = createSignal(false)
+  const [preset, setPreset] = createSignal<Preset>('all')
 
   const [options] = createResource(
     () => filters().exchange,
@@ -20,7 +58,6 @@ export function PageSubHeader(props: PageSubHeaderProps) {
   const activeFilterCount = () => {
     let count = 0
     if (filters().symbol) count++
-    if (filters().dateFrom || filters().dateTo) count++
     return count
   }
 
@@ -35,6 +72,12 @@ export function PageSubHeader(props: PageSubHeaderProps) {
       }
     }
     setFilters({ ...current, exchange: exchange || undefined })
+  }
+
+  function selectPreset(key: Preset) {
+    setPreset(key)
+    const dateFrom = computeDateFrom(key)
+    setFilters({ ...filters(), dateFrom, dateTo: undefined })
   }
 
   return (
@@ -55,7 +98,25 @@ export function PageSubHeader(props: PageSubHeaderProps) {
           <option value="hyperliquid">HYPERLIQUID</option>
         </select>
 
-        {/* Filter toggle */}
+        {/* Always-visible time presets */}
+        <div class="flex items-center gap-1">
+          <For each={PRESETS}>
+            {(p) => (
+              <button
+                class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
+                  preset() === p.key
+                    ? 'bg-text-primary/10 text-text-primary'
+                    : 'text-text-tertiary hover:text-text-primary'
+                }`}
+                onClick={() => selectPreset(p.key)}
+              >
+                {p.label}
+              </button>
+            )}
+          </For>
+        </div>
+
+        {/* Filter toggle (symbol search + custom dates) */}
         <button
           class={`font-mono text-xs px-3 py-1.5 rounded border transition-colors ${
             showPopout()
@@ -72,7 +133,7 @@ export function PageSubHeader(props: PageSubHeaderProps) {
         {props.children}
       </div>
 
-      {/* Popout panel */}
+      {/* Popout panel (symbol search + custom dates only) */}
       <Show when={showPopout()}>
         <FilterPopout
           symbols={options()?.symbols ?? []}

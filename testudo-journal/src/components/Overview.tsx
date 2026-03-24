@@ -7,7 +7,7 @@ import { PageSubHeader } from './PageSubHeader'
 import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve } from '../api/client'
-import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, streakSign } from '../lib/formatters'
+import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, rColor, streakSign } from '../lib/formatters'
 
 export function Overview() {
   const { filters } = useFilters()
@@ -31,9 +31,9 @@ export function Overview() {
     if (!d) return []
     return [
       { label: 'Win Rate', value: formatPercent(d.performance.win_rate) },
-      { label: 'Profit Factor', value: formatNumber(d.performance.profit_factor) },
-      { label: 'Expectancy', value: formatCurrency(d.performance.expectancy) },
-      { label: 'R-Multiple', value: formatNumber(d.performance.avg_r_multiple) },
+      { label: 'Profit Factor', value: formatNumber(d.performance.profit_factor), colorClass: parseFloat(d.performance.profit_factor) > 1 ? 'text-signal-green' : parseFloat(d.performance.profit_factor) < 1 ? 'text-signal-red' : undefined },
+      { label: 'Expectancy', value: formatCurrency(d.performance.expectancy), colorClass: pnlColor(d.performance.expectancy) },
+      { label: 'R-Multiple', value: formatNumber(d.performance.avg_r_multiple), colorClass: rColor(d.performance.avg_r_multiple) },
       { label: 'Trades/Day', value: formatNumber(d.performance.trades_per_day, 1) },
     ]
   }
@@ -136,7 +136,7 @@ export function Overview() {
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
           {/* Left sidebar — stats */}
-          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block sticky top-[var(--header-h)]" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
+          <aside class="w-64 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel border-r-0" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />
@@ -145,7 +145,7 @@ export function Overview() {
           {/* Right main — hero P&L + charts */}
           <div class="flex-1 min-w-0">
             {/* Hero metrics */}
-            <div class="px-6 py-4 border-b border-container-border">
+            <div class="px-6 py-4 glass-panel border-0 border-b border-container-border/50">
               <div class="flex items-baseline gap-8 mb-1">
                 <div>
                   <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
@@ -163,20 +163,6 @@ export function Overview() {
                     R-multiple
                   </span>
                 </div>
-              </div>
-              <div class="flex gap-6 font-mono text-sm">
-                <span class="text-text-secondary">
-                  Expectancy <span class="text-text-primary font-bold">{formatCurrency(stats()!.performance.expectancy)}</span>
-                </span>
-                <span class="text-text-secondary">
-                  Win Rate <span class="text-text-primary font-bold">{formatPercent(stats()!.performance.win_rate)}</span>
-                </span>
-                <span class="text-text-secondary">
-                  Profit Factor <span class="text-text-primary font-bold">{formatNumber(stats()!.performance.profit_factor)}</span>
-                </span>
-                <span class="text-text-secondary">
-                  Trades <span class="text-text-primary font-bold">{formatInteger(stats()!.account.total_trades)}</span>
-                </span>
               </div>
             </div>
 

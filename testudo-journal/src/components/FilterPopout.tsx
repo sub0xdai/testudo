@@ -1,63 +1,15 @@
-import { createSignal, Show, For, onCleanup } from 'solid-js'
+import { createSignal, Show, onCleanup } from 'solid-js'
 import { useFilters } from './filterContext'
 import { SymbolSearch } from './SymbolSearch'
 import type { SymbolCount } from '../api/client'
 
-type Preset = '1w' | '1m' | '3m' | 'ytd' | 'all' | 'custom'
-
-const PRESETS: { key: Preset; label: string }[] = [
-  { key: '1w', label: '1W' },
-  { key: '1m', label: '1M' },
-  { key: '3m', label: '3M' },
-  { key: 'ytd', label: 'YTD' },
-  { key: 'all', label: 'ALL' },
-  { key: 'custom', label: 'CUSTOM' },
-]
-
-function computeDateFrom(key: Preset): string | undefined {
-  const now = new Date()
-  switch (key) {
-    case '1w': {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 7)
-      return d.toISOString().slice(0, 10)
-    }
-    case '1m': {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 30)
-      return d.toISOString().slice(0, 10)
-    }
-    case '3m': {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 90)
-      return d.toISOString().slice(0, 10)
-    }
-    case 'ytd':
-      return `${now.getFullYear()}-01-01`
-    case 'all':
-      return undefined
-    default:
-      return undefined
-  }
-}
-
 export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => void }) {
   const { filters, setFilters } = useFilters()
-  const [preset, setPreset] = createSignal<Preset>('all')
-  const [customFrom, setCustomFrom] = createSignal('')
-  const [customTo, setCustomTo] = createSignal('')
+  const [customFrom, setCustomFrom] = createSignal(filters().dateFrom ?? '')
+  const [customTo, setCustomTo] = createSignal(filters().dateTo ?? '')
 
   function selectSymbol(symbol: string) {
     setFilters({ ...filters(), symbol: symbol || undefined })
-  }
-
-  function selectPreset(key: Preset) {
-    setPreset(key)
-    if (key === 'custom') return
-    setCustomFrom('')
-    setCustomTo('')
-    const dateFrom = computeDateFrom(key)
-    setFilters({ ...filters(), dateFrom, dateTo: undefined })
   }
 
   function applyCustomFrom(val: string) {
@@ -72,7 +24,6 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
 
   function clearAll() {
     setFilters({})
-    setPreset('all')
     setCustomFrom('')
     setCustomTo('')
     props.onClose()
@@ -108,45 +59,25 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
           {/* Separator */}
           <div class="w-px h-6 bg-container-border" />
 
-          {/* Time presets */}
-          <div class="flex items-center gap-1">
-            <For each={PRESETS}>
-              {(p) => (
-                <button
-                  class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
-                    preset() === p.key
-                      ? 'bg-text-primary/10 text-text-primary'
-                      : 'text-text-tertiary hover:text-text-primary'
-                  }`}
-                  onClick={() => selectPreset(p.key)}
-                >
-                  {p.label}
-                </button>
-              )}
-            </For>
-          </div>
-
-          {/* Custom date inputs */}
-          <Show when={preset() === 'custom'}>
-            <label class="flex items-center gap-2">
-              <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</span>
-              <input
-                type="date"
-                class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
-                value={customFrom()}
-                onInput={(e) => applyCustomFrom(e.currentTarget.value)}
-              />
-            </label>
-            <label class="flex items-center gap-2">
-              <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</span>
-              <input
-                type="date"
-                class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
-                value={customTo()}
-                onInput={(e) => applyCustomTo(e.currentTarget.value)}
-              />
-            </label>
-          </Show>
+          {/* Custom date range */}
+          <label class="flex items-center gap-2">
+            <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</span>
+            <input
+              type="date"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
+              value={customFrom()}
+              onInput={(e) => applyCustomFrom(e.currentTarget.value)}
+            />
+          </label>
+          <label class="flex items-center gap-2">
+            <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</span>
+            <input
+              type="date"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
+              value={customTo()}
+              onInput={(e) => applyCustomTo(e.currentTarget.value)}
+            />
+          </label>
 
           {/* Clear all */}
           <button

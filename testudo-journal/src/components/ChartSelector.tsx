@@ -41,12 +41,13 @@ export function ChartSelector(props: ChartSelectorProps) {
   const [selected, setSelected] = createSignal<ChartOption>(props.defaultChart ?? 'symbol')
 
   return (
-    <div>
-      <div class="flex items-center gap-3 mb-4">
+    <div class="glass-panel flex flex-col overflow-hidden">
+      {/* Panel header with embedded chart selector */}
+      <div class="flex items-center justify-between border-b border-container-border/50 px-4 py-2">
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
-          class="font-mono text-xs border border-container-border bg-elevated text-text-primary px-3 py-1.5"
+          class="bg-transparent font-mono text-xs text-text-tertiary uppercase outline-none cursor-pointer hover:text-text-primary transition-colors"
           aria-label="Select chart type"
         >
           {CHART_OPTIONS.map((opt) => (
@@ -55,22 +56,25 @@ export function ChartSelector(props: ChartSelectorProps) {
         </select>
       </div>
 
-      <Show when={selected() === 'symbol'}><SymbolDonut /></Show>
-      <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
-      <Show when={selected() === 'expectancy'}><ExpectancyBySymbol /></Show>
-      <Show when={selected() === 'daily-pnl'}><DailyPnl /></Show>
-      <Show when={selected() === 'cumulative'}>
-        <CumulativeProfit
-          data={props.equityData}
-          loading={props.equityLoading ?? false}
-        />
-      </Show>
-      <Show when={selected() === 'drawdown'}><DrawdownChart /></Show>
-      <Show when={selected() === 'holding'}><HoldingPeriodAnalysis /></Show>
-      <Show when={selected() === 'market'}><MarketReturn /></Show>
-      <Show when={selected() === 'duration'}><DurationScatter /></Show>
-      <Show when={selected() === 'return'}><ReturnHistogram /></Show>
-      <Show when={selected() === 'heatmap'}><TimeHeatmap /></Show>
+      {/* Chart content */}
+      <div class="p-4 flex-grow relative min-h-[250px]">
+        <Show when={selected() === 'symbol'}><SymbolDonut /></Show>
+        <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
+        <Show when={selected() === 'expectancy'}><ExpectancyBySymbol /></Show>
+        <Show when={selected() === 'daily-pnl'}><DailyPnl /></Show>
+        <Show when={selected() === 'cumulative'}>
+          <CumulativeProfit
+            data={props.equityData}
+            loading={props.equityLoading ?? false}
+          />
+        </Show>
+        <Show when={selected() === 'drawdown'}><DrawdownChart /></Show>
+        <Show when={selected() === 'holding'}><HoldingPeriodAnalysis /></Show>
+        <Show when={selected() === 'market'}><MarketReturn /></Show>
+        <Show when={selected() === 'duration'}><DurationScatter /></Show>
+        <Show when={selected() === 'return'}><ReturnHistogram /></Show>
+        <Show when={selected() === 'heatmap'}><TimeHeatmap /></Show>
+      </div>
     </div>
   )
 }
