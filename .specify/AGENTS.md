@@ -281,4 +281,12 @@
 - **Upload drops Content-Type intentionally**: `uploadJournalImage` previously set `Authorization` but relied on browser auto-setting `Content-Type: multipart/form-data` with boundary. With cookies, it passes no headers at all — browser handles both cookie and multipart boundary.
 - **No localStorage auth references remain**: Grep confirms zero `getToken`, `localStorage`, `Bearer`, `refreshPromise` references in client.ts. Only remaining localStorage usage in journal is `testudo-theme` in Layout.tsx (non-auth, theme preference).
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T5)
+- **`chrome.storage.session` for tokens, `chrome.storage.local` for settings**: Token storage (`getTokens`, `storeTokens`, `clearTokens`) migrated to `browser.storage.session` — tokens auto-clear on browser close (FR-19). Settings, exchange preferences, and active account IDs remain in `browser.storage.local` since they should persist across sessions.
+- **Extension uses `/auth/extension-refresh` not `/auth/refresh`**: The cookie-based `/auth/refresh` endpoint expects HttpOnly cookies. Extensions can't send cookies (isolated context), so they use `/auth/extension-refresh` which accepts `{ refresh_token }` in the JSON body and returns new tokens in the response body.
+- **`TOKEN_SYNCED_FROM_WEB` fully removed**: Deleted token-sync.ts, removed from manifest.json content_scripts, removed from build.ts IIFE_ENTRIES, removed RuntimeMessageSchema variant, removed handler + dispatch entry, removed 4 tests (2 ensureActiveExchange-via-sync, 2 direct TOKEN_SYNCED tests).
+- **JWT claims now `{ sub, wallet_address }` not `{ email }`**: `JwtEmailPayloadSchema` → `JwtWalletPayloadSchema`. `getAuthStatus()` returns `{ authenticated, walletAddress }` instead of `{ authenticated, email }`. Popup AuthContext signal renamed accordingly (`email` → `walletAddress`).
+- **`LoginResponse.user.email` → `wallet_address`**: Both type and schema updated to match backend's `UserResponse { id, wallet_address }`. T6 will replace login/register entirely with pairing, but the schema must match the current backend response shape for any remaining callers.
+- **Popup consumers updated**: HeaderBar.tsx and MainView.tsx both read `auth.walletAddress()` instead of `auth.email()`. The `data-testid="footer-email"` updated to `"footer-wallet"`.
+
 *This file grows as Vox learns. Never delete entries.*
