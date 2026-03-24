@@ -4,9 +4,11 @@ import { WebSocketServer } from "ws";
 import { ExchangeGateway } from "./gateway";
 import { createHandlers } from "./handlers";
 import { setupFillStreaming } from "./ws-fills";
+import { pskGuard } from "./middleware/psk";
 
 const app = express();
 app.use(express.json());
+app.use(pskGuard);
 
 // Shared gateway for exchange instance lifecycle
 const gateway = new ExchangeGateway();

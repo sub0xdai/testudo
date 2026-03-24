@@ -1,43 +1,35 @@
 # Implementation Plan
 
-> Last updated: 2026-03-23
-> Current spec: ANL-01-bloomberg-charts
+> Last updated: 2026-03-24
+> Current spec: AUTH-01-infra-hardening
 > Phase: BUILD
 
 ---
 
-## Active Spec: ANL-01-bloomberg-charts
+## Active Spec: AUTH-01-infra-hardening
 
-Bloomberg-grade analytics charts — 8 new chart types added to the ChartSelector dropdown on the Overview page. Phase 1 (frontend-only) uses existing data; Phase 2 adds 4 new backend endpoints.
+Infrastructure hardening — Docker Compose network isolation, sidecar PSK authentication, wallet-primary users table, and server-side session tracking. Foundation for AUTH-02 (backend auth) and AUTH-03 (frontend auth).
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Register new ECharts components (`TreemapChart`, `LineChart`, `CalendarComponent`, `MarkLineComponent`) in `echarts-setup.ts` | complete | low | — |
-| T2 | C1 Drawdown Chart — `DrawdownChart.tsx` using existing `fetchEquityCurve()` data, inverted area with max DD marker | complete | medium | T1 |
-| T3 | C3 P&L Treemap — `PnlTreemap.tsx` using existing `fetchSymbolBreakdown()` data, rectangles sized by abs(P&L) | complete | medium | T1 |
-| T4 | C7 Expectancy by Symbol — `ExpectancyBySymbol.tsx` using existing `fetchSymbolBreakdown()` data, bars colored by sign | complete | medium | T1 |
-| T5 | C8 Holding Period Analysis — `HoldingPeriodAnalysis.tsx` using existing `fetchDurationProfit()` data, avg P&L per duration bucket | complete | medium | T1 |
-| T6 | Wire Phase 1 charts into `ChartSelector.tsx` + build validation | complete | low | T2–T5 |
-| T7 | Backend: `calendar_pnl()` endpoint — SQL GROUP BY DATE(closed_at), add route + handler + service method | pending | medium | — |
-| T8 | Backend: `streaks()` endpoint — iterate trades, group consecutive wins/losses, add route + handler + service method | pending | medium | — |
-| T9 | Backend: `r_distribution()` endpoint — CASE bucket query on r_multiple, add route + handler + service method | pending | medium | — |
-| T10 | Backend: `exposure_timeline()` endpoint — count concurrent positions per date, add route + handler + service method | pending | high | — |
-| T11 | C2 Calendar Heatmap — `CalendarHeatmap.tsx` with ECharts calendar layout | pending | medium | T1, T7 |
-| T12 | C4 Win/Loss Streaks — `StreakWaterfall.tsx` with waterfall bars | pending | medium | T8 |
-| T13 | C5 R-Multiple Distribution — `RDistribution.tsx` with histogram + P&L overlay line | pending | medium | T1, T9 |
-| T14 | C6 Exposure Timeline — `ExposureTimeline.tsx` with stacked area | pending | medium | T1, T10 |
-| T15 | Wire Phase 2 charts into `ChartSelector.tsx`, frontend API functions, full build validation + commit | pending | low | T11–T14 |
+| T1 | Sidecar PSK middleware (`testudo-cex/src/middleware/psk.ts`) + mount in `server.ts` | complete | low | — |
+| T2 | Sidecar Dockerfile (`testudo-cex/Dockerfile`) — Bun runtime, copies `safe-cex-sub0` vendor dep | complete | low | — |
+| T3 | Router PSK injection — add `psk` field to `CexSidecarConfig`, inject `X-Internal-Secret` header in `CexClient::post()` and `health_check()` (GET excluded) | complete | medium | — |
+| T4 | Wallet-primary users migration — add `wallet_address`, drop `email`/`password_hash`/`email_verified`, drop email constraints/trigger | complete | low | — |
+| T5 | `user_sessions` migration — create table with FK → users, 3 indexes | complete | low | T4 |
+| T6 | Production Docker Compose (`docker-compose.production.yml`) — two networks, health checks, `.env.production.example` | complete | medium | T1, T2 |
+| T7 | Validate: `cargo clippy --all-targets && cargo test` + `cd testudo-cex && bun test` | complete | low | T1–T6 |
 
 ### Key Decisions
 
-- **Phase 1 first**: C1, C3, C7, C8 need zero backend work — ship immediately from existing data.
-- **EChart theme**: All new charts use existing `TESTUDO_THEME` via `EChart` wrapper component pattern.
-- **ChartContainer**: All charts use `ChartContainer` wrapper (already exists) for consistent title + loading + error states.
-- **Chart backgrounds**: Use `getChartBg()` token (bg-elevated) not transparent — avoids Hadrian's Wall bleedthrough.
-- **Filters**: All charts respect existing `StatsFilter` (exchange, symbol, date range) via `useFilters()` context.
-- **Backend pattern**: New endpoints follow existing `TimeSeriesService` + `journal.rs` handler pattern with `DataWrapper<Vec<T>>` response.
+- **PSK dev-mode bypass**: If `SIDECAR_PSK` env var is unset, middleware passes all requests (dev mode open).
+- **Health exempt**: `/health` endpoint bypasses PSK check always.
+- **Separate production compose**: `docker-compose.production.yml` is new file — existing `docker-compose.yml` + `docker-compose-core.yml` untouched.
+- **Migration ordering**: Wallet migration `000000`, sessions `000001` — SQLx runs in filename order.
+- **No Redis in production**: Redis removed from production compose (deprecated per pg_queue).
+- **Build context**: Sidecar Dockerfile uses monorepo root as build context to access `safe-cex-sub0` sibling.
 
 ---
 
@@ -45,6 +37,7 @@ Bloomberg-grade analytics charts — 8 new chart types added to the ChartSelecto
 
 | Spec | Completion Date |
 |------|-----------------|
+| ANL-01-bloomberg-charts (Phase 1) | 2026-03-23 |
 | JNL-18-storage-quotas | 2026-03-22 |
 | JNL-17-nested-collections | 2026-03-22 |
 | JNL-16-database-view | 2026-03-22 |

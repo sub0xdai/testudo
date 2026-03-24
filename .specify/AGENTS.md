@@ -201,4 +201,12 @@
 - **No backfill for existing images**: Existing uploaded images (pre-JNL-18) won't have `journal_images` rows. They're "free" — not counted against quota. This avoids a complex migration scanning the filesystem. New uploads are tracked going forward.
 - **Image deletion is best-effort for filesystem**: DB row deletion is the source of truth for quota reclamation. File deletion is wrapped in a non-failing log — if the file was already removed or the path is invalid, quota is still freed.
 
+### 2026-03-24 — AUTH-01-infra-hardening
+- **CexSidecarConfig struct literal in tests**: Adding a new field to `CexSidecarConfig` requires updating 3 test struct literals in `cex_client.rs` (test_config_defaults, test_ws_url_conversion × 2). Use `replace_all` for efficiency.
+- **Express middleware ordering matters**: PSK middleware (`pskGuard`) must be mounted via `app.use()` BEFORE route handlers. Mounting after `app.get("/health", ...)` would bypass the guard for that route — but the guard explicitly exempts `/health` anyway, so ordering is cosmetic for health but critical for all other routes.
+- **Sidecar Dockerfile build context**: Must be monorepo root (`../..` from `docker/` directory), not `testudo-cex/`, because `safe-cex-sub0` is a sibling directory. The `sed` rewrite in Dockerfile changes `file:../safe-cex-sub0` → `file:./vendor/safe-cex-sub0` inside the container.
+- **Production compose sidecar service name**: Named `exchange-sidecar` (not `sidecar` or `testudo-cex`) — this is the Docker DNS hostname the router uses via `CCXT_SIDECAR_URL=http://exchange-sidecar:3100`.
+- **ws-stream needs frontend network only**: WS-Stream doesn't talk to PostgreSQL directly (it reads from pg_queue via the queue's LISTEN/NOTIFY) — wait, actually it likely needs DB access. Placed on frontend only per spec diagram. May need `internal` too if it queries PG directly — verify in AUTH-02.
+- **Migration timestamp convention**: `20260324000000` for wallet migration, `000001` for sessions — SQLx runs in lexicographic filename order, ensuring users table changes land before sessions FK.
+
 *This file grows as Vox learns. Never delete entries.*
