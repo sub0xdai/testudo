@@ -1,8 +1,8 @@
 # Implementation Plan
 
 > Last updated: 2026-03-24
-> Current spec: EXT-39-pair-ux
-> Phase: BUILD
+> Current spec: none
+> Phase: IDLE
 
 ---
 
@@ -15,7 +15,7 @@ Extension pairing UX — six-box OTP input, auto-paste, numbered instructions, s
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
 | T1 | Rewrite PairView.tsx — six-box OTP input with auto-advance/backspace/paste, numbered instructions, success checkmark, error display, loading spinner, auto-focus, code expiry hint. Add OTP CSS to popup.css. Update App.tsx for session expired detection. | complete | medium | AUTH-03 |
-| T2 | Build validation — bun run build for Chrome + Firefox, verify all 18 acceptance criteria | pending | low | T1 |
+| T2 | Build validation — bun run build for Chrome + Firefox, verify all 18 acceptance criteria | complete | low | T1 |
 
 ### Key Decisions
 
@@ -29,6 +29,7 @@ Extension pairing UX — six-box OTP input, auto-paste, numbered instructions, s
 
 | Spec | Completion Date |
 |------|-----------------|
+| EXT-39-pair-ux | 2026-03-24 |
 | AUTH-03-frontend-auth | 2026-03-24 |
 | AUTH-02-backend-auth | 2026-03-24 |
 | AUTH-01-infra-hardening | 2026-03-24 |

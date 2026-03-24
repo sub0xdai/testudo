@@ -310,4 +310,9 @@
 - **OTP box CSS needs light theme overrides**: Dark theme uses `rgba(255,255,255,0.08)` borders, but light theme needs `rgba(0,0,0,0.12)`. Added `[data-theme="light"] .otp-box` selectors in `@layer components` for border-color, focus, and placeholder colors.
 - **Popup bundle size unchanged**: popup.js stayed at 83.4kb after adding OTP component — no new dependencies, just restructured DOM and event handlers.
 
+### 2026-03-24 — EXT-39-pair-ux (Build T2 — Validation)
+- **All 18 acceptance criteria verified via code inspection**: Six OTP boxes, single-digit enforcement, auto-advance, backspace navigation, paste auto-submit, no manual auto-submit, Enter key submit, button disabled state, auto-focus with rAF, underscore placeholder, numbered instructions, dynamic settings URL, loading spinner + disabled inputs, red error text, success checkmark with 800ms delay, expiry hint, session expired banner, Chrome+Firefox build — all confirmed.
+- **Build sizes stable**: popup.js 83.4kb, content.js 47.1kb, background.js 333.2kb — identical for Chrome and Firefox. No bundle size regression from T1.
+- **EXT-39 spec complete**: Both tasks done. PairView upgraded from single text input to six-box OTP with full state feedback. No new dependencies added.
+
 *This file grows as Vox learns. Never delete entries.*
