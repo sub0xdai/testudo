@@ -16,7 +16,7 @@ Frontend auth migration — wallet connect login (SIWE), cookie-based sessions, 
 |----|------|--------|------------|------------|
 | T1 | Web: API client + AuthContext rewrite — withCredentials cookies, /auth/me session restore, remove Bearer injection + localStorage tokens + refresh queue. Update types (User wallet_address). Delete RegisterPage/ForgotPasswordPage, stub LoginPage, clean routes. | complete | high | AUTH-02 |
 | T2 | Web: LoginPage SIWE flow — fetch nonce, construct EIP-4361 message, sign via wagmi, POST verify-siwe, auto-trigger after wallet connect | complete | high | T1 |
-| T3 | Web: Extension pairing UI + AccountPage cleanup — ExtensionPairing.tsx component, AccountPage removes email display + adds pairing section | pending | medium | T1 |
+| T3 | Web: Extension pairing UI + AccountPage cleanup — ExtensionPairing.tsx component, AccountPage removes email display + adds pairing section | complete | medium | T1 |
 | T4 | Journal: Cookie-based auth migration — credentials: "include" on all fetches, remove getToken/refreshAccessToken/refreshPromise/manual Authorization headers, cookie-based 401 refresh | pending | medium | AUTH-02 |
 | T5 | Extension: Token storage migration — delete token-sync.ts, remove from manifest.json, auth.ts → chrome.storage.session, update schemas | pending | medium | AUTH-02 |
 | T6 | Extension: Pairing flow + UI migration — replace login/register handlers with handlePair, api.ts pair endpoint, PairView.tsx replaces AuthSection, update popup AuthContext + App.tsx | pending | high | T5 |

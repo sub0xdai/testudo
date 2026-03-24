@@ -268,4 +268,10 @@
 - **EIP-4361 Chain ID hardcoded to 42161**: Matches `wagmi.ts` config `chains: [arbitrum]`. If multi-chain support is added later, should read from wagmi's `useChainId()` hook instead.
 - **Disconnect on error enables clean retry**: After any failure (rejection or backend error), `disconnect()` is called. This resets RainbowKit's ConnectButton to its initial state, so the user can click it again to start fresh. Without disconnect, the button would show "Connected" but auth would be stuck.
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T3)
+- **`isFreshRegistration` was dead code**: With RegisterPage deleted in T1, `location.state.freshRegistration` is never set. Removed the state variable and its two conditional references in the onboarding screen (welcome header + dynamic heading text). Simplifies onboarding to always show "GET STARTED".
+- **ExtensionPairing uses interval ref + cleanup**: The countdown timer uses `setInterval` stored in a `useRef` to avoid stale closure issues. `clearTimer` is memoized with `useCallback` and used in `useEffect` cleanup to prevent memory leaks on unmount. The `setCountdown` callback form (`prev => prev - 1`) avoids capturing stale state.
+- **authApi.pairExtension() already wired in T1**: The API client already had the `pairExtension` method from T1's rewrite, so no client changes were needed — just the UI component.
+- **Pairing card placed after exchange accounts**: The `ExtensionPairing` component sits in its own `<Card>` below the exchange accounts card. This separates concerns (exchange management vs browser pairing) and avoids cluttering the exchange CRUD section.
+
 *This file grows as Vox learns. Never delete entries.*
