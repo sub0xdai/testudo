@@ -18,7 +18,7 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 | T2 | Create SessionRepository in router/repositories — concrete PgPool impl (create, find_by_hash, revoke, revoke_all, update_last_used, cleanup_expired) | complete | medium | T1 |
 | T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery (services/auth/ module: nonce_store.rs, pairing_store.rs, siwe.rs) | complete | high | T1 |
 | T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | complete | high | T2, T3 |
-| T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | pending | medium | T4 |
+| T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | complete | medium | T4 |
 | T6 | Fix all tests + validate — cargo clippy --all-targets && cargo test | pending | medium | T5 |
 
 ### Key Decisions
@@ -36,6 +36,9 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 - **Auth routes use web::Data extractors**: NonceStore, PairingStore, SessionRepository, and PostgresUserRepository are injected as `web::Data<T>` (not embedded in AppState). This keeps AppState unchanged and allows independent testing. T5 will wire them via `.app_data()` in main.rs.
 - **Cookie + JSON dual paths**: Web/journal gets HttpOnly cookies (verify-siwe, refresh, logout). Extension gets JSON body tokens (extension-pair, extension-refresh). Shared `rotate_refresh()` helper handles both paths.
 - **`actix_web::test` shadows `#[test]`**: In test modules that `use actix_web::test`, the `#[test]` attribute resolves to `actix_web::test` macro which requires `async fn`. Renamed import to `actix_test` to avoid this.
+- **Auth scope split**: `/api/v1/auth` has public routes (nonce, verify-siwe, refresh, extension-pair, extension-refresh) at scope root and authenticated routes (logout, revoke-all, me, pair-extension) in a nested `web::scope("")` wrapped with `JwtMiddleware`. This avoids wrapping the entire auth scope with JWT.
+- **user.rs deleted**: The stub file was the last remnant of email/password auth. Module removed from routes/mod.rs.
+- **CORS credentials**: `supports_credentials()` added to CORS config — required for browsers to include HttpOnly cookies in cross-origin requests.
 
 ---
 

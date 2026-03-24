@@ -241,4 +241,11 @@
 - **Shared `rotate_refresh()` for cookie + JSON paths**: Both `/auth/refresh` (cookie) and `/auth/extension-refresh` (JSON body) use the same rotation logic. The only difference is where the refresh token comes from and how new tokens are returned.
 - **16 unit tests in auth.rs**: Cookie property tests, error mapping tests, nonce endpoint tests (via actix test server), /me endpoint test (via JwtMiddleware with real token), pairing store tests, UserResponse serialization. All pass without a database connection.
 
+### 2026-03-24 — AUTH-02-backend-auth (Build T5)
+- **Nested scope for auth split**: Actix `web::scope("")` (empty path) inside `/auth` scope allows wrapping only authenticated routes with `JwtMiddleware` while leaving public routes (nonce, verify-siwe, refresh, extension-pair, extension-refresh) unwrapped. Routes resolve correctly — `/api/v1/auth/logout` goes through JWT middleware, `/api/v1/auth/nonce` does not.
+- **`supports_credentials()` required for `allowed_origin_fn`**: When using `allowed_origin_fn` (dynamic origin checking), `supports_credentials()` must be called explicitly — it's not implied. Without it, browsers won't include cookies in requests even if `withCredentials: true` is set on the client.
+- **app_data propagation**: `app_data()` calls on the `/api/v1` scope propagate to all nested scopes (including `/auth` and its nested `web::scope("")`). No need to repeat `.app_data(nonce_store.clone())` inside the auth scope — it inherits from the parent.
+- **user.rs deletion clean**: The stub file had no consumers — `routes::user` was never imported in main.rs or any other module. Safe deletion with just `pub mod user` removal from routes/mod.rs.
+- **Test count stable**: 905 tests pass (308 common_utils + 216 engine + 11 pg_queue + 451 router + 17 sqlx_postgres + 10 ws-stream), 0 failures. Pre-existing clippy warnings unchanged.
+
 *This file grows as Vox learns. Never delete entries.*
