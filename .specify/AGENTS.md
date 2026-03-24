@@ -254,4 +254,11 @@
 - **Pre-existing clippy warnings stable**: Same 3 warnings as before AUTH-02: `useless_conversion` in cex_client.rs:599, `unused_variables` in actor.rs:1814, `manual_contains` in evaluator.rs:188. None introduced by AUTH-02.
 - **AUTH-02 spec complete**: All 6 tasks done. SIWE is the sole auth method, HttpOnly cookies for web/journal, JSON tokens for extension via pairing, refresh rotation with server-side tracking, old email/password code deleted.
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T1)
+- **T1 scope expanded to include consumer fixes**: Changing AuthContext's `login` signature from `(email, password)` to `(user: User)` and removing `register` breaks LoginPage, RegisterPage. Deleting `AuthTokens`/`LoginResponse`/`TokenResponse` types breaks ForgotPasswordPage. Rather than shipping a non-building intermediate, T1 now includes: delete RegisterPage/ForgotPasswordPage, stub LoginPage with ConnectButton, clean App.tsx routes, remove login/register validation schemas.
+- **RainbowKit already wired at app root**: `main.tsx` has `WagmiProvider` → `QueryClientProvider` → `RainbowKitProvider` wrapping `AuthProvider` wrapping `App`. The `ConnectButton` component works immediately in LoginPage — no provider changes needed.
+- **wagmi config uses Arbitrum only**: `wagmi.ts` has `chains: [arbitrum]`. SIWE message construction (T2) should use `Chain ID: 42161` to match.
+- **AccountPage.tsx has dead `isFreshRegistration` state**: Reads `location.state.freshRegistration` from RegisterPage navigation. With RegisterPage deleted, this is always false. Left in place to avoid unnecessary churn — can be cleaned up in T3 when AccountPage is reworked.
+- **Axios 401 interceptor simplified dramatically**: Old pattern (163 lines): request interceptor + response interceptor with refresh queue + localStorage reads/writes. New pattern (40 lines): just `withCredentials: true` + single 401 retry with cookie refresh. No queue needed because cookies handle concurrent requests automatically (no per-request token injection).
+
 *This file grows as Vox learns. Never delete entries.*

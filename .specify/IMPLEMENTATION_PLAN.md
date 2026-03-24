@@ -1,44 +1,35 @@
 # Implementation Plan
 
 > Last updated: 2026-03-24
-> Current spec: AUTH-02-backend-auth
+> Current spec: AUTH-03-frontend-auth
 > Phase: BUILD
 
 ---
 
-## Active Spec: AUTH-02-backend-auth
+## Active Spec: AUTH-03-frontend-auth
 
-Backend auth hardening — SIWE-only authentication with HttpOnly cookies, session rotation, extension device pairing. Replaces email/password auth with wallet-primary SIWE.
+Frontend auth migration — wallet connect login (SIWE), cookie-based sessions, extension device pairing. Replaces email/password UI and localStorage tokens across all three frontends.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Foundation rewrite — common_utils types (TokenClaims wallet_address, reduce lifetimes, remove AuthService/bcrypt/PasswordHasher) + fix all router consumers (AppState, middleware dual extraction, auth_helpers, user repo, trade_management, trade_events, order, exchanges tests) | complete | high | AUTH-01 |
-| T2 | Create SessionRepository in router/repositories — concrete PgPool impl (create, find_by_hash, revoke, revoke_all, update_last_used, cleanup_expired) | complete | medium | T1 |
-| T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery (services/auth/ module: nonce_store.rs, pairing_store.rs, siwe.rs) | complete | high | T1 |
-| T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | complete | high | T2, T3 |
-| T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | complete | medium | T4 |
-| T6 | Fix all tests + validate — cargo clippy --all-targets && cargo test | complete | medium | T5 |
+| T1 | Web: API client + AuthContext rewrite — withCredentials cookies, /auth/me session restore, remove Bearer injection + localStorage tokens + refresh queue. Update types (User wallet_address). Delete RegisterPage/ForgotPasswordPage, stub LoginPage, clean routes. | complete | high | AUTH-02 |
+| T2 | Web: LoginPage SIWE flow — fetch nonce, construct EIP-4361 message, sign via wagmi, POST verify-siwe, auto-trigger after wallet connect | pending | high | T1 |
+| T3 | Web: Extension pairing UI + AccountPage cleanup — ExtensionPairing.tsx component, AccountPage removes email display + adds pairing section | pending | medium | T1 |
+| T4 | Journal: Cookie-based auth migration — credentials: "include" on all fetches, remove getToken/refreshAccessToken/refreshPromise/manual Authorization headers, cookie-based 401 refresh | pending | medium | AUTH-02 |
+| T5 | Extension: Token storage migration — delete token-sync.ts, remove from manifest.json, auth.ts → chrome.storage.session, update schemas | pending | medium | AUTH-02 |
+| T6 | Extension: Pairing flow + UI migration — replace login/register handlers with handlePair, api.ts pair endpoint, PairView.tsx replaces AuthSection, update popup AuthContext + App.tsx | pending | high | T5 |
+| T7 | Build validation — bun run build for web + extension + journal, verify acceptance criteria | pending | low | T1-T6 |
 
 ### Key Decisions
 
-- **TokenService replaces AuthService**: All middleware and route handlers now use `TokenService` (sync trait) instead of `AuthService` (async trait with email/password). Simpler, no DB access in middleware.
-- **Dual token extraction**: Middleware reads Bearer header first, falls back to `access_token` cookie. Bearer priority ensures extension auth works alongside web cookie auth.
-- **AuthenticatedUser.email → wallet_address**: All auth context and test fixtures updated.
-- **User model simplified**: Removed email, password_hash, email_verified. Added wallet_address. No PasswordHasher/BcryptHasher/UserFactory.
-- **Token lifetimes reduced**: Access 15min (was 1hr), Refresh 7 days (was 30 days).
-- **SHA-256 token hashing**: `hash_token()` utility added for session storage.
-- **SessionRepository in router crate**: Placed in `crates/router/src/repositories/session.rs` (not sqlx_postgres) to match the concrete type pattern used by `PostgresUserRepository` and `ExchangeAccountRepository`. Uses `AuthError` for consistency with user repo.
-- **SIWE uses alloy 0.1.4 Signature**: `alloy::primitives::Signature` (not `PrimitiveSignature` — that name was introduced in 0.8+). `eip191_hash_message` and `from_bytes_and_parity` confirmed working.
-- **Auth stores in services/auth/**: NonceStore and PairingStore use DashMap with cleanup-on-insert TTL pattern (matches AuthCache in hyperliquid/auth.rs). No AppState wiring yet — T4 will add them.
-- **AuthError::Unauthorized(String)**: SIWE validation errors use `Unauthorized(msg)` not `InvalidToken` (unit variant, no payload). Matches semantic intent.
-- **Auth routes use web::Data extractors**: NonceStore, PairingStore, SessionRepository, and PostgresUserRepository are injected as `web::Data<T>` (not embedded in AppState). This keeps AppState unchanged and allows independent testing. T5 will wire them via `.app_data()` in main.rs.
-- **Cookie + JSON dual paths**: Web/journal gets HttpOnly cookies (verify-siwe, refresh, logout). Extension gets JSON body tokens (extension-pair, extension-refresh). Shared `rotate_refresh()` helper handles both paths.
-- **`actix_web::test` shadows `#[test]`**: In test modules that `use actix_web::test`, the `#[test]` attribute resolves to `actix_web::test` macro which requires `async fn`. Renamed import to `actix_test` to avoid this.
-- **Auth scope split**: `/api/v1/auth` has public routes (nonce, verify-siwe, refresh, extension-pair, extension-refresh) at scope root and authenticated routes (logout, revoke-all, me, pair-extension) in a nested `web::scope("")` wrapped with `JwtMiddleware`. This avoids wrapping the entire auth scope with JWT.
-- **user.rs deleted**: The stub file was the last remnant of email/password auth. Module removed from routes/mod.rs.
-- **CORS credentials**: `supports_credentials()` added to CORS config — required for browsers to include HttpOnly cookies in cross-origin requests.
+- **Cookie-based auth, no localStorage**: `withCredentials: true` on Axios, no Bearer header injection. 401 interceptor does cookie-based refresh (empty POST to `/auth/refresh` with `withCredentials`), then retries. No queue needed — cookies handle concurrent requests.
+- **AuthContext uses /auth/me on mount**: No JWT decoding, no localStorage init. `useEffect` calls `/auth/me` to restore session from cookie. `login(user: User)` is called by the SIWE flow (T2), not by AuthContext itself.
+- **User model: wallet_address replaces email**: `User { id, wallet_address }`. AccountPage displays truncated address. Old email/password types (AuthTokens, LoginResponse, TokenResponse) deleted.
+- **RegisterPage + ForgotPasswordPage deleted**: No registration — wallet creates account on first SIWE. No password to forget. Routes removed from App.tsx.
+- **LoginPage stubbed with ConnectButton**: Shows RainbowKit `ConnectButton` only. T2 adds the SIWE signature flow after wallet connect.
+- **LoginFormSchema + RegisterFormSchema deleted**: Only ExchangeAccountFormSchema remains in validation/forms.ts.
 
 ---
 
