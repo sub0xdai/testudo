@@ -302,4 +302,12 @@
 - **14/14 acceptance criteria verified**: No email/password UI, no RegisterPage, no localStorage tokens, cookie-based auth with /auth/me, extension pairing flow, token-sync deleted, journal credentials: "include", extension chrome.storage.session — all confirmed via code inspection.
 - **AUTH-03 spec complete**: All 7 tasks (T1-T7) done. Three frontends migrated from email/password + localStorage JWT to wallet-connect SIWE + HttpOnly cookies (web/journal) and device pairing + chrome.storage.session (extension).
 
+### 2026-03-24 — EXT-39-pair-ux (Build T1)
+- **OTP refs array pattern in Solid.js**: `let refs: HTMLInputElement[] = []` with `ref={(el) => (refs[i] = el)}` in JSX. Unlike React's `useRef`, Solid's `ref` callback assigns directly to the array slot during render. No `createSignal` or `createEffect` needed for ref management.
+- **requestAnimationFrame for popup auto-focus**: `onMount(() => refs[0]?.focus())` may fire before the popup DOM is painted in Chrome extension context. Wrapping in `requestAnimationFrame` ensures the input element is visible and focusable.
+- **Paste handler on container, not individual inputs**: `onPaste` is attached to the flex container `div` wrapping all six OTP boxes. This captures paste events regardless of which box is focused, and `e.preventDefault()` stops the browser from inserting text into the focused input.
+- **Session expired detection via stored popupView**: `browser.storage.local.get("popupView")` persists which view the user was on. If auth check returns false but stored view is "main", the session expired between popup opens. Explicit logout sets `popupView: "auth"` first, so no false positive.
+- **OTP box CSS needs light theme overrides**: Dark theme uses `rgba(255,255,255,0.08)` borders, but light theme needs `rgba(0,0,0,0.12)`. Added `[data-theme="light"] .otp-box` selectors in `@layer components` for border-color, focus, and placeholder colors.
+- **Popup bundle size unchanged**: popup.js stayed at 83.4kb after adding OTP component — no new dependencies, just restructured DOM and event handlers.
+
 *This file grows as Vox learns. Never delete entries.*

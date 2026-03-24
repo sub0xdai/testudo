@@ -1,35 +1,27 @@
 # Implementation Plan
 
 > Last updated: 2026-03-24
-> Current spec: none
-> Phase: IDLE
+> Current spec: EXT-39-pair-ux
+> Phase: BUILD
 
 ---
 
-## Active Spec: AUTH-03-frontend-auth
+## Active Spec: EXT-39-pair-ux
 
-Frontend auth migration — wallet connect login (SIWE), cookie-based sessions, extension device pairing. Replaces email/password UI and localStorage tokens across all three frontends.
+Extension pairing UX — six-box OTP input, auto-paste, numbered instructions, success/error/loading states, auto-focus, session expired banner.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Web: API client + AuthContext rewrite — withCredentials cookies, /auth/me session restore, remove Bearer injection + localStorage tokens + refresh queue. Update types (User wallet_address). Delete RegisterPage/ForgotPasswordPage, stub LoginPage, clean routes. | complete | high | AUTH-02 |
-| T2 | Web: LoginPage SIWE flow — fetch nonce, construct EIP-4361 message, sign via wagmi, POST verify-siwe, auto-trigger after wallet connect | complete | high | T1 |
-| T3 | Web: Extension pairing UI + AccountPage cleanup — ExtensionPairing.tsx component, AccountPage removes email display + adds pairing section | complete | medium | T1 |
-| T4 | Journal: Cookie-based auth migration — credentials: "include" on all fetches, remove getToken/refreshAccessToken/refreshPromise/manual Authorization headers, cookie-based 401 refresh | complete | medium | AUTH-02 |
-| T5 | Extension: Token storage migration — delete token-sync.ts, remove from manifest.json, auth.ts → chrome.storage.session, update schemas | complete | medium | AUTH-02 |
-| T6 | Extension: Pairing flow + UI migration — replace login/register handlers with handlePair, api.ts pair endpoint, PairView.tsx replaces AuthSection, update popup AuthContext + App.tsx | complete | high | T5 |
-| T7 | Build validation — bun run build for web + extension + journal, verify acceptance criteria | complete | low | T1-T6 |
+| T1 | Rewrite PairView.tsx — six-box OTP input with auto-advance/backspace/paste, numbered instructions, success checkmark, error display, loading spinner, auto-focus, code expiry hint. Add OTP CSS to popup.css. Update App.tsx for session expired detection. | complete | medium | AUTH-03 |
+| T2 | Build validation — bun run build for Chrome + Firefox, verify all 18 acceptance criteria | pending | low | T1 |
 
 ### Key Decisions
 
-- **Cookie-based auth, no localStorage**: `withCredentials: true` on Axios, no Bearer header injection. 401 interceptor does cookie-based refresh (empty POST to `/auth/refresh` with `withCredentials`), then retries. No queue needed — cookies handle concurrent requests.
-- **AuthContext uses /auth/me on mount**: No JWT decoding, no localStorage init. `useEffect` calls `/auth/me` to restore session from cookie. `login(user: User)` is called by the SIWE flow (T2), not by AuthContext itself.
-- **User model: wallet_address replaces email**: `User { id, wallet_address }`. AccountPage displays truncated address. Old email/password types (AuthTokens, LoginResponse, TokenResponse) deleted.
-- **RegisterPage + ForgotPasswordPage deleted**: No registration — wallet creates account on first SIWE. No password to forget. Routes removed from App.tsx.
-- **LoginPage stubbed with ConnectButton**: Shows RainbowKit `ConnectButton` only. T2 adds the SIWE signature flow after wallet connect.
-- **LoginFormSchema + RegisterFormSchema deleted**: Only ExchangeAccountFormSchema remains in validation/forms.ts.
+- **Single task for all PairView changes**: OTP component, instructions, states, CSS, and App.tsx session detection are tightly coupled — implementing separately would create non-building intermediates.
+- **WEB_APP_URL/account for settings link**: The spec says `backendUrl` but the account settings page lives on the web frontend, not the API server. Using existing `WEB_APP_URL` constant.
+- **Session expired detection via stored popupView**: If `browser.storage.local` has `popupView: "main"` but auth check returns false, the session expired. Explicit logout sets `popupView: "auth"` before next open.
 
 ---
 

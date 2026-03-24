@@ -9,6 +9,7 @@ type View = "auth" | "main";
 export default function App() {
   const [view, setViewRaw] = createSignal<View>("auth");
   const [cameFromMain, setCameFromMain] = createSignal(false);
+  const [sessionExpired, setSessionExpired] = createSignal(false);
 
   // Restore theme from browser.storage.local on every popup open
   onMount(async () => {
@@ -26,14 +27,21 @@ export default function App() {
 
   async function handleReady(authed: boolean) {
     if (authed) {
+      setSessionExpired(false);
       setViewRaw("main");
     } else {
+      // Detect session expiry: user was previously on main view but is now unauthenticated
+      const stored = await browser.storage.local.get("popupView");
+      if (stored.popupView === "main") {
+        setSessionExpired(true);
+      }
       setViewRaw("auth");
     }
   }
 
   function goToAuth() {
     setCameFromMain(true);
+    setSessionExpired(false);
     setView("auth");
   }
 
@@ -43,8 +51,9 @@ export default function App() {
         <Switch>
           <Match when={view() === "auth"}>
             <PairView
-              onAuthenticated={() => { setCameFromMain(false); setView("main"); }}
+              onAuthenticated={() => { setCameFromMain(false); setSessionExpired(false); setView("main"); }}
               onBack={cameFromMain() ? () => setView("main") : undefined}
+              sessionExpired={sessionExpired()}
             />
           </Match>
           <Match when={view() === "main"}>

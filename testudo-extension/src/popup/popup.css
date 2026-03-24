@@ -429,6 +429,40 @@
         font-family: var(--font-family-mono);
     }
 
+    /* --- OTP Input Box (EXT-39: six-digit pairing code) --- */
+    .otp-box {
+        width: 40px;
+        height: 48px;
+        text-align: center;
+        font-size: 20px;
+        font-family: var(--font-family-mono);
+        letter-spacing: 0;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: transparent;
+        color: var(--color-text-primary);
+        padding: 0;
+        outline: none;
+        transition: border-color 200ms ease;
+    }
+    .otp-box:focus {
+        border-color: var(--color-text-primary);
+    }
+    .otp-box::placeholder {
+        color: rgba(255, 255, 255, 0.15);
+    }
+    .otp-box:disabled {
+        opacity: 0.4;
+    }
+    [data-theme="light"] .otp-box {
+        border-color: rgba(0, 0, 0, 0.12);
+    }
+    [data-theme="light"] .otp-box:focus {
+        border-color: var(--color-text-primary);
+    }
+    [data-theme="light"] .otp-box::placeholder {
+        color: rgba(0, 0, 0, 0.2);
+    }
+
     /* --- Balance Text Shadow (soft glow against background image) --- */
     .text-shadow-balance {
         text-shadow: 0 2px 8px color-mix(in srgb, var(--color-bg-core) 60%, transparent);
