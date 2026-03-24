@@ -327,4 +327,13 @@
 - **ExtensionPairingBanner duplicates logic from ExtensionPairing**: New component rather than variant prop on existing `ExtensionPairing.tsx` — keeps SoC clean since the banner layout (horizontal flex, inline code display, condensed padding) is structurally different from the card layout (vertical stack, large code block). Both will coexist until T3 swaps the AccountPage import.
 - **Banner code display inline with title**: When a code is active, the banner shows title + code + countdown + "NEW CODE" button in a single flex row. This is much more compact than the original vertical layout with its centered 4xl code block. `flex-wrap` handles narrow viewports gracefully.
 
+### 2026-03-24 — EXT-40-smart-card-grid (Build T3)
+- **Balance fetch is fire-and-forget per card**: After `fetchData()` resolves accounts, each account's balance is fetched individually with `.catch(() => {})`. Cards render immediately with "---", then update as balances arrive. No loading spinner for balances — keeps initial paint fast.
+- **`formatBalance` prioritizes USDT/USDC**: The helper scans `balances[]` for USDT or USDC first (the primary trading assets), falling back to `balances[0]`. Formats as `$X,XXX.XX` with locale-aware number formatting.
+- **Balance and test result now coexist**: T1's ExchangeCard showed test result OR "---" in a single area. T3 separates: balance is the large primary display, test result appears as a small annotation below. Both can be visible simultaneously.
+- **`handleMigrate` opens form with exchange pre-selected**: Instead of navigating or showing a modal, migration reuses the existing form by setting `formExchange` to `'hyperliquid'` and `showForm` to `true`. Same pattern as the old inline migration prompt but triggered from the card's kebab menu.
+- **Form section is full-width below grid, not inside a card**: The add-exchange form spans the full container width below the grid with its own CANCEL button. This avoids grid alignment issues from trying to expand one grid cell.
+- **`max-w-5xl` replaces `max-w-2xl`**: Only on the normal management return path. Onboarding and setupComplete screens retain `max-w-2xl` since they don't need grid width.
+- **Old `ExtensionPairing` import replaced by `ExtensionPairingBanner`**: The card-wrapped vertical ExtensionPairing component is no longer used on AccountPage. The compact banner renders directly via `<ExtensionPairingBanner />` with its own border-top separator.
+
 *This file grows as Vox learns. Never delete entries.*

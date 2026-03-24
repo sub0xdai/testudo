@@ -16,7 +16,7 @@ Redesign Account Management UI from stacked rows to responsive card grid with he
 |----|------|--------|------------|------------|
 | T1 | Create ExchangeCard component — heartbeat indicator (pulsing green/red based on `is_active`), exchange name + type badge, truncated identifier, balance placeholder ("---"), kebab menu (⋮) with Test/Delete/Revoke actions, click-outside-to-close dropdown, confirmation step for destructive actions, test result display, migration prompt for direct-key Hyperliquid. | complete | medium | — |
 | T2 | Create AddExchangeCard + ExtensionPairingBanner — dashed ghost card with "+" icon and hover effect; compact full-width banner layout for extension pairing (title+button inline, condensed padding). | complete | low | — |
-| T3 | Rewrite AccountPage grid layout — replace stacked rows with `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`, widen container to `max-w-5xl`, wire ExchangeCard/AddExchangeCard/ExtensionPairingBanner, add `fetchBalance` to API client + balance type, async per-card balance fetching on mount, preserve onboarding/setupComplete screens. | pending | medium | T1, T2 |
+| T3 | Rewrite AccountPage grid layout — replace stacked rows with `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`, widen container to `max-w-5xl`, wire ExchangeCard/AddExchangeCard/ExtensionPairingBanner, add `fetchBalance` to API client + balance type, async per-card balance fetching on mount, preserve onboarding/setupComplete screens. | complete | medium | T1, T2 |
 | T4 | Build validation — `bun run build` for testudo-web, verify all 7 acceptance criteria against code. | pending | low | T3 |
 
 ### Key Decisions
