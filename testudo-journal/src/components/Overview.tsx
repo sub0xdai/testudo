@@ -33,7 +33,7 @@ export function Overview() {
       { label: 'Win Rate', value: formatPercent(d.performance.win_rate) },
       { label: 'Profit Factor', value: formatNumber(d.performance.profit_factor) },
       { label: 'Expectancy', value: formatCurrency(d.performance.expectancy) },
-      { label: 'Avg R', value: formatNumber(d.performance.avg_r_multiple) },
+      { label: 'R-Multiple', value: formatNumber(d.performance.avg_r_multiple) },
       { label: 'Trades/Day', value: formatNumber(d.performance.trades_per_day, 1) },
     ]
   }
@@ -117,25 +117,26 @@ export function Overview() {
       <Show when={stats() && !stats.loading}>
         {/* Mobile: condensed stats strip */}
         <div class="md:hidden mb-4">
-          <div class="flex items-baseline gap-3 mb-2">
+          <div class="flex items-baseline gap-4 mb-2">
             <span class={`font-mono text-4xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
               {formatCurrency(stats()!.account.net_pnl)}
             </span>
-            <span class="font-mono text-xs text-text-secondary">
-              {formatPercent(stats()!.performance.win_rate)} WR
+            <span class={`font-mono text-2xl font-bold ${pnlColor(parseFloat(stats()!.performance.avg_r_multiple))}`}>
+              {formatNumber(stats()!.performance.avg_r_multiple)}R
             </span>
           </div>
           <div class="flex gap-4 font-mono text-xs text-text-secondary">
+            <span>Exp <span class="text-text-primary font-bold">{formatCurrency(stats()!.performance.expectancy)}</span></span>
+            <span>WR <span class="text-text-primary font-bold">{formatPercent(stats()!.performance.win_rate)}</span></span>
             <span>PF <span class="text-text-primary font-bold">{formatNumber(stats()!.performance.profit_factor)}</span></span>
             <span>Trades <span class="text-text-primary font-bold">{formatInteger(stats()!.account.total_trades)}</span></span>
-            <span>DD <span class="text-signal-red font-bold">{formatPercent(stats()!.risk.max_drawdown_pct)}</span></span>
           </div>
         </div>
 
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
           {/* Left sidebar — stats */}
-          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block" style={{ "max-height": "calc(100vh - var(--header-h) - var(--subheader-h))" }}>
+          <aside class="w-64 shrink-0 border-r border-container-border overflow-y-auto hidden md:block sticky top-[var(--header-h)]" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />
@@ -143,17 +144,30 @@ export function Overview() {
 
           {/* Right main — hero P&L + charts */}
           <div class="flex-1 min-w-0">
-            {/* Hero P&L */}
+            {/* Hero metrics */}
             <div class="px-6 py-4 border-b border-container-border">
-              <div class="flex items-baseline gap-4 mb-1">
-                <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
-                  {formatCurrency(stats()!.account.net_pnl)}
-                </span>
-                <span class="font-mono text-sm text-text-secondary">
-                  net P&L
-                </span>
+              <div class="flex items-baseline gap-8 mb-1">
+                <div>
+                  <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
+                    {formatCurrency(stats()!.account.net_pnl)}
+                  </span>
+                  <span class="font-mono text-sm text-text-secondary ml-3">
+                    net P&L
+                  </span>
+                </div>
+                <div>
+                  <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(parseFloat(stats()!.performance.avg_r_multiple))}`}>
+                    {formatNumber(stats()!.performance.avg_r_multiple)}R
+                  </span>
+                  <span class="font-mono text-sm text-text-secondary ml-3">
+                    R-multiple
+                  </span>
+                </div>
               </div>
               <div class="flex gap-6 font-mono text-sm">
+                <span class="text-text-secondary">
+                  Expectancy <span class="text-text-primary font-bold">{formatCurrency(stats()!.performance.expectancy)}</span>
+                </span>
                 <span class="text-text-secondary">
                   Win Rate <span class="text-text-primary font-bold">{formatPercent(stats()!.performance.win_rate)}</span>
                 </span>

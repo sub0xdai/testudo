@@ -7,4 +7,4 @@
 - [ ] UX flow form landing to web app and how auth fits in is abit janky 
 - [x] the trade coonfirm modal needs to adopt the theme from popup  
 - [x] The 'quick' button is next to useless 
- 
+ - [ ]  

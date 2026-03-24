@@ -59,8 +59,13 @@
 
 body {
   scrollbar-width: none;
+  overflow-y: auto;
 }
 body::-webkit-scrollbar { display: none; }
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar { display: none; }
 
 html {
   scroll-behavior: smooth;
