@@ -261,4 +261,11 @@
 - **AccountPage.tsx has dead `isFreshRegistration` state**: Reads `location.state.freshRegistration` from RegisterPage navigation. With RegisterPage deleted, this is always false. Left in place to avoid unnecessary churn — can be cleaned up in T3 when AccountPage is reworked.
 - **Axios 401 interceptor simplified dramatically**: Old pattern (163 lines): request interceptor + response interceptor with refresh queue + localStorage reads/writes. New pattern (40 lines): just `withCredentials: true` + single 401 retry with cookie refresh. No queue needed because cookies handle concurrent requests automatically (no per-request token injection).
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T2)
+- **SIWE flow auto-triggers via useEffect**: `useEffect` watches `isConnected && address && siweState === 'idle'` — triggers SIWE immediately after RainbowKit wallet connect. The `siweState` guard prevents re-triggering on re-renders or after errors.
+- **Signature rejection detection via regex**: wagmi's `signMessageAsync` throws with various messages across wallet providers ("user rejected", "denied", "cancelled"). Regex `/reject|denied|cancel/i` covers MetaMask, WalletConnect, and Coinbase Wallet. On rejection, wallet is disconnected so user can retry cleanly via ConnectButton.
+- **No `useRef` needed for SIWE guard**: Earlier designs used `siweTriggered` ref to prevent double-triggering. The `siweState` signal ('idle' → 'signing' → 'verifying') handles this naturally — `useEffect` only fires when state is 'idle', and `handleSiwe` immediately sets 'signing'.
+- **EIP-4361 Chain ID hardcoded to 42161**: Matches `wagmi.ts` config `chains: [arbitrum]`. If multi-chain support is added later, should read from wagmi's `useChainId()` hook instead.
+- **Disconnect on error enables clean retry**: After any failure (rejection or backend error), `disconnect()` is called. This resets RainbowKit's ConnectButton to its initial state, so the user can click it again to start fresh. Without disconnect, the button would show "Connected" but auth would be stuck.
+
 *This file grows as Vox learns. Never delete entries.*
