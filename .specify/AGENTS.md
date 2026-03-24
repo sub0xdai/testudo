@@ -209,4 +209,12 @@
 - **ws-stream needs frontend network only**: WS-Stream doesn't talk to PostgreSQL directly (it reads from pg_queue via the queue's LISTEN/NOTIFY) — wait, actually it likely needs DB access. Placed on frontend only per spec diagram. May need `internal` too if it queries PG directly — verify in AUTH-02.
 - **Migration timestamp convention**: `20260324000000` for wallet migration, `000001` for sessions — SQLx runs in lexicographic filename order, ensuring users table changes land before sessions FK.
 
+### 2026-03-24 — AUTH-02-backend-auth (Build T1)
+- **AuthService → TokenService is sync**: `AuthService` trait was async (DB lookups in verify_token). `TokenService` is sync — JWT verification needs no DB access. This eliminates `.await` in trade_management's `extract_user_id()` and trade_events dual auth, simplifying error handling.
+- **AuthContext simplified**: Removing `AuthService` from `AuthContext` drops 1 field and 1 generic parameter. All callers updated from `AuthContext::new(user, auth_service.clone())` to `AuthContext::new(user)`. 2 call sites in order.rs, multiple in auth_helpers tests.
+- **User model blast radius**: Changing User struct fields (email→wallet_address) touches 9 files across 2 crates: models/user.rs, models/mod.rs, auth/mod.rs, lib.rs (common_utils) + types/auth.rs, repositories/user.rs, utils/validation.rs, routes/exchanges.rs tests, middleware/auth.rs tests (router). Using `replace_all` on `email: "test@example.com"` → `wallet_address: "0x..."` catches most test fixtures.
+- **Test count delta**: 960 tests pass (was 978). 18 fewer from removed email/password auth tests (register, login, password hashing, bcrypt-specific). All remaining tests pass clean.
+- **Pre-existing warnings not from AUTH-02**: `engine/actor.rs:1814` unused variable, `cex_client.rs:599` useless conversion, `evaluator.rs:188` manual contains. None related to auth changes.
+- **bcrypt removal clean**: `bcrypt = "0.15"` removed from common_utils/Cargo.toml. No transitive dependencies on bcrypt remain. `sha2` was already present for crypto operations — reused for `hash_token()`.
+
 *This file grows as Vox learns. Never delete entries.*

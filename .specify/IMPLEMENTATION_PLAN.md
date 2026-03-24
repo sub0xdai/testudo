@@ -1,35 +1,34 @@
 # Implementation Plan
 
 > Last updated: 2026-03-24
-> Current spec: AUTH-01-infra-hardening
+> Current spec: AUTH-02-backend-auth
 > Phase: BUILD
 
 ---
 
-## Active Spec: AUTH-01-infra-hardening
+## Active Spec: AUTH-02-backend-auth
 
-Infrastructure hardening — Docker Compose network isolation, sidecar PSK authentication, wallet-primary users table, and server-side session tracking. Foundation for AUTH-02 (backend auth) and AUTH-03 (frontend auth).
+Backend auth hardening — SIWE-only authentication with HttpOnly cookies, session rotation, extension device pairing. Replaces email/password auth with wallet-primary SIWE.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Sidecar PSK middleware (`testudo-cex/src/middleware/psk.ts`) + mount in `server.ts` | complete | low | — |
-| T2 | Sidecar Dockerfile (`testudo-cex/Dockerfile`) — Bun runtime, copies `safe-cex-sub0` vendor dep | complete | low | — |
-| T3 | Router PSK injection — add `psk` field to `CexSidecarConfig`, inject `X-Internal-Secret` header in `CexClient::post()` and `health_check()` (GET excluded) | complete | medium | — |
-| T4 | Wallet-primary users migration — add `wallet_address`, drop `email`/`password_hash`/`email_verified`, drop email constraints/trigger | complete | low | — |
-| T5 | `user_sessions` migration — create table with FK → users, 3 indexes | complete | low | T4 |
-| T6 | Production Docker Compose (`docker-compose.production.yml`) — two networks, health checks, `.env.production.example` | complete | medium | T1, T2 |
-| T7 | Validate: `cargo clippy --all-targets && cargo test` + `cd testudo-cex && bun test` | complete | low | T1–T6 |
+| T1 | Foundation rewrite — common_utils types (TokenClaims wallet_address, reduce lifetimes, remove AuthService/bcrypt/PasswordHasher) + fix all router consumers (AppState, middleware dual extraction, auth_helpers, user repo, trade_management, trade_events, order, exchanges tests) | complete | high | AUTH-01 |
+| T2 | Create SessionRepository in sqlx_postgres — trait + PgPool impl (create, find_by_hash, revoke, revoke_all, cleanup_expired) | pending | medium | T1 |
+| T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery | pending | high | T1 |
+| T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | pending | high | T2, T3 |
+| T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | pending | medium | T4 |
+| T6 | Fix all tests + validate — cargo clippy --all-targets && cargo test | pending | medium | T5 |
 
 ### Key Decisions
 
-- **PSK dev-mode bypass**: If `SIDECAR_PSK` env var is unset, middleware passes all requests (dev mode open).
-- **Health exempt**: `/health` endpoint bypasses PSK check always.
-- **Separate production compose**: `docker-compose.production.yml` is new file — existing `docker-compose.yml` + `docker-compose-core.yml` untouched.
-- **Migration ordering**: Wallet migration `000000`, sessions `000001` — SQLx runs in filename order.
-- **No Redis in production**: Redis removed from production compose (deprecated per pg_queue).
-- **Build context**: Sidecar Dockerfile uses monorepo root as build context to access `safe-cex-sub0` sibling.
+- **TokenService replaces AuthService**: All middleware and route handlers now use `TokenService` (sync trait) instead of `AuthService` (async trait with email/password). Simpler, no DB access in middleware.
+- **Dual token extraction**: Middleware reads Bearer header first, falls back to `access_token` cookie. Bearer priority ensures extension auth works alongside web cookie auth.
+- **AuthenticatedUser.email → wallet_address**: All auth context and test fixtures updated.
+- **User model simplified**: Removed email, password_hash, email_verified. Added wallet_address. No PasswordHasher/BcryptHasher/UserFactory.
+- **Token lifetimes reduced**: Access 15min (was 1hr), Refresh 7 days (was 30 days).
+- **SHA-256 token hashing**: `hash_token()` utility added for session storage.
 
 ---
 
@@ -37,6 +36,7 @@ Infrastructure hardening — Docker Compose network isolation, sidecar PSK authe
 
 | Spec | Completion Date |
 |------|-----------------|
+| AUTH-01-infra-hardening | 2026-03-24 |
 | ANL-01-bloomberg-charts (Phase 1) | 2026-03-23 |
 | JNL-18-storage-quotas | 2026-03-22 |
 | JNL-17-nested-collections | 2026-03-22 |
