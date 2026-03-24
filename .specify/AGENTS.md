@@ -274,4 +274,11 @@
 - **authApi.pairExtension() already wired in T1**: The API client already had the `pairExtension` method from T1's rewrite, so no client changes were needed — just the UI component.
 - **Pairing card placed after exchange accounts**: The `ExtensionPairing` component sits in its own `<Card>` below the exchange accounts card. This separates concerns (exchange management vs browser pairing) and avoids cluttering the exchange CRUD section.
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T4)
+- **Single function replaces four**: `fetchWithCredentials()` (13 lines) replaces `getToken()`, `refreshAccessToken()`, `refreshPromise`, and `fetchWithRefresh()` (40 lines). The cookie-based approach needs no token storage, no dedup mutex, and no header injection — `credentials: "include"` handles everything.
+- **No consumer changes needed**: All 32 files importing from `api/client.ts` use the exported API functions (`fetchTrades`, `fetchOverview`, etc.), not the internal auth helpers. The migration is fully contained within client.ts — zero changes to components.
+- **`fetchCrud` keeps Content-Type header**: Even though `Authorization` was removed, `Content-Type: application/json` must stay for POST/PUT/DELETE bodies. The `...init` spread after `headers` lets callers override when needed (e.g., `uploadJournalImage` omits Content-Type for FormData).
+- **Upload drops Content-Type intentionally**: `uploadJournalImage` previously set `Authorization` but relied on browser auto-setting `Content-Type: multipart/form-data` with boundary. With cookies, it passes no headers at all — browser handles both cookie and multipart boundary.
+- **No localStorage auth references remain**: Grep confirms zero `getToken`, `localStorage`, `Bearer`, `refreshPromise` references in client.ts. Only remaining localStorage usage in journal is `testudo-theme` in Layout.tsx (non-auth, theme preference).
+
 *This file grows as Vox learns. Never delete entries.*

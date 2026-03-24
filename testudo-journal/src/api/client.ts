@@ -49,43 +49,16 @@ export interface OverviewResponse {
   risk: RiskStats
 }
 
-function getToken(): string {
-  return localStorage.getItem('access_token') ?? ''
-}
-
-// Auto-refresh expired access tokens using refresh_token
-let refreshPromise: Promise<string> | null = null
-
-async function refreshAccessToken(): Promise<string> {
-  const refreshToken = localStorage.getItem('refresh_token')
-  if (!refreshToken) throw new Error('No refresh token')
-
-  const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  })
-  if (!res.ok) {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    throw new Error('Token refresh failed')
-  }
-  const data = await res.json()
-  localStorage.setItem('access_token', data.access_token)
-  localStorage.setItem('refresh_token', data.refresh_token)
-  return data.access_token
-}
-
-async function fetchWithRefresh(url: string, init?: RequestInit): Promise<Response> {
-  let res = await fetch(url, init)
+async function fetchWithCredentials(url: string, init?: RequestInit): Promise<Response> {
+  const opts: RequestInit = { ...init, credentials: 'include' }
+  let res = await fetch(url, opts)
   if (res.status === 401) {
-    // Deduplicate concurrent refresh attempts
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null })
-    }
-    const newToken = await refreshPromise
-    const newInit = { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers).entries()), Authorization: `Bearer ${newToken}` } }
-    res = await fetch(url, newInit)
+    const refreshRes = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    if (!refreshRes.ok) throw new Error('Session expired')
+    res = await fetch(url, opts)
   }
   return res
 }
@@ -153,18 +126,14 @@ export interface FilterOptions {
 export async function fetchFilterOptions(exchange?: string): Promise<FilterOptions> {
   const params = new URLSearchParams()
   if (exchange) params.set('exchange', exchange)
-  const res = await fetchWithRefresh(`${API_BASE}/api/v1/journal/analytics/filter-options?${params}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/analytics/filter-options?${params}`)
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
 
 async function fetchApi<T>(path: string, filters: StatsFilter): Promise<T> {
   const params = buildParams(filters)
-  const res = await fetchWithRefresh(`${API_BASE}/api/v1/journal/analytics/${path}?${params}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/analytics/${path}?${params}`)
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
@@ -271,11 +240,8 @@ export interface TradeListParams {
 }
 
 async function fetchCrud<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetchWithRefresh(`${API_BASE}/api/v1/journal/${path}`, {
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-      'Content-Type': 'application/json',
-    },
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/${path}`, {
+    headers: { 'Content-Type': 'application/json' },
     ...init,
   })
   if (!res.ok) throw new Error(`API error: ${res.status}`)
@@ -388,9 +354,8 @@ export async function deleteTag(tagId: string): Promise<void> {
 export async function uploadJournalImage(file: File): Promise<{ url: string }> {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await fetchWithRefresh(`${API_BASE}/api/v1/journal/upload`, {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/upload`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getToken()}` },
     body: formData,
   })
   if (!res.ok) {
