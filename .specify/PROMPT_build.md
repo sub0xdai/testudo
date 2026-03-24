@@ -50,7 +50,6 @@ Complete exactly ONE task from the implementation plan, then exit.
 git add -A
 git commit -m "feat: {task description}
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

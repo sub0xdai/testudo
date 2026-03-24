@@ -1,8 +1,10 @@
 - [ ] Telescope should be able to grep for functions etc
-- [ ] Consolidate every screen so it appears 1 ui - atm it appears as though there are 3 (modal, extension, web)
-- [ ] The desk doesnt appear to be capturing live data yet  
+- [x] Consolidate every screen so it appears 1 ui - atm it appears as though there are 3 (modal, extension, web)
+- [x] The desk doesnt appear to be capturing live data yet  
 - [ ] Create a character like a helper character in a video game, which is powered by an ai model and reads the docs 
 - [ ] Google, github, X based auth options instead of just email password. 
-
-
+- [x] Settings button is mostly useless on extension 
+- [ ] UX flow form landing to web app and how auth fits in is abit janky 
+- [x] the trade coonfirm modal needs to adopt the theme from popup  
+- [x] The 'quick' button is next to useless 
  
