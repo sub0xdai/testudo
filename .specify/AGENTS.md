@@ -217,4 +217,10 @@
 - **Pre-existing warnings not from AUTH-02**: `engine/actor.rs:1814` unused variable, `cex_client.rs:599` useless conversion, `evaluator.rs:188` manual contains. None related to auth changes.
 - **bcrypt removal clean**: `bcrypt = "0.15"` removed from common_utils/Cargo.toml. No transitive dependencies on bcrypt remain. `sha2` was already present for crypto operations — reused for `hash_token()`.
 
+### 2026-03-24 — AUTH-02-backend-auth (Build T2)
+- **SessionRepository placed in router crate**: Spec said `crates/sqlx_postgres/src/session_repo.rs`, but the actual repo pattern lives in `crates/router/src/repositories/`. Both `PostgresUserRepository` and `ExchangeAccountRepository` are concrete types there (no trait abstraction). The sqlx_postgres crate has an older trait-based pattern that's no longer followed. Placed session.rs alongside user.rs for consistency.
+- **AuthError reused, not RepoError**: `PostgresUserRepository` returns `Result<T, AuthError>` (not `RepoError`). SessionRepository follows the same convention since sessions are auth-domain objects. `ExchangeAccountRepository` uses its own `RepoError` because it has domain-specific errors (DuplicateAccount, Conflict, Encryption).
+- **cleanup_expired deletes revoked too**: The `cleanup_expired` method removes both expired (`expires_at < NOW()`) and revoked (`is_revoked = TRUE`) sessions. Revoked sessions serve no purpose after the refresh rotation completes — cleaning them up prevents table bloat.
+- **No AppState wiring in T2**: SessionRepository is created but not yet added to AppState. T4 (auth routes) will wire it when the routes that consume it are built. Adding it to AppState now would require a placeholder in main.rs construction.
+
 *This file grows as Vox learns. Never delete entries.*

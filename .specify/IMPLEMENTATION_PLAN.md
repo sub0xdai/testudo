@@ -15,7 +15,7 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
 | T1 | Foundation rewrite — common_utils types (TokenClaims wallet_address, reduce lifetimes, remove AuthService/bcrypt/PasswordHasher) + fix all router consumers (AppState, middleware dual extraction, auth_helpers, user repo, trade_management, trade_events, order, exchanges tests) | complete | high | AUTH-01 |
-| T2 | Create SessionRepository in sqlx_postgres — trait + PgPool impl (create, find_by_hash, revoke, revoke_all, cleanup_expired) | pending | medium | T1 |
+| T2 | Create SessionRepository in router/repositories — concrete PgPool impl (create, find_by_hash, revoke, revoke_all, update_last_used, cleanup_expired) | complete | medium | T1 |
 | T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery | pending | high | T1 |
 | T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | pending | high | T2, T3 |
 | T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | pending | medium | T4 |
@@ -29,6 +29,7 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 - **User model simplified**: Removed email, password_hash, email_verified. Added wallet_address. No PasswordHasher/BcryptHasher/UserFactory.
 - **Token lifetimes reduced**: Access 15min (was 1hr), Refresh 7 days (was 30 days).
 - **SHA-256 token hashing**: `hash_token()` utility added for session storage.
+- **SessionRepository in router crate**: Placed in `crates/router/src/repositories/session.rs` (not sqlx_postgres) to match the concrete type pattern used by `PostgresUserRepository` and `ExchangeAccountRepository`. Uses `AuthError` for consistency with user repo.
 
 ---
 
