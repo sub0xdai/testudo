@@ -19,7 +19,7 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 | T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery (services/auth/ module: nonce_store.rs, pairing_store.rs, siwe.rs) | complete | high | T1 |
 | T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | complete | high | T2, T3 |
 | T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | complete | medium | T4 |
-| T6 | Fix all tests + validate — cargo clippy --all-targets && cargo test | pending | medium | T5 |
+| T6 | Fix all tests + validate — cargo clippy --all-targets && cargo test | complete | medium | T5 |
 
 ### Key Decisions
 
@@ -46,6 +46,7 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 
 | Spec | Completion Date |
 |------|-----------------|
+| AUTH-02-backend-auth | 2026-03-24 |
 | AUTH-01-infra-hardening | 2026-03-24 |
 | ANL-01-bloomberg-charts (Phase 1) | 2026-03-23 |
 | JNL-18-storage-quotas | 2026-03-22 |
