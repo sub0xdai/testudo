@@ -297,4 +297,9 @@
 - **Test mock needed `storage.session`**: T5 migrated auth to `browser.storage.session` but test mock only had `storage.local`. Added `makeStorageArea()` factory + `session` property to mock. Also added `sessionStorage()` test helper. Fixed LOGOUT assertion to check `session.remove` instead of `local.remove`.
 - **Pre-existing test failures unchanged**: 5 remaining failures are pre-existing from EXT-38 era (EXECUTE_TRADE `break_even_enabled`, token refresh mutex vitest compat, ensureActiveExchange legacy storage keys). Not caused by T6.
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T7 — Validation)
+- **All three frontends build clean**: `bun run build` passes for testudo-web (tsc + vite, 11.6s), testudo-extension (esbuild Chrome+Firefox, <1s), testudo-journal (vite, 5.8s). No compilation errors.
+- **14/14 acceptance criteria verified**: No email/password UI, no RegisterPage, no localStorage tokens, cookie-based auth with /auth/me, extension pairing flow, token-sync deleted, journal credentials: "include", extension chrome.storage.session — all confirmed via code inspection.
+- **AUTH-03 spec complete**: All 7 tasks (T1-T7) done. Three frontends migrated from email/password + localStorage JWT to wallet-connect SIWE + HttpOnly cookies (web/journal) and device pairing + chrome.storage.session (extension).
+
 *This file grows as Vox learns. Never delete entries.*

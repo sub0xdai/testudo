@@ -1,8 +1,8 @@
 # Implementation Plan
 
 > Last updated: 2026-03-24
-> Current spec: AUTH-03-frontend-auth
-> Phase: BUILD
+> Current spec: none
+> Phase: IDLE
 
 ---
 
@@ -20,7 +20,7 @@ Frontend auth migration — wallet connect login (SIWE), cookie-based sessions, 
 | T4 | Journal: Cookie-based auth migration — credentials: "include" on all fetches, remove getToken/refreshAccessToken/refreshPromise/manual Authorization headers, cookie-based 401 refresh | complete | medium | AUTH-02 |
 | T5 | Extension: Token storage migration — delete token-sync.ts, remove from manifest.json, auth.ts → chrome.storage.session, update schemas | complete | medium | AUTH-02 |
 | T6 | Extension: Pairing flow + UI migration — replace login/register handlers with handlePair, api.ts pair endpoint, PairView.tsx replaces AuthSection, update popup AuthContext + App.tsx | complete | high | T5 |
-| T7 | Build validation — bun run build for web + extension + journal, verify acceptance criteria | pending | low | T1-T6 |
+| T7 | Build validation — bun run build for web + extension + journal, verify acceptance criteria | complete | low | T1-T6 |
 
 ### Key Decisions
 
@@ -37,6 +37,7 @@ Frontend auth migration — wallet connect login (SIWE), cookie-based sessions, 
 
 | Spec | Completion Date |
 |------|-----------------|
+| AUTH-03-frontend-auth | 2026-03-24 |
 | AUTH-02-backend-auth | 2026-03-24 |
 | AUTH-01-infra-hardening | 2026-03-24 |
 | ANL-01-bloomberg-charts (Phase 1) | 2026-03-23 |
