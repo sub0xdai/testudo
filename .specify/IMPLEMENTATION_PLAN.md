@@ -16,8 +16,8 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 |----|------|--------|------------|------------|
 | T1 | Foundation rewrite — common_utils types (TokenClaims wallet_address, reduce lifetimes, remove AuthService/bcrypt/PasswordHasher) + fix all router consumers (AppState, middleware dual extraction, auth_helpers, user repo, trade_management, trade_events, order, exchanges tests) | complete | high | AUTH-01 |
 | T2 | Create SessionRepository in router/repositories — concrete PgPool impl (create, find_by_hash, revoke, revoke_all, update_last_used, cleanup_expired) | complete | medium | T1 |
-| T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery | pending | high | T1 |
-| T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | pending | high | T2, T3 |
+| T3 | Create nonce store + SIWE parser + pairing store — DashMap TTL stores, EIP-4361 parser, alloy signature recovery (services/auth/ module: nonce_store.rs, pairing_store.rs, siwe.rs) | complete | high | T1 |
+| T4 | Create auth routes (auth.rs) — nonce, verify-siwe, refresh, logout, revoke-all, me, pair-extension, extension-pair, extension-refresh | complete | high | T2, T3 |
 | T5 | Wire routes in main.rs + CORS credentials + delete old auth code (user.rs, old types) | pending | medium | T4 |
 | T6 | Fix all tests + validate — cargo clippy --all-targets && cargo test | pending | medium | T5 |
 
@@ -30,6 +30,12 @@ Backend auth hardening — SIWE-only authentication with HttpOnly cookies, sessi
 - **Token lifetimes reduced**: Access 15min (was 1hr), Refresh 7 days (was 30 days).
 - **SHA-256 token hashing**: `hash_token()` utility added for session storage.
 - **SessionRepository in router crate**: Placed in `crates/router/src/repositories/session.rs` (not sqlx_postgres) to match the concrete type pattern used by `PostgresUserRepository` and `ExchangeAccountRepository`. Uses `AuthError` for consistency with user repo.
+- **SIWE uses alloy 0.1.4 Signature**: `alloy::primitives::Signature` (not `PrimitiveSignature` — that name was introduced in 0.8+). `eip191_hash_message` and `from_bytes_and_parity` confirmed working.
+- **Auth stores in services/auth/**: NonceStore and PairingStore use DashMap with cleanup-on-insert TTL pattern (matches AuthCache in hyperliquid/auth.rs). No AppState wiring yet — T4 will add them.
+- **AuthError::Unauthorized(String)**: SIWE validation errors use `Unauthorized(msg)` not `InvalidToken` (unit variant, no payload). Matches semantic intent.
+- **Auth routes use web::Data extractors**: NonceStore, PairingStore, SessionRepository, and PostgresUserRepository are injected as `web::Data<T>` (not embedded in AppState). This keeps AppState unchanged and allows independent testing. T5 will wire them via `.app_data()` in main.rs.
+- **Cookie + JSON dual paths**: Web/journal gets HttpOnly cookies (verify-siwe, refresh, logout). Extension gets JSON body tokens (extension-pair, extension-refresh). Shared `rotate_refresh()` helper handles both paths.
+- **`actix_web::test` shadows `#[test]`**: In test modules that `use actix_web::test`, the `#[test]` attribute resolves to `actix_web::test` macro which requires `async fn`. Renamed import to `actix_test` to avoid this.
 
 ---
 

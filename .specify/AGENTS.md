@@ -223,4 +223,22 @@
 - **cleanup_expired deletes revoked too**: The `cleanup_expired` method removes both expired (`expires_at < NOW()`) and revoked (`is_revoked = TRUE`) sessions. Revoked sessions serve no purpose after the refresh rotation completes — cleaning them up prevents table bloat.
 - **No AppState wiring in T2**: SessionRepository is created but not yet added to AppState. T4 (auth routes) will wire it when the routes that consume it are built. Adding it to AppState now would require a placeholder in main.rs construction.
 
+### 2026-03-24 — AUTH-02-backend-auth (Build T3)
+- **alloy 0.1.4 Signature API**: The type is `alloy::primitives::Signature` (not `PrimitiveSignature` — renamed in 0.8+). `from_bytes_and_parity(&[u8; 64], bool)` returns `Result<Signature, SignatureError>` (fallible). `recover_address_from_prehash(&B256)` returns `Result<Address, SignatureError>`.
+- **`eip191_hash_message` exists in alloy 0.1.4**: Re-exported at `alloy::primitives::eip191_hash_message`. Takes `&[u8]`, returns `B256`. No need for manual keccak256 prefix computation.
+- **Ethereum v normalization**: Wallets return v=27/28 (legacy) but alloy expects bool parity (0=false, 1=true). Must normalize: `v=27 → false`, `v=28 → true`, `v=0 → false`, `v=1 → true`. Anything else is invalid.
+- **AuthError::InvalidToken is a unit variant**: No payload. For SIWE errors that need context strings, use `AuthError::Unauthorized(String)` instead. `InvalidToken` is for generic JWT validation failures; `Unauthorized(msg)` carries the specific reason.
+- **DashMap cleanup-on-insert pattern**: Both NonceStore and PairingStore call `cleanup()` in their `generate()` methods, removing expired entries before inserting new ones. This mirrors the AuthCache pattern in `services/hyperliquid/auth.rs`. No background task needed — cleanup is amortized across insertions.
+- **alloy::signers::Signer trait for testing**: `PrivateKeySigner::sign_message()` (async) produces EIP-191 personal signatures compatible with `recover_signer()`. The `Signer` trait must be imported for the method to be available. `signature.as_bytes()` returns the 65-byte `[r(32) + s(32) + v(1)]` representation.
+- **No AppState wiring in T3**: NonceStore and PairingStore are created but not yet added to AppState. T4 will add them when building auth routes. This avoids touching main.rs construction prematurely.
+
+### 2026-03-24 — AUTH-02-backend-auth (Build T4)
+- **Auth routes use `web::Data<T>` extractors not AppState fields**: NonceStore, PairingStore, SessionRepository, and PostgresUserRepository are injected as `web::Data<T>` — keeps AppState unchanged, enables independent testing of each handler. T5 wires them via `.app_data()` in main.rs.
+- **`actix_web::test` import shadows `#[test]` attribute**: When `use actix_web::test` is in scope, `#[test]` resolves to the actix macro (requires `async fn`). Fix: rename import to `use actix_web::test as actix_test` in test modules that also use sync `#[test]`.
+- **Cookie builder returns `Cookie<'static>`**: `Cookie::build("name", value.to_string())` requires `.to_string()` on the value (not a borrowed &str) because the cookie must own its data for `'static` lifetime.
+- **`Address` display format**: `format!("{recovered:#}")` produces checksummed 0x-prefixed address (e.g., `0xC285...5b36`). Without `#`, produces lowercase non-checksummed. The `#` alternate form matches what users expect from wallet addresses.
+- **auth_error_to_response helper**: Routes return `Result<HttpResponse>` (always `Ok`) — auth errors are mapped to appropriate HTTP status codes in the response body rather than using actix's error propagation. This avoids needing `ResponseError` impl for `AuthError`.
+- **Shared `rotate_refresh()` for cookie + JSON paths**: Both `/auth/refresh` (cookie) and `/auth/extension-refresh` (JSON body) use the same rotation logic. The only difference is where the refresh token comes from and how new tokens are returned.
+- **16 unit tests in auth.rs**: Cookie property tests, error mapping tests, nonce endpoint tests (via actix test server), /me endpoint test (via JwtMiddleware with real token), pairing store tests, UserResponse serialization. All pass without a database connection.
+
 *This file grows as Vox learns. Never delete entries.*
