@@ -315,4 +315,11 @@
 - **Build sizes stable**: popup.js 83.4kb, content.js 47.1kb, background.js 333.2kb — identical for Chrome and Firefox. No bundle size regression from T1.
 - **EXT-39 spec complete**: Both tasks done. PairView upgraded from single text input to six-box OTP with full state feedback. No new dependencies added.
 
+### 2026-03-24 — EXT-40-smart-card-grid (Build T1)
+- **KebabMenu confirmation inline in dropdown**: Rather than replacing the entire dropdown content on confirm, each destructive action (delete, revoke) independently toggles to a CONFIRM/NO row via `confirmAction` state. This lets the user confirm one action without losing access to other menu items.
+- **`isDeleting`/`isRevoking` props unused in ExchangeCard**: These props exist on the interface for T3 wiring (AccountPage tracks which account is mid-delete/revoke for async state), but T1's KebabMenu handles confirmation locally. The kebab closes on confirm click, so the card doesn't need to show "DELETING..." state — the parent's `handleDelete` async updates the list.
+- **`auth_mode` determines CEX/DEX badge, not `ExchangeInfo.type`**: The spec suggested using `ExchangeInfo.type` for the badge, but the card only receives `ExchangeAccount` props (no join with exchanges list). `auth_mode === 'agent_wallet'` reliably indicates DEX (Hyperliquid) vs CEX. Simpler than threading `ExchangeInfo` through props.
+- **Test result display shows latency OR error**: Successful test shows `{latency_ms}ms` in green; failed test shows `{message}` in red at smaller font size. No test result shows `---` as balance placeholder. This dual-purpose area serves as balance placeholder until a future `fetchBalance` integration.
+- **HTML entity `&#x22EE;` for kebab icon**: Using the Unicode vertical ellipsis character directly avoids SVG overhead and matches the spec's `⋮` requirement. Renders consistently across browsers.
+
 *This file grows as Vox learns. Never delete entries.*
