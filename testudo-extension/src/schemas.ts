@@ -33,13 +33,13 @@ export const ActiveExchangeStorageSchema = z.object({
 export const LoginResponseSchema = z.object({
   user: z.object({
     id: z.string().min(1),
-    email: z.string().email(),
+    wallet_address: z.string().min(1),
   }),
   tokens: AuthTokensSchema,
 });
 
-export const JwtEmailPayloadSchema = z.object({
-  email: z.string().email().optional(),
+export const JwtWalletPayloadSchema = z.object({
+  wallet_address: z.string().min(1).optional(),
 });
 
 export const JwtSubPayloadSchema = z.object({
@@ -238,7 +238,6 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("GET_ACTIVE_EXCHANGE") }),
   z.object({ type: z.literal("SET_ACTIVE_EXCHANGE"), exchangeId: z.string().nullable() }),
   z.object({ type: z.literal("SIDECAR_STATUS") }),
-  z.object({ type: z.literal("TOKEN_SYNCED_FROM_WEB") }),
   z.object({ type: z.literal("FORGOT_PASSWORD"), email: z.string().email() }),
   z.object({ type: z.literal("EXCHANGE_POSITIONS") }),
   z.object({

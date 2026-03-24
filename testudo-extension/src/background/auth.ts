@@ -3,7 +3,7 @@ import type { AuthTokens } from "../types";
 import { calculateRefreshDelay } from "../utils";
 import {
   AuthTokensSchema,
-  JwtEmailPayloadSchema,
+  JwtWalletPayloadSchema,
   RefreshResponseSchema,
   StoredTokensSchema,
 } from "../schemas";
@@ -12,7 +12,7 @@ import { getSettings } from "./storage";
 // --- Auth Token Management (EXT-05 FR-2, FR-3, FR-7) ---
 
 export async function getTokens(): Promise<AuthTokens | null> {
-  const stored = await browser.storage.local.get(["accessToken", "refreshToken", "tokenExpiry"]);
+  const stored = await browser.storage.session.get(["accessToken", "refreshToken", "tokenExpiry"]);
   const parsed = StoredTokensSchema.safeParse(stored);
   if (!parsed.success) return null;
 
@@ -27,7 +27,7 @@ export async function getTokens(): Promise<AuthTokens | null> {
 }
 
 export async function storeTokens(tokens: AuthTokens): Promise<void> {
-  await browser.storage.local.set({
+  await browser.storage.session.set({
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     tokenExpiry: Math.floor(Date.now() / 1000) + tokens.expires_in,
@@ -35,7 +35,7 @@ export async function storeTokens(tokens: AuthTokens): Promise<void> {
 }
 
 export async function clearTokens(): Promise<void> {
-  await browser.storage.local.remove(["accessToken", "refreshToken", "tokenExpiry"]);
+  await browser.storage.session.remove(["accessToken", "refreshToken", "tokenExpiry"]);
 }
 
 // --- Token Refresh ---
@@ -62,7 +62,7 @@ async function doRefresh(): Promise<boolean> {
   const settings = await getSettings();
 
   try {
-    const response = await fetch(`${settings.backendUrl}/api/v1/auth/refresh`, {
+    const response = await fetch(`${settings.backendUrl}/api/v1/auth/extension-refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: tokens.refresh_token }),
@@ -106,18 +106,18 @@ export function clearRefreshTimer(): void {
 
 // --- Auth Status ---
 
-export async function getAuthStatus(): Promise<{ authenticated: boolean; email?: string }> {
+export async function getAuthStatus(): Promise<{ authenticated: boolean; walletAddress?: string }> {
   const tokens = await getTokens();
   if (!tokens || tokens.expires_in <= 0) {
     return { authenticated: false };
   }
   try {
     const payloadRaw = JSON.parse(atob(tokens.access_token.split(".")[1] || ""));
-    const payload = JwtEmailPayloadSchema.safeParse(payloadRaw);
+    const payload = JwtWalletPayloadSchema.safeParse(payloadRaw);
     if (!payload.success) {
       return { authenticated: true };
     }
-    return { authenticated: true, email: payload.data.email };
+    return { authenticated: true, walletAddress: payload.data.wallet_address };
   } catch {
     return { authenticated: true };
   }

@@ -3,7 +3,7 @@ import browser from "webextension-polyfill";
 
 export interface AuthState {
   authenticated: () => boolean;
-  email: () => string;
+  walletAddress: () => string;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -14,16 +14,16 @@ const AuthContext = createContext<AuthState>();
 
 export function AuthProvider(props: { children: JSX.Element; onReady: (authed: boolean) => void }) {
   const [authenticated, setAuthenticated] = createSignal(false);
-  const [email, setEmail] = createSignal("");
+  const [walletAddress, setWalletAddress] = createSignal("");
 
   async function checkAuth() {
     try {
       const response = await browser.runtime.sendMessage({ type: "AUTH_STATUS" }) as {
         authenticated: boolean;
-        email?: string;
+        walletAddress?: string;
       };
       setAuthenticated(response.authenticated);
-      if (response.email) setEmail(response.email);
+      if (response.walletAddress) setWalletAddress(response.walletAddress);
       props.onReady(response.authenticated);
     } catch (err) {
       console.error("Auth check failed:", err);
@@ -71,14 +71,14 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
   async function logout() {
     await browser.runtime.sendMessage({ type: "LOGOUT" });
     setAuthenticated(false);
-    setEmail("");
+    setWalletAddress("");
   }
 
   onMount(checkAuth);
 
   const state: AuthState = {
     authenticated,
-    email,
+    walletAddress,
     login,
     register,
     logout,

@@ -305,9 +305,9 @@ export default function MainView(props: { onLogout: () => void }) {
               <span class="block text-[12px] text-text-secondary font-sans font-medium mb-2">
                 Account
               </span>
-              <Show when={auth.email()}>
+              <Show when={auth.walletAddress()}>
                 <p class="text-[13px] font-mono text-text-secondary">
-                  {auth.email()}
+                  {auth.walletAddress()}
                 </p>
               </Show>
             </div>
@@ -317,12 +317,12 @@ export default function MainView(props: { onLogout: () => void }) {
 
       {/* Footer */}
       <div class="px-5 py-2 border-t border-border-subtle flex items-center justify-between">
-        <Show when={auth.email()}>
+        <Show when={auth.walletAddress()}>
           <span
             class="text-[11px] text-text-dim font-sans truncate max-w-[200px]"
-            data-testid="footer-email"
+            data-testid="footer-wallet"
           >
-            {auth.email()}
+            {auth.walletAddress()}
           </span>
         </Show>
       </div>

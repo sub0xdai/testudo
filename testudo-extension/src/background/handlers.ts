@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 import type { RuntimeMessageSchema } from "../schemas";
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./storage";
-import { getTokens, clearTokens, refreshAccessToken, scheduleTokenRefresh, clearRefreshTimer, getAuthStatus } from "./auth";
+import { getTokens, clearTokens, refreshAccessToken, clearRefreshTimer, getAuthStatus } from "./auth";
 import {
   login,
   register,
@@ -23,7 +23,6 @@ import {
 import {
   connectWebSocket,
   disconnectWebSocket,
-  debouncedConnectWebSocket,
   getWsState,
   getWsReconnectTimer,
   resetReconnectDelay,
@@ -142,17 +141,6 @@ function handleSetActiveExchange(msg: ParsedMessage): Promise<unknown> {
   return setActiveExchangeId((msg as MsgOf<"SET_ACTIVE_EXCHANGE">).exchangeId).then(() => ({ success: true }));
 }
 
-function handleTokenSyncedFromWeb(): Promise<unknown> {
-  return getTokens().then((tokens) => {
-    if (tokens && tokens.expires_in > 0) {
-      scheduleTokenRefresh(tokens.expires_in);
-      ensureActiveExchange();
-      debouncedConnectWebSocket();
-    }
-    return { success: true };
-  });
-}
-
 function handleSidecarStatus(): Promise<unknown> {
   return Promise.resolve({ status: getSidecarStatus() });
 }
@@ -217,7 +205,6 @@ export const messageHandlers: Record<string, MessageHandler> = {
   TEST_EXCHANGE_CONNECTION: handleTestExchangeConnection,
   GET_ACTIVE_EXCHANGE: handleGetActiveExchange,
   SET_ACTIVE_EXCHANGE: handleSetActiveExchange,
-  TOKEN_SYNCED_FROM_WEB: handleTokenSyncedFromWeb,
   SIDECAR_STATUS: handleSidecarStatus,
   EXCHANGE_POSITIONS: handleExchangePositions,
   CLOSE_EXCHANGE_POSITION: handleCloseExchangePosition,

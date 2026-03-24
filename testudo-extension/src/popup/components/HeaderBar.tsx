@@ -140,7 +140,7 @@ export default function HeaderBar(props: HeaderBarProps) {
                   }
                 >
                   <div class="px-4 py-2.5 text-[11px] font-mono text-text-dim truncate border-b border-border-subtle">
-                    {auth.email()}
+                    {auth.walletAddress()}
                   </div>
                   <button
                     role="menuitem"

@@ -10,7 +10,7 @@ export interface AuthTokens {
 }
 
 export interface LoginResponse {
-  user: { id: string; email: string };
+  user: { id: string; wallet_address: string };
   tokens: AuthTokens;
 }
 

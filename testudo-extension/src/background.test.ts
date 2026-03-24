@@ -577,40 +577,6 @@ describe("background message router", () => {
       expect(mockStorage.activeExchangeId).toBe("acct-1");
     });
 
-    it("clears stale active ID when no accounts exist (via token sync)", async () => {
-      setValidTokens();
-      mockStorage.activeExchangeId = "deleted-acct";
-
-      // listExchangeAccounts returns empty
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
-
-      await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
-      await new Promise((r) => setTimeout(r, 50));
-      expect(mockStorage.activeExchangeId).toBeUndefined();
-    });
-
-    it("replaces stale active ID with first remaining account (via token sync)", async () => {
-      setValidTokens();
-      mockStorage.activeExchangeId = "deleted-acct";
-
-      // listExchangeAccounts: stale ID not in list
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: [
-            { id: "acct-3", exchange_name: "binance", account_name: "main", is_active: true, permissions: {}, created_at: "2026-01-01", last_used_at: null },
-          ],
-        }),
-      });
-
-      await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
-      await new Promise((r) => setTimeout(r, 50));
-      expect(mockStorage.activeExchangeId).toBe("acct-3");
-    });
-
     it("keeps valid active ID unchanged", async () => {
       setValidTokens();
       mockStorage.activeExchangeId = "acct-1";
@@ -632,37 +598,6 @@ describe("background message router", () => {
     });
   });
 
-  // --- TOKEN_SYNCED_FROM_WEB ---
-
-  describe("TOKEN_SYNCED_FROM_WEB", () => {
-    it("triggers ensureActiveExchange when tokens are valid", async () => {
-      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
-      mockStorage.accessToken = `header.${payload}.signature`;
-      mockStorage.refreshToken = "refresh-token";
-      mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
-
-      // ensureActiveExchange will call listExchangeAccounts
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: [
-            { id: "acct-web", exchange_name: "binance", account_name: "web", is_active: true, permissions: {}, created_at: "2026-01-01", last_used_at: null },
-          ],
-        }),
-      });
-
-      const result = await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
-      expect((result as { success: boolean }).success).toBe(true);
-      // Wait for async ensureActiveExchange
-      await new Promise((r) => setTimeout(r, 50));
-      expect(mockStorage.activeExchangeId).toBe("acct-web");
-    });
-
-    it("succeeds even when no tokens present", async () => {
-      const result = await messageHandler({ type: "TOKEN_SYNCED_FROM_WEB" });
-      expect((result as { success: boolean }).success).toBe(true);
-    });
-  });
 
   // --- WebSocket lifecycle ---
 
