@@ -1,8 +1,8 @@
 # Implementation Plan
 
 > Last updated: 2026-03-24
-> Current spec: EXT-40-smart-card-grid
-> Phase: BUILD
+> Current spec: —
+> Phase: IDLE
 
 ---
 
@@ -17,7 +17,7 @@ Redesign Account Management UI from stacked rows to responsive card grid with he
 | T1 | Create ExchangeCard component — heartbeat indicator (pulsing green/red based on `is_active`), exchange name + type badge, truncated identifier, balance placeholder ("---"), kebab menu (⋮) with Test/Delete/Revoke actions, click-outside-to-close dropdown, confirmation step for destructive actions, test result display, migration prompt for direct-key Hyperliquid. | complete | medium | — |
 | T2 | Create AddExchangeCard + ExtensionPairingBanner — dashed ghost card with "+" icon and hover effect; compact full-width banner layout for extension pairing (title+button inline, condensed padding). | complete | low | — |
 | T3 | Rewrite AccountPage grid layout — replace stacked rows with `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`, widen container to `max-w-5xl`, wire ExchangeCard/AddExchangeCard/ExtensionPairingBanner, add `fetchBalance` to API client + balance type, async per-card balance fetching on mount, preserve onboarding/setupComplete screens. | complete | medium | T1, T2 |
-| T4 | Build validation — `bun run build` for testudo-web, verify all 7 acceptance criteria against code. | pending | low | T3 |
+| T4 | Build validation — `bun run build` for testudo-web, verify all 13 acceptance criteria against code. | complete | low | T3 |
 
 ### Key Decisions
 
@@ -44,6 +44,7 @@ Redesign Account Management UI from stacked rows to responsive card grid with he
 
 | Spec | Completion Date |
 |------|-----------------|
+| EXT-40-smart-card-grid | 2026-03-24 |
 | EXT-39-pair-ux | 2026-03-24 |
 | AUTH-03-frontend-auth | 2026-03-24 |
 | AUTH-02-backend-auth | 2026-03-24 |

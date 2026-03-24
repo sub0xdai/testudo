@@ -336,4 +336,9 @@
 - **`max-w-5xl` replaces `max-w-2xl`**: Only on the normal management return path. Onboarding and setupComplete screens retain `max-w-2xl` since they don't need grid width.
 - **Old `ExtensionPairing` import replaced by `ExtensionPairingBanner`**: The card-wrapped vertical ExtensionPairing component is no longer used on AccountPage. The compact banner renders directly via `<ExtensionPairingBanner />` with its own border-top separator.
 
+### 2026-03-24 — EXT-40-smart-card-grid (Build T4 — Validation)
+- **All 13 acceptance criteria verified**: Responsive grid (1/2/3 cols), heartbeat dots (pulsing green / static red), kebab menu with TEST/DELETE/REVOKE, click-outside-close, signal-red destructive styling, ghost card with dashed border, form toggle on ghost click, compact extension pairing banner, max-w-5xl container, all existing functionality preserved, design tokens only (no raw colors), bun run build passes.
+- **AccountPage reduced from 532→438 lines**: Grid layout is more concise than the old stacked-row approach despite adding balance fetching logic. The form section is cleaner with its own CANCEL button below the grid.
+- **EXT-40 spec complete**: All 4 tasks done. Account management UI redesigned from stacked rows to responsive card grid with heartbeat indicators, kebab menus, ghost card, and compact pairing banner. No new dependencies added.
+
 *This file grows as Vox learns. Never delete entries.*
