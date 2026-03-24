@@ -20,7 +20,7 @@ import {
   ExchangeBalanceApiResponseSchema,
   ExchangePositionsApiResponseSchema,
   ListExchangesResponseSchema,
-  LoginResponseSchema,
+  PairResponseSchema,
   TestConnectionResultSchema,
   TradeGroupResponseSchema,
   TradeListResponseSchema,
@@ -195,31 +195,17 @@ export async function apiRequest(
   }
 }
 
-// --- Auth Wrappers ---
+// --- Auth: Device Pairing ---
 
-export async function authenticate(endpoint: string, email: string, password: string): Promise<{ success: boolean; error?: string }> {
-  const result = await apiRequest(endpoint, { method: "POST", body: { email, password } });
+export async function pair(code: string): Promise<{ success: boolean; error?: string }> {
+  const result = await apiRequest("/api/v1/auth/extension-pair", {
+    method: "POST", body: { code },
+  });
   if (!result.ok) return { success: false, error: result.error };
-  const parsed = LoginResponseSchema.safeParse(result.raw);
+  const parsed = PairResponseSchema.safeParse(result.raw);
   if (!parsed.success) return { success: false, error: "Unexpected server response" };
   await storeTokens(parsed.data.tokens);
   scheduleTokenRefresh(parsed.data.tokens.expires_in);
-  return { success: true };
-}
-
-export function login(email: string, password: string) {
-  return authenticate("/api/v1/auth/login", email, password);
-}
-
-export function register(email: string, password: string) {
-  return authenticate("/api/v1/auth/register", email, password);
-}
-
-export async function forgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
-  const result = await apiRequest("/api/v1/auth/forgot-password", {
-    method: "POST", body: { email },
-  });
-  if (!result.ok) return { success: false, error: result.error };
   return { success: true };
 }
 

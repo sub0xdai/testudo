@@ -1,7 +1,7 @@
 import { createSignal, Match, Switch, onMount } from "solid-js";
 import browser from "webextension-polyfill";
 import { AuthProvider } from "./context/AuthContext";
-import AuthSection from "./components/AuthSection";
+import PairView from "./components/PairView";
 import MainView from "./components/MainView";
 
 type View = "auth" | "main";
@@ -42,7 +42,7 @@ export default function App() {
       <AuthProvider onReady={handleReady}>
         <Switch>
           <Match when={view() === "auth"}>
-            <AuthSection
+            <PairView
               onAuthenticated={() => { setCameFromMain(false); setView("main"); }}
               onBack={cameFromMain() ? () => setView("main") : undefined}
             />

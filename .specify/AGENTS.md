@@ -289,4 +289,12 @@
 - **`LoginResponse.user.email` → `wallet_address`**: Both type and schema updated to match backend's `UserResponse { id, wallet_address }`. T6 will replace login/register entirely with pairing, but the schema must match the current backend response shape for any remaining callers.
 - **Popup consumers updated**: HeaderBar.tsx and MainView.tsx both read `auth.walletAddress()` instead of `auth.email()`. The `data-testid="footer-email"` updated to `"footer-wallet"`.
 
+### 2026-03-24 — AUTH-03-frontend-auth (Build T6)
+- **LOGIN/REGISTER/FORGOT_PASSWORD → PAIR**: Three message types replaced by single `PAIR: { code: string.length(6) }`. `LoginResponseSchema` renamed to `PairResponseSchema` (same shape — backend `/auth/extension-pair` returns `{ tokens, user }` identically). `LoginResponse` type deleted from types.ts (was unused).
+- **`authenticate()`/`login()`/`register()`/`forgotPassword()` → `pair()`**: api.ts auth wrappers collapsed to single function. `pair(code)` POSTs to `/api/v1/auth/extension-pair` with `{ code }`, parses `PairResponseSchema`, stores tokens + schedules refresh. Same pattern as old `authenticate()` but simpler (no email/password).
+- **AuthContext: 3 methods → 1**: Popup AuthContext dropped `login()` and `register()`, replaced by `pair(code)`. Same message-passing pattern (`browser.runtime.sendMessage({ type: "PAIR", code })`), same success flow (`checkAuth()` on success).
+- **PairView.tsx replaces AuthSection.tsx**: Same glass card layout/styling, but email+password inputs replaced by single 6-digit numeric code input with centered monospace digits. Instructions direct user to web app account settings for code generation. AuthSection.tsx retained in tree but no longer imported.
+- **Test mock needed `storage.session`**: T5 migrated auth to `browser.storage.session` but test mock only had `storage.local`. Added `makeStorageArea()` factory + `session` property to mock. Also added `sessionStorage()` test helper. Fixed LOGOUT assertion to check `session.remove` instead of `local.remove`.
+- **Pre-existing test failures unchanged**: 5 remaining failures are pre-existing from EXT-38 era (EXECUTE_TRADE `break_even_enabled`, token refresh mutex vitest compat, ensureActiveExchange legacy storage keys). Not caused by T6.
+
 *This file grows as Vox learns. Never delete entries.*

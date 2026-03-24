@@ -19,7 +19,7 @@ Frontend auth migration — wallet connect login (SIWE), cookie-based sessions, 
 | T3 | Web: Extension pairing UI + AccountPage cleanup — ExtensionPairing.tsx component, AccountPage removes email display + adds pairing section | complete | medium | T1 |
 | T4 | Journal: Cookie-based auth migration — credentials: "include" on all fetches, remove getToken/refreshAccessToken/refreshPromise/manual Authorization headers, cookie-based 401 refresh | complete | medium | AUTH-02 |
 | T5 | Extension: Token storage migration — delete token-sync.ts, remove from manifest.json, auth.ts → chrome.storage.session, update schemas | complete | medium | AUTH-02 |
-| T6 | Extension: Pairing flow + UI migration — replace login/register handlers with handlePair, api.ts pair endpoint, PairView.tsx replaces AuthSection, update popup AuthContext + App.tsx | pending | high | T5 |
+| T6 | Extension: Pairing flow + UI migration — replace login/register handlers with handlePair, api.ts pair endpoint, PairView.tsx replaces AuthSection, update popup AuthContext + App.tsx | complete | high | T5 |
 | T7 | Build validation — bun run build for web + extension + journal, verify acceptance criteria | pending | low | T1-T6 |
 
 ### Key Decisions

@@ -43,22 +43,25 @@ let mockStorage: Record<string, unknown> = {};
 
 // Mock webextension-polyfill with a factory that uses shared state
 vi.mock("webextension-polyfill", () => {
+  const makeStorageArea = () => ({
+    get: vi.fn(async (keys: string[]) => {
+      const result: Record<string, unknown> = {};
+      for (const key of keys) {
+        if (key in mockStorage) result[key] = mockStorage[key];
+      }
+      return result;
+    }),
+    set: vi.fn(async (items: Record<string, unknown>) => {
+      Object.assign(mockStorage, items);
+    }),
+    remove: vi.fn(async (keys: string[]) => {
+      for (const key of keys) delete mockStorage[key];
+    }),
+  });
+
   const storage = {
-    local: {
-      get: vi.fn(async (keys: string[]) => {
-        const result: Record<string, unknown> = {};
-        for (const key of keys) {
-          if (key in mockStorage) result[key] = mockStorage[key];
-        }
-        return result;
-      }),
-      set: vi.fn(async (items: Record<string, unknown>) => {
-        Object.assign(mockStorage, items);
-      }),
-      remove: vi.fn(async (keys: string[]) => {
-        for (const key of keys) delete mockStorage[key];
-      }),
-    },
+    local: makeStorageArea(),
+    session: makeStorageArea(),
     onChanged: { addListener: vi.fn() },
   };
 
@@ -106,6 +109,9 @@ describe("background message router", () => {
   function storage() {
     return (browser.storage as { local: { get: Mock; set: Mock; remove: Mock } }).local;
   }
+  function sessionStorage() {
+    return (browser.storage as { session: { get: Mock; set: Mock; remove: Mock } }).session;
+  }
   function runtime() {
     return browser.runtime as { sendMessage: Mock };
   }
@@ -144,18 +150,18 @@ describe("background message router", () => {
       expect(result).toEqual({ authenticated: false });
     });
 
-    it("returns authenticated with email when valid JWT stored", async () => {
-      const payload = btoa(JSON.stringify({ email: "test@example.com" }));
+    it("returns authenticated with walletAddress when valid JWT stored", async () => {
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
 
       const result = await messageHandler({ type: "AUTH_STATUS" });
-      expect(result).toEqual({ authenticated: true, email: "test@example.com" });
+      expect(result).toEqual({ authenticated: true, walletAddress: "0xC285000000000000000000000000000000005b36" });
     });
 
     it("returns unauthenticated when token is expired", async () => {
-      const payload = btoa(JSON.stringify({ email: "test@example.com" }));
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) - 100;
@@ -175,54 +181,54 @@ describe("background message router", () => {
 
       const result = await messageHandler({ type: "LOGOUT" });
       expect(result).toEqual({ success: true });
-      expect(storage().remove).toHaveBeenCalledWith([
+      expect(sessionStorage().remove).toHaveBeenCalledWith([
         "accessToken", "refreshToken", "tokenExpiry",
       ]);
     });
   });
 
-  // --- LOGIN ---
+  // --- PAIR ---
 
-  describe("LOGIN", () => {
-    it("stores tokens on successful login", async () => {
+  describe("PAIR", () => {
+    it("stores tokens on successful pair", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          user: { id: "user-1", email: "test@example.com" },
+          user: { id: "user-1", wallet_address: "0xC285000000000000000000000000000000005b36" },
           tokens: { access_token: "access-123", refresh_token: "refresh-456", expires_in: 3600 },
         }),
       });
 
       const result = await messageHandler({
-        type: "LOGIN", email: "test@example.com", password: "password123",
+        type: "PAIR", code: "123456",
       });
 
       expect(result).toEqual({ success: true });
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8080/api/v1/auth/login",
+        "http://localhost:8080/api/v1/auth/extension-pair",
         expect.objectContaining({ method: "POST" }),
       );
       expect(mockStorage.accessToken).toBe("access-123");
       expect(mockStorage.refreshToken).toBe("refresh-456");
     });
 
-    it("returns error on failed login", async () => {
+    it("returns error on invalid code", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false, status: 401,
-        json: async () => ({ message: "Invalid credentials" }),
+        json: async () => ({ message: "Invalid or expired pairing code" }),
       });
 
       const result = await messageHandler({
-        type: "LOGIN", email: "bad@example.com", password: "wrong",
+        type: "PAIR", code: "000000",
       });
-      expect(result).toEqual({ success: false, error: "Invalid credentials" });
+      expect(result).toEqual({ success: false, error: "Invalid or expired pairing code" });
     });
 
     it("returns error on network failure", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Connection refused"));
 
       const result = await messageHandler({
-        type: "LOGIN", email: "test@example.com", password: "password",
+        type: "PAIR", code: "123456",
       });
       expect(result).toEqual({ success: false, error: "Connection refused" });
     });
@@ -232,7 +238,7 @@ describe("background message router", () => {
 
   describe("EXECUTE_TRADE", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
@@ -328,7 +334,7 @@ describe("background message router", () => {
 
   describe("LIST_TRADES", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
@@ -425,7 +431,7 @@ describe("background message router", () => {
 
   describe("token refresh mutex", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
@@ -481,7 +487,7 @@ describe("background message router", () => {
 
   describe("retry depth limit", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;
@@ -530,7 +536,7 @@ describe("background message router", () => {
 
   describe("ensureActiveExchange", () => {
     function setValidTokens() {
-      const payload = btoa(JSON.stringify({ email: "test@example.com", sub: "user-123" }));
+      const payload = btoa(JSON.stringify({ wallet_address: "0xC285000000000000000000000000000000005b36", sub: "user-123" }));
       mockStorage.accessToken = `header.${payload}.signature`;
       mockStorage.refreshToken = "refresh-token";
       mockStorage.tokenExpiry = Math.floor(Date.now() / 1000) + 3600;

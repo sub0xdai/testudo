@@ -3,9 +3,7 @@ import type { RuntimeMessageSchema } from "../schemas";
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./storage";
 import { getTokens, clearTokens, refreshAccessToken, clearRefreshTimer, getAuthStatus } from "./auth";
 import {
-  login,
-  register,
-  forgotPassword,
+  pair,
   ensureActiveExchange,
   executeTrade,
   listTrades,
@@ -45,17 +43,9 @@ function handleExecuteTrade(msg: ParsedMessage): Promise<unknown> {
   return executeTrade((msg as MsgOf<"EXECUTE_TRADE">).payload);
 }
 
-function handleLogin(msg: ParsedMessage): Promise<unknown> {
-  const { email, password } = msg as MsgOf<"LOGIN">;
-  return login(email, password).then(async (result) => {
-    if (result.success) await ensureActiveExchange();
-    return result;
-  });
-}
-
-function handleRegister(msg: ParsedMessage): Promise<unknown> {
-  const { email, password } = msg as MsgOf<"REGISTER">;
-  return register(email, password).then(async (result) => {
+function handlePair(msg: ParsedMessage): Promise<unknown> {
+  const { code } = msg as MsgOf<"PAIR">;
+  return pair(code).then(async (result) => {
     if (result.success) await ensureActiveExchange();
     return result;
   });
@@ -154,10 +144,6 @@ function handleCloseExchangePosition(msg: ParsedMessage): Promise<unknown> {
   return closeExchangePosition(symbol, side, contracts);
 }
 
-function handleForgotPassword(msg: ParsedMessage): Promise<unknown> {
-  return forgotPassword((msg as MsgOf<"FORGOT_PASSWORD">).email);
-}
-
 function handleGetExchangeMode(): Promise<unknown> {
   return getExchangeMode().then((mode) => ({ mode }));
 }
@@ -187,8 +173,7 @@ function handleAccountLinked(): Promise<unknown> {
 export const messageHandlers: Record<string, MessageHandler> = {
   GET_SETTINGS: handleGetSettings,
   EXECUTE_TRADE: handleExecuteTrade,
-  LOGIN: handleLogin,
-  REGISTER: handleRegister,
+  PAIR: handlePair,
   LOGOUT: handleLogout,
   AUTH_STATUS: handleAuthStatus,
   REFRESH_TOKEN: handleRefreshToken,
@@ -208,7 +193,6 @@ export const messageHandlers: Record<string, MessageHandler> = {
   SIDECAR_STATUS: handleSidecarStatus,
   EXCHANGE_POSITIONS: handleExchangePositions,
   CLOSE_EXCHANGE_POSITION: handleCloseExchangePosition,
-  FORGOT_PASSWORD: handleForgotPassword,
   GET_EXCHANGE_MODE: handleGetExchangeMode,
   SET_EXCHANGE_MODE: handleSetExchangeMode,
   ACCOUNT_LINKED: handleAccountLinked,

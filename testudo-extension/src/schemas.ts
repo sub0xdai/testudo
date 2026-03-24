@@ -30,7 +30,7 @@ export const ActiveExchangeStorageSchema = z.object({
   activeExchangeId: z.string().optional(),
 });
 
-export const LoginResponseSchema = z.object({
+export const PairResponseSchema = z.object({
   user: z.object({
     id: z.string().min(1),
     wallet_address: z.string().min(1),
@@ -211,8 +211,7 @@ export const SidecarStreamDataSchema = z.object({
 export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("GET_SETTINGS") }),
   z.object({ type: z.literal("EXECUTE_TRADE"), payload: TradePayloadSchema }),
-  z.object({ type: z.literal("LOGIN"), email: z.string(), password: z.string() }),
-  z.object({ type: z.literal("REGISTER"), email: z.string(), password: z.string() }),
+  z.object({ type: z.literal("PAIR"), code: z.string().length(6) }),
   z.object({ type: z.literal("LOGOUT") }),
   z.object({ type: z.literal("AUTH_STATUS") }),
   z.object({ type: z.literal("REFRESH_TOKEN") }),
@@ -238,7 +237,6 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("GET_ACTIVE_EXCHANGE") }),
   z.object({ type: z.literal("SET_ACTIVE_EXCHANGE"), exchangeId: z.string().nullable() }),
   z.object({ type: z.literal("SIDECAR_STATUS") }),
-  z.object({ type: z.literal("FORGOT_PASSWORD"), email: z.string().email() }),
   z.object({ type: z.literal("EXCHANGE_POSITIONS") }),
   z.object({
     type: z.literal("CLOSE_EXCHANGE_POSITION"),

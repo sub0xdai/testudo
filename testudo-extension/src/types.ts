@@ -9,11 +9,6 @@ export interface AuthTokens {
   expires_in: number;
 }
 
-export interface LoginResponse {
-  user: { id: string; wallet_address: string };
-  tokens: AuthTokens;
-}
-
 export interface ManagementPreset {
   name: string;
   risk_percent: number;

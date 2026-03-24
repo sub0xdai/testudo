@@ -4,8 +4,7 @@ import browser from "webextension-polyfill";
 export interface AuthState {
   authenticated: () => boolean;
   walletAddress: () => string;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  pair: (code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -32,29 +31,10 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
     }
   }
 
-  async function login(loginEmail: string, password: string): Promise<{ success: boolean; error?: string }> {
+  async function pair(code: string): Promise<{ success: boolean; error?: string }> {
     const response = await browser.runtime.sendMessage({
-      type: "LOGIN",
-      email: loginEmail.trim(),
-      password,
-    });
-
-    if (!response || typeof response !== "object") {
-      return { success: false, error: "No response from service worker — check chrome://extensions for errors" };
-    }
-
-    const result = response as { success: boolean; error?: string };
-    if (result.success) {
-      await checkAuth();
-    }
-    return result;
-  }
-
-  async function register(regEmail: string, password: string): Promise<{ success: boolean; error?: string }> {
-    const response = await browser.runtime.sendMessage({
-      type: "REGISTER",
-      email: regEmail.trim(),
-      password,
+      type: "PAIR",
+      code: code.trim(),
     });
 
     if (!response || typeof response !== "object") {
@@ -79,8 +59,7 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
   const state: AuthState = {
     authenticated,
     walletAddress,
-    login,
-    register,
+    pair,
     logout,
     checkAuth,
   };
