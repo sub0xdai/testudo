@@ -322,4 +322,9 @@
 - **Test result display shows latency OR error**: Successful test shows `{latency_ms}ms` in green; failed test shows `{message}` in red at smaller font size. No test result shows `---` as balance placeholder. This dual-purpose area serves as balance placeholder until a future `fetchBalance` integration.
 - **HTML entity `&#x22EE;` for kebab icon**: Using the Unicode vertical ellipsis character directly avoids SVG overhead and matches the spec's `⋮` requirement. Renders consistently across browsers.
 
+### 2026-03-24 — EXT-40-smart-card-grid (Build T2)
+- **AddExchangeCard is stateless**: Pure presentational component — single `onClick` prop, no internal state. The ghost card pattern (dashed border, "+" icon, hover color shift) matches the spec exactly. 12 lines total.
+- **ExtensionPairingBanner duplicates logic from ExtensionPairing**: New component rather than variant prop on existing `ExtensionPairing.tsx` — keeps SoC clean since the banner layout (horizontal flex, inline code display, condensed padding) is structurally different from the card layout (vertical stack, large code block). Both will coexist until T3 swaps the AccountPage import.
+- **Banner code display inline with title**: When a code is active, the banner shows title + code + countdown + "NEW CODE" button in a single flex row. This is much more compact than the original vertical layout with its centered 4xl code block. `flex-wrap` handles narrow viewports gracefully.
+
 *This file grows as Vox learns. Never delete entries.*
