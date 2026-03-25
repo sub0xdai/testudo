@@ -395,3 +395,130 @@ export async function deleteImage(imageId: string): Promise<void> {
     method: 'DELETE',
   })
 }
+
+// ─── Exchange Management API ───
+
+export interface ExchangeInfo {
+  name: string
+  display_name: string
+  exchange_type: string
+  requires_passphrase: boolean
+  supported_features: string[]
+}
+
+export interface ExchangeAccount {
+  id: string
+  exchange_name: string
+  account_name: string
+  is_active: boolean
+  auth_mode: string
+  agent_wallet_address?: string | null
+  last_used_at?: string | null
+  created_at: string
+}
+
+export interface AddExchangeAccountPayload {
+  exchange_name: string
+  account_name: string
+  api_key: string
+  api_secret: string
+  passphrase?: string
+}
+
+export interface TestConnectionResult {
+  success: boolean
+  latency_ms: number | null
+  error?: string
+}
+
+export interface ExchangeBalanceEntry {
+  asset: string
+  total: string
+  available: string
+  used: string
+}
+
+export interface ExchangeBalanceResponse {
+  balances: ExchangeBalanceEntry[]
+}
+
+export interface InitAgentWalletResponse {
+  account_id: string
+  agent_address: string
+}
+
+export interface ApproveDataResponse {
+  typed_data: Record<string, unknown>
+  nonce: number
+}
+
+export interface ApproveAgentResponse {
+  success: boolean
+}
+
+export interface MigrateToAgentWalletResponse {
+  success: boolean
+}
+
+export interface RevokeAgentResponse {
+  success: boolean
+}
+
+async function fetchExchange<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/exchanges${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `Exchange API error: ${res.status}`)
+  }
+  return res.json()
+}
+
+export const exchangeApi = {
+  listExchanges: () => fetchExchange<ExchangeInfo[]>(''),
+  listAccounts: () => fetchExchange<ExchangeAccount[]>('/accounts'),
+  addAccount: (payload: AddExchangeAccountPayload) =>
+    fetchExchange<ExchangeAccount>('/accounts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteAccount: (id: string) =>
+    fetchExchange<void>(`/accounts/${id}`, { method: 'DELETE' }),
+  testConnection: (id: string) =>
+    fetchExchange<TestConnectionResult>(`/accounts/${id}/test`, { method: 'POST' }),
+  fetchBalance: (id: string) =>
+    fetchExchange<ExchangeBalanceResponse>(`/accounts/${id}/balance`),
+  initAgentWallet: (walletAddress: string) =>
+    fetchExchange<InitAgentWalletResponse>('/agent-wallet/init', {
+      method: 'POST',
+      body: JSON.stringify({ wallet_address: walletAddress }),
+    }),
+  getApproveData: (accountId: string) =>
+    fetchExchange<ApproveDataResponse>(`/agent-wallet/approve-data`, {
+      method: 'POST',
+      body: JSON.stringify({ account_id: accountId }),
+    }),
+  approveAgent: (accountId: string, signature: string, nonce: number) =>
+    fetchExchange<ApproveAgentResponse>('/agent-wallet/approve', {
+      method: 'POST',
+      body: JSON.stringify({ account_id: accountId, signature, nonce }),
+    }),
+  migrateToAgentWallet: (accountId: string, walletAddress: string) =>
+    fetchExchange<MigrateToAgentWalletResponse>('/agent-wallet/migrate', {
+      method: 'POST',
+      body: JSON.stringify({ account_id: accountId, wallet_address: walletAddress }),
+    }),
+  revokeAgent: (id: string) =>
+    fetchExchange<RevokeAgentResponse>(`/agent-wallet/${id}/revoke`, { method: 'DELETE' }),
+}
+
+export async function pairExtension(): Promise<{ code: string }> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/auth/pair-extension`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error('Failed to generate pairing code')
+  return res.json()
+}

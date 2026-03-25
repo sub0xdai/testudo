@@ -9,9 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@reown/appkit": "^1.8.19",
+    "@reown/appkit-adapter-ethers": "^1.8.19",
     "@solidjs/router": "^0.15.3",
     "dompurify": "^3.3.3",
     "echarts": "5",
+    "ethers": "^6.16.0",
     "lightweight-charts": "^5.0.0",
     "marked": "^17.0.4",
     "solid-js": "^1.9.5"

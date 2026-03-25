@@ -1,11 +1,13 @@
-import { createSignal, For, Show, onMount, type JSX } from 'solid-js'
+import { createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
+import { useAuth } from '../context/AuthContext'
+import { appKit } from '../config/wallet'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
   { path: '/trades', label: 'TRADES' },
   { path: '/journal', label: 'JOURNAL' },
-  { path: null, label: 'HOME', external: true },
+  { path: '/account', label: 'ACCOUNT' },
 ]
 
 type Theme = 'amoled' | 'light'
@@ -24,7 +26,115 @@ function applyTheme(theme: Theme) {
   localStorage.setItem('testudo-theme', theme)
 }
 
+// ─── Wallet Chip ───
+
+function WalletChip() {
+  const auth = useAuth()
+  const [open, setOpen] = createSignal(false)
+  let ref: HTMLDivElement | undefined
+
+  function handleClickOutside(e: MouseEvent) {
+    if (ref && !ref.contains(e.target as Node)) setOpen(false)
+  }
+
+  onMount(() => document.addEventListener('mousedown', handleClickOutside))
+  onCleanup(() => document.removeEventListener('mousedown', handleClickOutside))
+
+  const addr = () => auth.user()?.wallet_address ?? ''
+  const truncated = () => {
+    const a = addr()
+    return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : ''
+  }
+
+  return (
+    <Show when={auth.isAuthenticated()} fallback={
+      <button
+        onClick={() => auth.connectWallet()}
+        class="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors"
+      >
+        CONNECT
+      </button>
+    }>
+      <div ref={ref} class="relative">
+        <button
+          onClick={() => setOpen(!open())}
+          class="flex items-center gap-2 px-4 py-1.5 border border-container-border text-text-primary font-mono text-xs tracking-wider hover:border-text-primary transition-colors"
+        >
+          <span class="inline-block w-2 h-2 rounded-full bg-signal-green animate-pulse" />
+          {truncated()}
+          <svg width="10" height="10" viewBox="0 0 10 10" class={`text-text-tertiary transition-transform ${open() ? 'rotate-180' : ''}`}>
+            <path d="M2 4L5 7L8 4" stroke="currentColor" stroke-width="1.5" fill="none" />
+          </svg>
+        </button>
+
+        <Show when={open()}>
+          <div class="absolute right-0 mt-1 w-44 bg-container-bg border border-container-border z-50 flex flex-col">
+            <A
+              href="/account"
+              class="text-left px-4 py-2.5 text-xs font-mono text-text-secondary hover:bg-main-bg hover:text-text-primary transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              ACCOUNT
+            </A>
+            <button
+              onClick={() => { auth.logout(); setOpen(false) }}
+              class="text-left px-4 py-2.5 text-xs font-mono text-signal-red hover:bg-signal-red/10 transition-colors border-t border-container-border"
+            >
+              DISCONNECT
+            </button>
+          </div>
+        </Show>
+      </div>
+    </Show>
+  )
+}
+
+// ─── Lock Screen ───
+
+function LockScreen(props: { onConnect: () => void }) {
+  return (
+    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-6 px-6">
+      <h2 class="font-mono text-2xl tracking-widest text-text-primary">TESTUDO DESK</h2>
+      <p class="font-mono text-sm text-text-secondary max-w-md text-center">
+        Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
+      </p>
+      <button
+        onClick={props.onConnect}
+        class="px-8 py-3 border border-text-primary text-text-primary font-mono text-sm tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+      >
+        CONNECT WALLET
+      </button>
+    </div>
+  )
+}
+
+function ConnectingScreen() {
+  return (
+    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-4">
+      <div class="w-4 h-4 border-2 border-text-secondary border-t-text-primary rounded-full animate-spin" />
+      <p class="font-mono text-xs text-text-secondary tracking-wider">VERIFYING WALLET...</p>
+    </div>
+  )
+}
+
+function ErrorScreen(props: { message: string; onRetry: () => void }) {
+  return (
+    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-6 px-6">
+      <p class="font-mono text-sm text-signal-red max-w-md text-center">{props.message}</p>
+      <button
+        onClick={props.onRetry}
+        class="px-8 py-3 border border-text-primary text-text-primary font-mono text-sm tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+      >
+        TRY AGAIN
+      </button>
+    </div>
+  )
+}
+
+// ─── Layout ───
+
 export function Layout(props: { children: JSX.Element }) {
+  const auth = useAuth()
   const [menuOpen, setMenuOpen] = createSignal(false)
   const [theme, setTheme] = createSignal<Theme>('amoled')
 
@@ -93,18 +203,11 @@ export function Layout(props: { children: JSX.Element }) {
 
           {/* Desktop nav */}
           <nav class="hidden md:flex items-center gap-6">
-            <For each={NAV_ITEMS}>
-              {(item) => (
-                item.external ? (
-                  <a
-                    href="/"
-                    class="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ) : (
+            <Show when={auth.isAuthenticated()}>
+              <For each={NAV_ITEMS}>
+                {(item) => (
                   <A
-                    href={item.path!}
+                    href={item.path}
                     end={item.path === '/'}
                     class="font-mono text-xs tracking-wider transition-colors"
                     activeClass="text-text-primary"
@@ -112,9 +215,10 @@ export function Layout(props: { children: JSX.Element }) {
                   >
                     {item.label}
                   </A>
-                )
-              )}
-            </For>
+                )}
+              </For>
+            </Show>
+            <WalletChip />
           </nav>
 
           {/* Mobile hamburger */}
@@ -131,19 +235,11 @@ export function Layout(props: { children: JSX.Element }) {
         {/* Mobile nav panel */}
         <Show when={menuOpen()}>
           <nav class="md:hidden border-t border-container-border py-2 bg-main-bg/95 backdrop-blur-sm">
-            <For each={NAV_ITEMS}>
-              {(item) => (
-                item.external ? (
-                  <a
-                    href="/"
-                    class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider text-text-secondary hover:text-text-primary transition-colors flex items-center"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {item.label}
-                  </a>
-                ) : (
+            <Show when={auth.isAuthenticated()}>
+              <For each={NAV_ITEMS}>
+                {(item) => (
                   <A
-                    href={item.path!}
+                    href={item.path}
                     end={item.path === '/'}
                     class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider transition-colors flex items-center"
                     activeClass="text-text-primary"
@@ -152,9 +248,12 @@ export function Layout(props: { children: JSX.Element }) {
                   >
                     {item.label}
                   </A>
-                )
-              )}
-            </For>
+                )}
+              </For>
+            </Show>
+            <div class="px-6 py-3">
+              <WalletChip />
+            </div>
           </nav>
         </Show>
       </header>
@@ -162,9 +261,18 @@ export function Layout(props: { children: JSX.Element }) {
       {/* Spacer for fixed header */}
       <div style={{ height: 'var(--header-h)' }} />
 
-      <main class="relative z-10 max-w-[1400px] mx-auto px-6 py-6">
-        {props.children}
-      </main>
+      {/* Auth-gated content */}
+      <Show when={!auth.loading()} fallback={<ConnectingScreen />}>
+        <Show when={auth.isAuthenticated()} fallback={
+          <Show when={auth.siweError()} fallback={<LockScreen onConnect={auth.connectWallet} />}>
+            {(error) => <ErrorScreen message={error()} onRetry={auth.connectWallet} />}
+          </Show>
+        }>
+          <main class="relative z-10 max-w-[1400px] mx-auto px-6 py-6">
+            {props.children}
+          </main>
+        </Show>
+      </Show>
     </div>
   )
 }
