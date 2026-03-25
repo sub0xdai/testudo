@@ -12,7 +12,7 @@ import { getSettings } from "./storage";
 // --- Auth Token Management (EXT-05 FR-2, FR-3, FR-7) ---
 
 export async function getTokens(): Promise<AuthTokens | null> {
-  const stored = await browser.storage.session.get(["accessToken", "refreshToken", "tokenExpiry"]);
+  const stored = await browser.storage.local.get(["accessToken", "refreshToken", "tokenExpiry"]);
   const parsed = StoredTokensSchema.safeParse(stored);
   if (!parsed.success) return null;
 
@@ -27,7 +27,7 @@ export async function getTokens(): Promise<AuthTokens | null> {
 }
 
 export async function storeTokens(tokens: AuthTokens): Promise<void> {
-  await browser.storage.session.set({
+  await browser.storage.local.set({
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     tokenExpiry: Math.floor(Date.now() / 1000) + tokens.expires_in,
@@ -35,7 +35,7 @@ export async function storeTokens(tokens: AuthTokens): Promise<void> {
 }
 
 export async function clearTokens(): Promise<void> {
-  await browser.storage.session.remove(["accessToken", "refreshToken", "tokenExpiry"]);
+  await browser.storage.local.remove(["accessToken", "refreshToken", "tokenExpiry"]);
 }
 
 // --- Token Refresh ---

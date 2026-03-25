@@ -147,6 +147,17 @@ body {
 .animate-slide-out-right { animation: slide-out-right 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-dropdown-in { animation: dropdown-in 120ms ease-out both; }
 
+/* ── Pulsing Silver Glow (CONNECT button) ─────────── */
+
+@keyframes glow-pulse {
+  0%, 100% { text-shadow: 0 0 4px rgba(148, 163, 184, 0.3); }
+  50% { text-shadow: 0 0 12px rgba(148, 163, 184, 0.7), 0 0 24px rgba(148, 163, 184, 0.3); }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
 /* ── Global Focus Ring ────────────────────────────── */
 
 :focus-visible {

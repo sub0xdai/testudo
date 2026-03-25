@@ -1,4 +1,4 @@
-import { createContext, useContext, createSignal, createEffect, onCleanup, type JSX } from 'solid-js'
+import { createContext, useContext, createSignal, onCleanup, type JSX } from 'solid-js'
 import { appKit } from '../config/wallet'
 
 export interface User {
@@ -33,6 +33,12 @@ export function AuthProvider(props: { children: JSX.Element }) {
   const [siweError, setSiweError] = createSignal<string | null>(null)
   let siweInFlight = false
 
+  // Track the EVM provider via subscribeProviders (correct AppKit API)
+  let evmProvider: any = null
+  const unsubProviders = appKit.subscribeProviders((state: Record<string, any>) => {
+    evmProvider = state['eip155'] ?? null
+  })
+
   // Check existing cookie session on mount
   fetchAuth('/me')
     .then(r => r.ok ? r.json() : Promise.reject())
@@ -40,15 +46,21 @@ export function AuthProvider(props: { children: JSX.Element }) {
     .catch(() => setUser(null))
     .finally(() => setLoading(false))
 
-  // Subscribe to AppKit account state for wallet connect/disconnect
-  const unsubAccount = appKit.subscribeAccount(async (state) => {
-    if (!state.isConnected || !state.address) return
+  // Run SIWE when wallet connects and provider becomes available
+  async function runSiwe(address: string) {
     if (user() || loading() || siweInFlight) return
-
     siweInFlight = true
     setSiweError(null)
 
     try {
+      // Wait briefly for provider to be ready (subscribeProviders may fire after subscribeAccount)
+      let attempts = 0
+      while (!evmProvider && attempts < 20) {
+        await new Promise(r => setTimeout(r, 100))
+        attempts++
+      }
+      if (!evmProvider) throw new Error('Wallet provider not ready — please try again')
+
       // Get nonce from backend
       const nonceRes = await fetchAuth('/nonce')
       if (!nonceRes.ok) throw new Error('Failed to get nonce')
@@ -57,7 +69,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
       // Build SIWE message
       const message = [
         `${window.location.host} wants you to sign in with your Ethereum account:`,
-        state.address, '', 'Sign in to Testudo', '',
+        address, '', 'Sign in to Testudo', '',
         `URI: ${window.location.origin}`,
         `Version: 1`,
         `Chain ID: 42161`,
@@ -65,13 +77,10 @@ export function AuthProvider(props: { children: JSX.Element }) {
         `Issued At: ${new Date().toISOString()}`,
       ].join('\n')
 
-      // Sign via AppKit provider
-      const provider = appKit.getProvider()
-      if (!provider) throw new Error('No wallet provider available')
-
-      const signature = await (provider as any).request({
+      // Sign via EVM provider from subscribeProviders
+      const signature = await evmProvider.request({
         method: 'personal_sign',
-        params: [message, state.address],
+        params: [message, address],
       })
 
       // Verify with backend
@@ -95,9 +104,19 @@ export function AuthProvider(props: { children: JSX.Element }) {
     } finally {
       siweInFlight = false
     }
+  }
+
+  // Subscribe to account state — triggers SIWE when wallet connects
+  const unsubAccount = appKit.subscribeAccount((state: { isConnected: boolean; address?: string }) => {
+    if (state.isConnected && state.address && !user() && !siweInFlight) {
+      runSiwe(state.address)
+    }
   })
 
-  onCleanup(() => unsubAccount())
+  onCleanup(() => {
+    unsubAccount()
+    unsubProviders()
+  })
 
   const connectWallet = () => {
     setSiweError(null)

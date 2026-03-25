@@ -50,7 +50,7 @@ function WalletChip() {
     <Show when={auth.isAuthenticated()} fallback={
       <button
         onClick={() => auth.connectWallet()}
-        class="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors"
+        class="font-mono text-xs tracking-wider text-text-primary animate-glow-pulse"
       >
         CONNECT
       </button>
@@ -68,17 +68,10 @@ function WalletChip() {
         </button>
 
         <Show when={open()}>
-          <div class="absolute right-0 mt-1 w-44 bg-container-bg border border-container-border z-50 flex flex-col">
-            <A
-              href="/account"
-              class="text-left px-4 py-2.5 text-xs font-mono text-text-secondary hover:bg-main-bg hover:text-text-primary transition-colors"
-              onClick={() => setOpen(false)}
-            >
-              ACCOUNT
-            </A>
+          <div class="absolute right-0 mt-1 bg-container-bg border border-container-border z-50">
             <button
               onClick={() => { auth.logout(); setOpen(false) }}
-              class="text-left px-4 py-2.5 text-xs font-mono text-signal-red hover:bg-signal-red/10 transition-colors border-t border-container-border"
+              class="text-left px-4 py-2.5 text-xs font-mono text-signal-red hover:bg-signal-red/10 transition-colors whitespace-nowrap"
             >
               DISCONNECT
             </button>
@@ -91,19 +84,13 @@ function WalletChip() {
 
 // ─── Lock Screen ───
 
-function LockScreen(props: { onConnect: () => void }) {
+function LockScreen() {
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-6 px-6">
+    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-4 px-6">
       <h2 class="font-mono text-2xl tracking-widest text-text-primary">TESTUDO DESK</h2>
       <p class="font-mono text-sm text-text-secondary max-w-md text-center">
         Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
       </p>
-      <button
-        onClick={props.onConnect}
-        class="px-8 py-3 border border-text-primary text-text-primary font-mono text-sm tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-      >
-        CONNECT WALLET
-      </button>
     </div>
   )
 }
@@ -172,9 +159,9 @@ export function Layout(props: { children: JSX.Element }) {
       <header class="fixed top-0 left-0 right-0 z-50 bg-main-bg/60 backdrop-blur-sm border-b border-container-border/30">
         <div class="max-w-[1400px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <A href="/" class="font-mono text-lg tracking-widest text-text-primary hover:text-text-primary">
+            <a href="/" class="font-mono text-lg tracking-widest text-text-primary hover:text-accent-steel transition-colors">
               TESTUDO
-            </A>
+            </a>
             <button
               class="text-text-secondary hover:text-text-primary transition-colors"
               onClick={cycleTheme}
@@ -264,7 +251,7 @@ export function Layout(props: { children: JSX.Element }) {
       {/* Auth-gated content */}
       <Show when={!auth.loading()} fallback={<ConnectingScreen />}>
         <Show when={auth.isAuthenticated()} fallback={
-          <Show when={auth.siweError()} fallback={<LockScreen onConnect={auth.connectWallet} />}>
+          <Show when={auth.siweError()} fallback={<LockScreen />}>
             {(error) => <ErrorScreen message={error()} onRetry={auth.connectWallet} />}
           </Show>
         }>
