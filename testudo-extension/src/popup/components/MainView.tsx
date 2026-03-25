@@ -161,7 +161,7 @@ export default function MainView(props: { onLogout: () => void }) {
                     {/* UXP-17: white outline instead of accent bg */}
                     <button
                       class="px-4 py-1.5 text-xs font-medium border border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core transition cursor-pointer"
-                      onClick={() => window.open(`${WEB_APP_URL}/account?source=extension`, "_blank")}
+                      onClick={() => window.open(`${WEB_APP_URL}/desk/account?source=extension`, "_blank")}
                       data-testid="connect-account-cta"
                     >
                       {exchangeMode() === "dex" ? "Connect Wallet" : "Connect Account"}
