@@ -17,12 +17,16 @@
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
     "@types/dompurify": "^3.2.0",
+    "@types/jsdom": "^28.0.1",
     "autoprefixer": "^10.4.20",
+    "jsdom": "^29.0.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.5.3",
     "vite": "^5.4.8",
-    "vite-plugin-solid": "^2.11.6"
+    "vite-plugin-solid": "^2.11.6",
+    "vitest": "^3.2.4"
   }
 }
