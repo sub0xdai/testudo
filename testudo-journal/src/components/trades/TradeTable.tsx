@@ -133,6 +133,7 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                   {(trade) => (
                     <TradeRow
                       trade={trade}
+                      tags={trade.tags}
                       onClick={() => props.onSelectTrade(trade.id)}
                     />
                   )}

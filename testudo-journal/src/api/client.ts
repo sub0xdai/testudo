@@ -219,8 +219,12 @@ export interface TradeDetail extends JournalTrade {
   tags: JournalTag[]
 }
 
+export interface TradeWithTags extends JournalTrade {
+  tags: JournalTag[]
+}
+
 export interface TradesResponse {
-  trades: JournalTrade[]
+  trades: TradeWithTags[]
   total: number
   page: number
   limit: number
