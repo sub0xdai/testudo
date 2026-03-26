@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Last updated: 2026-03-26
-> Current spec: HIST-01-exchange-history-import
+> Current spec: ONBOARD-01-stepper-onboarding
 > Phase: COMPLETE
 
 ---

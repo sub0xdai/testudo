@@ -2,6 +2,7 @@ import { createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
 import { useAuth } from '../context/AuthContext'
 import { appKit } from '../config/wallet'
+import { Stepper } from './onboarding/Stepper'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -255,6 +256,7 @@ export function Layout(props: { children: JSX.Element }) {
             {(error) => <ErrorScreen message={error()} onRetry={auth.connectWallet} />}
           </Show>
         }>
+          <Stepper />
           <main class="relative z-10 max-w-[1400px] mx-auto px-6 py-6">
             {props.children}
           </main>

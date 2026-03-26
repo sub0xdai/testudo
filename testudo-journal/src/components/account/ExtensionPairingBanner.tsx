@@ -1,7 +1,8 @@
 import { createSignal, onCleanup, Show } from 'solid-js'
 import { pairExtension } from '../../api/client'
+import { markExtensionPaired } from '../onboarding/useOnboardingState'
 
-const CODE_TTL_SECONDS = 300
+const CODE_TTL_SECONDS = 60
 
 export function ExtensionPairingBanner() {
   const [code, setCode] = createSignal<string | null>(null)
@@ -32,6 +33,7 @@ export function ExtensionPairingBanner() {
       const { code: newCode } = await pairExtension()
       setCode(newCode)
       setCountdown(CODE_TTL_SECONDS)
+      markExtensionPaired()
 
       clearTimer()
       timer = setInterval(() => {
