@@ -1,10 +1,10 @@
-# Specification: Landing Page Strip — Remove Web3 Dependencies
+# Specification: Rewrite Landing Page as Astro Static Site
 
 **Spec ID:** DESK-02-landing-strip
-**Date:** 2026-03-25
-**Status:** Draft
-**Class:** Refactor / Cleanup
-**Priority:** P1 — After DESK-01 moves all auth and account management to the Desk, testudo-web retains dead wallet infrastructure (wagmi, RainbowKit, viem, MetaMask SDK) that bloats the landing page bundle and maintains orphaned code paths.
+**Date:** 2026-03-26
+**Status:** Draft (Revised — replaces previous React-strip spec)
+**Class:** Refactor / Architecture
+**Priority:** P1 — After DESK-01 moves all auth and account management to the Desk, testudo-web is a pure marketing site built in React that uses zero React features. Migrating to Astro eliminates ~300KB of unnecessary JavaScript, enables content collections for documentation, and aligns the tech with the purpose.
 **Depends on:** DESK-01-unified-dashboard
 **Series:** DESK-01 through DESK-02 (unified dashboard migration)
 
@@ -12,18 +12,19 @@
 
 ## Problem Statement
 
-Once DESK-01 is complete, the Desk (testudo-journal) owns the entire authenticated experience: wallet connection, SIWE, exchange management, extension pairing, and analytics. The testudo-web landing page no longer needs any Web3 functionality — but it still ships wagmi (2.19), RainbowKit (2.2), viem (2.38), MetaMask SDK, and @tanstack/react-query as dependencies. The `AuthContext.tsx` still contains the SIWE flow, `ProtectedRoute` guard, and wagmi hooks. The `AccountPage.tsx` (439 lines) remains in the codebase alongside `ExchangeCard.tsx` (215 lines), `WalletConnect.tsx` (252 lines), `ExtensionPairingBanner.tsx` (115 lines), and `AddExchangeCard.tsx` (14 lines).
+Once DESK-01 is complete, testudo-web serves a single purpose: marketing landing page with links to the Desk, docs, and extension download. The current implementation uses React 18, Vite, wagmi, RainbowKit, and viem — none of which are needed. The only interactive elements are a theme toggle (useState + localStorage) and a mouse-following spotlight effect (useState + mousemove listener).
 
-This dead code inflates the landing page from what should be a ~50KB marketing site to a ~300KB+ gzip payload. The `Header.tsx` still lazy-loads a `ConnectButton` that should be replaced with a simple "LAUNCH DESK" link. The orphaned `/account` route still exists behind a `ProtectedRoute` that references wagmi hooks.
+The previous version of this spec (DESK-02) proposed stripping Web3 dependencies from the React app. But since React itself provides zero value here — no state management, no dynamic routing, no component lifecycle — stripping Web3 from React just leaves an empty React shell. The right fix is replacing React entirely with Astro, a static site generator purpose-built for content-first marketing sites.
 
-This spec strips testudo-web to a pure marketing site: Hero, Features, Pricing, About — with links to the Desk, Docs, and Extension download. No wallet, no auth, no account management.
+Astro delivers: zero JavaScript by default (theme toggle and spotlight become component islands), first-class content collections for docs and blog posts, superior SEO and first-paint performance, and Solid.js island support for interactive elements — maintaining consistency with the Desk's framework.
 
 ---
 
 ## User Stories
 
-- **As a visitor**, I want the landing page to load instantly, so that I can evaluate Testudo without downloading wallet infrastructure.
-- **As a developer**, I want the testudo-web codebase to only contain code relevant to the marketing site, so that it's simple to maintain.
+- **As a visitor**, I want the landing page to load instantly with zero JavaScript overhead, so that I can evaluate Testudo without waiting for a React bundle.
+- **As a developer**, I want docs to live as markdown files in the same repo, so that documentation deploys with the site automatically.
+- **As a user**, I want the theme toggle and spotlight effect to work exactly as before, so that the visual experience is preserved.
 
 ---
 
@@ -31,178 +32,206 @@ This spec strips testudo-web to a pure marketing site: Hero, Features, Pricing, 
 
 | ID | Requirement | Priority | Subsystem |
 |----|-------------|----------|-----------|
-| FR-1 | Remove `wagmi`, `@rainbow-me/rainbowkit`, `viem`, `@tanstack/react-query` from testudo-web `package.json` dependencies. | High | Dependencies |
-| FR-2 | Delete `src/context/AuthContext.tsx` — no auth context needed on landing page. | High | Auth |
-| FR-3 | Delete `src/pages/AccountPage.tsx`. | High | Pages |
-| FR-4 | Delete `src/components/WalletConnect.tsx`, `src/components/ExchangeCard.tsx`, `src/components/AddExchangeCard.tsx`, `src/components/ExtensionPairingBanner.tsx`. | High | Components |
-| FR-5 | Simplify `src/components/ui/Header.tsx`: remove wallet chip (`AccountChip`), remove lazy `ConnectButton`, remove wagmi imports (`useAccount`, `useDisconnect`), remove `useAuth` import. Replace with a static "LAUNCH DESK" link pointing to `/desk/`. | High | Header |
-| FR-6 | Simplify `src/main.tsx`: remove `WagmiProvider`, `QueryClientProvider`, `RainbowKitProvider`, `RainbowKitThemeWrapper`, `AuthProvider`. The app tree becomes: `ThemeProvider → BrowserRouter → App`. | High | Entry |
-| FR-7 | Update `src/App.tsx`: remove `/account` route and `ProtectedRoute` import. Routes become: `/` (LandingPage), `/about` (AboutPage). Remove lazy import of AccountPage. | High | Routing |
-| FR-8 | Delete `src/api/client.ts` or strip to only what's needed (if any landing page feature calls the API). If no API calls remain, delete entirely. | High | API |
-| FR-9 | Delete `src/types.ts` if it only contains auth-related types (`User`, `ExchangeAccount`, etc.) that are no longer used. | Medium | Types |
-| FR-10 | Remove `@rainbow-me/rainbowkit/styles.css` import from `main.tsx`. | Medium | Styles |
-| FR-11 | Remove RainbowKit CSS overrides (`.rk-header-btn` rules) from `src/index.css`. | Medium | Styles |
-| FR-12 | Update the Pricing section's "GET STARTED" link from `/account` to `/desk/account`. | Medium | Content |
-| FR-13 | Verify build output: the landing page bundle should have zero Web3-related chunks (no metamask-sdk, no walletconnect, no viem, no wagmi chunks). Total gzip payload for initial page load should be under 100KB. | Medium | Build |
-| FR-14 | Update any extension code that references `/account` to point to `/desk/account` (check background/api.ts, handlers.ts for redirect URLs). | Medium | Extension |
-| FR-15 | Delete `src/config/wagmi.ts` — no wagmi configuration needed. | High | Config |
+| FR-1 | Initialize Astro project in `testudo-web/` (replace existing React app). Configure with `output: 'static'`, Solid.js integration (`@astrojs/solid-js`), and Tailwind CSS. | High | Build |
+| FR-2 | Port `LandingPage.tsx` sections to Astro pages/components: `Hero`, `Features`, `Pricing`, `Footer`. All render as static HTML — no client-side JavaScript. | High | Pages |
+| FR-3 | Port `Header.tsx` to Astro component. Navigation links: Home, About, Docs, "LAUNCH DESK" (external link to Desk), "INSTALL EXTENSION" (external link to Chrome Web Store). | High | Layout |
+| FR-4 | Port theme toggle to a Solid.js island component (`client:load`). Preserve: AMOLED dark / light toggle, `localStorage` persistence, `data-theme` attribute on `<html>`. | High | Islands |
+| FR-5 | Port `SpotlightBackground.tsx` to a vanilla `<script>` tag or Solid.js island. Preserve: mouse-following radial gradient, theme-aware opacity adjustment via MutationObserver on `data-theme`. | High | Islands |
+| FR-6 | Remove all React dependencies: `react`, `react-dom`, `react-router-dom`, `wagmi`, `@rainbow-me/rainbowkit`, `viem`, `@tanstack/react-query`, `@metamask/sdk`. | High | Dependencies |
+| FR-7 | Configure Astro content collections for docs (`src/content/docs/`) with markdown + frontmatter schema. At minimum, create placeholder structure: Getting Started, Extension Setup, API Keys, Troubleshooting. | Medium | Docs |
+| FR-8 | Create `/docs` route rendering content collection entries with sidebar navigation, search-friendly markup, and consistent styling with the landing page theme. | Medium | Docs |
+| FR-9 | Add static onboarding stepper to landing page (per ONBOARD-01 FR-8). Static HTML showing 4 steps with step 1 highlighted. No interactivity — purely visual marketing element. | Medium | Pages |
+| FR-10 | Split CTA on hero section: primary "INSTALL EXTENSION" button (Chrome Web Store link) + secondary "LAUNCH DESK" button (link to Desk URL). | High | Pages |
+| FR-11 | Preserve existing Tailwind CSS styling: brutalist dark theme, flicker animations, ticker-pulse keyframes, glassmorphism panels. Port all custom CSS. | High | Styling |
+| FR-12 | Configure deployment: static build output (`dist/`), compatible with existing hosting (same build command pattern). | Medium | Build |
 
 ---
 
 ## Technical Implementation
 
-### Header Simplification
+### Astro Project Structure
+
+```
+testudo-web/
+├── astro.config.mjs          # Astro config with solid-js + tailwind integrations
+├── src/
+│   ├── layouts/
+│   │   └── Base.astro         # HTML shell, theme script, spotlight
+│   ├── pages/
+│   │   ├── index.astro        # Landing page (Hero + Features + Pricing + Footer)
+│   │   ├── about.astro        # About page
+│   │   └── docs/
+│   │       └── [...slug].astro # Dynamic docs route from content collection
+│   ├── components/
+│   │   ├── Header.astro       # Static nav bar
+│   │   ├── Hero.astro         # Hero section with split CTA
+│   │   ├── Features.astro     # Feature grid
+│   │   ├── Pricing.astro      # Pricing tiers
+│   │   ├── Footer.astro       # Footer
+│   │   ├── Stepper.astro      # Static onboarding preview (4 steps)
+│   │   ├── ThemeToggle.tsx     # Solid.js island (client:load)
+│   │   └── Spotlight.astro    # Inline <script> for mouse tracking
+│   ├── content/
+│   │   ├── config.ts          # Content collection schema
+│   │   └── docs/
+│   │       ├── getting-started.md
+│   │       ├── extension-setup.md
+│   │       ├── api-keys.md
+│   │       └── troubleshooting.md
+│   └── styles/
+│       └── global.css         # Tailwind directives + custom keyframes
+├── public/
+│   └── images/                # Static assets (wall background, etc.)
+├── package.json
+├── tailwind.config.cjs
+└── tsconfig.json
+```
+
+### Theme Toggle Island
 
 ```tsx
-// testudo-web/src/components/ui/Header.tsx — after strip
-import { Link } from 'react-router-dom'
-import { useTheme, THEME_LABELS } from '../../context/ThemeContext'
+// src/components/ThemeToggle.tsx — Solid.js island
+import { createSignal, onMount } from "solid-js";
 
-export function Header() {
-  const { theme, cycleTheme } = useTheme()
+export default function ThemeToggle() {
+  const [theme, setTheme] = createSignal<"dark" | "light">("dark");
+
+  onMount(() => {
+    const saved = localStorage.getItem("theme") || "dark";
+    setTheme(saved as "dark" | "light");
+    document.documentElement.setAttribute("data-theme", saved);
+  });
+
+  const toggle = () => {
+    const next = theme() === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-4 bg-main-bg/90 border-b border-container-border/30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="font-mono text-lg tracking-widest text-text-primary hover:text-accent-steel transition-colors">
-            TESTUDO
-          </Link>
-          {/* theme toggle button */}
-        </div>
-        <nav className="flex items-center gap-6 md:gap-8">
-          <Link to="/about" className="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors hidden md:block">ABOUT</Link>
-          <a href="#pricing" className="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors hidden md:block">PRICING</a>
-          <a href="/docs/" target="_blank" rel="noopener noreferrer" className="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors hidden md:block">DOCS</a>
-          <a href="https://chromewebstore.google.com" target="_blank" rel="noopener noreferrer" className="font-mono text-xs tracking-wider text-text-secondary hover:text-text-primary transition-colors hidden md:block">EXTENSION</a>
-          <a href="/desk/" className="font-mono text-xs tracking-wider text-text-primary hover:text-accent-steel transition-colors">LAUNCH DESK</a>
-        </nav>
-      </div>
-    </header>
-  )
+    <button onClick={toggle} class="theme-toggle" aria-label="Toggle theme">
+      {theme() === "dark" ? /* sun icon */ : /* moon icon */}
+    </button>
+  );
 }
 ```
 
-### main.tsx Simplification
+Usage in Header: `<ThemeToggle client:load />`
 
-```tsx
-// testudo-web/src/main.tsx — after strip
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { ThemeProvider } from './context/ThemeContext'
-import App from './App'
-import './index.css'
+### Spotlight Effect
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ThemeProvider>
-  </StrictMode>,
-)
+Port as inline `<script>` in `Base.astro` layout — no framework needed for a mousemove listener:
+
+```html
+<script>
+  const bg = document.querySelector('.spotlight-bg');
+  if (bg) {
+    document.addEventListener('mousemove', (e) => {
+      bg.style.background = `radial-gradient(circle at ${e.clientX}px ${e.clientY}px, ...)`;
+    });
+  }
+</script>
 ```
 
-### Deletion Manifest
+### Content Collections Config
 
-| Action | File | Lines Removed |
-|--------|------|---------------|
-| Delete | `src/context/AuthContext.tsx` | ~130 |
-| Delete | `src/pages/AccountPage.tsx` | ~439 |
-| Delete | `src/components/WalletConnect.tsx` | ~252 |
-| Delete | `src/components/ExchangeCard.tsx` | ~215 |
-| Delete | `src/components/AddExchangeCard.tsx` | ~14 |
-| Delete | `src/components/ExtensionPairingBanner.tsx` | ~115 |
-| Delete | `src/api/client.ts` | ~111 |
-| Delete | `src/config/wagmi.ts` | ~12 |
-| Simplify | `src/components/ui/Header.tsx` | ~80 removed |
-| Simplify | `src/main.tsx` | ~30 removed |
-| Simplify | `src/App.tsx` | ~15 removed |
-| Simplify | `src/index.css` | ~15 removed |
-| **Total** | | **~1,430 lines deleted** |
+```typescript
+// src/content/config.ts
+import { defineCollection, z } from "astro:content";
 
-### Dependencies Removed
+const docs = defineCollection({
+  type: "content",
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    order: z.number(),
+    section: z.string().optional(),
+  }),
+});
 
-From `package.json` dependencies:
-- `@rainbow-me/rainbowkit` — wallet UI (no longer needed)
-- `@tanstack/react-query` — required by wagmi (no longer needed)
-- `wagmi` — wallet hooks (no longer needed)
-- `viem` — Ethereum utilities (no longer needed)
-- `zod` — only used for account form validation (no longer needed)
-- `axios` — only used for API client (no longer needed)
+export const collections = { docs };
+```
+
+### Migration Checklist
+
+1. `rm -rf src/ node_modules/` (current React app)
+2. `bun create astro@latest . --template minimal`
+3. `bun add @astrojs/solid-js @astrojs/tailwind solid-js`
+4. Port Tailwind config and custom CSS
+5. Port each section component (JSX → Astro/HTML)
+6. Port theme toggle as Solid.js island
+7. Port spotlight as inline script
+8. Set up content collections for docs
+9. Verify build and visual parity
 
 ### Files
 
-**Delete:**
-- `testudo-web/src/context/AuthContext.tsx`
-- `testudo-web/src/pages/AccountPage.tsx`
-- `testudo-web/src/components/WalletConnect.tsx`
-- `testudo-web/src/components/ExchangeCard.tsx`
-- `testudo-web/src/components/AddExchangeCard.tsx`
-- `testudo-web/src/components/ExtensionPairingBanner.tsx`
-- `testudo-web/src/api/client.ts`
-- `testudo-web/src/config/wagmi.ts`
+**Deleted (entire React app):**
+- `src/main.tsx`, `src/App.tsx`, `src/vite-env.d.ts`
+- `src/pages/LandingPage.tsx`, `src/pages/AccountPage.tsx`, `src/pages/AboutPage.tsx`
+- `src/context/AuthContext.tsx`, `src/context/ThemeContext.tsx`
+- `src/components/ui/Header.tsx`, `src/components/ui/SpotlightBackground.tsx`
+- `src/components/sections/Hero.tsx`, `Features.tsx`, `Pricing.tsx`, `Footer.tsx`
+- `src/components/WalletConnect.tsx`, `ExchangeCard.tsx`, `AddExchangeCard.tsx`, `ExtensionPairingBanner.tsx`
+- `vite.config.ts`, `index.html`
 
-**Modify:**
-- `testudo-web/src/components/ui/Header.tsx` — strip wallet UI, add "LAUNCH DESK" (FR-5)
-- `testudo-web/src/main.tsx` — remove wallet providers (FR-6)
-- `testudo-web/src/App.tsx` — remove /account route (FR-7)
-- `testudo-web/src/index.css` — remove RainbowKit overrides (FR-11)
-- `testudo-web/src/components/sections/Pricing.tsx` — update link to `/desk/account` (FR-12)
-- `testudo-web/package.json` — remove 6 dependencies (FR-1)
-
-**Check:**
-- `testudo-extension/src/background/api.ts` — any references to `/account` path (FR-14)
-- `testudo-extension/src/background/handlers.ts` — any redirect URLs (FR-14)
+**New (Astro app):**
+- `astro.config.mjs`, `src/layouts/Base.astro`
+- `src/pages/index.astro`, `src/pages/about.astro`, `src/pages/docs/[...slug].astro`
+- `src/components/*.astro` (Header, Hero, Features, Pricing, Footer, Stepper, Spotlight)
+- `src/components/ThemeToggle.tsx` (Solid.js island)
+- `src/content/config.ts`, `src/content/docs/*.md`
 
 ### Dependencies Added
 
-None.
+- `astro` — Static site generator
+- `@astrojs/solid-js` — Solid.js island integration
+- `@astrojs/tailwind` — Tailwind CSS integration
+- `solid-js` — Already a project dependency (shared with testudo-journal)
+
+### Dependencies Removed
+
+- `react`, `react-dom`, `@types/react`, `@types/react-dom`
+- `react-router-dom`
+- `wagmi`, `@rainbow-me/rainbowkit`, `viem`
+- `@tanstack/react-query`
+- `@metamask/sdk`, `@reown/appkit-*`
+- `vite`, `@vitejs/plugin-react`
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `package.json` has zero Web3 dependencies (no wagmi, rainbowkit, viem, react-query) (FR-1)
-- [ ] `src/context/AuthContext.tsx` does not exist (FR-2)
-- [ ] `src/pages/AccountPage.tsx` does not exist (FR-3)
-- [ ] All 5 account-related components deleted (FR-4)
-- [ ] Header shows "LAUNCH DESK" link instead of ConnectButton/AccountChip (FR-5)
-- [ ] `main.tsx` provider tree is: ThemeProvider → BrowserRouter → App (FR-6)
-- [ ] Only two routes exist: `/` and `/about` (FR-7)
-- [ ] No RainbowKit CSS imports or overrides remain (FR-10, FR-11)
-- [ ] Pricing "GET STARTED" links to `/desk/account` (FR-12)
-- [ ] Build output contains zero Web3-related chunks — no metamask, walletconnect, viem, wagmi files (FR-13)
-- [ ] Total initial page load gzip under 100KB (FR-13)
-- [ ] `cd testudo-web && bun run build` passes
-- [ ] Landing page renders correctly with all sections (Hero, Features, Pricing, About)
-- [ ] "LAUNCH DESK" navigates to `/desk/` successfully
-- [ ] Theme toggle (amoled/light) still works
-- [ ] Test files updated or removed to match new code (no broken imports)
+- [ ] Landing page renders identically to current design (visual parity)
+- [ ] Theme toggle works: persists to localStorage, switches AMOLED dark / light
+- [ ] Spotlight mouse-follow effect works with theme-aware opacity
+- [ ] Zero JavaScript shipped on pages without islands (verify with browser DevTools)
+- [ ] `/docs` route renders markdown content collection with sidebar navigation
+- [ ] Split CTA: "INSTALL EXTENSION" + "LAUNCH DESK" buttons on hero
+- [ ] Static onboarding stepper renders on landing page
+- [ ] All React, wagmi, RainbowKit, viem dependencies removed from package.json
+- [ ] `bun run build` (Astro) succeeds with no errors
+- [ ] Flicker animations, ticker-pulse, and custom CSS keyframes preserved
+- [ ] Page loads in < 1s on throttled connection (no React bundle)
 
 ---
 
 ## Risks
 
-1. **Shared test files reference deleted modules** — The TEST-01 test suite created `AuthContext.test.tsx`, `client.test.ts`, and `Header.test.tsx` which all import from modules being deleted. Mitigation: delete all testudo-web test files that test deleted modules. Write a minimal Header test for the simplified component. The auth and API tests are no longer needed (that logic lives in testudo-journal now).
-
-2. **Extension references to `/account`** — The extension's background worker or popup may contain URLs or redirect logic pointing to the old `/account` path. Mitigation: grep the extension codebase for `/account` and update to `/desk/account`.
-
-3. **SEO / external links** — If any external pages link to `testudo.app/account`, those links break. Mitigation: add a redirect rule in the vite config or a catch-all route that redirects `/account` to `/desk/account`.
+1. **Visual parity** — Porting Tailwind classes and custom CSS from React components to Astro templates may introduce subtle differences. Mitigation: Side-by-side visual comparison before merging. Screenshot diffing.
+2. **Spotlight MutationObserver** — The current spotlight observes `data-theme` attribute changes via MutationObserver. This must work with Astro's hydration timing. Mitigation: Inline script runs synchronously, MutationObserver attaches on DOMContentLoaded.
+3. **Build pipeline change** — Switching from Vite to Astro changes the build command and output structure. Mitigation: Update any CI/CD references. Astro's output dir (`dist/`) matches Vite's default.
 
 ---
 
 ## Completion Signal
 
 This spec is complete when:
-1. All Web3 dependencies removed from testudo-web package.json
-2. All 8 auth/account files deleted
-3. Header simplified to static nav with "LAUNCH DESK"
-4. main.tsx stripped to ThemeProvider → BrowserRouter → App
-5. Build output has zero Web3 chunks, total gzip under 100KB
-6. Landing page renders and navigates correctly
-7. Extension references updated from `/account` to `/desk/account`
-8. `bun run build` passes
-9. Code committed to master
+1. testudo-web is an Astro static site with zero React dependencies
+2. Visual parity confirmed with current landing page
+3. Theme toggle and spotlight effects work identically
+4. Docs content collection renders at `/docs`
+5. All acceptance criteria met
+6. `bun run build` passes
+7. Code committed to master

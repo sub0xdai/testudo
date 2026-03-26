@@ -1,42 +1,41 @@
 # Implementation Plan
 
-> Last updated: 2026-03-24
-> Current spec: —
-> Phase: IDLE
+> Last updated: 2026-03-26
+> Current spec: HIST-01-exchange-history-import
+> Phase: COMPLETE
 
 ---
 
-## Active Spec: EXT-41-desk-dashboard
+## Active Spec: HIST-01-exchange-history-import
 
-Redesign Desk dashboard for high-signal analytics — glass panels, always-visible time presets, metric deduplication, semantic coloring, embedded chart controls.
+Import exchange trade history (Phase 1: Hyperliquid) — pg_queue async jobs, closing fills → journal_trades, auto-trigger on exchange credential save, dedup on `(user_id, exchange, exchange_fill_id)`.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Glass panel styling — `.glass-panel` CSS utility + applied to sidebar, hero, chart containers. | complete | low | — |
-| T2 | Always-visible time presets — moved from FilterPopout to PageSubHeader. | complete | medium | — |
-| T3 | Metric consolidation + semantic coloring — hero sub-row removed, PF/Exp/R-Mult colored. | complete | low | T1 |
-| T4 | Embedded chart controls — dropdown in glass-panel header bar (done with T1). | complete | medium | T1 |
-| T5 | Build validation — 11/11 acceptance criteria verified, build passes. | complete | low | T1, T2, T3, T4 |
+| T1 | Schema migration — add `source TEXT NOT NULL DEFAULT 'testudo'` and `exchange_fill_id BIGINT` columns to `journal_trades`. Add partial unique index `(user_id, exchange, exchange_fill_id) WHERE exchange_fill_id IS NOT NULL`. | complete | low | — |
+| T2 | pg_queue migration — create `queue_imports` table (same structure as `queue_orders`). Add `TradeImports` variant to `QueueName` enum. Wire up LISTEN/NOTIFY trigger. | complete | low | — |
+| T3 | Update JournalTrade model — add `source` and `exchange_fill_id` fields to `JournalTrade` struct in `models/journal.rs`. Update `record_trade_close()` INSERT query in `journal_service.rs` to include new columns. Update `TradeCloseEvent` to accept optional `source` and `exchange_fill_id`. | complete | medium | T1 |
+| T4 | Import worker — create `services/import_worker.rs`. Implement HL fill fetcher: paginate `user_fills_by_time()` across 90-day window, filter to closing perp fills (`closedPnl != "0.0"`, no `@` prefix coins), map each fill to `TradeCloseEvent`, call `record_trade_close()`. Handle dedup via ON CONFLICT or pre-check. | complete | complex | T1, T2, T3 |
+| T5 | Import routes — create `routes/imports.rs`. `POST /api/v1/trades/import` (enqueue job, return job_id). `GET /api/v1/trades/import/status` (list user's import jobs with status/counts). Register routes in `routes/mod.rs`. | complete | medium | T2 |
+| T6 | Auto-trigger on exchange add — modify `routes/exchanges.rs` POST handler to enqueue an import job after credentials are saved. | complete | low | T2, T5 |
+| T7 | Spawn import worker — add worker loop startup to `main.rs` as a Tokio task alongside existing workers. | complete | low | T4 |
+| T8 | WebSocket notification — send `import_complete` event to user via pg_notify → ws-stream pipeline on job completion. | complete | medium | T4, T7 |
+| T9 | Verification — `cargo clippy --all-targets` clean (only pre-existing warnings), `cargo test` 1025 pass / 0 fail. | complete | low | T1–T8 |
 
 ### Key Decisions
 
-- **No new components needed**: All changes are modifications to existing files (Overview.tsx, PageSubHeader.tsx, FilterPopout.tsx, ChartSelector.tsx, app.css). The spec's proposal for MasterCommandBar.jsx and ChartPanel.jsx is unnecessary — PageSubHeader already IS the command bar, ChartSelector already IS the chart panel.
-- **Preset state stays local, not in FilterContext**: PageSubHeader's preset signal derives dateFrom/dateTo and calls `setFilters()`. No need to pollute the global filter context with UI state. FilterPopout currently tracks preset locally too — same pattern.
-- **`.glass-panel` CSS utility vs inline classes**: A single reusable class keeps the 5+ application points DRY and ensures light/dark theme consistency. Defined in app.css with CSS custom property for backdrop color.
-- **Hero sub-row removal doesn't affect mobile**: Mobile condensed strip (lines 119-134) is independent (`md:hidden`). Desktop hero sub-row (lines 167-181) is `hidden md:flex`. Removing the desktop sub-row leaves mobile intact.
-- **ECharts resize is safe in flex containers**: All ECharts components use `EChart.tsx` which attaches ResizeObserver. DailyPnl and CumulativeProfit (lightweight-charts) also have independent ResizeObservers. No additional work needed.
-- **Semantic coloring for Profit Factor**: Use threshold-based coloring (>1 green, <1 red, =1 neutral) not `pnlColor()` which checks positive/negative. This is a distinct semantic meaning.
+- **Credentials not in job payload**: Worker loads credentials from `exchange_account_repo.load_credentials(account_id, user_id)` at execution time. Only `account_id` stored in queue payload.
+- **Entry price derivation**: `entry = exit - (closedPnl / sz)` for longs, `entry = exit + (closedPnl / sz)` for shorts. P&L is exact from HL; entry is derived.
+- **opened_at = closed_at**: HL closing fills don't include open time. Duration will show 0s for imports. Acceptable.
+- **Leverage defaults to 1**: HL fills don't include leverage. P&L is already correct from `closedPnl`.
+- **Route through existing journal pipeline**: `record_trade_close()` handles P&L computation, daily stats, drawdown. Imported trades get the same treatment.
+- **Phase 2 (CCXT) is a separate spec**: This spec covers Hyperliquid only.
 
 ### Discoveries
 
-- **`pnlColor()` and `rColor()` already exist** in `lib/formatters.ts` — no new formatting utilities needed.
-- **StatSection already supports `colorClass` prop** — infrastructure is ready for FR-4.
-- **Preset state is local to FilterPopout** (line 46: `createSignal<Preset>('all')`) — moving to PageSubHeader requires lifting the preset computation logic (`computeDateFrom()`) or importing it.
-- **ChartContainer.tsx has title header** (h3) but ChartSelector doesn't use it — ChartSelector renders its own dropdown wrapper. The refactor merges these: dropdown replaces the static title in the glass panel header.
-- **Layout.tsx background**: Fixed image with `.bg-overlay` at 88%/82% opacity. Glass panels will add a second layer of visual separation — the existing overlay dims, glass panels blur.
-- **Header already uses `backdrop-blur-sm`** — confirms Tailwind backdrop-blur works in this build pipeline.
+(populated during build iterations)
 
 ---
 

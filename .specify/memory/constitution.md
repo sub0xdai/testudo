@@ -27,10 +27,14 @@
 <!-- Customize for your project -->
 
 ### Languages & Frameworks
-- **Primary**: [Your language/framework]
-- **Build**: [Your build tool]
-- **Linting**: [Your linter command]
-- **Testing**: [Your test command]
+- **Backend**: Rust (Actix-web, Tokio, SQLx, PostgreSQL) — `testudo-exchange/`
+- **Extension**: TypeScript + Solid.js (Manifest V3, esbuild) — `testudo-extension/`
+- **Desk/Journal**: TypeScript + Solid.js (Vite, Tailwind, ECharts) — `testudo-journal/`
+- **Landing**: TypeScript + React 18 (Vite, Tailwind) → migrating to Astro — `testudo-web/`
+- **CCXT Sidecar**: Node.js + Express — `testudo-ccxt/`
+- **Build**: `cargo build` (Rust), `bun run build` (TS/JS)
+- **Linting**: `cargo clippy --all-targets` (Rust), `bun run build` (TS — build is the lint gate)
+- **Testing**: `cargo test` (Rust), `bun run test` (Extension)
 
 ### Path Context
 - All paths in this document are relative to the repository root.
@@ -41,9 +45,9 @@
 ## 3. Development Standards
 
 ### Code Style
-<!-- Add language-specific guidelines -->
+- Rust: `Result<T,E>` everywhere (never `unwrap()` in prod), `rust_decimal::Decimal` for financial math (never `f64`), `BTreeMap` for orderbooks, `DashMap` for concurrent state
+- TypeScript: Zod schemas for runtime validation, Solid.js signals for state
 - Follow existing patterns in the codebase
-- Document public APIs
 - Explicit error handling
 
 ### Git Workflow
@@ -66,8 +70,17 @@
 
 <!-- Customize for your project -->
 ```bash
-# Example verification commands
-# lint && test
+# Backend
+cd testudo-exchange && cargo clippy --all-targets && cargo test
+
+# Extension
+cd testudo-extension && bun run build
+
+# Journal/Desk
+cd testudo-journal && bun run build
+
+# Web/Landing
+cd testudo-web && bun run build
 ```
 
 All commands must exit with code 0.
@@ -105,9 +118,21 @@ If verification fails for >3 iterations on the same error:
 
 | Purpose | Location |
 |---------|----------|
-| Main entry | [path] |
-| Config | [path] |
-| Tests | [path] |
+| Rust router entry | `testudo-exchange/crates/router/src/main.rs` |
+| Routes | `testudo-exchange/crates/router/src/routes/` |
+| Services | `testudo-exchange/crates/router/src/services/` |
+| Models | `testudo-exchange/crates/router/src/models/` |
+| Repositories | `testudo-exchange/crates/router/src/repositories/` |
+| Migrations | `testudo-exchange/crates/sqlx_postgres/migrations/` |
+| pg_queue | `testudo-exchange/crates/pg_queue/src/` |
+| Journal service | `testudo-exchange/crates/router/src/services/journal_service.rs` |
+| HL SDK integration | `testudo-exchange/crates/router/src/services/hyperliquid/` |
+| CEX client | `testudo-exchange/crates/router/src/services/cex_client.rs` |
+| Exchange accounts | `testudo-exchange/crates/router/src/repositories/exchange_account.rs` |
+| Desk/Journal app | `testudo-journal/src/` |
+| Extension source | `testudo-extension/src/` |
+| Landing page | `testudo-web/src/` |
+| Specs | `.specify/specs/` |
 
 ---
 
