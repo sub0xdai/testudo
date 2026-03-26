@@ -107,24 +107,36 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   function exportNotes() {
     const d = detail()
     if (!d) return
-    const frontmatter = [
+    const dateStr = d.closed_at.slice(0, 10)
+    const tags = d.tags?.map((t: JournalTag) => t.name) ?? []
+    const lines = [
       '---',
-      `symbol: ${d.symbol}`,
-      `side: ${d.side}`,
+      `symbol: "${d.symbol}"`,
+      `side: "${d.side}"`,
       `entry: ${d.entry_price}`,
       `exit: ${d.exit_price}`,
       `pnl: ${d.net_pnl}`,
-      `date: ${d.closed_at}`,
-      `exchange: ${d.exchange}`,
-      '---',
-    ].join('\n')
-    const content = `${frontmatter}\n\n${d.notes || ''}`
-    const blob = new Blob([content], { type: 'text/markdown' })
+      `date: ${dateStr}`,
+      `exchange: "${d.exchange}"`,
+    ]
+    if (tags.length > 0) {
+      lines.push('tags:')
+      for (const tag of tags) {
+        lines.push(`  - "${tag}"`)
+      }
+    }
+    lines.push('---')
+    // Use notes() signal which has current edits, fall back to saved
+    const noteContent = notes() || d.notes || ''
+    const content = lines.join('\n') + '\n\n' + noteContent + '\n'
+    const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${d.symbol}_${d.closed_at.slice(0, 10)}.md`
+    a.download = `${d.symbol}_${dateStr}.md`
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
 

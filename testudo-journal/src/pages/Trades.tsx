@@ -8,7 +8,7 @@ export function Trades() {
 
   return (
     <div>
-      <PageSubHeader title="TRADES" />
+      <PageSubHeader title="JOURNAL" />
       <div class="border border-container-border bg-container-bg">
         <TradeTable onSelectTrade={(id) => setSelectedTradeId(id)} />
         <Show when={selectedTradeId()}>
