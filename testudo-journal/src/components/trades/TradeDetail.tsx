@@ -5,9 +5,11 @@ import {
   updateTradeNotes,
   addTradeTags,
   removeTradeTag,
+  createTag,
   type TradeDetail as TradeDetailType,
   type JournalTag,
 } from '../../api/client'
+import { MarkdownPreview } from '../journal/MarkdownPreview'
 import { TagBadge } from './TagBadge'
 import {
   formatCurrency,
@@ -33,6 +35,9 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   const [saving, setSaving] = createSignal(false)
   const [showTagPicker, setShowTagPicker] = createSignal(false)
   const [closing, setClosing] = createSignal(false)
+  const [previewMode, setPreviewMode] = createSignal(false)
+  const [newTagName, setNewTagName] = createSignal('')
+  const [creatingTag, setCreatingTag] = createSignal(false)
 
   createFocusTrap(() => panelRef)
 
@@ -82,6 +87,45 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
   async function handleRemoveTag(tagId: string) {
     await removeTradeTag(props.tradeId, tagId)
     refetch()
+  }
+
+  async function handleCreateTag() {
+    const name = newTagName().trim()
+    if (!name || creatingTag()) return
+    setCreatingTag(true)
+    try {
+      const tag = await createTag({ name })
+      await addTradeTags(props.tradeId, [tag.id])
+      setNewTagName('')
+      setShowTagPicker(false)
+      refetch()
+    } finally {
+      setCreatingTag(false)
+    }
+  }
+
+  function exportNotes() {
+    const d = detail()
+    if (!d) return
+    const frontmatter = [
+      '---',
+      `symbol: ${d.symbol}`,
+      `side: ${d.side}`,
+      `entry: ${d.entry_price}`,
+      `exit: ${d.exit_price}`,
+      `pnl: ${d.net_pnl}`,
+      `date: ${d.closed_at}`,
+      `exchange: ${d.exchange}`,
+      '---',
+    ].join('\n')
+    const content = `${frontmatter}\n\n${d.notes || ''}`
+    const blob = new Blob([content], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${d.symbol}_${d.closed_at.slice(0, 10)}.md`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const availableTags = () => {
@@ -249,11 +293,8 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                       aria-label="Available tags"
                       class="mt-2 p-2 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 animate-dropdown-in"
                     >
-                      <Show
-                        when={availableTags().length > 0}
-                        fallback={<span class="text-xs font-mono text-text-tertiary">No more tags</span>}
-                      >
-                        <div class="flex flex-wrap gap-1.5">
+                      <Show when={availableTags().length > 0}>
+                        <div class="flex flex-wrap gap-1.5 mb-2">
                           <For each={availableTags()}>
                             {(tag, i) => (
                               <button role="option" onClick={() => handleAddTag(tag.id)} aria-label={`Add tag ${tag.name}`}>
@@ -263,25 +304,80 @@ export function TradeDetail(props: { tradeId: string; onClose: () => void }) {
                           </For>
                         </div>
                       </Show>
+                      {/* Inline tag creation */}
+                      <form
+                        onSubmit={(e) => { e.preventDefault(); handleCreateTag() }}
+                        class="flex gap-1.5 items-center"
+                      >
+                        <input
+                          type="text"
+                          value={newTagName()}
+                          onInput={(e) => setNewTagName(e.currentTarget.value)}
+                          placeholder="New tag..."
+                          class="flex-1 px-2 py-1 bg-main-bg border border-container-border text-xs font-mono text-text-primary placeholder:text-text-tertiary outline-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newTagName().trim() || creatingTag()}
+                          class="px-2 py-1 text-xs font-mono text-text-primary border border-container-border hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-30"
+                        >
+                          +
+                        </button>
+                      </form>
                     </div>
                   </Show>
                 </div>
 
                 {/* Notes */}
                 <div>
-                  <span class="text-[10px] font-display font-medium tracking-widest uppercase text-text-tertiary block mb-2">
-                    NOTES
-                  </span>
-                  <textarea
-                    value={notes()}
-                    onInput={(e) => {
-                      setNotes(e.currentTarget.value)
-                      setNotesDirty(true)
-                    }}
-                    onBlur={() => { if (notesDirty()) saveNotes() }}
-                    placeholder="Quick note..."
-                    class="w-full h-20 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-none"
-                  />
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-display font-medium tracking-widest uppercase text-text-tertiary">
+                      NOTES
+                    </span>
+                    <div class="flex items-center gap-2">
+                      <button
+                        class={`text-[10px] font-mono transition-colors ${previewMode() ? 'text-text-tertiary hover:text-text-secondary' : 'text-text-primary'}`}
+                        onClick={() => setPreviewMode(false)}
+                      >
+                        EDIT
+                      </button>
+                      <span class="text-text-tertiary text-[10px]">/</span>
+                      <button
+                        class={`text-[10px] font-mono transition-colors ${previewMode() ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'}`}
+                        onClick={() => setPreviewMode(true)}
+                      >
+                        PREVIEW
+                      </button>
+                      <Show when={notes()}>
+                        <button
+                          class="text-[10px] font-mono text-text-tertiary hover:text-text-secondary transition-colors ml-1"
+                          onClick={exportNotes}
+                          title="Export as .md"
+                        >
+                          &#8615; .MD
+                        </button>
+                      </Show>
+                    </div>
+                  </div>
+                  <Show
+                    when={!previewMode()}
+                    fallback={
+                      <div class="px-3 py-2 bg-main-bg border border-container-border rounded min-h-[80px]">
+                        <MarkdownPreview content={notes()} />
+                      </div>
+                    }
+                  >
+                    <textarea
+                      value={notes()}
+                      onInput={(e) => {
+                        setNotes(e.currentTarget.value)
+                        setNotesDirty(true)
+                      }}
+                      onBlur={() => { if (notesDirty()) saveNotes() }}
+                      placeholder="Markdown notes..."
+                      class="w-full h-32 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-y"
+                    />
+                  </Show>
                   <Show when={notesDirty()}>
                     <button
                       class="mt-1 px-3 py-1 text-xs font-mono border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

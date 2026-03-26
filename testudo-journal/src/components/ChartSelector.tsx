@@ -47,11 +47,11 @@ export function ChartSelector(props: ChartSelectorProps) {
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
-          class="bg-transparent font-mono text-xs text-text-tertiary uppercase outline-none cursor-pointer hover:text-text-primary transition-colors"
+          class="bg-main-bg font-mono text-xs text-text-tertiary uppercase outline-none cursor-pointer hover:text-text-primary transition-colors"
           aria-label="Select chart type"
         >
           {CHART_OPTIONS.map((opt) => (
-            <option value={opt.value}>{opt.label}</option>
+            <option value={opt.value} class="bg-main-bg text-text-primary">{opt.label}</option>
           ))}
         </select>
       </div>

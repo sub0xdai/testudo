@@ -5,8 +5,10 @@ interface KebabMenuProps {
   onTest: () => void
   onDelete: () => void
   onRevoke: () => void
+  onImport: () => void
   showRevoke: boolean
   isTesting: boolean
+  isImporting: boolean
 }
 
 function KebabMenu(props: KebabMenuProps) {
@@ -47,6 +49,16 @@ function KebabMenu(props: KebabMenuProps) {
             class="text-left px-4 py-2.5 text-xs font-mono text-text-secondary hover:bg-main-bg transition-colors"
           >
             {props.isTesting ? 'TESTING...' : 'TEST CONNECTION'}
+          </button>
+          <button
+            onClick={() => {
+              props.onImport()
+              setOpen(false)
+            }}
+            disabled={props.isImporting}
+            class="text-left px-4 py-2.5 text-xs font-mono text-text-secondary hover:bg-main-bg border-t border-container-border transition-colors disabled:opacity-50"
+          >
+            {props.isImporting ? 'IMPORTING...' : 'IMPORT HISTORY'}
           </button>
           <Show when={props.showRevoke}>
             <Show
@@ -136,6 +148,8 @@ interface ExchangeCardProps {
   onDelete: () => void
   onRevoke: () => void
   onMigrate: () => void
+  onImport: () => void
+  isImporting: boolean
 }
 
 export function ExchangeCard(props: ExchangeCardProps) {
@@ -165,8 +179,10 @@ export function ExchangeCard(props: ExchangeCardProps) {
           onTest={props.onTest}
           onDelete={props.onDelete}
           onRevoke={props.onRevoke}
+          onImport={props.onImport}
           showRevoke={isAgentWallet()}
           isTesting={props.isTesting}
+          isImporting={props.isImporting}
         />
       </div>
 

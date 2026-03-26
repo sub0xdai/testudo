@@ -26,6 +26,7 @@ export default function Account() {
   const [testingId, setTestingId] = createSignal<string | null>(null)
   const [deletingId, setDeletingId] = createSignal<string | null>(null)
   const [revokingId, setRevokingId] = createSignal<string | null>(null)
+  const [importingId, setImportingId] = createSignal<string | null>(null)
   const [showForm, setShowForm] = createSignal(false)
   const [showWalletConnect, setShowWalletConnect] = createSignal(false)
   const [setupComplete, setSetupComplete] = createSignal(false)
@@ -89,6 +90,23 @@ export default function Account() {
       setError('Failed to revoke agent')
     } finally {
       setRevokingId(null)
+    }
+  }
+
+  async function handleImport(exchangeName: string) {
+    setImportingId(exchangeName)
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || ''
+      await fetch(`${API_BASE}/api/v1/trades/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ exchange_name: exchangeName }),
+      })
+    } catch {
+      setError('Failed to trigger import')
+    } finally {
+      setImportingId(null)
     }
   }
 
@@ -167,6 +185,8 @@ export default function Account() {
                   onDelete={() => handleDelete(acc.id)}
                   onRevoke={() => handleRevoke(acc.id)}
                   onMigrate={() => {/* TODO: migrate to agent wallet */}}
+                  onImport={() => handleImport(acc.exchange_name)}
+                  isImporting={importingId() === acc.exchange_name}
                 />
               )}
             </For>

@@ -2,6 +2,7 @@ import { Show, For, createSignal, createEffect } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { useAuth } from '../../context/AuthContext'
 import { useOnboardingState } from './useOnboardingState'
+import { exchangeApi } from '../../api/client'
 
 const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/testudo-sniper/'
 
@@ -24,6 +25,29 @@ export function Stepper() {
     }
   })
 
+  const [importing, setImporting] = createSignal(false)
+
+  const triggerImport = async () => {
+    if (importing()) return
+    setImporting(true)
+    try {
+      const accounts = await exchangeApi.listAccounts()
+      const API_BASE = import.meta.env.VITE_API_URL || ''
+      for (const account of accounts) {
+        await fetch(`${API_BASE}/api/v1/trades/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ exchange_name: account.exchange_name }),
+        })
+      }
+    } catch (e) {
+      console.error('Import trigger failed:', e)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   const handleStepClick = (index: number) => {
     switch (index) {
       case 0:
@@ -33,8 +57,7 @@ export function Stepper() {
         navigate('/account')
         break
       case 2:
-        // Import is auto-triggered per HIST-01 — navigate to account to add exchanges
-        navigate('/account')
+        triggerImport()
         break
       case 3:
         navigate('/account')

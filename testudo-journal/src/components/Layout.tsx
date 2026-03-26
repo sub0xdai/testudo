@@ -6,8 +6,7 @@ import { Stepper } from './onboarding/Stepper'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
-  { path: '/trades', label: 'TRADES' },
-  { path: '/journal', label: 'JOURNAL' },
+  { path: '/trades', label: 'JOURNAL' },
   { path: '/account', label: 'ACCOUNT' },
 ]
 
