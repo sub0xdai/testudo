@@ -184,7 +184,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
           onRevoke={props.onRevoke}
           onImport={props.onImport}
           showRevoke={isAgentWallet()}
-          showImport={props.account.exchange_name === 'hyperliquid'}
+          showImport={true}
           isTesting={props.isTesting}
           isImporting={props.isImporting}
         />

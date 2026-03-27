@@ -14,6 +14,7 @@ const {
   handlePosition,
   handleLeverage,
   handleOpenOrders,
+  handleTrades,
 } = require('./handlers');
 const { handleOrdersConnection } = require('./ws-orders');
 const { register, sidecarRequestsTotal, sidecarLatencySeconds, sidecarPoolSize } = require('./metrics');
@@ -71,6 +72,7 @@ app.post('/position', handlePosition);
 app.post('/leverage', handleLeverage);
 app.post('/orders/open', handleOpenOrders);
 app.post('/orders/cancel-all', handleCancelAllOrders);
+app.post('/trades', handleTrades);
 
 // Start eviction timer
 pool.startEviction();

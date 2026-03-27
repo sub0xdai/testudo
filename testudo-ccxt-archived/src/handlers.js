@@ -309,6 +309,42 @@ async function handleCancelAllOrders(req, res) {
   }
 }
 
+/**
+ * POST /trades
+ * HIST-02: Fetch user's trade history for import.
+ * Returns array of fills with numeric fields as strings.
+ */
+async function handleTrades(req, res) {
+  try {
+    const { exchange, params } = getExchangeAndParams(req.body);
+    const { symbol, since, limit } = params;
+
+    const trades = await exchange.fetchMyTrades(
+      symbol || undefined,
+      since || undefined,
+      limit || 500,
+      params.extra || {}
+    );
+
+    const safe = trades.map(t => ({
+      id: String(t.id),
+      symbol: t.symbol,
+      side: t.side,
+      price: stringify(t.price),
+      amount: stringify(t.amount),
+      cost: stringify(t.cost || 0),
+      fee_cost: stringify(t.fee?.cost || 0),
+      fee_currency: t.fee?.currency || 'USDT',
+      timestamp: t.timestamp,
+    }));
+
+    res.json(safe);
+  } catch (err) {
+    const mapped = mapError(err);
+    res.status(mapped.status).json(mapped.body);
+  }
+}
+
 module.exports = {
   handleBalance,
   handleOrder,
@@ -318,5 +354,6 @@ module.exports = {
   handlePosition,
   handleLeverage,
   handleOpenOrders,
+  handleTrades,
   stringify,
 };
