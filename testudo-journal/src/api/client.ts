@@ -403,11 +403,15 @@ export async function deleteImage(imageId: string): Promise<void> {
 // ─── Exchange Management API ───
 
 export interface ExchangeInfo {
+  id: string
   name: string
-  display_name: string
-  exchange_type: string
-  requires_passphrase: boolean
-  supported_features: string[]
+  display_name?: string
+  type: string
+  exchange_type?: string
+  requires_passphrase?: boolean
+  supported_features?: string[]
+  description?: string
+  required_credentials?: string[]
 }
 
 export interface ExchangeAccount {
@@ -481,7 +485,10 @@ async function fetchExchange<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const exchangeApi = {
-  listExchanges: () => fetchExchange<ExchangeInfo[]>(''),
+  listExchanges: async () => {
+    const res = await fetchExchange<{ exchanges: ExchangeInfo[] }>('')
+    return res.exchanges
+  },
   listAccounts: () => fetchExchange<ExchangeAccount[]>('/accounts'),
   addAccount: (payload: AddExchangeAccountPayload) =>
     fetchExchange<ExchangeAccount>('/accounts', {

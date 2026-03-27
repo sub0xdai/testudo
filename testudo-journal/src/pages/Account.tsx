@@ -227,10 +227,10 @@ export default function Account() {
                         onInput={(e) => setFormExchange(e.currentTarget.value)}
                         class="w-full bg-main-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary"
                       >
-                        <option value="">Select exchange...</option>
+                        <option value="" class="bg-main-bg text-text-primary">Select exchange...</option>
                         <For each={exs()}>
                           {(ex) => (
-                            <option value={ex.name}>{ex.display_name}</option>
+                            <option value={ex.id}>{ex.name}</option>
                           )}
                         </For>
                       </select>
