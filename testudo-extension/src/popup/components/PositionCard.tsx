@@ -134,29 +134,17 @@ export default function PositionCard(props: PositionCardProps) {
             Trail: {props.trade.trailing_stop_enabled === true ? "ON" : "OFF"}
           </span>
         </div>
-        <Show
-          when={!props.isDex}
-          fallback={
-            <span
-              class="text-[9px] text-text-dim font-sans italic cursor-help"
-              title="Close positions directly on the exchange. The extension manages entry, SL, and TP placement."
-            >
-              manage on exchange
-            </span>
-          }
+        <button
+          class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans border-text-primary ${
+            props.cancelling ? "opacity-50 cursor-wait" : "text-text-primary hover:bg-text-primary hover:text-bg-core"
+          }`}
+          onClick={() => props.onCancel(props.trade.id)}
+          disabled={props.cancelling}
+          data-testid="cancel-order"
+          title="Cancel trade"
         >
-          <button
-            class={`px-4 py-2.5 min-h-[44px] text-xs font-bold tracking-wider font-sans border-text-primary ${
-              props.cancelling ? "opacity-50 cursor-wait" : "text-text-primary hover:bg-text-primary hover:text-bg-core"
-            }`}
-            onClick={() => props.onCancel(props.trade.id)}
-            disabled={props.cancelling}
-            data-testid="cancel-order"
-            title="Cancel trade"
-          >
-            {props.cancelling ? "..." : "CANCEL"}
-          </button>
-        </Show>
+          {props.cancelling ? "..." : "CANCEL"}
+        </button>
       </div>
     </div>
   );

@@ -400,6 +400,42 @@ export async function deleteImage(imageId: string): Promise<void> {
   })
 }
 
+// ─── Active Positions / Draft Notes API (JNL-20) ───
+
+export interface ActivePosition {
+  id: string
+  symbol: string
+  side: string
+  status: string
+  entry_price: string
+  entry_quantity: string
+  stop_loss_price: string | null
+  take_profit_targets: { price: string; percentage: number; status: string }[] | null
+  created_at: string
+  exchange_account_id: string
+}
+
+export async function fetchActivePositions(): Promise<ActivePosition[]> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/trades`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.data || []
+}
+
+export async function getDraftNotes(tradeGroupId: string): Promise<{ notes: string | null }> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/drafts/${tradeGroupId}`)
+  if (!res.ok) return { notes: null }
+  return res.json()
+}
+
+export async function saveDraftNotes(tradeGroupId: string, notes: string | null): Promise<void> {
+  await fetchWithCredentials(`${API_BASE}/api/v1/journal/drafts/${tradeGroupId}/notes`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  })
+}
+
 // ─── Exchange Management API ───
 
 export interface ExchangeInfo {
