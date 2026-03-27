@@ -26,3 +26,6 @@ Shift the architecture to a **Persistent Terminal** model. The UI shell is alway
 2. **Inject Gateway:** Refactor `PairView` logic into a `PairingGateway` component that masks the `Trade`/`Positions` panels.
 3. **Migrate Telemetry:** Extract account data from the `Account` tab and re-distribute it to the Header/Balance Panel.
 4. **Direct Connect:** Wire the "Connect" button to activate the `PairingGateway` state directly.
+
+
+

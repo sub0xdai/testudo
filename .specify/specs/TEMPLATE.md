@@ -39,7 +39,7 @@ End with why this spec is the right fix.}
 
 ### {Section 1 — e.g. Key Types, Architecture}
 
-{Describe the design. Include code blocks for key types, structs, interfaces.}
+{Describe the design. Include code blocks for key types, structs, interfaces. LEAD WITH TDD, ensure test coverage}
 
 ```rust
 // or typescript, bash, etc.
