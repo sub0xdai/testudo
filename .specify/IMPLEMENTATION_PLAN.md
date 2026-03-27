@@ -1,37 +1,37 @@
 # Implementation Plan
 
-> Last updated: 2026-03-26
-> Current spec: ONBOARD-01-stepper-onboarding
+> Last updated: 2026-03-27
+> Current spec: DOCS-01-comprehensive-documentation
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: HIST-01-exchange-history-import
+## Active Spec: DOCS-01-comprehensive-documentation
 
-Import exchange trade history (Phase 1: Hyperliquid) — pg_queue async jobs, closing fills → journal_trades, auto-trigger on exchange credential save, dedup on `(user_id, exchange, exchange_fill_id)`.
+Write all 10 documentation pages for the Testudo docs site. Infrastructure (content collection, layouts, sidebar, routing, KaTeX) already built. Each task writes one doc file.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Schema migration — add `source TEXT NOT NULL DEFAULT 'testudo'` and `exchange_fill_id BIGINT` columns to `journal_trades`. Add partial unique index `(user_id, exchange, exchange_fill_id) WHERE exchange_fill_id IS NOT NULL`. | complete | low | — |
-| T2 | pg_queue migration — create `queue_imports` table (same structure as `queue_orders`). Add `TradeImports` variant to `QueueName` enum. Wire up LISTEN/NOTIFY trigger. | complete | low | — |
-| T3 | Update JournalTrade model — add `source` and `exchange_fill_id` fields to `JournalTrade` struct in `models/journal.rs`. Update `record_trade_close()` INSERT query in `journal_service.rs` to include new columns. Update `TradeCloseEvent` to accept optional `source` and `exchange_fill_id`. | complete | medium | T1 |
-| T4 | Import worker — create `services/import_worker.rs`. Implement HL fill fetcher: paginate `user_fills_by_time()` across 90-day window, filter to closing perp fills (`closedPnl != "0.0"`, no `@` prefix coins), map each fill to `TradeCloseEvent`, call `record_trade_close()`. Handle dedup via ON CONFLICT or pre-check. | complete | complex | T1, T2, T3 |
-| T5 | Import routes — create `routes/imports.rs`. `POST /api/v1/trades/import` (enqueue job, return job_id). `GET /api/v1/trades/import/status` (list user's import jobs with status/counts). Register routes in `routes/mod.rs`. | complete | medium | T2 |
-| T6 | Auto-trigger on exchange add — modify `routes/exchanges.rs` POST handler to enqueue an import job after credentials are saved. | complete | low | T2, T5 |
-| T7 | Spawn import worker — add worker loop startup to `main.rs` as a Tokio task alongside existing workers. | complete | low | T4 |
-| T8 | WebSocket notification — send `import_complete` event to user via pg_notify → ws-stream pipeline on job completion. | complete | medium | T4, T7 |
-| T9 | Verification — `cargo clippy --all-targets` clean (only pre-existing warnings), `cargo test` 1025 pass / 0 fail. | complete | low | T1–T8 |
+| T1 | Write `01-what-is-testudo.md` — problem, solution, components, audience | complete | low | — |
+| T2 | Write `02-core-concepts.md` — position sizing, R-multiples, expectancy, profit factor, drawdown, win rate vs edge (KaTeX formulas) | complete | high | — |
+| T3 | Write `03-getting-started.md` — wallet connect, add exchange, import history, install extension, pair | complete | medium | — |
+| T4 | Write `04-extension.md` — Alt+X workflow, scraper, modal, double-Enter, popup overview | complete | medium | — |
+| T5 | Write `05-dashboard.md` — equity curve, stats sidebar, chart selectors, filtering, time presets | complete | medium | — |
+| T6 | Write `06-journal.md` — thesis-first approach, notes, tags, timeline, collections, export | complete | medium | — |
+| T7 | Write `07-exchanges.md` — per-exchange setup (HL, WOO, Binance, Bybit, OKX), API key guides | complete | medium | — |
+| T8 | Write `08-faq.md` — common issues and troubleshooting | complete | low | — |
+| T9 | Write `09-architecture.md` — system diagram, component map, data flow | complete | medium | — |
+| T10 | Write `10-api-reference.md` — REST endpoints, WebSocket, auth flow | complete | high | — |
+| T11 | Verify `bun run build` passes in testudo-web | complete | low | T1–T10 |
 
 ### Key Decisions
 
-- **Credentials not in job payload**: Worker loads credentials from `exchange_account_repo.load_credentials(account_id, user_id)` at execution time. Only `account_id` stored in queue payload.
-- **Entry price derivation**: `entry = exit - (closedPnl / sz)` for longs, `entry = exit + (closedPnl / sz)` for shorts. P&L is exact from HL; entry is derived.
-- **opened_at = closed_at**: HL closing fills don't include open time. Duration will show 0s for imports. Acceptable.
-- **Leverage defaults to 1**: HL fills don't include leverage. P&L is already correct from `closedPnl`.
-- **Route through existing journal pipeline**: `record_trade_close()` handles P&L computation, daily stats, drawdown. Imported trades get the same treatment.
-- **Phase 2 (CCXT) is a separate spec**: This spec covers Hyperliquid only.
+- **Audience-first**: Trader docs (1–8) use plain English with concrete examples. Technical docs (9–10) assume engineering context.
+- **KaTeX for math**: Position sizing formula, expectancy, R-multiples use block/inline math notation.
+- **No screenshots yet**: Text-only first pass. Screenshots can be added in a follow-up.
+- **Accurate to codebase**: All descriptions verified against actual source code via research agents.
 
 ### Discoveries
 
@@ -43,6 +43,9 @@ Import exchange trade history (Phase 1: Hyperliquid) — pg_queue async jobs, cl
 
 | Spec | Completion Date |
 |------|-----------------|
+| HIST-01-exchange-history-import | 2026-03-26 |
+| ONBOARD-01-stepper-onboarding | 2026-03-26 |
+| DESK-02-landing-strip | 2026-03-26 |
 | EXT-41-desk-dashboard | 2026-03-24 |
 | EXT-40-smart-card-grid | 2026-03-24 |
 | EXT-39-pair-ux | 2026-03-24 |

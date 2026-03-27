@@ -2,7 +2,7 @@
 
 **Spec ID:** DOCS-01-comprehensive-documentation
 **Date:** 2026-03-27
-**Status:** Draft
+**Status:** Complete
 **Class:** Documentation
 **Priority:** P1 — No user-facing documentation exists. Traders cannot learn how to use the product without it.
 **Depends on:** DESK-02-landing-strip (Astro infrastructure)
