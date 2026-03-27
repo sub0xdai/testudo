@@ -10,6 +10,7 @@ interface KebabMenuProps {
   showImport: boolean
   isTesting: boolean
   isImporting: boolean
+  isImported: boolean
 }
 
 function KebabMenu(props: KebabMenuProps) {
@@ -54,13 +55,17 @@ function KebabMenu(props: KebabMenuProps) {
           <Show when={props.showImport}>
             <button
               onClick={() => {
-                props.onImport()
-                setOpen(false)
+                if (!props.isImported) {
+                  props.onImport()
+                  setOpen(false)
+                }
               }}
-              disabled={props.isImporting}
-              class="text-left px-4 py-2.5 text-xs font-mono text-text-secondary hover:bg-main-bg border-t border-container-border transition-colors disabled:opacity-50"
+              disabled={props.isImporting || props.isImported}
+              class={`text-left px-4 py-2.5 text-xs font-mono border-t border-container-border transition-colors disabled:opacity-50 ${
+                props.isImported ? 'text-signal-green' : 'text-text-secondary hover:bg-main-bg'
+              }`}
             >
-              {props.isImporting ? 'IMPORTING...' : 'IMPORT HISTORY'}
+              {props.isImported ? 'IMPORTED \u2713' : props.isImporting ? 'IMPORTING...' : 'IMPORT HISTORY'}
             </button>
           </Show>
           <Show when={props.showRevoke}>
@@ -153,6 +158,7 @@ interface ExchangeCardProps {
   onMigrate: () => void
   onImport: () => void
   isImporting: boolean
+  isImported: boolean
 }
 
 export function ExchangeCard(props: ExchangeCardProps) {
@@ -187,6 +193,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
           showImport={true}
           isTesting={props.isTesting}
           isImporting={props.isImporting}
+          isImported={props.isImported}
         />
       </div>
 

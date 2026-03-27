@@ -1,4 +1,4 @@
-import { createSignal, createResource, For, Show } from 'solid-js'
+import { createSignal, createResource, For, Show, onMount } from 'solid-js'
 import {
   exchangeApi,
   type ExchangeInfo,
@@ -27,7 +27,21 @@ export default function Account() {
   const [deletingId, setDeletingId] = createSignal<string | null>(null)
   const [revokingId, setRevokingId] = createSignal<string | null>(null)
   const [importingId, setImportingId] = createSignal<string | null>(null)
+  const [importedExchanges, setImportedExchanges] = createSignal<Set<string>>(new Set())
   const [showForm, setShowForm] = createSignal(false)
+
+  // Check which exchanges have completed imports
+  onMount(async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || ''
+      const res = await fetch(`${API_BASE}/api/v1/trades/import/status`, { credentials: 'include' })
+      if (res.ok) {
+        const jobs: Array<{ exchange_name: string; status: string }> = await res.json()
+        const done = new Set(jobs.filter(j => j.status === 'completed').map(j => j.exchange_name))
+        setImportedExchanges(done)
+      }
+    } catch { /* non-critical */ }
+  })
   const [showWalletConnect, setShowWalletConnect] = createSignal(false)
   const [setupComplete, setSetupComplete] = createSignal(false)
   const [error, setError] = createSignal('')
@@ -94,15 +108,19 @@ export default function Account() {
   }
 
   async function handleImport(exchangeName: string) {
+    if (importedExchanges().has(exchangeName)) return // already imported
     setImportingId(exchangeName)
     try {
       const API_BASE = import.meta.env.VITE_API_URL || ''
-      await fetch(`${API_BASE}/api/v1/trades/import`, {
+      const res = await fetch(`${API_BASE}/api/v1/trades/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ exchange_name: exchangeName }),
       })
+      if (res.ok) {
+        setImportedExchanges(prev => new Set([...prev, exchangeName]))
+      }
     } catch {
       setError('Failed to trigger import')
     } finally {
@@ -187,6 +205,7 @@ export default function Account() {
                   onMigrate={() => {/* TODO: migrate to agent wallet */}}
                   onImport={() => handleImport(acc.exchange_name)}
                   isImporting={importingId() === acc.exchange_name}
+                  isImported={importedExchanges().has(acc.exchange_name)}
                 />
               )}
             </For>
