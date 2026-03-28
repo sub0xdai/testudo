@@ -3,7 +3,7 @@ import solid from 'vite-plugin-solid'
 
 export default defineConfig({
   plugins: [solid()],
-  base: '/desk/',
+  base: process.env.VITE_BASE_PATH || '/desk/',
   server: {
     port: 3002,
     proxy: {
