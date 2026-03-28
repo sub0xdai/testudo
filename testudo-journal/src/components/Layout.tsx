@@ -85,12 +85,32 @@ function WalletChip() {
 // ─── Lock Screen ───
 
 function LockScreen() {
+  const auth = useAuth()
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-4 px-6">
-      <h2 class="font-mono text-2xl tracking-widest text-text-primary">TESTUDO DESK</h2>
-      <p class="font-mono text-sm text-text-secondary max-w-md text-center">
-        Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
-      </p>
+    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
+      <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
+        <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-6">
+          // AUTHENTICATION_REQUIRED
+        </div>
+        <h2 class="font-mono text-2xl md:text-3xl tracking-widest text-text-primary mb-4">
+          TESTUDO DESK
+        </h2>
+        <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
+          Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
+        </p>
+        <button
+          onClick={() => auth.connectWallet()}
+          class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+        >
+          [ CONNECT WALLET ]
+        </button>
+        <a
+          href="https://testudo.vip/docs/03-getting-started"
+          class="block mt-4 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
+        >
+          How does this work? &rarr;
+        </a>
+      </div>
     </div>
   )
 }
@@ -147,7 +167,7 @@ export function Layout(props: { children: JSX.Element }) {
         <div
           class="absolute inset-0"
           style={{
-            "background-image": "url(/Roman-testudo-Trajan-column-966204074.jpg)",
+            "background-image": "url(https://testudo.vip/Roman-testudo-Trajan-column-966204074.jpg)",
             "background-size": "cover",
             "background-position": "center",
             "background-repeat": "no-repeat",

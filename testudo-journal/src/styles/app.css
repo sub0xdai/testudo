@@ -45,10 +45,10 @@
 
 /* --- Background overlay (Hadrian's Wall) --- */
 .bg-overlay {
-  background: rgb(var(--bg-core) / 0.88);
+  background: rgb(var(--bg-core) / 0.80);
 }
 [data-theme="light"] .bg-overlay {
-  background: rgb(var(--bg-core) / 0.82);
+  background: rgb(var(--bg-core) / 0.75);
 }
 
 /* --- Glass Panel --- */
