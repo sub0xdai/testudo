@@ -10,6 +10,13 @@ const buildFirefox = args.includes("--firefox") || (!args.includes("--firefox") 
 const watch = args.includes("--watch");
 const isProduction = !watch;
 
+// Build-time URL injection — defaults to empty string (falls back to localhost in utils.ts)
+const envDefine = {
+  "process.env.BACKEND_URL": JSON.stringify(process.env.BACKEND_URL || ""),
+  "process.env.WS_URL": JSON.stringify(process.env.WS_URL || ""),
+  "process.env.WEB_APP_URL": JSON.stringify(process.env.WEB_APP_URL || ""),
+};
+
 // Background service worker uses ESM (manifest declares "type": "module")
 const ESM_ENTRIES = [
   { in: "src/background.ts", out: "background" },
@@ -34,6 +41,7 @@ async function bundle(outdir: string): Promise<void> {
       sourcemap: true,
       minify: !watch,
       drop: isProduction ? ["console"] : [],
+      define: envDefine,
       logLevel: "info",
     }),
     // IIFE build: content script + popup (Solid.js JSX compilation)
@@ -46,6 +54,7 @@ async function bundle(outdir: string): Promise<void> {
       sourcemap: true,
       minify: !watch,
       drop: isProduction ? ["console"] : [],
+      define: envDefine,
       logLevel: "info",
       plugins: [solidPlugin()],
       jsx: "automatic",
