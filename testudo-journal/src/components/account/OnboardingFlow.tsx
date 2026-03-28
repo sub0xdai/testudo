@@ -31,7 +31,7 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
   const isHyperliquid = () => selectedExchange() === 'hyperliquid'
 
   const selectedExchangeInfo = () =>
-    props.exchanges.find(e => e.name === selectedExchange())
+    props.exchanges.find(e => e.id === selectedExchange())
 
   function clearForm() {
     setApiKey('')
@@ -164,7 +164,7 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
               <option value="">Select exchange...</option>
               <For each={props.exchanges}>
                 {(ex) => (
-                  <option value={ex.name} class="bg-container-bg text-text-primary">
+                  <option value={ex.id} class="bg-container-bg text-text-primary">
                     {ex.name}
                   </option>
                 )}
