@@ -2,7 +2,7 @@
 
 **Spec ID:** DEPLOY-02-cross-origin-cookies
 **Date:** 2026-03-28
-**Status:** Draft
+**Status:** Complete
 **Class:** Bug Fix
 **Priority:** P0 — Exchange dropdown empty, all authenticated API calls fail in production.
 **Depends on:** DEPLOY-01-production-hosting (deployed)

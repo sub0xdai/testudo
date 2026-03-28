@@ -11,6 +11,6 @@
 - [x] Import for woo not working  
 - [ ] Next add binance and other exchanges support - test functionality
 - [ ] save function not working properly on md notes  
-- [ ] create comprehensive docs (astro handles it)  
+- [x] create comprehensive docs (astro handles it)  
 - [ ] apply for firefox/chrome extension store  
 - [ ] Break-even trigger, trailing stop, partial tp (perhaps remove that) 

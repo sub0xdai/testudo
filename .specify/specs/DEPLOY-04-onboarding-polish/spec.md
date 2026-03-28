@@ -2,7 +2,7 @@
 
 **Spec ID:** DEPLOY-04-onboarding-polish
 **Date:** 2026-03-28
-**Status:** Draft
+**Status:** Complete
 **Class:** UX Polish
 **Priority:** P2 — Functional but rough. First impressions matter.
 **Depends on:** DEPLOY-02-cross-origin-cookies (exchange dropdown fix)

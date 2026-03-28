@@ -2,7 +2,7 @@
 
 **Spec ID:** DEPLOY-03-extension-prod-urls
 **Date:** 2026-03-28
-**Status:** Draft
+**Status:** Complete
 **Class:** Configuration
 **Priority:** P1 — Extension can't connect to production backend.
 **Depends on:** DEPLOY-01-production-hosting (deployed)
