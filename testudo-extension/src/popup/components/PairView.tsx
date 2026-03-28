@@ -1,6 +1,6 @@
 import { createSignal, Show, onMount } from "solid-js";
 import { useAuth } from "../context/AuthContext";
-import { WEB_APP_URL } from "../../utils";
+import { DESK_URL } from "../../utils";
 import LoginPreview from "./LoginPreview";
 
 export default function PairView(props: {
@@ -145,7 +145,7 @@ export default function PairView(props: {
                     <span class="text-text-dim mr-1">1.</span> Open{" "}
                     <button
                       class="text-text-primary hover:underline border-0 bg-transparent p-0 font-mono text-[11px] cursor-pointer"
-                      onClick={() => window.open(`${WEB_APP_URL}/desk/account`, "_blank")}
+                      onClick={() => window.open(`${DESK_URL}/account`, "_blank")}
                     >
                       Settings
                     </button>

@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const WEB_APP_URL = process.env.WEB_APP_URL || "http://localhost:3001";
+export const DESK_URL = process.env.DESK_URL || "http://localhost:3002/desk";
 
 export const WS_MAX_RECONNECT_DELAY = 30000;
 export const WS_BASE_RECONNECT_DELAY = 1000;

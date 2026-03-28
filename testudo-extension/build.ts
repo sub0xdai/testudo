@@ -15,6 +15,7 @@ const envDefine = {
   "process.env.BACKEND_URL": JSON.stringify(process.env.BACKEND_URL || ""),
   "process.env.WS_URL": JSON.stringify(process.env.WS_URL || ""),
   "process.env.WEB_APP_URL": JSON.stringify(process.env.WEB_APP_URL || ""),
+  "process.env.DESK_URL": JSON.stringify(process.env.DESK_URL || ""),
 };
 
 // Background service worker uses ESM (manifest declares "type": "module")

@@ -3,7 +3,7 @@ import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
 import ExchangeToggle from "./ExchangeToggle";
 import ExchangeSelector from "./ExchangeSelector";
-import { WEB_APP_URL } from "../../utils";
+import { DESK_URL } from "../../utils";
 
 type SidecarStatus = "unknown" | "healthy" | "unreachable";
 type ThemeKey = "amoled" | "light";
@@ -145,7 +145,7 @@ export default function HeaderBar(props: HeaderBarProps) {
                   <button
                     role="menuitem"
                     class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-text-primary hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
-                    onClick={() => { setMenuOpen(false); window.open(`${WEB_APP_URL}/desk/account?source=extension`, "_blank"); }}
+                    onClick={() => { setMenuOpen(false); window.open(`${DESK_URL}/account?source=extension`, "_blank"); }}
                     data-testid="menu-manage-account"
                   >
                     Manage Account
