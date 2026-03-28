@@ -8,7 +8,6 @@ import {
 } from '../api/client'
 import { ExchangeCard } from '../components/account/ExchangeCard'
 import { AddExchangeCard } from '../components/account/AddExchangeCard'
-import { ExtensionPairingBanner } from '../components/account/ExtensionPairingBanner'
 import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
 
@@ -307,7 +306,6 @@ export default function Account() {
           </Show>
 
           {/* Extension pairing */}
-          <ExtensionPairingBanner />
         </Show>
       </Show>
     </div>

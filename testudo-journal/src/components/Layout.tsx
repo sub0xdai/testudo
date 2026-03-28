@@ -2,7 +2,8 @@ import { createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
 import { useAuth } from '../context/AuthContext'
 import { appKit } from '../config/wallet'
-// Stepper removed from global layout — onboarding handled by Account page
+import { pairExtension } from '../api/client'
+import { markExtensionPaired } from './onboarding/useOnboardingState'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -75,6 +76,206 @@ function WalletChip() {
             >
               DISCONNECT
             </button>
+          </div>
+        </Show>
+      </div>
+    </Show>
+  )
+}
+
+// ─── Extension Chip ───
+
+const CODE_TTL_SECONDS = 60
+
+function ExtensionChip() {
+  const auth = useAuth()
+  const [open, setOpen] = createSignal(false)
+  const [code, setCode] = createSignal<string | null>(null)
+  const [countdown, setCountdown] = createSignal(0)
+  const [generating, setGenerating] = createSignal(false)
+  const [error, setError] = createSignal('')
+  const [copied, setCopied] = createSignal(false)
+  const [expired, setExpired] = createSignal(false)
+  let ref: HTMLDivElement | undefined
+  let timer: ReturnType<typeof setInterval> | null = null
+  let copyTimeout: ReturnType<typeof setTimeout> | null = null
+
+  const isPaired = () => localStorage.getItem('testudo-extension-paired') === 'true'
+
+  function handleClickOutside(e: MouseEvent) {
+    if (ref && !ref.contains(e.target as Node)) setOpen(false)
+  }
+
+  onMount(() => document.addEventListener('mousedown', handleClickOutside))
+  onCleanup(() => {
+    document.removeEventListener('mousedown', handleClickOutside)
+    if (timer) clearInterval(timer)
+    if (copyTimeout) clearTimeout(copyTimeout)
+  })
+
+  async function generateCode() {
+    setGenerating(true)
+    setError('')
+    setExpired(false)
+    try {
+      const { code: newCode } = await pairExtension()
+      setCode(newCode)
+      setCountdown(CODE_TTL_SECONDS)
+      markExtensionPaired()
+
+      if (timer) clearInterval(timer)
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            if (timer) clearInterval(timer)
+            timer = null
+            setExpired(true)
+            setCode(null)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } catch {
+      setError('Failed to generate code')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  function copyCode() {
+    const current = code()
+    if (!current) return
+    navigator.clipboard.writeText(current)
+    setCopied(true)
+    if (copyTimeout) clearTimeout(copyTimeout)
+    copyTimeout = setTimeout(() => setCopied(false), 1500)
+  }
+
+  const minutes = () => Math.floor(countdown() / 60)
+  const seconds = () => String(countdown() % 60).padStart(2, '0')
+
+  return (
+    <Show when={auth.isAuthenticated()}>
+      <div ref={ref} class="relative">
+        <button
+          onClick={() => setOpen(!open())}
+          class="flex items-center gap-2 px-3 py-1.5 border border-container-border font-mono text-xs tracking-wider hover:border-text-primary transition-colors"
+          classList={{
+            'text-text-primary': isPaired(),
+            'text-text-tertiary animate-glow-pulse': !isPaired(),
+          }}
+        >
+          <span
+            class="inline-block w-2 h-2 rounded-full"
+            classList={{
+              'bg-signal-green': isPaired(),
+              'bg-text-tertiary animate-pulse': !isPaired(),
+            }}
+          />
+          EXT
+          <svg width="10" height="10" viewBox="0 0 10 10" class={`text-text-tertiary transition-transform ${open() ? 'rotate-180' : ''}`}>
+            <path d="M2 4L5 7L8 4" stroke="currentColor" stroke-width="1.5" fill="none" />
+          </svg>
+        </button>
+
+        <Show when={open()}>
+          <div class="absolute right-0 mt-1 w-72 bg-container-bg border border-container-border z-50 p-4">
+            {/* Active code */}
+            <Show when={code()}>
+              <div class="text-center">
+                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-3">
+                  // EXTENSION_PAIRING
+                </div>
+                <button
+                  onClick={copyCode}
+                  class="font-mono text-2xl font-bold tracking-[0.3em] cursor-pointer select-none transition-colors mb-1"
+                  classList={{
+                    'text-signal-green': copied(),
+                    'text-text-primary hover:text-text-secondary': !copied(),
+                  }}
+                >
+                  {copied() ? 'COPIED' : code()}
+                </button>
+                <div class="font-mono text-xs text-text-tertiary mb-3">
+                  {minutes()}:{seconds()}
+                </div>
+                <p class="font-mono text-[10px] text-text-tertiary mb-3">
+                  Click code to copy
+                </p>
+                <button
+                  onClick={generateCode}
+                  disabled={generating()}
+                  class="w-full py-2 border border-text-tertiary text-text-tertiary font-mono text-[10px] tracking-wider hover:border-text-primary hover:text-text-primary transition-colors disabled:opacity-50"
+                >
+                  [ NEW CODE ]
+                </button>
+              </div>
+            </Show>
+
+            {/* Expired state */}
+            <Show when={!code() && expired()}>
+              <div class="text-center">
+                <div class="font-mono text-[10px] tracking-widest text-signal-red mb-3">
+                  // EXPIRED
+                </div>
+                <p class="font-mono text-xs text-text-secondary mb-4">
+                  Pairing code has expired.
+                </p>
+                <button
+                  onClick={generateCode}
+                  disabled={generating()}
+                  class="w-full py-2 border border-text-primary text-text-primary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
+                >
+                  {generating() ? 'GENERATING...' : '[ REGENERATE CODE ]'}
+                </button>
+              </div>
+            </Show>
+
+            {/* Paired, no active code */}
+            <Show when={!code() && !expired() && isPaired()}>
+              <div class="text-center">
+                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-3">
+                  // EXTENSION_PAIRED
+                </div>
+                <p class="font-mono text-xs text-text-secondary mb-4">
+                  Extension linked to this wallet.
+                </p>
+                <button
+                  onClick={generateCode}
+                  disabled={generating()}
+                  class="w-full py-2 border border-text-tertiary text-text-tertiary font-mono text-[10px] tracking-wider hover:border-text-primary hover:text-text-primary transition-colors disabled:opacity-50"
+                >
+                  {generating() ? 'GENERATING...' : '[ REGENERATE CODE ]'}
+                </button>
+              </div>
+            </Show>
+
+            {/* Not paired, no active code */}
+            <Show when={!code() && !expired() && !isPaired()}>
+              <div class="text-center">
+                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-3">
+                  // EXTENSION_PAIRING
+                </div>
+                <p class="font-mono text-xs text-text-secondary mb-4">
+                  Link the Testudo browser extension to this wallet.
+                </p>
+                <button
+                  onClick={generateCode}
+                  disabled={generating()}
+                  class="w-full py-2 border border-text-primary text-text-primary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors animate-glow-pulse disabled:opacity-50"
+                >
+                  {generating() ? 'GENERATING...' : '[ PAIR EXTENSION ]'}
+                </button>
+              </div>
+            </Show>
+
+            {/* Error */}
+            <Show when={error()}>
+              <div class="mt-3 px-3 py-2 border border-signal-red bg-signal-red/10 font-mono text-[10px] text-signal-red">
+                {error()}
+              </div>
+            </Show>
           </div>
         </Show>
       </div>
@@ -225,6 +426,7 @@ export function Layout(props: { children: JSX.Element }) {
                 )}
               </For>
             </Show>
+            <ExtensionChip />
             <WalletChip />
           </nav>
 
@@ -258,6 +460,9 @@ export function Layout(props: { children: JSX.Element }) {
                 )}
               </For>
             </Show>
+            <div class="px-6 py-3">
+              <ExtensionChip />
+            </div>
             <div class="px-6 py-3">
               <WalletChip />
             </div>
