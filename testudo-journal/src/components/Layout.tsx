@@ -179,7 +179,7 @@ export function Layout(props: { children: JSX.Element }) {
       <header class="fixed top-0 left-0 right-0 z-50 bg-main-bg/60 backdrop-blur-sm border-b border-container-border/30">
         <div class="max-w-[1400px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <a href="/" class="font-mono text-lg tracking-widest text-text-primary hover:text-accent-steel transition-colors">
+            <a href="https://testudo.vip" class="font-mono text-lg tracking-widest text-text-primary hover:text-accent-steel transition-colors">
               TESTUDO
             </a>
             <button
