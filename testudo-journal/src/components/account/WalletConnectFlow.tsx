@@ -250,9 +250,9 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                   <Show when={isProcessing} fallback={
                     <button
                       onClick={startFlow}
-                      class="w-full px-8 py-4 bg-transparent btn-primary font-mono font-bold text-lg"
+                      class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors animate-glow-pulse"
                     >
-                      AUTHORIZE AGENT WALLET
+                      [ AUTHORIZE AGENT WALLET ]
                     </button>
                   }>
                     <div class="text-center py-4">

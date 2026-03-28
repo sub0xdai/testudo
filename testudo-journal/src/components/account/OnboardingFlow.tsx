@@ -141,7 +141,7 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
 
       {/* Exchange selector + form */}
       <Show when={step() !== 'success'}>
-        <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 md:p-10 max-w-lg w-full">
+        <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 md:p-10 max-w-2xl w-full">
           <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-6">
             // ADD_EXCHANGE
           </div>
