@@ -216,7 +216,9 @@ export default function Account() {
 
           {/* Add exchange form */}
           <Show when={showForm()}>
-            <div class="border border-container-border bg-container-bg/80 p-6 mb-8 max-w-lg">
+            <div class="flex justify-center mb-8">
+            <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 w-full max-w-lg">
+              <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// ADD_EXCHANGE</div>
               <h3 class="font-mono text-sm font-bold text-text-primary mb-4">ADD EXCHANGE</h3>
 
               <Show when={exchanges()}>
@@ -300,6 +302,7 @@ export default function Account() {
                   </form>
                 )}
               </Show>
+            </div>
             </div>
           </Show>
 
