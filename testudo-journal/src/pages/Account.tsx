@@ -156,9 +156,11 @@ export default function Account() {
 
   return (
     <div>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight text-text-primary">ACCOUNT</h1>
-      </div>
+      <Show when={!isOnboarding()}>
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight text-text-primary">ACCOUNT</h1>
+        </div>
+      </Show>
 
       <Show when={error()}>
         <div class="border border-signal-red bg-signal-red/10 p-4 mb-6 font-mono text-sm text-signal-red">

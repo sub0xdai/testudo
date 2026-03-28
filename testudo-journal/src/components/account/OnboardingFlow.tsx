@@ -77,7 +77,7 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
       const info = selectedExchangeInfo()
       const account = await exchangeApi.addAccount({
         exchange_name: exchange,
-        account_name: info?.display_name ?? exchange,
+        account_name: info?.name ?? exchange,
         api_key: key,
         api_secret: secret,
         ...(needsPassphrase() ? { passphrase: passphrase().trim() } : {}),
@@ -92,8 +92,6 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
   }
 
   function handleWalletComplete() {
-    // Wallet flow handles its own account creation; signal completion upstream
-    // We create a minimal account representation since the backend already persisted it
     props.onComplete({
       id: '',
       exchange_name: 'hyperliquid',
@@ -114,131 +112,145 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
   // ─── Render ───
 
   return (
-    <div class="space-y-6">
-      <div>
-        <h2 class="font-display text-xl font-bold text-text-primary">
-          GET STARTED
-        </h2>
-        <p class="font-mono text-sm text-text-secondary mt-2">
-          Link your exchange API keys to enable trading through the Testudo extension.
-          Your credentials are encrypted and stored securely.
-        </p>
-      </div>
-
+    <div class="flex items-center justify-center min-h-[60vh]">
       {/* Success state */}
       <Show when={step() === 'success'}>
-        <div class="text-center py-8 space-y-6">
-          <div class="w-16 h-16 mx-auto border-2 border-text-primary flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-text-primary">
+        <div class="border border-text-primary bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
+          <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-6">
+            // EXCHANGE_CONNECTED
+          </div>
+          <div class="w-12 h-12 mx-auto border border-signal-green flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-signal-green">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h3 class="font-display text-2xl font-bold text-text-primary tracking-wider">
-            EXCHANGE CONNECTED
+          <h3 class="font-mono text-xl font-bold text-text-primary mb-2 tracking-wider">
+            CONNECTED
           </h3>
-          <p class="font-mono text-sm text-text-secondary max-w-md mx-auto">
+          <p class="font-mono text-xs text-text-secondary mb-8">
             Your exchange has been validated and configured.
           </p>
           <button
             onClick={handleDone}
-            class="px-8 py-3 bg-transparent btn-primary font-mono font-bold text-sm"
+            class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
           >
-            VIEW ACCOUNT
+            [ VIEW ACCOUNT ]
           </button>
         </div>
       </Show>
 
       {/* Exchange selector + form */}
       <Show when={step() !== 'success'}>
-        <div class="space-y-4">
-          {/* Exchange dropdown */}
-          <div>
-            <label class="block font-mono text-sm text-text-secondary mb-2">
-              EXCHANGE
-            </label>
-            <select
-              value={selectedExchange()}
-              onChange={(e) => handleExchangeChange(e.currentTarget.value)}
-              class="w-full px-4 py-3 bg-container-bg border border-container-border font-mono text-text-primary focus:border-text-secondary focus:outline-none"
-            >
-              <option value="">Select exchange...</option>
-              <For each={props.exchanges}>
-                {(ex) => (
-                  <option value={ex.id} class="bg-container-bg text-text-primary">
-                    {ex.name}
-                  </option>
-                )}
-              </For>
-            </select>
+        <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 md:p-10 max-w-lg w-full">
+          <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-6">
+            // ADD_EXCHANGE
           </div>
+          <h2 class="font-mono text-xl font-bold text-text-primary mb-2 tracking-wider">
+            GET STARTED
+          </h2>
+          <p class="font-mono text-xs text-text-secondary mb-8 leading-relaxed">
+            Connect an exchange to enable trading. Credentials are encrypted with AES-256-GCM.
+          </p>
 
-          {/* Hyperliquid: wallet connect flow */}
-          <Show when={selectedExchange() && isHyperliquid()}>
-            <WalletConnectFlow onComplete={handleWalletComplete} />
-          </Show>
+          <div class="space-y-4">
+            {/* Exchange dropdown */}
+            <div>
+              <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+                EXCHANGE
+              </label>
+              <select
+                value={selectedExchange()}
+                onChange={(e) => handleExchangeChange(e.currentTarget.value)}
+                class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary focus:border-text-secondary focus:outline-none"
+              >
+                <option value="">Select exchange...</option>
+                <For each={props.exchanges}>
+                  {(ex) => (
+                    <option value={ex.id} class="bg-container-bg text-text-primary">
+                      {ex.name}
+                    </option>
+                  )}
+                </For>
+              </select>
+            </div>
 
-          {/* Traditional exchange: API key form */}
-          <Show when={selectedExchange() && !isHyperliquid()}>
-            <div class="space-y-4">
-              <div>
-                <label class="block font-mono text-sm text-text-secondary mb-2">
-                  API KEY
-                </label>
-                <input
-                  type="password"
-                  value={apiKey()}
-                  onInput={(e) => setApiKey(e.currentTarget.value)}
-                  class="w-full px-4 py-3 bg-container-bg border border-container-border font-mono text-text-primary placeholder-text-tertiary focus:border-text-secondary focus:outline-none"
-                  placeholder="Enter API key"
-                  autocomplete="off"
-                />
-              </div>
+            {/* Hyperliquid: wallet connect flow */}
+            <Show when={selectedExchange() && isHyperliquid()}>
+              <WalletConnectFlow onComplete={handleWalletComplete} />
+            </Show>
 
-              <div>
-                <label class="block font-mono text-sm text-text-secondary mb-2">
-                  SECRET
-                </label>
-                <input
-                  type="password"
-                  value={apiSecret()}
-                  onInput={(e) => setApiSecret(e.currentTarget.value)}
-                  class="w-full px-4 py-3 bg-container-bg border border-container-border font-mono text-text-primary placeholder-text-tertiary focus:border-text-secondary focus:outline-none"
-                  placeholder="Enter API secret"
-                  autocomplete="off"
-                />
-              </div>
-
-              <Show when={needsPassphrase()}>
+            {/* Traditional exchange: API key form */}
+            <Show when={selectedExchange() && !isHyperliquid()}>
+              <div class="space-y-4">
                 <div>
-                  <label class="block font-mono text-sm text-text-secondary mb-2">
-                    PASSPHRASE
+                  <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+                    API KEY
                   </label>
                   <input
                     type="password"
-                    value={passphrase()}
-                    onInput={(e) => setPassphrase(e.currentTarget.value)}
-                    class="w-full px-4 py-3 bg-container-bg border border-container-border font-mono text-text-primary placeholder-text-tertiary focus:border-text-secondary focus:outline-none"
-                    placeholder="Enter passphrase"
+                    value={apiKey()}
+                    onInput={(e) => setApiKey(e.currentTarget.value)}
+                    class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary placeholder-text-tertiary focus:border-text-secondary focus:outline-none"
+                    placeholder="Enter API key"
                     autocomplete="off"
                   />
                 </div>
-              </Show>
 
-              <Show when={error()}>
-                <div class="px-4 py-3 border border-signal-red bg-signal-red/10 font-mono text-sm text-signal-red">
-                  {error()}
+                <div>
+                  <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+                    SECRET
+                  </label>
+                  <input
+                    type="password"
+                    value={apiSecret()}
+                    onInput={(e) => setApiSecret(e.currentTarget.value)}
+                    class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary placeholder-text-tertiary focus:border-text-secondary focus:outline-none"
+                    placeholder="Enter API secret"
+                    autocomplete="off"
+                  />
                 </div>
-              </Show>
 
-              <button
-                onClick={handleSubmit}
-                disabled={step() === 'submitting'}
-                class="w-full px-8 py-4 bg-transparent btn-primary font-mono font-bold text-lg disabled:opacity-50"
-              >
-                {step() === 'submitting' ? 'VALIDATING...' : 'CONNECT EXCHANGE'}
-              </button>
-            </div>
-          </Show>
+                <Show when={needsPassphrase()}>
+                  <div>
+                    <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+                      PASSPHRASE
+                    </label>
+                    <input
+                      type="password"
+                      value={passphrase()}
+                      onInput={(e) => setPassphrase(e.currentTarget.value)}
+                      class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary placeholder-text-tertiary focus:border-text-secondary focus:outline-none"
+                      placeholder="Enter passphrase"
+                      autocomplete="off"
+                    />
+                  </div>
+                </Show>
+
+                <Show when={error()}>
+                  <div class="px-4 py-3 border border-signal-red bg-signal-red/10 font-mono text-xs text-signal-red">
+                    {error()}
+                  </div>
+                </Show>
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={step() === 'submitting'}
+                  class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
+                >
+                  {step() === 'submitting' ? 'VALIDATING...' : '[ CONNECT EXCHANGE ]'}
+                </button>
+              </div>
+            </Show>
+          </div>
+
+          <a
+            href="https://testudo.vip/docs/07-exchanges"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block mt-6 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors text-center"
+          >
+            Exchange setup guides &rarr;
+          </a>
         </div>
       </Show>
     </div>
