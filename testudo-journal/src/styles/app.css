@@ -51,6 +51,12 @@
   background: rgb(var(--bg-core) / 0.75);
 }
 
+/* --- Native form elements (dark theme compat) --- */
+select, option {
+  background-color: rgb(var(--bg-panel));
+  color: rgb(var(--text-primary));
+}
+
 /* --- Glass Panel --- */
 .glass-panel {
   background: rgb(var(--bg-panel) / 0.7);

@@ -230,7 +230,7 @@ export default function Account() {
                         <option value="" class="bg-main-bg text-text-primary">Select exchange...</option>
                         <For each={exs()}>
                           {(ex) => (
-                            <option value={ex.id}>{ex.name}</option>
+                            <option value={ex.id} class="bg-main-bg text-text-primary">{ex.name}</option>
                           )}
                         </For>
                       </select>

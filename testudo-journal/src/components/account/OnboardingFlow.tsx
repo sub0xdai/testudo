@@ -164,8 +164,8 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
               <option value="">Select exchange...</option>
               <For each={props.exchanges}>
                 {(ex) => (
-                  <option value={ex.name}>
-                    {ex.display_name}
+                  <option value={ex.name} class="bg-container-bg text-text-primary">
+                    {ex.name}
                   </option>
                 )}
               </For>
