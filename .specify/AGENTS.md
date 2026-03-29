@@ -357,4 +357,12 @@
 - **content.js bundle size +0.8kb**: From 48.2kb to 48.6kb — Hyperliquid scraper function and platform detection are minimal additions.
 - **Manifest uses exact domain**: `*://app.hyperliquid.xyz/*` not `*://*.hyperliquid.xyz/*` — the trading app is only on the `app` subdomain. This minimizes permission scope.
 
+### 2026-03-29 — EXT-45-dexscreener-symbols
+- **FR-5 pre-satisfied by EXT-43**: `isChartPlatform()` already included `dexscreener.com`, so bridge injection worked without changes. Same pattern as EXT-44 where FR-7 was pre-satisfied.
+- **`isDexScreener()` added for readability**: Not strictly needed (bridge injection uses `isChartPlatform()`), but follows the `isHyperliquid()` pattern for platform-specific scraper guards and future use in content.ts.
+- **4-strategy fallback for DexScreener symbols**: (1) TradingView legend selectors — DexScreener embeds charting lib directly, so `[data-name="legend-source-item"]` may match; (2) title parens — `(SYMBOL)` in `document.title`; (3) title slash — `TOKEN / SOL` in title; (4) leaf element scan — `XXX / YYY` pattern in childless spans/divs/anchors.
+- **DexScreener check before generic SYMBOL_SELECTORS**: Same cascade pattern as Hyperliquid — platform-specific scraper runs first in `scrapeSymbol()`, falling through to TradingView-targeted selectors only if platform check fails.
+- **No manifest changes needed**: DexScreener was already in `host_permissions` and `content_scripts.matches` from initial manifest setup. Unlike EXT-44 (Hyperliquid), no permission additions required.
+- **content.js bundle size +0.7kb**: From 48.6kb to 49.3kb — DexScreener scraper function is ~35 lines.
+
 *This file grows as Vox learns. Never delete entries.*

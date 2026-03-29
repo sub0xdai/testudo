@@ -16,6 +16,10 @@ function isTradingView(): boolean {
   return location.hostname.includes("tradingview.com");
 }
 
+function isDexScreener(): boolean {
+  return location.hostname.includes("dexscreener.com");
+}
+
 function isHyperliquid(): boolean {
   return location.hostname.includes("hyperliquid");
 }

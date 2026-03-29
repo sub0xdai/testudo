@@ -74,11 +74,57 @@ function scrapeHyperliquidSymbol(): string | null {
   return null;
 }
 
+// --- DexScreener Symbol Extraction (EXT-45) ---
+// DexScreener uses Chakra UI with hashed CSS classes (unstable).
+// It embeds TradingView's charting library directly, so legend selectors may work.
+// 4 fallback strategies: legend, title parens, title slash, leaf element scan.
+
+function scrapeDexScreenerSymbol(): string | null {
+  // Strategy 1: TradingView legend (charting lib is embedded, not iframe)
+  // Legend shows "TOKEN/QUOTE (description) on DEX · timeframe"
+  for (const sel of [
+    '[data-name="legend-source-item"] [class*="title"]',
+    '[class*="legendTitle"]',
+  ]) {
+    const el = document.querySelector(sel);
+    if (el?.textContent) {
+      const match = el.textContent.trim().match(/^([A-Za-z0-9]+)\/([A-Za-z]+)/);
+      if (match) return (match[1] + match[2]).toUpperCase();
+    }
+  }
+
+  // Strategy 2: document.title — "tokenName (SYMBOL) Price | DEX Screener"
+  const parenMatch = document.title.match(/\(([A-Z0-9]{2,10})\)/);
+  if (parenMatch) return parenMatch[1] + "USD";
+
+  // Strategy 3: slash-separated pair in title — "TOKEN / SOL"
+  const slashMatch = document.title.match(/([A-Za-z0-9]+)\s*\/\s*([A-Za-z]+)/);
+  if (slashMatch) return (slashMatch[1] + slashMatch[2]).toUpperCase();
+
+  // Strategy 4: scan leaf spans/divs for "XXX / YYY" pattern
+  const elements = document.querySelectorAll("span, div, a");
+  for (const el of elements) {
+    if (el.children.length > 0) continue;
+    const text = el.textContent?.trim() || "";
+    if (/^[A-Z]{2,10}\s*\/\s*[A-Z]{2,10}$/.test(text)) {
+      return text.replace(/\s*\/\s*/, "");
+    }
+  }
+
+  return null;
+}
+
 export function scrapeSymbol(): string | null {
   // Hyperliquid has its own symbol format — check first on that platform
   if (location.hostname.includes("hyperliquid")) {
     const hlSymbol = scrapeHyperliquidSymbol();
     if (hlSymbol) return hlSymbol;
+  }
+
+  // DexScreener uses embedded TradingView charting lib — check before generic selectors
+  if (location.hostname.includes("dexscreener.com")) {
+    const dsSymbol = scrapeDexScreenerSymbol();
+    if (dsSymbol) return dsSymbol;
   }
 
   for (const selector of SYMBOL_SELECTORS) {

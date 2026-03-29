@@ -1,34 +1,35 @@
 # Implementation Plan
 
 > Last updated: 2026-03-29
-> Current spec: EXT-44-hyperliquid-support
+> Current spec: EXT-45-dexscreener-symbols
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: EXT-44-hyperliquid-support
+## Active Spec: EXT-45-dexscreener-symbols
 
-Hyperliquid platform support for Alt+X trade scraping. Adds manifest permissions, platform detection, and Hyperliquid-specific symbol extraction.
+DexScreener symbol extraction for Alt+X trade scraping. Adds platform detection and 4-strategy symbol scraper for DexScreener token pages.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Add `*://app.hyperliquid.xyz/*` to manifest `host_permissions` + `content_scripts.matches`; add `isHyperliquid()` to content.ts; add `scrapeHyperliquidSymbol()` to scraper.ts with leaf-div walk + title fallback; integrate into Alt+X flow | complete | low | — |
+| T1 | Add `isDexScreener()` to content.ts; add `scrapeDexScreenerSymbol()` to scraper.ts with 4 strategies (legend, title parens, title slash, leaf element scan); integrate into `scrapeSymbol()` cascade | complete | low | — |
 | T2 | Validate `bun run build` passes, update state files, commit | complete | low | T1 |
 
 ### Key Decisions
 
-- **FR-7 already satisfied**: `isChartPlatform()` already includes `hyperliquid` from EXT-43 — bridge injection works.
-- **Text-content matching over class selectors**: Hyperliquid uses styled-components with unstable hash classes. Match leaf divs by `/^[A-Z0-9]{2,10}-USDC$/` regex.
-- **Symbol format conversion**: `BTC-USDC` → `BTCUSDC` (strip hyphen).
+- **FR-5 already satisfied**: `isChartPlatform()` already includes `dexscreener.com` from EXT-43 — bridge injection works.
+- **TradingView legend selectors may work**: DexScreener embeds TradingView charting lib directly (not iframe), so `[data-name="legend-source-item"]` may match.
+- **4 fallback strategies**: legend → title parens → title slash → leaf element scan.
 
 ### Discoveries
 
-- FR-7 pre-satisfied by EXT-43 (`isChartPlatform()` already included hyperliquid)
-- DOM strategy [2] won't work in isolated world on Hyperliquid — bridge handles position tool scraping
-- Leaf div walk with text regex is the only stable selector approach (styled-components hash classes are unstable)
-- content.js: 48.2kb → 48.6kb (+0.8kb)
+- FR-5 pre-satisfied by EXT-43 (`isChartPlatform()` already included dexscreener.com)
+- `isDexScreener()` added to content.ts but only used for documentation/readability — `isChartPlatform()` handles the actual bridge injection guard
+- DexScreener check placed before generic SYMBOL_SELECTORS in `scrapeSymbol()` cascade (same pattern as Hyperliquid)
+- content.js: 48.6kb → 49.3kb (+0.7kb)
+- Build passes for both Chrome and Firefox targets
 
 ---
 
@@ -36,6 +37,7 @@ Hyperliquid platform support for Alt+X trade scraping. Adds manifest permissions
 
 | Spec | Completion Date |
 |------|-----------------|
+| EXT-45-dexscreener-symbols | 2026-03-29 |
 | EXT-44-hyperliquid-support | 2026-03-29 |
 | EXT-43-main-world-bridge | 2026-03-29 |
 | DOCS-01-comprehensive-documentation | 2026-03-27 |

@@ -2,7 +2,7 @@
 
 **Spec ID:** EXT-45-dexscreener-symbols
 **Date:** 2026-03-29
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature
 **Priority:** P2 — DexScreener already in manifest but symbol extraction doesn't work there.
 **Depends on:** EXT-43-main-world-bridge
