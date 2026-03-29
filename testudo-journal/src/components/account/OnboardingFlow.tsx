@@ -79,7 +79,7 @@ export function OnboardingFlow(props: OnboardingFlowProps) {
         exchange_name: exchange,
         account_name: info?.name ?? exchange,
         api_key: key,
-        api_secret: secret,
+        secret: secret,
         ...(needsPassphrase() ? { passphrase: passphrase().trim() } : {}),
       })
       setCreatedAccount(account)

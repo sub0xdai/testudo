@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Testudo Sniper",
   "version": "0.1.0",
-  "description": "TradingView to Testudo trade execution",
+  "description": "Automated risk management for crypto traders. Position sizing, circuit breakers, and trade execution from TradingView.",
   "permissions": [
     "storage",
     "activeTab"
@@ -12,8 +12,8 @@
     "*://*.dexscreener.com/*",
     "*://*.gmx.io/*",
     "*://*.bybit.com/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*"
+    "*://api.testudo.vip/*",
+    "*://ws.testudo.vip/*"
   ],
   "background": {
     "service_worker": "background.js",

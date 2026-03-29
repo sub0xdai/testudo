@@ -136,7 +136,7 @@ export default function Account() {
         exchange_name: formExchange(),
         account_name: `${formExchange()}-main`,
         api_key: formApiKey(),
-        api_secret: formSecret(),
+        secret: formSecret(),
         ...(needsPassphrase() ? { passphrase: formPassphrase() } : {}),
       })
       setShowForm(false)

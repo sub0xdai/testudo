@@ -465,7 +465,7 @@ export interface AddExchangeAccountPayload {
   exchange_name: string
   account_name: string
   api_key: string
-  api_secret: string
+  secret: string
   passphrase?: string
 }
 

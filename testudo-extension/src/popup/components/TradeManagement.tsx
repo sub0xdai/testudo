@@ -142,225 +142,27 @@ export default function TradeManagement() {
 
       <div class="divider" />
 
-      {/* Break-even Toggle Card */}
-      <div
-        class={`bg-bg-panel border transition-colors duration-200 ${
-          preset().break_even_enabled ? "border-accent-steel/30 glow-steel" : "border-text-primary/10"
-        }`}
-        data-testid="be-slider"
-      >
+      {/* Break-even — Coming Soon */}
+      <div class="bg-bg-panel border border-text-primary/5 opacity-40 pointer-events-none" data-testid="be-slider">
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[14px] text-text-primary font-sans font-semibold">
-            Break-Even Trigger
-          </span>
-          <button
-            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans border ${
-              preset().break_even_enabled
-                ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
-                : "text-text-dim border-border-subtle bg-bg-elevated"
-            }`}
-            onClick={() => updateField("break_even_enabled", !preset().break_even_enabled)}
-            aria-pressed={preset().break_even_enabled}
-            data-testid="be-toggle"
-          >
-            {preset().break_even_enabled ? "ON" : "OFF"}
-          </button>
-        </div>
-        <div class={`toggle-card-body ${preset().break_even_enabled ? "expanded" : ""}`} aria-hidden={!preset().break_even_enabled}>
-          <div>
-            <div class="flex items-center gap-3 px-4 pb-1">
-              <input
-                id="field-breakeven-range"
-                type="range"
-                min="10"
-                max="100"
-                step="5"
-                value={preset().break_even_at}
-                onInput={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
-                style={sliderStyle(preset().break_even_at, 10, 100)}
-                class="flex-1"
-                tabIndex={preset().break_even_enabled ? 0 : -1}
-                aria-label="Break-even trigger"
-              />
-              <div class="value-input-box">
-                <input
-                  id="field-breakeven"
-                  type="number"
-                  step="5"
-                  min="10"
-                  max="100"
-                  class="w-14 text-right text-[14px]"
-                  value={preset().break_even_at}
-                  onChange={(e) => updateField("break_even_at", parseInt(e.target.value) || 50)}
-                  tabIndex={preset().break_even_enabled ? 0 : -1}
-                  data-testid="break-even-at"
-                />
-                <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
-              </div>
-            </div>
-            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5 px-4 pb-3">
-              <span>10%</span>
-              <span>100%</span>
-            </div>
-          </div>
+          <span class="text-[14px] text-text-primary font-sans font-semibold">Break-Even Trigger</span>
+          <span class="px-3.5 py-1.5 text-[10px] font-bold tracking-widest font-mono border border-border-subtle bg-bg-elevated text-text-dim">COMING SOON</span>
         </div>
       </div>
 
-      {/* Trailing Stop Toggle Card */}
-      <div
-        class={`bg-bg-panel border transition-colors duration-200 ${
-          preset().trailing_stop.enabled ? "border-accent-steel/30 glow-steel" : "border-text-primary/10"
-        }`}
-        data-testid="trailing-card"
-      >
+      {/* Trailing Stop — Coming Soon */}
+      <div class="bg-bg-panel border border-text-primary/5 opacity-40 pointer-events-none" data-testid="trailing-card">
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[14px] text-text-primary font-sans font-semibold">
-            Trailing Stop
-          </span>
-          <button
-            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans border ${
-              preset().trailing_stop.enabled
-                ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
-                : "text-text-dim border-border-subtle bg-bg-elevated"
-            }`}
-            onClick={() =>
-              updateField("trailing_stop", {
-                ...preset().trailing_stop,
-                enabled: !preset().trailing_stop.enabled,
-              })
-            }
-            aria-pressed={preset().trailing_stop.enabled}
-            data-testid="trailing-toggle"
-          >
-            {preset().trailing_stop.enabled ? "ON" : "OFF"}
-          </button>
-        </div>
-        <div class={`toggle-card-body ${preset().trailing_stop.enabled ? "expanded" : ""}`} aria-hidden={!preset().trailing_stop.enabled}>
-          <div>
-            <div class="flex items-center gap-3 px-4 pb-1">
-              <input
-                id="field-trail-range"
-                type="range"
-                min="5"
-                max="100"
-                step="5"
-                value={preset().trailing_stop.distance_percent}
-                onInput={(e) =>
-                  updateField("trailing_stop", {
-                    ...preset().trailing_stop,
-                    distance_percent: parseInt(e.target.value) || 25,
-                  })
-                }
-                style={sliderStyle(preset().trailing_stop.distance_percent, 5, 100)}
-                class="flex-1"
-                tabIndex={preset().trailing_stop.enabled ? 0 : -1}
-                aria-label="Trail distance"
-              />
-              <div class="value-input-box">
-                <input
-                  id="field-trail-distance"
-                  type="number"
-                  step="5"
-                  min="5"
-                  max="100"
-                  class="w-14 text-right text-[14px]"
-                  value={preset().trailing_stop.distance_percent}
-                  onChange={(e) =>
-                    updateField("trailing_stop", {
-                      ...preset().trailing_stop,
-                      distance_percent: parseInt(e.target.value) || 25,
-                    })
-                  }
-                  tabIndex={preset().trailing_stop.enabled ? 0 : -1}
-                  data-testid="trailing-distance"
-                />
-                <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
-              </div>
-            </div>
-            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5 px-4 pb-3">
-              <span>5%</span>
-              <span>100%</span>
-            </div>
-          </div>
+          <span class="text-[14px] text-text-primary font-sans font-semibold">Trailing Stop</span>
+          <span class="px-3.5 py-1.5 text-[10px] font-bold tracking-widest font-mono border border-border-subtle bg-bg-elevated text-text-dim">COMING SOON</span>
         </div>
       </div>
 
-      {/* Partial TP Toggle Card */}
-      <div
-        class={`bg-bg-panel border transition-colors duration-200 ${
-          preset().partial_tp.enabled ? "border-accent-steel/30 glow-steel" : "border-text-primary/10"
-        }`}
-        data-testid="partial-tp-card"
-      >
+      {/* Partial TP — Coming Soon */}
+      <div class="bg-bg-panel border border-text-primary/5 opacity-40 pointer-events-none" data-testid="partial-tp-card">
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="text-[14px] text-text-primary font-sans font-semibold">
-            Partial Take Profit
-          </span>
-          <button
-            class={`px-3.5 py-1.5 min-h-[44px] text-[11px] font-bold tracking-wider font-sans border ${
-              preset().partial_tp.enabled
-                ? "bg-accent-steel/15 text-accent-steel border-accent-steel/30"
-                : "text-text-dim border-border-subtle bg-bg-elevated"
-            }`}
-            onClick={() =>
-              updateField("partial_tp", {
-                ...preset().partial_tp,
-                enabled: !preset().partial_tp.enabled,
-              })
-            }
-            aria-pressed={preset().partial_tp.enabled}
-            data-testid="partial-tp-toggle"
-          >
-            {preset().partial_tp.enabled ? "ON" : "OFF"}
-          </button>
-        </div>
-        <div class={`toggle-card-body ${preset().partial_tp.enabled ? "expanded" : ""}`} aria-hidden={!preset().partial_tp.enabled}>
-          <div>
-            <div class="flex items-center gap-3 px-4 pb-1">
-              <input
-                id="field-partial-range"
-                type="range"
-                min="10"
-                max="100"
-                step="5"
-                value={preset().partial_tp.close_percent}
-                onInput={(e) =>
-                  updateField("partial_tp", {
-                    ...preset().partial_tp,
-                    close_percent: parseInt(e.target.value) || 50,
-                  })
-                }
-                style={sliderStyle(preset().partial_tp.close_percent, 10, 100)}
-                class="flex-1"
-                tabIndex={preset().partial_tp.enabled ? 0 : -1}
-                aria-label="Partial take profit"
-              />
-              <div class="value-input-box">
-                <input
-                  id="field-partial-percent"
-                  type="number"
-                  step="5"
-                  min="10"
-                  max="100"
-                  class="w-14 text-right text-[14px]"
-                  value={preset().partial_tp.close_percent}
-                  onChange={(e) =>
-                    updateField("partial_tp", {
-                      ...preset().partial_tp,
-                      close_percent: parseInt(e.target.value) || 50,
-                    })
-                  }
-                  tabIndex={preset().partial_tp.enabled ? 0 : -1}
-                  data-testid="partial-tp-close"
-                />
-                <span class="text-[11px] text-text-dim font-mono ml-1">%</span>
-              </div>
-            </div>
-            <div class="flex justify-between text-[12px] text-text-dim font-sans mt-1.5 px-4 pb-3">
-              <span>10%</span>
-              <span>100%</span>
-            </div>
-          </div>
+          <span class="text-[14px] text-text-primary font-sans font-semibold">Partial Take Profit</span>
+          <span class="px-3.5 py-1.5 text-[10px] font-bold tracking-widest font-mono border border-border-subtle bg-bg-elevated text-text-dim">COMING SOON</span>
         </div>
       </div>
     </div>
