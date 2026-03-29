@@ -16,11 +16,15 @@ function isTradingView(): boolean {
   return location.hostname.includes("tradingview.com");
 }
 
+function isHyperliquid(): boolean {
+  return location.hostname.includes("hyperliquid");
+}
+
 function isChartPlatform(): boolean {
   const host = location.hostname;
   return host.includes("tradingview.com")
     || host.includes("dexscreener.com")
-    || host.includes("hyperliquid")
+    || isHyperliquid()
     || host.includes("gmx.io")
     || host.includes("bybit.com");
 }

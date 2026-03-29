@@ -12,6 +12,7 @@
     "*://*.dexscreener.com/*",
     "*://*.gmx.io/*",
     "*://*.bybit.com/*",
+    "*://app.hyperliquid.xyz/*",
     "*://api.testudo.vip/*",
     "*://ws.testudo.vip/*"
   ],
@@ -25,7 +26,8 @@
         "*://*.tradingview.com/*",
         "*://*.dexscreener.com/*",
         "*://*.gmx.io/*",
-        "*://*.bybit.com/*"
+        "*://*.bybit.com/*",
+        "*://app.hyperliquid.xyz/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"

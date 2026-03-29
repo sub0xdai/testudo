@@ -1,33 +1,34 @@
 # Implementation Plan
 
 > Last updated: 2026-03-29
-> Current spec: EXT-43-main-world-bridge
+> Current spec: EXT-44-hyperliquid-support
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: EXT-43-main-world-bridge
+## Active Spec: EXT-44-hyperliquid-support
 
-Main-world bridge for TradingView Chart API access. Enables position tool scraping without properties dialog on TradingView, DexScreener, and Hyperliquid.
+Hyperliquid platform support for Alt+X trade scraping. Adds manifest permissions, platform detection, and Hyperliquid-specific symbol extraction.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Create `page-bridge.ts` with widget probe, position tool extraction, symbol extraction; update `build.ts` IIFE entries; add to `manifest.json` web_accessible_resources | complete | medium | — |
-| T2 | Update `content.ts` with `injectBridge()` + `bridgeRequest()` helper (postMessage protocol, 500ms timeout, request IDs) | complete | medium | T1 |
-| T3 | Validate `bun run build` passes, verify `page-bridge.js` in dist/chrome + dist/firefox, update state files | complete | low | T2 |
+| T1 | Add `*://app.hyperliquid.xyz/*` to manifest `host_permissions` + `content_scripts.matches`; add `isHyperliquid()` to content.ts; add `scrapeHyperliquidSymbol()` to scraper.ts with leaf-div walk + title fallback; integrate into Alt+X flow | complete | low | — |
+| T2 | Validate `bun run build` passes, update state files, commit | complete | low | T1 |
 
 ### Key Decisions
 
-- **Bridge runs in MAIN world**: Injected via `<script>` tag, accesses page's `window` directly (not isolated content script world).
-- **postMessage protocol**: Content script ↔ bridge communicate via `window.postMessage` with typed messages and request IDs.
-- **Position tool logic reused from scraper.ts**: `getTickSize()` and `findPositionToolByChartApi()` logic moved to bridge (runs in page context where Chart API is accessible).
-- **No existing code removed**: Bridge is additive — existing DOM strategies unchanged.
+- **FR-7 already satisfied**: `isChartPlatform()` already includes `hyperliquid` from EXT-43 — bridge injection works.
+- **Text-content matching over class selectors**: Hyperliquid uses styled-components with unstable hash classes. Match leaf divs by `/^[A-Z0-9]{2,10}-USDC$/` regex.
+- **Symbol format conversion**: `BTC-USDC` → `BTCUSDC` (strip hyphen).
 
 ### Discoveries
 
-(populated during build iterations)
+- FR-7 pre-satisfied by EXT-43 (`isChartPlatform()` already included hyperliquid)
+- DOM strategy [2] won't work in isolated world on Hyperliquid — bridge handles position tool scraping
+- Leaf div walk with text regex is the only stable selector approach (styled-components hash classes are unstable)
+- content.js: 48.2kb → 48.6kb (+0.8kb)
 
 ---
 
@@ -35,6 +36,8 @@ Main-world bridge for TradingView Chart API access. Enables position tool scrapi
 
 | Spec | Completion Date |
 |------|-----------------|
+| EXT-44-hyperliquid-support | 2026-03-29 |
+| EXT-43-main-world-bridge | 2026-03-29 |
 | DOCS-01-comprehensive-documentation | 2026-03-27 |
 | HIST-01-exchange-history-import | 2026-03-26 |
 | ONBOARD-01-stepper-onboarding | 2026-03-26 |

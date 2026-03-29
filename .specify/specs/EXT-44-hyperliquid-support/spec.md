@@ -2,7 +2,7 @@
 
 **Spec ID:** EXT-44-hyperliquid-support
 **Date:** 2026-03-29
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature
 **Priority:** P1 — Hyperliquid is the primary DEX integration; traders need Alt+X there.
 **Depends on:** EXT-43-main-world-bridge

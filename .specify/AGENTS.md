@@ -349,4 +349,12 @@
 - **content.js bundle size +0.4kb**: From 47.8kb to 48.2kb — bridge injection code is minimal (postMessage listener, inject function, bridgeRequest helper with timeout).
 - **No changes to scraper.ts**: Existing 6-strategy scraper is completely untouched. Bridge is additive — runs as a pre-strategy step in content.ts, not inserted into the strategy array.
 
+### 2026-03-29 — EXT-44-hyperliquid-support
+- **FR-7 was pre-satisfied by EXT-43**: `isChartPlatform()` already included `host.includes("hyperliquid")`, so bridge injection worked on Hyperliquid without any changes. The `isHyperliquid()` function was added for readability and used to replace the inline check.
+- **Leaf div walk is the only viable selector strategy**: Hyperliquid uses styled-components with hash classes (`sc-bjfHbI`, `bFBYgR`) that change every build. Text-content matching via regex (`/^[A-Z0-9]{2,10}-USDC$/`) on childless divs is the only stable approach.
+- **Symbol format conversion is a simple hyphen strip**: `BTC-USDC` → `BTCUSDC`. No exchange prefix stripping or perpetual suffix handling needed (unlike TradingView's `BINANCE:BTCUSDT.P`).
+- **DOM strategy [2] won't work on Hyperliquid**: Content script runs in isolated world — `findPositionToolByChartApi()` (strategy 2) can't access `window.TradingViewApi`. The bridge handles this instead. On non-TradingView sites, the DOM fallback path tries `[2]` but silently returns null.
+- **content.js bundle size +0.8kb**: From 48.2kb to 48.6kb — Hyperliquid scraper function and platform detection are minimal additions.
+- **Manifest uses exact domain**: `*://app.hyperliquid.xyz/*` not `*://*.hyperliquid.xyz/*` — the trading app is only on the `app` subdomain. This minimizes permission scope.
+
 *This file grows as Vox learns. Never delete entries.*

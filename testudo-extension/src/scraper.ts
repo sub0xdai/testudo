@@ -52,7 +52,35 @@ const SYMBOL_SELECTORS = [
   '[class*="paneTitle"]',
 ];
 
+// --- Hyperliquid Symbol Extraction (EXT-44) ---
+// Hyperliquid uses styled-components with unstable hash classes.
+// Match leaf divs by text content pattern instead of class selectors.
+
+function scrapeHyperliquidSymbol(): string | null {
+  // Strategy 1: Walk leaf divs for "BTC-USDC" pattern
+  const divs = document.querySelectorAll("div");
+  for (const div of divs) {
+    if (div.children.length > 0) continue;
+    const text = div.textContent?.trim() || "";
+    if (/^[A-Z0-9]{2,10}-USDC$/.test(text)) {
+      return text.replace("-", ""); // BTC-USDC → BTCUSDC
+    }
+  }
+
+  // Strategy 2: document.title fallback
+  const match = document.title.match(/([A-Z0-9]{2,10})-USDC/);
+  if (match) return match[0].replace("-", "");
+
+  return null;
+}
+
 export function scrapeSymbol(): string | null {
+  // Hyperliquid has its own symbol format — check first on that platform
+  if (location.hostname.includes("hyperliquid")) {
+    const hlSymbol = scrapeHyperliquidSymbol();
+    if (hlSymbol) return hlSymbol;
+  }
+
   for (const selector of SYMBOL_SELECTORS) {
     const el = document.querySelector(selector);
     if (!el?.textContent) continue;
