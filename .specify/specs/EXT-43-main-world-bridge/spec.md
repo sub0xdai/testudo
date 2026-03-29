@@ -2,7 +2,7 @@
 
 **Spec ID:** EXT-43-main-world-bridge
 **Date:** 2026-03-29
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Infrastructure
 **Priority:** P1 — Chart API strategy is dead code due to Chrome isolated world; fixes position tool scraping on all platforms.
 **Depends on:** None (first in series)

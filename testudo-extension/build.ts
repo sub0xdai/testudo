@@ -30,6 +30,11 @@ const IIFE_ENTRIES = [
   { in: "src/popup/index.tsx", out: "popup/popup" },
 ];
 
+// Page bridge runs in MAIN world (injected via <script> tag) — plain IIFE, no Solid
+const BRIDGE_ENTRIES = [
+  { in: "src/page-bridge.ts", out: "page-bridge" },
+];
+
 async function bundle(outdir: string): Promise<void> {
   await Promise.all([
     // ESM build: background worker (no framework, no Solid plugin needed)
@@ -59,6 +64,19 @@ async function bundle(outdir: string): Promise<void> {
       logLevel: "info",
       plugins: [solidPlugin()],
       jsx: "automatic",
+    }),
+    // IIFE build: page bridge (MAIN world script, no Solid, no polyfill)
+    esbuild.build({
+      entryPoints: BRIDGE_ENTRIES.map((e) => ({ in: e.in, out: e.out })),
+      bundle: true,
+      outdir,
+      format: "iife",
+      target: "es2022",
+      sourcemap: false,
+      minify: !watch,
+      drop: isProduction ? ["console"] : [],
+      define: envDefine,
+      logLevel: "info",
     }),
   ]);
 }

@@ -45,7 +45,7 @@
     "128": "icons/icon128.png"
   },
   "web_accessible_resources": [{
-    "resources": ["popup/fonts/*.woff2"],
+    "resources": ["popup/fonts/*.woff2", "page-bridge.js"],
     "matches": ["<all_urls>"]
   }]
 }

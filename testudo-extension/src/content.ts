@@ -16,6 +16,69 @@ function isTradingView(): boolean {
   return location.hostname.includes("tradingview.com");
 }
 
+function isChartPlatform(): boolean {
+  const host = location.hostname;
+  return host.includes("tradingview.com")
+    || host.includes("dexscreener.com")
+    || host.includes("hyperliquid")
+    || host.includes("gmx.io")
+    || host.includes("bybit.com");
+}
+
+// --- Main-World Bridge (EXT-43) ---
+
+let bridgeReady = false;
+let bridgeRequestId = 0;
+
+function injectBridge(): void {
+  if (document.getElementById("testudo-bridge")) return;
+  const script = document.createElement("script");
+  script.id = "testudo-bridge";
+  script.src = browser.runtime.getURL("page-bridge.js");
+  (document.head || document.documentElement).appendChild(script);
+}
+
+// Listen for bridge ready signal
+window.addEventListener("message", (event: MessageEvent) => {
+  if (event.source !== window) return;
+  if (event.data?.type === "TESTUDO_BRIDGE_READY") {
+    bridgeReady = true;
+  }
+});
+
+function bridgeRequest(action: "probe" | "getPositionTool" | "getSymbol"): Promise<any> {
+  return new Promise((resolve) => {
+    if (!bridgeReady) {
+      resolve(null);
+      return;
+    }
+
+    const id = ++bridgeRequestId;
+    const timeout = setTimeout(() => {
+      window.removeEventListener("message", handler);
+      resolve(null);
+    }, 500);
+
+    function handler(event: MessageEvent) {
+      if (event.source !== window) return;
+      if (event.data?.type !== "TESTUDO_BRIDGE_RESPONSE") return;
+      if (event.data.id !== id) return;
+
+      clearTimeout(timeout);
+      window.removeEventListener("message", handler);
+      resolve(event.data.data);
+    }
+
+    window.addEventListener("message", handler);
+    window.postMessage({ type: "TESTUDO_BRIDGE_REQUEST", action, id }, "*");
+  });
+}
+
+// Inject bridge on chart platforms
+if (isChartPlatform()) {
+  injectBridge();
+}
+
 // --- Management Preset Loader ---
 
 async function getManagementPreset(): Promise<ManagementPreset> {
@@ -42,13 +105,33 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
     e.stopPropagation();
 
     try {
-      // On non-TV sites, only attempt Chart API probe (index 2 after reorder)
-      const strategiesToTry = isTradingView() ? undefined : [2];
-      let setup = scrapeTradeSetup(strategiesToTry);
+      let setup: TradeSetup | null = null;
 
-      // Fallback: try symbol-only detection when full scrape fails
-      if (!setup && isTradingView()) {
-        const symbol = scrapeSymbol();
+      // Try main-world bridge first (works on all chart platforms)
+      if (bridgeReady) {
+        const bridgeData = await bridgeRequest("getPositionTool");
+        if (bridgeData && bridgeData.entry > 0) {
+          // Get symbol via bridge, fall back to DOM scrape
+          let symbol = await bridgeRequest("getSymbol");
+          if (!symbol) symbol = scrapeSymbol();
+          if (symbol) {
+            const timeframe = "chart"; // bridge doesn't provide timeframe, label as chart-sourced
+            setup = { symbol, side: bridgeData.side, entry: bridgeData.entry, stop: bridgeData.stop, target: bridgeData.target, timeframe };
+          }
+        }
+      }
+
+      // Fall back to DOM-based scraper strategies
+      if (!setup) {
+        const strategiesToTry = isTradingView() ? undefined : [2];
+        setup = scrapeTradeSetup(strategiesToTry);
+      }
+
+      // Fallback: try symbol-only detection on chart platforms
+      if (!setup && isChartPlatform()) {
+        // Try bridge symbol first, then DOM
+        let symbol = bridgeReady ? await bridgeRequest("getSymbol") : null;
+        if (!symbol) symbol = scrapeSymbol();
         if (symbol) {
           setup = { symbol, side: "LONG", entry: 0, stop: 0, target: 0, timeframe: "manual" } as TradeSetup;
         }

@@ -1,37 +1,29 @@
 # Implementation Plan
 
-> Last updated: 2026-03-27
-> Current spec: DOCS-01-comprehensive-documentation
+> Last updated: 2026-03-29
+> Current spec: EXT-43-main-world-bridge
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: DOCS-01-comprehensive-documentation
+## Active Spec: EXT-43-main-world-bridge
 
-Write all 10 documentation pages for the Testudo docs site. Infrastructure (content collection, layouts, sidebar, routing, KaTeX) already built. Each task writes one doc file.
+Main-world bridge for TradingView Chart API access. Enables position tool scraping without properties dialog on TradingView, DexScreener, and Hyperliquid.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Write `01-what-is-testudo.md` — problem, solution, components, audience | complete | low | — |
-| T2 | Write `02-core-concepts.md` — position sizing, R-multiples, expectancy, profit factor, drawdown, win rate vs edge (KaTeX formulas) | complete | high | — |
-| T3 | Write `03-getting-started.md` — wallet connect, add exchange, import history, install extension, pair | complete | medium | — |
-| T4 | Write `04-extension.md` — Alt+X workflow, scraper, modal, double-Enter, popup overview | complete | medium | — |
-| T5 | Write `05-dashboard.md` — equity curve, stats sidebar, chart selectors, filtering, time presets | complete | medium | — |
-| T6 | Write `06-journal.md` — thesis-first approach, notes, tags, timeline, collections, export | complete | medium | — |
-| T7 | Write `07-exchanges.md` — per-exchange setup (HL, WOO, Binance, Bybit, OKX), API key guides | complete | medium | — |
-| T8 | Write `08-faq.md` — common issues and troubleshooting | complete | low | — |
-| T9 | Write `09-architecture.md` — system diagram, component map, data flow | complete | medium | — |
-| T10 | Write `10-api-reference.md` — REST endpoints, WebSocket, auth flow | complete | high | — |
-| T11 | Verify `bun run build` passes in testudo-web | complete | low | T1–T10 |
+| T1 | Create `page-bridge.ts` with widget probe, position tool extraction, symbol extraction; update `build.ts` IIFE entries; add to `manifest.json` web_accessible_resources | complete | medium | — |
+| T2 | Update `content.ts` with `injectBridge()` + `bridgeRequest()` helper (postMessage protocol, 500ms timeout, request IDs) | complete | medium | T1 |
+| T3 | Validate `bun run build` passes, verify `page-bridge.js` in dist/chrome + dist/firefox, update state files | complete | low | T2 |
 
 ### Key Decisions
 
-- **Audience-first**: Trader docs (1–8) use plain English with concrete examples. Technical docs (9–10) assume engineering context.
-- **KaTeX for math**: Position sizing formula, expectancy, R-multiples use block/inline math notation.
-- **No screenshots yet**: Text-only first pass. Screenshots can be added in a follow-up.
-- **Accurate to codebase**: All descriptions verified against actual source code via research agents.
+- **Bridge runs in MAIN world**: Injected via `<script>` tag, accesses page's `window` directly (not isolated content script world).
+- **postMessage protocol**: Content script ↔ bridge communicate via `window.postMessage` with typed messages and request IDs.
+- **Position tool logic reused from scraper.ts**: `getTickSize()` and `findPositionToolByChartApi()` logic moved to bridge (runs in page context where Chart API is accessible).
+- **No existing code removed**: Bridge is additive — existing DOM strategies unchanged.
 
 ### Discoveries
 
@@ -43,6 +35,7 @@ Write all 10 documentation pages for the Testudo docs site. Infrastructure (cont
 
 | Spec | Completion Date |
 |------|-----------------|
+| DOCS-01-comprehensive-documentation | 2026-03-27 |
 | HIST-01-exchange-history-import | 2026-03-26 |
 | ONBOARD-01-stepper-onboarding | 2026-03-26 |
 | DESK-02-landing-strip | 2026-03-26 |
@@ -63,7 +56,7 @@ Write all 10 documentation pages for the Testudo docs site. Infrastructure (cont
 | UXP-20-strip-glassmorphism | 2026-03-22 |
 | UXP-22-signal-color-calibration | 2026-03-22 |
 | UXP-19-features-layout | 2026-03-22 |
-| EXT-38-background-decomposition | 2026-03-22 |
+| EXT-38-background-decomposition | 2022-03-22 |
 | EXT-37-message-dispatch-refactor | 2026-03-22 |
 | UXP-18-multi-theme | 2026-03-21 |
 | HL-11-status-transition-fix | 2026-03-21 |

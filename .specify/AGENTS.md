@@ -341,4 +341,12 @@
 - **AccountPage reduced from 532→438 lines**: Grid layout is more concise than the old stacked-row approach despite adding balance fetching logic. The form section is cleaner with its own CANCEL button below the grid.
 - **EXT-40 spec complete**: All 4 tasks done. Account management UI redesigned from stacked rows to responsive card grid with heartbeat indicators, kebab menus, ghost card, and compact pairing banner. No new dependencies added.
 
+### 2026-03-29 — EXT-43-main-world-bridge
+- **Separate esbuild entry for bridge**: `page-bridge.ts` is bundled as a third IIFE build (no Solid plugin, no sourcemap needed since it runs in page context). Build output: 2.4kb minified.
+- **Bridge IIFE self-executes**: Wrapped in `(function() { ... })()` — runs immediately when injected via `<script>` tag. No exports, no module system.
+- **`isChartPlatform()` replaces `isTradingView()` for symbol-only guard**: The existing symbol-only fallback was gated on `isTradingView()`. Changed to `isChartPlatform()` which includes tradingview.com, dexscreener.com, hyperliquid, gmx.io, bybit.com — prevents spurious modal opens on random websites while enabling multi-platform support.
+- **Bridge tried before DOM strategies**: In the Alt+X handler, bridge `getPositionTool` is attempted first (async), falling back to synchronous DOM scraper strategies. This prioritizes zero-dialog extraction over dialog-dependent strategies.
+- **content.js bundle size +0.4kb**: From 47.8kb to 48.2kb — bridge injection code is minimal (postMessage listener, inject function, bridgeRequest helper with timeout).
+- **No changes to scraper.ts**: Existing 6-strategy scraper is completely untouched. Bridge is additive — runs as a pre-strategy step in content.ts, not inserted into the strategy array.
+
 *This file grows as Vox learns. Never delete entries.*
