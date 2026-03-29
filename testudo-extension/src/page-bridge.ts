@@ -135,8 +135,12 @@
     try {
       const chart = widget.activeChart();
       if (chart && typeof chart.symbol === "function") {
-        const sym = chart.symbol();
+        let sym = chart.symbol();
         if (typeof sym === "string" && sym.length > 0) {
+          // Strip exchange prefix: "BITSTAMP:BTCUSD" → "BTCUSD"
+          if (sym.includes(":")) sym = sym.split(":").pop()!;
+          // Strip perpetual suffixes
+          sym = sym.replace(/\.P$/, "").replace(/PERP$/, "");
           return sym;
         }
       }

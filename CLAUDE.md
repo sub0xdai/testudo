@@ -39,6 +39,9 @@ Specs live in `.specify/specs/`. Constitution: `.specify/memory/constitution.md`
 ### When creating a new feature
 Use `/speckit.specify [description]` first.
 
+### When brainstorming or planning
+Read `.claude/rules/workflow.md` — research-first, vertical slicing.
+
 ## Verification — Always Before Commit
 ```bash
 # Backend

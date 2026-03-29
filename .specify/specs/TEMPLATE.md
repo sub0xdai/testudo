@@ -37,6 +37,16 @@ End with why this spec is the right fix.}
 
 ## Technical Implementation
 
+### Vertical Checkpoints
+
+Break implementation into vertical slices. Each checkpoint is independently testable and committable.
+
+| Checkpoint | Scope | Validates |
+|------------|-------|-----------|
+| CP-1 | {End-to-end slice with mock/minimal data} | {What you can test} |
+| CP-2 | {Real backend/data for CP-1 slice} | {Integration test} |
+| CP-3 | {Next slice end-to-end} | {What you can test} |
+
 ### {Section 1 — e.g. Key Types, Architecture}
 
 {Describe the design. Include code blocks for key types, structs, interfaces. LEAD WITH TDD, ensure test coverage}
@@ -55,6 +65,10 @@ pub struct ExampleStruct {
 | Source | Target | Notes |
 |--------|--------|-------|
 | ... | ... | ... |
+
+### Paved Roads
+
+{Existing patterns, libraries, or conventions discovered during research that this spec reuses. Reference specific files.}
 
 ### Files
 

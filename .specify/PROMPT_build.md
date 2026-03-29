@@ -30,11 +30,13 @@ Complete exactly ONE task from the implementation plan, then exit.
 - Check AGENTS.md for learnings
 - Don't assume - verify
 
-### Step 3: Implement
+### Step 3: Implement (Vertical Slices)
 - Write clean, idiomatic code
 - Follow constitution standards
 - Use existing patterns from codebase
 - Implement functionality completely
+- Work in **vertical slices**: one end-to-end checkpoint per task, not horizontal layers
+- Each task should be independently testable — don't leave half-wired code
 
 ### Step 4: Validate
 - Run verification commands from constitution
