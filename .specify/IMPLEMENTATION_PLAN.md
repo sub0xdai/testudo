@@ -1,35 +1,36 @@
 # Implementation Plan
 
 > Last updated: 2026-03-29
-> Current spec: EXT-45-dexscreener-symbols
+> Current spec: EXT-46-async-scraper-flow
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: EXT-45-dexscreener-symbols
+## Active Spec: EXT-46-async-scraper-flow
 
-DexScreener symbol extraction for Alt+X trade scraping. Adds platform detection and 4-strategy symbol scraper for DexScreener token pages.
+Multi-platform Alt+X flow integration. Ties EXT-43/44/45 together: bridge-first strategy, TradingView-only DOM fallback, symbol-only fallback on all chart platforms.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Add `isDexScreener()` to content.ts; add `scrapeDexScreenerSymbol()` to scraper.ts with 4 strategies (legend, title parens, title slash, leaf element scan); integrate into `scrapeSymbol()` cascade | complete | low | — |
+| T1 | Revise Alt+X flow: `isChartPlatform()` bridge guard, TradingView-only DOM fallback with no-arg `scrapeTradeSetup()`, export `scrapeTimeframe`, use platform-aware timeframe | complete | low | — |
 | T2 | Validate `bun run build` passes, update state files, commit | complete | low | T1 |
 
 ### Key Decisions
 
-- **FR-5 already satisfied**: `isChartPlatform()` already includes `dexscreener.com` from EXT-43 — bridge injection works.
-- **TradingView legend selectors may work**: DexScreener embeds TradingView charting lib directly (not iframe), so `[data-name="legend-source-item"]` may match.
-- **4 fallback strategies**: legend → title parens → title slash → leaf element scan.
+- **Bridge guard**: Use `isChartPlatform()` instead of `bridgeReady` — `bridgeRequest()` already returns null if not ready internally.
+- **DOM strategies TradingView-only**: Non-TV sites should not attempt DOM strategies (they fail in isolated world). Bridge handles chart API access on all platforms.
+- **No-arg `scrapeTradeSetup()`**: FR-5 requires unchanged call path — remove `strategiesToTry` parameter usage.
+- **Export `scrapeTimeframe()`**: On TradingView, bridge-sourced setups should get the real timeframe via `scrapeTimeframe()`. Other platforms get "chart".
+- **Simplified symbol-only**: No bridge symbol request in symbol-only fallback — bridge was already tried in step 1.
 
 ### Discoveries
 
-- FR-5 pre-satisfied by EXT-43 (`isChartPlatform()` already included dexscreener.com)
-- `isDexScreener()` added to content.ts but only used for documentation/readability — `isChartPlatform()` handles the actual bridge injection guard
-- DexScreener check placed before generic SYMBOL_SELECTORS in `scrapeSymbol()` cascade (same pattern as Hyperliquid)
-- content.js: 48.6kb → 49.3kb (+0.7kb)
-- Build passes for both Chrome and Firefox targets
+- `scrapeTimeframe()` was not exported from scraper.ts — added `export` keyword for content.ts to use in bridge path
+- `strategiesToTry` parameter on `scrapeTradeSetup()` was the root cause of FR-5 violation — non-TV sites tried only Strategy 2 (dead in isolated world)
+- content.js bundle size unchanged at 49.3kb — code is same length, just reorganized
+- `bridgeRequest()` already returns null when `bridgeReady === false`, so `isChartPlatform()` guard is functionally equivalent to `bridgeReady` guard but semantically clearer
 
 ---
 
@@ -37,6 +38,7 @@ DexScreener symbol extraction for Alt+X trade scraping. Adds platform detection 
 
 | Spec | Completion Date |
 |------|-----------------|
+| EXT-46-async-scraper-flow | 2026-03-29 |
 | EXT-45-dexscreener-symbols | 2026-03-29 |
 | EXT-44-hyperliquid-support | 2026-03-29 |
 | EXT-43-main-world-bridge | 2026-03-29 |

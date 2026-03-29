@@ -2,7 +2,7 @@
 
 **Spec ID:** EXT-46-async-scraper-flow
 **Date:** 2026-03-29
-**Status:** Draft
+**Status:** Complete
 **Class:** Feature / Integration
 **Priority:** P1 — Ties EXT-43/44/45 together into a working Alt+X flow on all platforms.
 **Depends on:** EXT-43-main-world-bridge, EXT-44-hyperliquid-support, EXT-45-dexscreener-symbols

@@ -365,4 +365,12 @@
 - **No manifest changes needed**: DexScreener was already in `host_permissions` and `content_scripts.matches` from initial manifest setup. Unlike EXT-44 (Hyperliquid), no permission additions required.
 - **content.js bundle size +0.7kb**: From 48.6kb to 49.3kb — DexScreener scraper function is ~35 lines.
 
+### 2026-03-29 — EXT-46-async-scraper-flow
+- **`strategiesToTry` was the root bug**: The existing code passed `isTradingView() ? undefined : [2]` to `scrapeTradeSetup()`, meaning non-TV sites tried only Strategy 2 (chart API via `findPositionToolByChartApi()`). Strategy 2 accesses `window.TradingViewApi` which is inaccessible from the content script's isolated world. With the bridge (EXT-43) handling chart API access in main world, the DOM fallback should only run on TradingView where strategies 0-5 actually work.
+- **`scrapeTimeframe()` was unexported**: Bridge-sourced setups on TradingView should get the real timeframe (e.g., "4h", "1D"), not a generic "chart" label. Added `export` to the existing function — zero behavioral change, just visibility.
+- **`isChartPlatform()` vs `bridgeReady` for outer guard**: `bridgeRequest()` already returns null when bridge isn't ready (internal `bridgeReady` check at line 59). Using `isChartPlatform()` as the outer guard is semantically clearer and doesn't add latency — the promise resolves immediately if bridge isn't ready.
+- **Three-step cascade is cleaner**: Bridge (async, all platforms) → DOM strategies (sync, TradingView only) → symbol-only (sync, all chart platforms). Each step has a clear scope and no wasted work. Previous code attempted DOM strategies on non-TV sites where they could never succeed.
+- **content.js bundle unchanged at 49.3kb**: Code reorganization is length-neutral — removed `strategiesToTry` logic, added `scrapeTimeframe` import and conditional.
+- **Completes EXT-43→46 series**: This spec ties together the main-world bridge (EXT-43), Hyperliquid platform detection (EXT-44), DexScreener symbol extraction (EXT-45), and the revised async scraper flow into a coherent multi-platform Alt+X experience.
+
 *This file grows as Vox learns. Never delete entries.*

@@ -157,7 +157,7 @@ const TIMEFRAME_SELECTORS = [
   '#header-toolbar-intervals [class*="active"]',
 ];
 
-function scrapeTimeframe(): string {
+export function scrapeTimeframe(): string {
   for (const selector of TIMEFRAME_SELECTORS) {
     const el = document.querySelector(selector);
     if (!el) continue;

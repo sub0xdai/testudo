@@ -1,4 +1,4 @@
-import { scrapeTradeSetup, scrapeSymbol } from "./scraper";
+import { scrapeTradeSetup, scrapeSymbol, scrapeTimeframe } from "./scraper";
 
 // MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
 const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
@@ -115,33 +115,35 @@ document.addEventListener("keydown", async (e: KeyboardEvent) => {
     try {
       let setup: TradeSetup | null = null;
 
-      // Try main-world bridge first (works on all chart platforms)
-      if (bridgeReady) {
+      // 1. Bridge — Chart API in main world (all chart platforms)
+      if (isChartPlatform()) {
         const bridgeData = await bridgeRequest("getPositionTool");
         if (bridgeData && bridgeData.entry > 0) {
-          // Get symbol via bridge, fall back to DOM scrape
           let symbol = await bridgeRequest("getSymbol");
           if (!symbol) symbol = scrapeSymbol();
           if (symbol) {
-            const timeframe = "chart"; // bridge doesn't provide timeframe, label as chart-sourced
-            setup = { symbol, side: bridgeData.side, entry: bridgeData.entry, stop: bridgeData.stop, target: bridgeData.target, timeframe };
+            setup = {
+              symbol,
+              side: bridgeData.side,
+              entry: bridgeData.entry,
+              stop: bridgeData.stop,
+              target: bridgeData.target,
+              timeframe: isTradingView() ? scrapeTimeframe() : "chart",
+            };
           }
         }
       }
 
-      // Fall back to DOM-based scraper strategies
-      if (!setup) {
-        const strategiesToTry = isTradingView() ? undefined : [2];
-        setup = scrapeTradeSetup(strategiesToTry);
+      // 2. DOM strategies (unchanged — only on TradingView)
+      if (!setup && isTradingView()) {
+        setup = scrapeTradeSetup();
       }
 
-      // Fallback: try symbol-only detection on chart platforms
+      // 3. Symbol-only fallback (all chart platforms)
       if (!setup && isChartPlatform()) {
-        // Try bridge symbol first, then DOM
-        let symbol = bridgeReady ? await bridgeRequest("getSymbol") : null;
-        if (!symbol) symbol = scrapeSymbol();
+        const symbol = scrapeSymbol();
         if (symbol) {
-          setup = { symbol, side: "LONG", entry: 0, stop: 0, target: 0, timeframe: "manual" } as TradeSetup;
+          setup = { symbol, side: "LONG", entry: 0, stop: 0, target: 0, timeframe: "manual" };
         }
       }
 
