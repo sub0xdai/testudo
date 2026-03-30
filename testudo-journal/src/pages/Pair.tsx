@@ -242,13 +242,21 @@ export default function Pair() {
           </Show>
         </div>
 
-        {/* Footer link */}
-        <a
-          href="https://testudo.vip"
-          class="mt-6 font-mono text-[10px] tracking-widest text-text-tertiary hover:text-text-secondary transition-colors"
-        >
-          testudo.vip
-        </a>
+        {/* Navigation links */}
+        <div class="mt-8 flex gap-4">
+          <a
+            href="/desk/"
+            class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+          >
+            DESK
+          </a>
+          <a
+            href="https://testudo.vip"
+            class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+          >
+            TESTUDO.VIP
+          </a>
+        </div>
       </div>
     </div>
   )

@@ -32,6 +32,9 @@ export function AuthProvider(props: { children: JSX.Element }) {
   const [loading, setLoading] = createSignal(true)
   const [siweError, setSiweError] = createSignal<string | null>(null)
   let siweInFlight = false
+  // CON-01: Only trigger SIWE from explicit user action, never from auto-reconnect.
+  // This prevents MetaMask popup on every page refresh.
+  let userInitiatedConnect = false
 
   // Track the EVM provider via subscribeProviders (correct AppKit API)
   let evmProvider: any = null
@@ -39,12 +42,31 @@ export function AuthProvider(props: { children: JSX.Element }) {
     evmProvider = state['eip155'] ?? null
   })
 
-  // Check existing cookie session on mount
-  fetchAuth('/me')
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then((data: { user: User }) => setUser(data.user))
-    .catch(() => setUser(null))
-    .finally(() => setLoading(false))
+  // Check existing cookie session on mount.
+  // If access token expired (401), try refresh before giving up.
+  async function checkSession() {
+    try {
+      let res = await fetchAuth('/me')
+      if (res.status === 401) {
+        // Access token expired — try refresh
+        const refreshRes = await fetchAuth('/refresh', { method: 'POST' })
+        if (refreshRes.ok) {
+          res = await fetchAuth('/me')
+        }
+      }
+      if (res.ok) {
+        const data = await res.json() as { user: User }
+        setUser(data.user)
+      } else {
+        setUser(null)
+      }
+    } catch {
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+  checkSession()
 
   // Run SIWE when wallet connects and provider becomes available
   async function runSiwe(address: string) {
@@ -109,12 +131,15 @@ export function AuthProvider(props: { children: JSX.Element }) {
       appKit.disconnect()
     } finally {
       siweInFlight = false
+      userInitiatedConnect = false
     }
   }
 
-  // Subscribe to account state — triggers SIWE when wallet connects
+  // Subscribe to account state — triggers SIWE only after explicit user action.
+  // On refresh, wallet auto-reconnects and fires this callback, but we must NOT
+  // auto-trigger SIWE — session cookies from /me handle auth restoration silently.
   const unsubAccount = appKit.subscribeAccount((state: { isConnected: boolean; address?: string }) => {
-    if (state.isConnected && state.address && !user() && !siweInFlight) {
+    if (state.isConnected && state.address && !user() && !siweInFlight && userInitiatedConnect) {
       runSiwe(state.address)
     }
   })
@@ -126,6 +151,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
 
   const connectWallet = () => {
     setSiweError(null)
+    userInitiatedConnect = true
     appKit.open()
   }
 
