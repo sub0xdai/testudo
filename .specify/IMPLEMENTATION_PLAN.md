@@ -1,34 +1,30 @@
 # Implementation Plan
 
 > Last updated: 2026-03-30
-> Current spec: SEC-03-psk-fail-closed
+> Current spec: SEC-04-trade-management-idor
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: SEC-03-psk-fail-closed
+## Active Spec: SEC-04-trade-management-idor
 
-Make CCXT sidecar PSK guard fail closed. Reject all non-health requests when SIDECAR_PSK is unset.
+Add ownership check to get_trade_management endpoint. Prevent IDOR on position data.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Change PSK middleware to fail-closed, exempt /health | complete | low | — |
-| T2 | Add startup warning when SIDECAR_PSK is not set | complete | low | — |
-| T3 | Update K8s deployments (sidecar + backend) to include SIDECAR_PSK | complete | low | — |
+| T1 | Add ownership check (pos.user_id != user_id → 403) to get_trade_management | complete | low | SEC-01 |
 
 ### Key Decisions
 
-- **Keep x-internal-secret header**: Spec suggested x-psk but both sidecar and Rust backend already use x-internal-secret — no rename needed
-- **Backend deployment too**: Added SIDECAR_PSK to backend K8s deployment (Rust CexClient needs it to send to sidecar)
-- **503 not 401**: Unconfigured PSK returns 503 Service Unavailable (misconfiguration, not auth failure)
+- **Follow established pattern**: Identical to get_trade, cancel_trade, update_stop_loss ownership checks
+- **Both managers checked**: Ownership verified regardless of whether position found in shadow or live manager
 
 ### Discoveries
 
-- Backend health_check() already correctly omits PSK header for /health calls — no change needed
-- Docker compose production already passes SIDECAR_PSK — only K8s manifests were missing it
-- Both K8s deployments (sidecar + backend) reference shared `sidecar-psk` K8s secret
+- Single-line fix following a pattern used in 5 sibling handlers
+- ManagedPosition already has user_id field (types.rs:77) — no schema changes needed
 
 ---
 
@@ -36,6 +32,7 @@ Make CCXT sidecar PSK guard fail closed. Reject all non-health requests when SID
 
 | Spec | Completion Date |
 |------|-----------------|
+| SEC-04-trade-management-idor | 2026-03-30 |
 | SEC-03-psk-fail-closed | 2026-03-30 |
 | SEC-02-cors-extension-pinning | 2026-03-30 |
 | SEC-01-trade-auth-bypass | 2026-03-30 |
