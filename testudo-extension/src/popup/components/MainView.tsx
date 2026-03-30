@@ -311,6 +311,21 @@ export default function MainView(props: { onLogout: () => void }) {
                 </p>
               </Show>
             </div>
+
+            <div class="divider" />
+
+            {/* Support */}
+            <div>
+              <span class="block text-[12px] text-text-secondary font-sans font-medium mb-2">
+                Support
+              </span>
+              <a
+                href="mailto:support@testudo.vip"
+                class="text-[12px] font-mono text-text-dim hover:text-text-secondary transition-colors"
+              >
+                support@testudo.vip
+              </a>
+            </div>
           </div>
         </Show>
       </main>
