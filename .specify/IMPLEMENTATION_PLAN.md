@@ -1,33 +1,34 @@
 # Implementation Plan
 
 > Last updated: 2026-03-30
-> Current spec: SEC-02-cors-extension-pinning
+> Current spec: SEC-03-psk-fail-closed
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: SEC-02-cors-extension-pinning
+## Active Spec: SEC-03-psk-fail-closed
 
-Pin CORS extension origins. Chrome pinned to ALLOWED_EXTENSION_ORIGINS env var. Firefox keeps prefix check (per-install UUIDs not pinnable).
+Make CCXT sidecar PSK guard fail closed. Reject all non-health requests when SIDECAR_PSK is unset.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Replace blanket chrome-extension:// check with env-var pinning, keep moz-extension:// prefix | complete | low | — |
-| T2 | Update CORS tests for pinned/unpinned Chrome + Firefox prefix | complete | low | T1 |
+| T1 | Change PSK middleware to fail-closed, exempt /health | complete | low | — |
+| T2 | Add startup warning when SIDECAR_PSK is not set | complete | low | — |
+| T3 | Update K8s deployments (sidecar + backend) to include SIDECAR_PSK | complete | low | — |
 
 ### Key Decisions
 
-- **Firefox prefix check kept**: MDN confirms moz-extension:// UUIDs are random per install — cannot pin
-- **Dev mode fallback**: When ALLOWED_EXTENSION_ORIGINS unset, any chrome-extension:// allowed (enables local dev)
-- **No config.rs change**: env var read inline in is_origin_allowed — simple, follows existing ALLOWED_ORIGINS pattern
+- **Keep x-internal-secret header**: Spec suggested x-psk but both sidecar and Rust backend already use x-internal-secret — no rename needed
+- **Backend deployment too**: Added SIDECAR_PSK to backend K8s deployment (Rust CexClient needs it to send to sidecar)
+- **503 not 401**: Unconfigured PSK returns 503 Service Unavailable (misconfiguration, not auth failure)
 
 ### Discoveries
 
-- MDN docs confirm: "In Firefox: Resources are assigned a random UUID that changes for every instance of Firefox"
-- Chrome IDs are deterministic from signing key — pinnable after Web Store publish
-- Extension uses Bearer tokens not cookies, so CORS pinning is defense-in-depth (not primary auth gate)
+- Backend health_check() already correctly omits PSK header for /health calls — no change needed
+- Docker compose production already passes SIDECAR_PSK — only K8s manifests were missing it
+- Both K8s deployments (sidecar + backend) reference shared `sidecar-psk` K8s secret
 
 ---
 
@@ -35,6 +36,7 @@ Pin CORS extension origins. Chrome pinned to ALLOWED_EXTENSION_ORIGINS env var. 
 
 | Spec | Completion Date |
 |------|-----------------|
+| SEC-03-psk-fail-closed | 2026-03-30 |
 | SEC-02-cors-extension-pinning | 2026-03-30 |
 | SEC-01-trade-auth-bypass | 2026-03-30 |
 | EXT-46-async-scraper-flow | 2026-03-29 |

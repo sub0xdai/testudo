@@ -32,6 +32,11 @@ const wss = new WebSocketServer({ server, path: "/ws/orders" });
 // CEX-05: Wire fill streaming — subscribe, fill forwarding, cancellation detection
 setupFillStreaming(wss, gateway);
 
+// SEC-03: Warn at startup when PSK is missing (all non-health requests will be rejected)
+if (!process.env.SIDECAR_PSK) {
+  console.warn("WARNING: SIDECAR_PSK not set — all non-health requests will be rejected");
+}
+
 server.listen(PORT, () => {
   console.log(`testudo-cex listening on port ${PORT}`);
 });
