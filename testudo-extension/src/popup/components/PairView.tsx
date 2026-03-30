@@ -142,17 +142,17 @@ export default function PairView(props: {
                 {/* Numbered instructions */}
                 <ol class="text-[11px] text-text-secondary font-mono leading-relaxed mb-6 list-none space-y-1.5">
                   <li>
-                    <span class="text-text-dim mr-1">1.</span> Open{" "}
+                    <span class="text-text-dim mr-1">1.</span> Visit{" "}
                     <button
                       class="text-text-primary hover:underline border-0 bg-transparent p-0 font-mono text-[11px] cursor-pointer"
-                      onClick={() => window.open(`${DESK_URL}/account`, "_blank")}
+                      onClick={() => window.open(`${DESK_URL}/pair`, "_blank")}
                     >
-                      Settings
+                      testudo.vip/pair
                     </button>
                   </li>
                   <li>
-                    <span class="text-text-dim mr-1">2.</span> Click{" "}
-                    <span class="text-text-primary">Connect Extension</span>
+                    <span class="text-text-dim mr-1">2.</span> Connect{" "}
+                    <span class="text-text-primary">your wallet</span>
                   </li>
                   <li>
                     <span class="text-text-dim mr-1">3.</span> Paste the code below

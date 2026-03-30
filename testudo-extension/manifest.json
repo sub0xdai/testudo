@@ -27,7 +27,9 @@
         "*://*.dexscreener.com/*",
         "*://*.gmx.io/*",
         "*://*.bybit.com/*",
-        "*://app.hyperliquid.xyz/*"
+        "*://app.hyperliquid.xyz/*",
+        "*://desk.testudo.vip/*",
+        "*://localhost/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"

@@ -1,30 +1,36 @@
 # Implementation Plan
 
 > Last updated: 2026-03-30
-> Current spec: SEC-04-trade-management-idor
+> Current spec: UX-01-pair-page
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: SEC-04-trade-management-idor
+## Active Spec: UX-01-pair-page
 
-Add ownership check to get_trade_management endpoint. Prevent IDOR on position data.
+Standalone /pair page for extension pairing. 3-state UI with extension auto-detection.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Add ownership check (pos.user_id != user_id → 403) to get_trade_management | complete | low | SEC-01 |
+| T1 | Create /pair route and standalone Pair.tsx with 3-state UI | complete | medium | — |
+| T2 | Add content script TESTUDO_INSTALLED postMessage for auto-detection | complete | low | T1 |
+| T3 | Update extension PairView instructions + landing site redirect | complete | low | T1 |
 
 ### Key Decisions
 
-- **Follow established pattern**: Identical to get_trade, cancel_trade, update_stop_loss ownership checks
-- **Both managers checked**: Ownership verified regardless of whether position found in shadow or live manager
+- **Router restructured**: Changed from `root={Layout}` to nested route pattern so /pair bypasses Layout entirely
+- **postMessage for detection**: Content scripts run in isolated world — can't set window globals, so use postMessage bridge (same pattern as EXT-43)
+- **DESK_URL/pair for dev**: Extension links to DESK_URL/pair (not testudo.vip/pair) so local dev works without redirect
+- **Cloudflare _redirects**: Landing site uses Cloudflare Pages _redirects for /pair → desk.testudo.vip/pair
+- **Auto-generate code**: Code generates automatically on auth — no extra button click needed
 
 ### Discoveries
 
-- Single-line fix following a pattern used in 5 sibling handlers
-- ManagedPosition already has user_id field (types.rs:77) — no schema changes needed
+- SolidJS Router v0.15 supports nested route layouts cleanly — just remove `root=` and use parent Route
+- Manifest needed desk.testudo.vip and localhost added to content_scripts matches for detection to work
+- Pair.tsx is lazy-loaded and code-split automatically by Vite
 
 ---
 
@@ -32,6 +38,7 @@ Add ownership check to get_trade_management endpoint. Prevent IDOR on position d
 
 | Spec | Completion Date |
 |------|-----------------|
+| UX-01-pair-page | 2026-03-30 |
 | SEC-04-trade-management-idor | 2026-03-30 |
 | SEC-03-psk-fail-closed | 2026-03-30 |
 | SEC-02-cors-extension-pinning | 2026-03-30 |

@@ -12,9 +12,10 @@ import './lib/echarts-setup'
 import './lib/echarts-theme'
 import './styles/app.css'
 
-// Account page lazy-loaded (only fetched when navigating to /account)
+// Lazy-loaded pages
 import { lazy } from 'solid-js'
 const Account = lazy(() => import('./pages/Account'))
+const Pair = lazy(() => import('./pages/Pair'))
 
 const root = document.getElementById('root')
 
@@ -22,11 +23,16 @@ render(
   () => (
     <AuthProvider>
       <FilterProvider>
-        <Router base="/desk" root={Layout}>
-          <Route path="/" component={Overview} />
-          <Route path="/trades" component={Trades} />
-          <Route path="/journal" component={Journal} />
-          <Route path="/account" component={Account} />
+        <Router base="/desk">
+          {/* Standalone page — no Layout wrapper */}
+          <Route path="/pair" component={Pair} />
+          {/* Desk pages — wrapped in Layout (header, sidebar, auth gate) */}
+          <Route path="/" component={Layout}>
+            <Route path="/" component={Overview} />
+            <Route path="/trades" component={Trades} />
+            <Route path="/journal" component={Journal} />
+            <Route path="/account" component={Account} />
+          </Route>
         </Router>
       </FilterProvider>
     </AuthProvider>

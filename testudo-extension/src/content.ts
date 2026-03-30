@@ -10,6 +10,11 @@ import { DEFAULT_MANAGEMENT_PRESET } from "./types";
 
 console.log("Testudo Sniper loaded");
 
+// UX-01: Signal extension presence on pair page for auto-detection
+if (location.pathname === "/pair" || location.pathname === "/desk/pair") {
+  window.postMessage({ type: "TESTUDO_INSTALLED" }, "*");
+}
+
 // --- Platform Detection ---
 
 function isTradingView(): boolean {
