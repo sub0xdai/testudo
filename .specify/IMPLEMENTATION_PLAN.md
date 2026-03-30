@@ -1,33 +1,33 @@
 # Implementation Plan
 
 > Last updated: 2026-03-30
-> Current spec: SEC-01-trade-auth-bypass
+> Current spec: SEC-02-cors-extension-pinning
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: SEC-01-trade-auth-bypass
+## Active Spec: SEC-02-cors-extension-pinning
 
-Enforce JWT authentication on trade management routes. Gate live exchange operations behind `is_authenticated`.
+Pin CORS extension origins. Chrome pinned to ALLOWED_EXTENSION_ORIGINS env var. Firefox keeps prefix check (per-install UUIDs not pinnable).
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Add JwtMiddleware to /trades scope in main.rs | complete | low | — |
-| T2 | Gate cleanup_stale_trades live operations behind is_authenticated | complete | low | T1 |
+| T1 | Replace blanket chrome-extension:// check with env-var pinning, keep moz-extension:// prefix | complete | low | — |
+| T2 | Update CORS tests for pinned/unpinned Chrome + Firefox prefix | complete | low | T1 |
 
 ### Key Decisions
 
-- **Tests unaffected**: Integration tests build their own `App` without middleware — JwtMiddleware only applies via main.rs scope config.
-- **DB persist gated too**: `mark_position_closed` via `trade_manager_live` is also gated behind `is_authenticated` — defense-in-depth.
-- **Shadow ops always run**: Shadow engine cancel + status update run regardless of auth — paper trading cleanup still works.
+- **Firefox prefix check kept**: MDN confirms moz-extension:// UUIDs are random per install — cannot pin
+- **Dev mode fallback**: When ALLOWED_EXTENSION_ORIGINS unset, any chrome-extension:// allowed (enables local dev)
+- **No config.rs change**: env var read inline in is_origin_allowed — simple, follows existing ALLOWED_ORIGINS pattern
 
 ### Discoveries
 
-- Tests use direct route registration without middleware, so adding JwtMiddleware to the scope has zero test impact
-- `extract_user_id` already handles JWT-first, X-User-Id fallback — with JwtMiddleware applied, the fallback path is unreachable for this scope
-- 1,016 tests pass, 0 failures after change
+- MDN docs confirm: "In Firefox: Resources are assigned a random UUID that changes for every instance of Firefox"
+- Chrome IDs are deterministic from signing key — pinnable after Web Store publish
+- Extension uses Bearer tokens not cookies, so CORS pinning is defense-in-depth (not primary auth gate)
 
 ---
 
@@ -35,6 +35,7 @@ Enforce JWT authentication on trade management routes. Gate live exchange operat
 
 | Spec | Completion Date |
 |------|-----------------|
+| SEC-02-cors-extension-pinning | 2026-03-30 |
 | SEC-01-trade-auth-bypass | 2026-03-30 |
 | EXT-46-async-scraper-flow | 2026-03-29 |
 | EXT-45-dexscreener-symbols | 2026-03-29 |
