@@ -353,6 +353,12 @@ export function Layout(props: { children: JSX.Element }) {
     }
   })
 
+  // UX-01: Standalone pages bypass Layout shell entirely
+  const isStandalonePage = () => window.location.pathname.endsWith('/pair')
+  if (isStandalonePage()) {
+    return <>{props.children}</>
+  }
+
   function cycleTheme() {
     const current = theme()
     const idx = THEME_CYCLE.indexOf(current)

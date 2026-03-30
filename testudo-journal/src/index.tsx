@@ -23,16 +23,12 @@ render(
   () => (
     <AuthProvider>
       <FilterProvider>
-        <Router base="/desk">
-          {/* Standalone page — no Layout wrapper */}
+        <Router base="/desk" root={Layout}>
           <Route path="/pair" component={Pair} />
-          {/* Desk pages — wrapped in Layout (header, sidebar, auth gate) */}
-          <Route path="/" component={Layout}>
-            <Route path="/" component={Overview} />
-            <Route path="/trades" component={Trades} />
-            <Route path="/journal" component={Journal} />
-            <Route path="/account" component={Account} />
-          </Route>
+          <Route path="/" component={Overview} />
+          <Route path="/trades" component={Trades} />
+          <Route path="/journal" component={Journal} />
+          <Route path="/account" component={Account} />
         </Router>
       </FilterProvider>
     </AuthProvider>
