@@ -9,11 +9,15 @@ export type ModalResult = "confirm" | "dismiss";
 // --- Shared toast CSS (used by both modal Shadow DOM and standalone toasts) ---
 
 const TOAST_CSS = `
-  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .toast { position: fixed; top: 20px; right: 20px; padding: 10px 16px; font-size: 12px; font-weight: 600; font-family: 'Space Mono', monospace; letter-spacing: 0.05em; z-index: 100000; opacity: 0; transition: opacity 0.3s; border-radius: 0; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; }
   .toast.visible { opacity: 1; }
-  .toast.success { background: color-mix(in srgb, var(--color-signal-green) 15%, transparent); color: var(--color-signal-green); border: 1px solid color-mix(in srgb, var(--color-signal-green) 40%, transparent); backdrop-filter: blur(12px); }
-  .toast.error { background: color-mix(in srgb, var(--color-signal-red) 85%, transparent); color: #fff; border: 1px solid color-mix(in srgb, var(--color-signal-red) 90%, transparent); }
-  .toast.info { background: var(--color-bg-elevated); color: var(--color-text-secondary); border: 1px solid var(--color-border); backdrop-filter: blur(12px); }
+  .toast .icon { font-size: 14px; flex-shrink: 0; }
+  .toast.success { background: #0a0a0a; color: #22c55e; border: 1px solid #1a3a1a; }
+  .toast.success .icon::before { content: "\\2713"; }
+  .toast.error { background: #0a0a0a; color: #ef4444; border: 1px solid #3a1a1a; }
+  .toast.error .icon::before { content: "\\2717"; }
+  .toast.info { background: #0a0a0a; color: #999; border: 1px solid #333; }
+  .toast.info .icon::before { content: "\\2022"; }
 `;
 
 // --- Styles (injected into Shadow DOM) ---
@@ -319,7 +323,12 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
   toast.className = `toast ${type}`;
   toast.setAttribute("role", "alert");
   toast.setAttribute("aria-live", "polite");
-  toast.textContent = message;
+  const icon = document.createElement("span");
+  icon.className = "icon";
+  toast.appendChild(icon);
+  const text = document.createElement("span");
+  text.textContent = message;
+  toast.appendChild(text);
   shadow.appendChild(toast);
 
   document.body.appendChild(host);
