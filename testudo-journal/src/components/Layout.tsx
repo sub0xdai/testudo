@@ -173,7 +173,7 @@ function ExtensionChip() {
               'bg-text-tertiary animate-pulse': !isPaired(),
             }}
           />
-          EXT
+          PAIR
           <svg width="10" height="10" viewBox="0 0 10 10" class={`text-text-tertiary transition-transform ${open() ? 'rotate-180' : ''}`}>
             <path d="M2 4L5 7L8 4" stroke="currentColor" stroke-width="1.5" fill="none" />
           </svg>
