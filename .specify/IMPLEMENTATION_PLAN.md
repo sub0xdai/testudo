@@ -1,36 +1,33 @@
 # Implementation Plan
 
-> Last updated: 2026-03-29
-> Current spec: EXT-46-async-scraper-flow
+> Last updated: 2026-03-30
+> Current spec: SEC-01-trade-auth-bypass
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: EXT-46-async-scraper-flow
+## Active Spec: SEC-01-trade-auth-bypass
 
-Multi-platform Alt+X flow integration. Ties EXT-43/44/45 together: bridge-first strategy, TradingView-only DOM fallback, symbol-only fallback on all chart platforms.
+Enforce JWT authentication on trade management routes. Gate live exchange operations behind `is_authenticated`.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Revise Alt+X flow: `isChartPlatform()` bridge guard, TradingView-only DOM fallback with no-arg `scrapeTradeSetup()`, export `scrapeTimeframe`, use platform-aware timeframe | complete | low | — |
-| T2 | Validate `bun run build` passes, update state files, commit | complete | low | T1 |
+| T1 | Add JwtMiddleware to /trades scope in main.rs | complete | low | — |
+| T2 | Gate cleanup_stale_trades live operations behind is_authenticated | complete | low | T1 |
 
 ### Key Decisions
 
-- **Bridge guard**: Use `isChartPlatform()` instead of `bridgeReady` — `bridgeRequest()` already returns null if not ready internally.
-- **DOM strategies TradingView-only**: Non-TV sites should not attempt DOM strategies (they fail in isolated world). Bridge handles chart API access on all platforms.
-- **No-arg `scrapeTradeSetup()`**: FR-5 requires unchanged call path — remove `strategiesToTry` parameter usage.
-- **Export `scrapeTimeframe()`**: On TradingView, bridge-sourced setups should get the real timeframe via `scrapeTimeframe()`. Other platforms get "chart".
-- **Simplified symbol-only**: No bridge symbol request in symbol-only fallback — bridge was already tried in step 1.
+- **Tests unaffected**: Integration tests build their own `App` without middleware — JwtMiddleware only applies via main.rs scope config.
+- **DB persist gated too**: `mark_position_closed` via `trade_manager_live` is also gated behind `is_authenticated` — defense-in-depth.
+- **Shadow ops always run**: Shadow engine cancel + status update run regardless of auth — paper trading cleanup still works.
 
 ### Discoveries
 
-- `scrapeTimeframe()` was not exported from scraper.ts — added `export` keyword for content.ts to use in bridge path
-- `strategiesToTry` parameter on `scrapeTradeSetup()` was the root cause of FR-5 violation — non-TV sites tried only Strategy 2 (dead in isolated world)
-- content.js bundle size unchanged at 49.3kb — code is same length, just reorganized
-- `bridgeRequest()` already returns null when `bridgeReady === false`, so `isChartPlatform()` guard is functionally equivalent to `bridgeReady` guard but semantically clearer
+- Tests use direct route registration without middleware, so adding JwtMiddleware to the scope has zero test impact
+- `extract_user_id` already handles JWT-first, X-User-Id fallback — with JwtMiddleware applied, the fallback path is unreachable for this scope
+- 1,016 tests pass, 0 failures after change
 
 ---
 
@@ -38,6 +35,7 @@ Multi-platform Alt+X flow integration. Ties EXT-43/44/45 together: bridge-first 
 
 | Spec | Completion Date |
 |------|-----------------|
+| SEC-01-trade-auth-bypass | 2026-03-30 |
 | EXT-46-async-scraper-flow | 2026-03-29 |
 | EXT-45-dexscreener-symbols | 2026-03-29 |
 | EXT-44-hyperliquid-support | 2026-03-29 |
