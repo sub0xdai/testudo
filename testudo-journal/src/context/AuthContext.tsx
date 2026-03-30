@@ -61,6 +61,12 @@ export function AuthProvider(props: { children: JSX.Element }) {
       }
       if (!evmProvider) throw new Error('Wallet provider not ready — please try again')
 
+      // Re-check after async wait — /me may have resolved and set user()
+      if (user()) {
+        siweInFlight = false
+        return
+      }
+
       // Get nonce from backend
       const nonceRes = await fetchAuth('/nonce')
       if (!nonceRes.ok) throw new Error('Failed to get nonce')
