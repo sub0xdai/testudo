@@ -58,10 +58,10 @@ export function Overview() {
       <Show when={stats.loading && !stats()}>
         <div aria-live="polite" aria-busy="true" class="flex gap-0">
           {/* Stats sidebar skeleton */}
-          <div class="w-64 shrink-0 border-r border-container-border hidden md:block">
+          <div class="w-64 shrink-0 border-r border-container-border/50 hidden md:block">
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
               {(section) => (
-                <div class="px-4 py-3 border-b border-container-border">
+                <div class="px-5 py-3 border-b border-container-border/50">
                   <span class="font-display text-xs tracking-section text-text-tertiary uppercase">
                     {section}
                   </span>
@@ -81,7 +81,7 @@ export function Overview() {
           </div>
           {/* Hero area skeleton */}
           <div class="flex-1 min-w-0">
-            <div class="px-6 py-4 border-b border-container-border">
+            <div class="px-5 py-4 border-b border-container-border/50">
               <SkeletonBar width="200px" height="40px" class="mb-2" />
               <div class="flex gap-6">
                 <SkeletonBar width="100px" />
@@ -142,10 +142,10 @@ export function Overview() {
             <StatSection title="RISK" items={riskItems()} />
           </aside>
 
-          {/* Right main — hero P&L + charts */}
-          <div class="flex-1 min-w-0">
+          {/* Right main — hero P&L + charts (glass-panel for blur over texture) */}
+          <div class="flex-1 min-w-0 glass-panel border-0 border-l border-container-border/50">
             {/* Hero metrics */}
-            <div class="px-6 py-4 glass-panel border-0 border-b border-container-border/50">
+            <div class="px-5 py-4 border-b border-container-border/50">
               <div class="flex items-baseline gap-8 mb-1">
                 <div>
                   <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
@@ -167,7 +167,7 @@ export function Overview() {
             </div>
 
             {/* Hero Equity Curve */}
-            <div class="px-6 pt-4">
+            <div class="px-5 pt-4">
               <span class="font-display text-xs tracking-section text-text-tertiary uppercase">EQUITY CURVE</span>
             </div>
             <HeroEquityCurve
@@ -176,7 +176,7 @@ export function Overview() {
             />
 
             {/* Chart selectors — 2-column grid */}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 p-5">
               <ChartSelector defaultChart="symbol" equityData={equity()} equityLoading={equity.loading} />
               <ChartSelector defaultChart="daily-pnl" equityData={equity()} equityLoading={equity.loading} />
             </div>

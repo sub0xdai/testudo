@@ -84,7 +84,7 @@ export function DailyPnl() {
   })
 
   return (
-    <ChartContainer title="DAILY P&L" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
+    <ChartContainer title="DAILY P&L HISTORY" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <div ref={container!} />
     </ChartContainer>
   )

@@ -1,5 +1,5 @@
 import { createSignal, Show } from 'solid-js'
-import { SymbolDonut } from './charts/SymbolDonut'
+import { SymbolBreakdown } from './charts/SymbolBreakdown'
 import { MarketReturn } from './charts/MarketReturn'
 import { DurationScatter } from './charts/DurationScatter'
 import { ReturnHistogram } from './charts/ReturnHistogram'
@@ -43,7 +43,7 @@ export function ChartSelector(props: ChartSelectorProps) {
   return (
     <div class="glass-panel flex flex-col overflow-hidden">
       {/* Panel header with embedded chart selector */}
-      <div class="flex items-center justify-between border-b border-container-border/50 px-4 py-2">
+      <div class="flex items-center justify-between border-b border-container-border/50 px-5 py-3">
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
@@ -57,8 +57,8 @@ export function ChartSelector(props: ChartSelectorProps) {
       </div>
 
       {/* Chart content */}
-      <div class="p-4 flex-grow relative min-h-[250px]">
-        <Show when={selected() === 'symbol'}><SymbolDonut /></Show>
+      <div class="p-5 flex-grow relative min-h-[250px]">
+        <Show when={selected() === 'symbol'}><SymbolBreakdown /></Show>
         <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
         <Show when={selected() === 'expectancy'}><ExpectancyBySymbol /></Show>
         <Show when={selected() === 'daily-pnl'}><DailyPnl /></Show>

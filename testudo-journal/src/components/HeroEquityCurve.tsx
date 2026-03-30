@@ -1,8 +1,8 @@
 import { onMount, onCleanup, createEffect, Show } from 'solid-js'
-import { createChart, type IChartApi, type ISeriesApi, LineSeries, AreaSeries } from 'lightweight-charts'
+import { createChart, type IChartApi, type ISeriesApi, BaselineSeries } from 'lightweight-charts'
 import type { EquityPoint } from '../api/client'
 import { SkeletonBar } from './SkeletonBar'
-import { getSignalGreen, signalRedAlpha, getGridLineColor, getCrosshairColor, getTextTertiary, getChartBg } from '../lib/tokens'
+import { getSignalGreen, getSignalRed, signalGreenAlpha, signalRedAlpha, getGridLineColor, getCrosshairColor, getTextTertiary, getChartBg } from '../lib/tokens'
 import { onThemeChange } from '../lib/theme-observer'
 
 interface HeroEquityCurveProps {
@@ -13,8 +13,7 @@ interface HeroEquityCurveProps {
 export function HeroEquityCurve(props: HeroEquityCurveProps) {
   let container!: HTMLDivElement
   let chart: IChartApi | undefined
-  let equityLine: ISeriesApi<'Line'> | undefined
-  let drawdownArea: ISeriesApi<'Area'> | undefined
+  let baseline: ISeriesApi<'Baseline'> | undefined
 
   function initChart() {
     chart?.remove()
@@ -39,19 +38,26 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
       timeScale: { borderColor: getCrosshairColor() },
     })
 
-    equityLine = chart.addSeries(LineSeries, {
-      color: getSignalGreen(),
+    baseline = chart.addSeries(BaselineSeries, {
+      baseValue: { type: 'price', price: 0 },
+      topLineColor: getSignalGreen(),
+      topFillColor1: signalGreenAlpha(0.15),
+      topFillColor2: signalGreenAlpha(0),
+      bottomLineColor: getSignalRed(),
+      bottomFillColor1: signalRedAlpha(0),
+      bottomFillColor2: signalRedAlpha(0.15),
       lineWidth: 2,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     })
+  }
 
-    drawdownArea = chart.addSeries(AreaSeries, {
-      topColor: signalRedAlpha(0),
-      bottomColor: signalRedAlpha(0.15),
-      lineColor: signalRedAlpha(0.3),
-      lineWidth: 1,
-      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
-    })
+  function setChartData(data: EquityPoint[]) {
+    if (!baseline) return
+    baseline.setData(data.map((p) => ({
+      time: p.date as string,
+      value: parseFloat(p.cumulative_pnl),
+    })))
+    chart?.timeScale().fitContent()
   }
 
   onMount(() => {
@@ -63,12 +69,9 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
     resizeObserver.observe(container)
 
     const unsubTheme = onThemeChange(() => {
-      const d = props.data
       initChart()
-      if (d?.length && equityLine && drawdownArea) {
-        equityLine.setData(d.map((p) => ({ time: p.date as string, value: parseFloat(p.cumulative_pnl) })))
-        drawdownArea.setData(d.map((p) => ({ time: p.date as string, value: -parseFloat(p.drawdown) })))
-        chart?.timeScale().fitContent()
+      if (props.data?.length) {
+        setChartData(props.data)
       }
     })
 
@@ -81,35 +84,20 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
 
   createEffect(() => {
     const d = props.data
-    if (!d?.length || !equityLine || !drawdownArea) return
-
-    const equityData = d.map((p) => ({
-      time: p.date as string,
-      value: parseFloat(p.cumulative_pnl),
-    }))
-
-    const ddData = d.map((p) => ({
-      time: p.date as string,
-      value: -parseFloat(p.drawdown),
-    }))
-
-    equityLine.setData(equityData)
-    drawdownArea.setData(ddData)
-    chart?.timeScale().fitContent()
+    if (!d?.length || !baseline) return
+    setChartData(d)
   })
 
   return (
-    <div class="border-b border-container-border">
+    <div class="border-b border-container-border/50">
       <Show when={props.loading}>
         <div class="relative" style={{ "min-height": "400px" }}>
-          {/* Y-axis ticks */}
           <div class="absolute left-2 top-4 bottom-8 w-10 flex flex-col justify-between">
             <SkeletonBar width="36px" height="8px" />
             <SkeletonBar width="30px" height="8px" />
             <SkeletonBar width="34px" height="8px" />
             <SkeletonBar width="28px" height="8px" />
           </div>
-          {/* Chart area */}
           <div class="absolute left-14 top-4 right-4 bottom-8 border-l border-b border-container-border/20">
             <div class="absolute inset-0 skeleton-shimmer" />
           </div>
