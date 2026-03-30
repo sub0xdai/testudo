@@ -21,7 +21,7 @@ const CHART_OPTIONS: { value: ChartOption; label: string }[] = [
   { value: 'symbol', label: 'Symbol Distribution' },
   { value: 'treemap', label: 'P&L Treemap' },
   { value: 'expectancy', label: 'Expectancy by Symbol' },
-  { value: 'daily-pnl', label: 'Daily P&L' },
+  { value: 'daily-pnl', label: 'Daily P&L History' },
   { value: 'cumulative', label: 'Cumulative Profit' },
   { value: 'drawdown', label: 'Drawdown' },
   { value: 'holding', label: 'Holding Period Analysis' },
