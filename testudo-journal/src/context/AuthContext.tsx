@@ -59,9 +59,13 @@ export function AuthProvider(props: { children: JSX.Element }) {
         setUser(data.user)
       } else {
         setUser(null)
+        // No valid session — disconnect wallet so appKit.open() shows
+        // the connector picker, not the account/balance modal.
+        appKit.disconnect()
       }
     } catch {
       setUser(null)
+      appKit.disconnect()
     } finally {
       setLoading(false)
     }
