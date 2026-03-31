@@ -1,34 +1,34 @@
 # Implementation Plan
 
-> Last updated: 2026-03-30
-> Current spec: UX-02-overview-polish
+> Last updated: 2026-03-31
+> Current spec: REL-02-hl-journal-pipeline
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: UX-02-overview-polish
+## Active Spec: REL-02-hl-journal-pipeline
 
-Polish Overview dashboard: standardise spacing, add blur backdrop, replace equity curve, convert symbol chart, bolder titles.
+Fix HL trade data pipeline — closing fills not reaching journal/charts/overview since Mar 27. Lift proven import_worker logic into ws_fills REST poll loop for near-real-time journal writes.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Normalise spacing to 20px (p-5/gap-5) across Overview, ChartSelector, StatSection + glass-panel blur on content column + consistent borders | complete | medium | — |
-| T2 | Replace HeroEquityCurve dual-series with single BaselineSeries (green/red split at zero) | complete | medium | T1 |
-| T3 | Convert SymbolDonut to horizontal bar chart (rename to SymbolBreakdown), bolder StatSection titles, rename DailyPnl title to "DAILY P&L HISTORY" | complete | medium | T1 |
+| T1 | Extract shared `build_trade_close_event()` into `hl_fill_journal.rs`, refactor import_worker to use it | complete | medium | — |
+| T2 | Wire JournalService + PgPool + user_id through WsSubscriptionManager → HyperliquidFillSubscriber, write closing fills in `reconcile_since()` with seen_tids dedup | complete | high | T1 |
+| T3 | Add `open_times` tracking across poll cycles with 24h startup seed for correct trade duration | complete | medium | T2 |
+| T4 | Add `pg_notify` emission after journal write for extension UI update | complete | low | T2 |
 
 ### Key Decisions
 
-- BaselineSeries from lightweight-charts v5 handles green/red split natively — no custom rendering needed
-- Kept SymbolDonut.tsx as dead file (not deleted) — ChartSelector now imports SymbolBreakdown instead
-- glass-panel applied to main content column, not individual chart panels (avoids double-blur)
+- T3 and T4 folded into T2 — all three concerns (journal write, open_times, pg_notify) live in the same `reconcile_since()` loop, splitting them would be artificial
+- Borrow checker required cloning `Arc<JournalService>` and `Option<PgPool>` before the fill iteration loop — `self.record_tid()` mutably borrows self while journal/pool refs are held
+- `journal_service` creation moved earlier in main.rs (before WsSubscriptionManager) to enable wiring via `with_journal()`
 
 ### Discoveries
 
-- lightweight-charts v5 BaselineSeries uses `'Baseline'` as the series type string in ISeriesApi generic
-- ECharts horizontal bar needs `inverse: true` on yAxis to show top symbol first
-- `containLabel: false` in grid config needed to prevent label overflow with long symbol names
+- Clippy `doc_lazy_continuation` triggers when a doc-comment line for a constant is placed immediately after a struct's doc block (even with blank `///` separator) — constants with `///` docs must be separated by structural items or placed in a different region
+- `MAX_SEEN_TIDS` placed alongside `MAX_SEEN_OIDS` at top of file to avoid doc comment confusion
 
 ---
 

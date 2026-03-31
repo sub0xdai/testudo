@@ -373,4 +373,12 @@
 - **content.js bundle unchanged at 49.3kb**: Code reorganization is length-neutral — removed `strategiesToTry` logic, added `scrapeTimeframe` import and conditional.
 - **Completes EXT-43→46 series**: This spec ties together the main-world bridge (EXT-43), Hyperliquid platform detection (EXT-44), DexScreener symbol extraction (EXT-45), and the revised async scraper flow into a coherent multi-platform Alt+X experience.
 
+### 2026-03-31 — REL-02-hl-journal-pipeline
+- **HL trigger orders never match FillDetector OID gate**: WaitingForTrigger orders return `"cloid:..."` as OID at placement, but the actual exchange assigns a numeric OID when the trigger fires. FillDetector's `get_group_by_exchange_order(oid)` → None → dropped. Neither Python nor Rust HL SDKs solve this. Industry pattern: match on `closedPnl != "0"`, not order ID.
+- **Shared `build_trade_close_event()` extracted to `hl_fill_journal.rs`**: Both `import_worker` (batch) and `ws_fills` (live 30s poll) now use the same conversion logic. Source field distinguishes: `"import_hl"` vs `"live_poll"`.
+- **Borrow checker pattern for `&mut self` + `Arc` in async loop**: When iterating fills and calling `self.record_tid()` (mutable borrow), can't hold `self.journal.as_ref()` (immutable borrow) across the loop. Fix: clone `Arc<JournalService>`, copy `Uuid`, clone `Option<PgPool>` into locals before the loop.
+- **`journal_service` creation moved earlier in main.rs**: Was after WsSubscriptionManager creation. Moved before it so `with_journal()` builder can wire it into the manager.
+- **`open_times` HashMap seeded from startup reconciliation**: 24h REST lookback populates `coin → timestamp` from `fill.dir.starts_with("Open")` fills. Subsequent 30s polls also update it. Used as `open_time_ms` parameter to `build_trade_close_event()` for accurate duration.
+- **Dedup layer: `seen_tids` (in-memory HashSet) + DB unique index**: `seen_tids` prevents redundant DB writes within a process lifetime. `idx_unique_import_fill` on `(user_id, exchange, exchange_fill_id)` catches cross-process duplicates (poller vs import worker).
+
 *This file grows as Vox learns. Never delete entries.*
