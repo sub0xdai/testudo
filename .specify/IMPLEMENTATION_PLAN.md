@@ -1,34 +1,35 @@
 # Implementation Plan
 
 > Last updated: 2026-03-31
-> Current spec: REL-02-hl-journal-pipeline
+> Current spec: REL-03-hl-group-reconciliation
 > Phase: COMPLETE
 
 ---
 
-## Active Spec: REL-02-hl-journal-pipeline
+## Active Spec: REL-03-hl-group-reconciliation
 
-Fix HL trade data pipeline — closing fills not reaching journal/charts/overview since Mar 27. Lift proven import_worker logic into ws_fills REST poll loop for near-real-time journal writes.
+After REL-02 writes an HL closing fill to the journal, the corresponding OrderGroup remains Active (FillDetector never matched). Add reconciliation: find matching group by (user_id, symbol), transition to terminal, cancel siblings, emit notify.
 
 ### Tasks
 
 | ID | Task | Status | Complexity | Depends On |
 |----|------|--------|------------|------------|
-| T1 | Extract shared `build_trade_close_event()` into `hl_fill_journal.rs`, refactor import_worker to use it | complete | medium | — |
-| T2 | Wire JournalService + PgPool + user_id through WsSubscriptionManager → HyperliquidFillSubscriber, write closing fills in `reconcile_since()` with seen_tids dedup | complete | high | T1 |
-| T3 | Add `open_times` tracking across poll cycles with 24h startup seed for correct trade duration | complete | medium | T2 |
-| T4 | Add `pg_notify` emission after journal write for extension UI update | complete | low | T2 |
+| T1 | Wire EngineHandle + ExchangeApi into WsSubscriptionManager → HyperliquidFillSubscriber, add group reconciliation after journal write (CP-1 + CP-2 + CP-3) | complete | high | — |
+| T2 | Validate: cargo clippy --all-targets && cargo test, commit | complete | low | T1 |
 
 ### Key Decisions
 
-- T3 and T4 folded into T2 — all three concerns (journal write, open_times, pg_notify) live in the same `reconcile_since()` loop, splitting them would be artificial
-- Borrow checker required cloning `Arc<JournalService>` and `Option<PgPool>` before the fill iteration loop — `self.record_tid()` mutably borrows self while journal/pool refs are held
-- `journal_service` creation moved earlier in main.rs (before WsSubscriptionManager) to enable wiring via `with_journal()`
+- All 3 checkpoints (group transition, cancel siblings, pg_notify) implemented in single task — they're a single code path after journal write
+- Cardinality check: only act on exactly 1 matching active group per (user_id, symbol)
+- Best-effort cleanup: journal entry is never rolled back on reconciliation failure
+- Symbol matching handles both formats: HL coin name ("BTC") and group format ("BTC_USDT")
+- When REL-03 engine_handle is present, `reconcile_group` emits pg_notify with specific event_type (stopped_out/took_profit); when absent, REL-02 fallback emits generic "trade_closed"
 
 ### Discoveries
 
-- Clippy `doc_lazy_continuation` triggers when a doc-comment line for a constant is placed immediately after a struct's doc block (even with blank `///` separator) — constants with `///` docs must be separated by structural items or placed in a different region
-- `MAX_SEEN_TIDS` placed alongside `MAX_SEEN_OIDS` at top of file to avoid doc comment confusion
+- `reconcile_group` is a static async method (takes explicit params) rather than `&self` method to avoid borrow checker issues with the mutable `record_tid()` loop
+- `fill.dir` field contains "Close Long"/"Close Short" — used directly as `fill_side` parameter for terminal status determination
+- HL OrderGroups use "BTC_USDT" symbol format while HL fills use bare coin name "BTC" — reconciler matches both
 
 ---
 
@@ -36,3 +37,4 @@ Fix HL trade data pipeline — closing fills not reaching journal/charts/overvie
 
 - UX-01-pair-page (COMPLETE)
 - UX-02-overview-polish (COMPLETE)
+- REL-02-hl-journal-pipeline (COMPLETE)

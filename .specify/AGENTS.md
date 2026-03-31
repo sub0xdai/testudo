@@ -381,4 +381,11 @@
 - **`open_times` HashMap seeded from startup reconciliation**: 24h REST lookback populates `coin → timestamp` from `fill.dir.starts_with("Open")` fills. Subsequent 30s polls also update it. Used as `open_time_ms` parameter to `build_trade_close_event()` for accurate duration.
 - **Dedup layer: `seen_tids` (in-memory HashSet) + DB unique index**: `seen_tids` prevents redundant DB writes within a process lifetime. `idx_unique_import_fill` on `(user_id, exchange, exchange_fill_id)` catches cross-process duplicates (poller vs import worker).
 
+### 2026-03-31 — REL-03-hl-group-reconciliation
+- **`reconcile_group` is a static async method**: Takes explicit params (`engine_handle`, `exchange_api`, `user_id`, etc.) instead of `&self`. This avoids borrow checker issues — the method is called inside the `for fill in &fills` loop where `self.record_tid()` already holds a mutable borrow.
+- **Symbol format mismatch between HL fills and OrderGroups**: HL fills use bare coin name ("BTC"), OrderGroups use "BTC_USDT" format. The reconciler matches both with `g.symbol == symbol_usdt || g.symbol == symbol`.
+- **`fill.dir` carries close direction**: Values like "Close Long", "Close Short" — used to determine terminal status (StoppedOut vs TookProfit) by comparing exit_price against group entry_price.
+- **Dual pg_notify path**: When REL-03 engine_handle is present, `reconcile_group` emits pg_notify with specific event_type ("stopped_out"/"took_profit") and group_id. When absent (REL-02-only fallback), original generic "trade_closed" notify fires.
+- **Sibling cancel cancels all 3 exchange order IDs**: entry, SL, and TP — the filled one returns OrderNotFound (no-op), the others get cancelled. Same pattern as `fill_detector.rs:cancel_all_related_orders()`.
+
 *This file grows as Vox learns. Never delete entries.*
