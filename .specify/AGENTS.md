@@ -388,4 +388,12 @@
 - **Dual pg_notify path**: When REL-03 engine_handle is present, `reconcile_group` emits pg_notify with specific event_type ("stopped_out"/"took_profit") and group_id. When absent (REL-02-only fallback), original generic "trade_closed" notify fires.
 - **Sibling cancel cancels all 3 exchange order IDs**: entry, SL, and TP — the filled one returns OrderNotFound (no-op), the others get cancelled. Same pattern as `fill_detector.rs:cancel_all_related_orders()`.
 
+### 2026-04-01 — CON-01a-daily-stats-regression
+- **TradeManagementState lacks pool**: Needed `pool: Option<PgPool>` field with `with_pool()` builder to resolve exchange_name from exchange_account_id during trade placement. Tests use `new()` which defaults to None — backward compatible.
+- **RehydrationService needed pool for batch exchange_name lookup**: Added `pool: PgPool` to constructor. Uses `SELECT id, exchange_name FROM exchange_accounts WHERE id = ANY($1)` to batch-fetch exchange names for all rehydrated positions. Groups get exchange_name set post-build before engine load.
+- **EngineCommand::ConfigureGroup extended**: Added `exchange_name: Option<String>` field. Handler sets it on the group alongside `exchange_account_id`. Only one call site in trade_management.rs.
+- **parse_trade_close_payload default changed**: From `"cex"` to `"unknown"` for missing exchange field. Consistent with fill_detector's `group.exchange_name.as_deref().unwrap_or("unknown")` fallback.
+- **Daily stats upsert after tx.commit() is correct**: The TradeEventWriter's transaction covers trade_events + managed_positions + journal_trades atomically. Daily stats are post-commit fire-and-forget because they're recomputable from journal_trades. Same SQL as JournalService::upsert_daily_stats — no abstraction needed, just copy the queries.
+- **Draft notes merge pattern**: DELETE FROM journal_trade_drafts RETURNING notes → UPDATE journal_trades SET notes WHERE trade_group_id. Uses pool (not transaction) since it's post-commit. Same pattern as JournalService lines 167-191.
+
 *This file grows as Vox learns. Never delete entries.*
