@@ -14,13 +14,28 @@ type WalletFlowState =
 
 interface WalletConnectFlowProps {
   onComplete: () => void
+  existingAccountId?: string
 }
 
 // ─── Step Progress ───
 
-const STEP_LABELS = ['Connect', 'Initialize', 'Sign', 'Approve'] as const
+function getStepLabels(isReauth: boolean): readonly string[] {
+  return isReauth
+    ? ['Connect', 'Sign', 'Approve'] as const
+    : ['Connect', 'Initialize', 'Sign', 'Approve'] as const
+}
 
-function stepIndex(step: WalletFlowState['step']): number {
+function stepIndex(step: WalletFlowState['step'], isReauth: boolean): number {
+  if (isReauth) {
+    switch (step) {
+      case 'idle': return 0
+      case 'init-agent': return 0
+      case 'signing': return 1
+      case 'approving': return 2
+      case 'success': return 3
+      case 'error': return -1
+    }
+  }
   switch (step) {
     case 'idle': return 0
     case 'init-agent': return 1
@@ -58,6 +73,7 @@ function extractErrorMessage(err: unknown): string {
 
 export function WalletConnectFlow(props: WalletConnectFlowProps) {
   const [state, setState] = createSignal<WalletFlowState>({ step: 'idle' })
+  const isReauth = () => !!props.existingAccountId
 
   function getConnectedAddress(): string | undefined {
     return appKit.getAddress() ?? undefined
@@ -70,35 +86,64 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
     setState({ step: 'init-agent', address })
 
     try {
-      // Step 1: Initialize agent wallet
-      const initResult = await exchangeApi.initAgentWallet(address)
-      const { account_id, agent_address } = initResult
+      let account_id: string
+      let agent_address: string
 
-      // Step 2: Get EIP-712 typed data for signing
-      const approveData = await exchangeApi.getApproveData(account_id)
-      const { typed_data, nonce } = approveData
+      if (props.existingAccountId) {
+        // Re-authorize path: skip init, go straight to approve-data
+        account_id = props.existingAccountId
+        const approveData = await exchangeApi.getApproveData(account_id)
+        agent_address = approveData.agent_address
+        const { typed_data, nonce } = approveData
 
-      setState({
-        step: 'signing',
-        accountId: account_id,
-        agentAddress: agent_address,
-        typedData: typed_data,
-        nonce,
-      })
+        setState({
+          step: 'signing',
+          accountId: account_id,
+          agentAddress: agent_address,
+          typedData: typed_data,
+          nonce,
+        })
 
-      // Step 3: Request wallet signature via window.ethereum
-      const provider = window.ethereum
-      if (!provider) throw new Error('No wallet provider found')
+        const provider = window.ethereum
+        if (!provider) throw new Error('No wallet provider found')
 
-      const signature = await (provider as { request: (args: { method: string; params: [string, string] }) => Promise<string> }).request({
-        method: 'eth_signTypedData_v4',
-        params: [address, JSON.stringify(typed_data)],
-      })
+        const signature = await (provider as { request: (args: { method: string; params: [string, string] }) => Promise<string> }).request({
+          method: 'eth_signTypedData_v4',
+          params: [address, JSON.stringify(typed_data)],
+        })
 
-      setState({ step: 'approving', accountId: account_id, signature, nonce })
+        setState({ step: 'approving', accountId: account_id, signature, nonce })
 
-      // Step 4: Submit approval to backend
-      await exchangeApi.approveAgent(account_id, signature, nonce)
+        await exchangeApi.approveAgent(account_id, signature, nonce)
+      } else {
+        // Normal init path
+        const initResult = await exchangeApi.initAgentWallet(address)
+        account_id = initResult.account_id
+        agent_address = initResult.agent_address
+
+        const approveData = await exchangeApi.getApproveData(account_id)
+        const { typed_data, nonce } = approveData
+
+        setState({
+          step: 'signing',
+          accountId: account_id,
+          agentAddress: agent_address,
+          typedData: typed_data,
+          nonce,
+        })
+
+        const provider = window.ethereum
+        if (!provider) throw new Error('No wallet provider found')
+
+        const signature = await (provider as { request: (args: { method: string; params: [string, string] }) => Promise<string> }).request({
+          method: 'eth_signTypedData_v4',
+          params: [address, JSON.stringify(typed_data)],
+        })
+
+        setState({ step: 'approving', accountId: account_id, signature, nonce })
+
+        await exchangeApi.approveAgent(account_id, signature, nonce)
+      }
 
       setState({ step: 'success', accountId: account_id, agentAddress: agent_address })
 
@@ -134,7 +179,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                   <CheckIcon size={24} />
                 </div>
                 <h3 class="font-display text-lg font-bold text-text-primary mb-2">
-                  WALLET CONNECTED
+                  {isReauth() ? 'WALLET RE-AUTHORIZED' : 'WALLET CONNECTED'}
                 </h3>
                 <p class="font-mono text-sm text-text-secondary">
                   Agent wallet approved and active
@@ -178,7 +223,8 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
       <Show when={state().step !== 'success' && state().step !== 'error'}>
         {(() => {
           const current = state()
-          const idx = stepIndex(current.step)
+          const labels = getStepLabels(isReauth())
+          const idx = stepIndex(current.step, isReauth())
           const isProcessing = current.step === 'init-agent' || current.step === 'signing' || current.step === 'approving'
           const address = getConnectedAddress()
 
@@ -186,7 +232,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
             <div class="space-y-6">
               {/* Step progress */}
               <div class="flex items-center justify-between">
-                <For each={[...STEP_LABELS]}>
+                <For each={[...labels]}>
                   {(label, i) => (
                     <div class="flex items-center">
                       <div class={`w-6 h-6 flex items-center justify-center text-xs font-mono font-bold ${
@@ -205,7 +251,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                       }`}>
                         {label}
                       </span>
-                      <Show when={i() < STEP_LABELS.length - 1}>
+                      <Show when={i() < labels.length - 1}>
                         <div class={`w-8 h-px mx-2 ${
                           i() < idx ? 'bg-text-primary' : 'bg-container-border'
                         }`} />
@@ -219,7 +265,9 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
               <Show when={!address}>
                 <div class="space-y-4">
                   <p class="font-mono text-sm text-text-secondary">
-                    Connect your Ethereum wallet to authorize an agent keypair for Hyperliquid trading.
+                    {isReauth()
+                      ? 'Connect your wallet to re-authorize the agent keypair.'
+                      : 'Connect your Ethereum wallet to authorize an agent keypair for Hyperliquid trading.'}
                   </p>
                   <button
                     onClick={() => appKit.open()}
@@ -250,15 +298,19 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                   <Show when={isProcessing} fallback={
                     <button
                       onClick={startFlow}
-                      class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors animate-glow-pulse"
+                      class={`w-full py-3 border font-mono font-bold text-xs tracking-wider transition-colors ${
+                        isReauth()
+                          ? 'border-signal-amber text-signal-amber hover:bg-signal-amber hover:text-main-bg'
+                          : 'border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg animate-glow-pulse'
+                      }`}
                     >
-                      [ AUTHORIZE AGENT WALLET ]
+                      {isReauth() ? '[ RE-AUTHORIZE AGENT WALLET ]' : '[ AUTHORIZE AGENT WALLET ]'}
                     </button>
                   }>
                     <div class="text-center py-4">
                       <div class="inline-block w-6 h-6 border-2 border-text-primary border-t-transparent rounded-full animate-spin mb-3" />
                       <p class="font-mono text-sm text-text-secondary">
-                        {current.step === 'init-agent' && 'Generating agent keypair...'}
+                        {current.step === 'init-agent' && (isReauth() ? 'Fetching agent data...' : 'Generating agent keypair...')}
                         {current.step === 'signing' && 'Waiting for wallet signature...'}
                         {current.step === 'approving' && 'Submitting approval to Hyperliquid...'}
                       </p>

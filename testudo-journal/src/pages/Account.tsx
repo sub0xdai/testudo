@@ -1,13 +1,13 @@
 import { createSignal, createResource, For, Show, onMount } from 'solid-js'
 import {
   exchangeApi,
-  type ExchangeInfo,
   type ExchangeAccount,
   type TestConnectionResult,
   type ExchangeBalanceResponse,
 } from '../api/client'
 import { ExchangeCard } from '../components/account/ExchangeCard'
 import { AddExchangeCard } from '../components/account/AddExchangeCard'
+import { AddExchangeForm } from '../components/account/AddExchangeForm'
 import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
 
@@ -28,6 +28,8 @@ export default function Account() {
   const [importingId, setImportingId] = createSignal<string | null>(null)
   const [importedExchanges, setImportedExchanges] = createSignal<Set<string>>(new Set())
   const [showForm, setShowForm] = createSignal(false)
+  const [formInitialExchange, setFormInitialExchange] = createSignal('')
+  const [reauthAccountId, setReauthAccountId] = createSignal<string | null>(null)
 
   // Check which exchanges have completed imports
   onMount(async () => {
@@ -41,16 +43,9 @@ export default function Account() {
       }
     } catch { /* non-critical */ }
   })
-  const [showWalletConnect, setShowWalletConnect] = createSignal(false)
+
   const [setupComplete, setSetupComplete] = createSignal(false)
   const [error, setError] = createSignal('')
-
-  // Form state
-  const [formExchange, setFormExchange] = createSignal('')
-  const [formApiKey, setFormApiKey] = createSignal('')
-  const [formSecret, setFormSecret] = createSignal('')
-  const [formPassphrase, setFormPassphrase] = createSignal('')
-  const [formSubmitting, setFormSubmitting] = createSignal(false)
 
   // Fetch balances for all accounts
   function fetchBalances(accs: ExchangeAccount[]) {
@@ -68,7 +63,6 @@ export default function Account() {
   })
 
   const isOnboarding = () => !accounts.loading && (accounts()?.length ?? 0) === 0 && !setupComplete()
-  const needsPassphrase = () => formExchange() === 'okx' || formExchange() === 'kucoin'
 
   async function handleTest(id: string) {
     setTestingId(id)
@@ -107,7 +101,7 @@ export default function Account() {
   }
 
   async function handleImport(exchangeName: string) {
-    if (importedExchanges().has(exchangeName)) return // already imported
+    if (importedExchanges().has(exchangeName)) return
     setImportingId(exchangeName)
     try {
       const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -127,30 +121,16 @@ export default function Account() {
     }
   }
 
-  async function handleAddAccount(e: Event) {
-    e.preventDefault()
-    setFormSubmitting(true)
-    setError('')
-    try {
-      await exchangeApi.addAccount({
-        exchange_name: formExchange(),
-        account_name: `${formExchange()}-main`,
-        api_key: formApiKey(),
-        secret: formSecret(),
-        ...(needsPassphrase() ? { passphrase: formPassphrase() } : {}),
-      })
-      setShowForm(false)
-      setFormExchange('')
-      setFormApiKey('')
-      setFormSecret('')
-      setFormPassphrase('')
-      setSetupComplete(true)
-      refetchAccounts()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add account')
-    } finally {
-      setFormSubmitting(false)
-    }
+  function openForm(initialExchange?: string) {
+    setFormInitialExchange(initialExchange ?? '')
+    setShowForm(true)
+  }
+
+  function handleFormSuccess() {
+    setShowForm(false)
+    setFormInitialExchange('')
+    setSetupComplete(true)
+    refetchAccounts()
   }
 
   return (
@@ -203,109 +183,58 @@ export default function Account() {
                   onTest={() => handleTest(acc.id)}
                   onDelete={() => handleDelete(acc.id)}
                   onRevoke={() => handleRevoke(acc.id)}
-                  onMigrate={() => {/* TODO: migrate to agent wallet */}}
+                  onMigrate={() => openForm('hyperliquid')}
+                  onReauthorize={() => setReauthAccountId(acc.id)}
                   onImport={() => handleImport(acc.exchange_name)}
                   isImporting={importingId() === acc.exchange_name}
                   isImported={importedExchanges().has(acc.exchange_name)}
                 />
               )}
             </For>
-            <AddExchangeCard onClick={() => setShowForm(true)} />
+            <AddExchangeCard onClick={() => openForm()} />
           </div>
 
           {/* Add exchange form */}
           <Show when={showForm()}>
             <div class="flex justify-center mb-8">
-            <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 w-full max-w-lg">
-              <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// ADD_EXCHANGE</div>
-              <h3 class="font-mono text-sm font-bold text-text-primary mb-4">ADD EXCHANGE</h3>
+              <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 w-full max-w-lg">
+                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// ADD_EXCHANGE</div>
+                <h3 class="font-mono text-sm font-bold text-text-primary mb-4">ADD EXCHANGE</h3>
 
-              <Show when={exchanges()}>
-                {(exs) => (
-                  <form onSubmit={handleAddAccount}>
-                    <div class="mb-4">
-                      <label class="block font-mono text-xs text-text-secondary mb-1">EXCHANGE</label>
-                      <select
-                        value={formExchange()}
-                        onInput={(e) => setFormExchange(e.currentTarget.value)}
-                        class="w-full bg-main-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary"
-                      >
-                        <option value="" class="bg-main-bg text-text-primary">Select exchange...</option>
-                        <For each={exs()}>
-                          {(ex) => (
-                            <option value={ex.id} class="bg-main-bg text-text-primary">{ex.name}</option>
-                          )}
-                        </For>
-                      </select>
-                    </div>
-
-                    {/* Hyperliquid uses agent wallet flow instead of API keys */}
-                    <Show when={formExchange() === 'hyperliquid'}>
-                      <WalletConnectFlow onComplete={() => {
-                        setShowForm(false)
-                        setFormExchange('')
-                        refetchAccounts()
-                      }} />
-                    </Show>
-
-                    <Show when={formExchange() && formExchange() !== 'hyperliquid'}>
-                      <div class="mb-4">
-                        <label class="block font-mono text-xs text-text-secondary mb-1">API KEY</label>
-                        <input
-                          type="text"
-                          value={formApiKey()}
-                          onInput={(e) => setFormApiKey(e.currentTarget.value)}
-                          class="w-full bg-main-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary"
-                          placeholder="Enter API key"
-                        />
-                      </div>
-                      <div class="mb-4">
-                        <label class="block font-mono text-xs text-text-secondary mb-1">API SECRET</label>
-                        <input
-                          type="password"
-                          value={formSecret()}
-                          onInput={(e) => setFormSecret(e.currentTarget.value)}
-                          class="w-full bg-main-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary"
-                          placeholder="Enter API secret"
-                        />
-                      </div>
-                      <Show when={needsPassphrase()}>
-                        <div class="mb-4">
-                          <label class="block font-mono text-xs text-text-secondary mb-1">PASSPHRASE</label>
-                          <input
-                            type="password"
-                            value={formPassphrase()}
-                            onInput={(e) => setFormPassphrase(e.currentTarget.value)}
-                            class="w-full bg-main-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary"
-                            placeholder="Enter passphrase"
-                          />
-                        </div>
-                      </Show>
-                      <div class="flex gap-3">
-                        <button
-                          type="submit"
-                          disabled={formSubmitting() || !formApiKey() || !formSecret()}
-                          class="px-6 py-2 border border-text-primary text-text-primary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
-                        >
-                          {formSubmitting() ? 'CONNECTING...' : 'CONNECT EXCHANGE'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowForm(false)}
-                          class="px-6 py-2 font-mono text-xs text-text-secondary hover:text-text-primary transition-colors"
-                        >
-                          CANCEL
-                        </button>
-                      </div>
-                    </Show>
-                  </form>
-                )}
-              </Show>
-            </div>
+                <Show when={exchanges()}>
+                  {(exs) => (
+                    <AddExchangeForm
+                      exchanges={exs()}
+                      initialExchange={formInitialExchange()}
+                      onSuccess={handleFormSuccess}
+                      onCancel={() => setShowForm(false)}
+                    />
+                  )}
+                </Show>
+              </div>
             </div>
           </Show>
 
-          {/* Extension pairing */}
+          {/* Re-authorization modal */}
+          <Show when={reauthAccountId()}>
+            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div class="border border-container-border bg-main-bg/95 backdrop-blur-md p-8 max-w-lg w-full mx-4">
+                <div class="flex justify-between items-center mb-6">
+                  <h3 class="font-mono text-sm font-bold text-text-primary tracking-wider">RE-AUTHORIZE AGENT WALLET</h3>
+                  <button
+                    onClick={() => setReauthAccountId(null)}
+                    class="text-text-tertiary hover:text-text-primary font-mono text-xs"
+                  >
+                    CLOSE
+                  </button>
+                </div>
+                <WalletConnectFlow
+                  existingAccountId={reauthAccountId()!}
+                  onComplete={() => { setReauthAccountId(null); refetchAccounts() }}
+                />
+              </div>
+            </div>
+          </Show>
         </Show>
       </Show>
     </div>

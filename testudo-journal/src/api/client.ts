@@ -457,6 +457,7 @@ export interface ExchangeAccount {
   is_active: boolean
   auth_mode: string
   agent_wallet_address?: string | null
+  requires_reauthorization?: boolean | null
   last_used_at?: string | null
   created_at: string
 }

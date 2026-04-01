@@ -402,4 +402,11 @@
 - **`error_code_for()` parallel to `format_exchange_error()`**: Both functions match on the same `ExchangeApiError` enum. Keeping them separate (not merging into a single return struct) preserves backward compatibility — `format_exchange_error` is used in warning strings too, not just API responses.
 - **`ApiResponse` Deserialize requires `error_code` optional**: Since `ApiResponse` derives both Serialize and Deserialize, and existing JSON from clients/tests won't have `error_code`, it must be `Option<String>` with `skip_serializing_if` and default None for deserialization.
 
+### 2026-04-01 — UXA-02-desk-reauth-ux
+- **Account.tsx API key `type="text"` security leak**: The inline add-exchange form in Account.tsx used `type="text"` for the API key input while OnboardingFlow used `type="password"`. Extracting `AddExchangeForm` as a shared component fixed this by using `type="password"` for all credential fields.
+- **WalletConnectFlow step progress adapts to re-auth mode**: Normal flow has 4 steps (Connect, Initialize, Sign, Approve). Re-auth skips Initialize, so step labels and indices are dynamically computed based on `isReauth()` flag. The `init-agent` step in re-auth mode maps to index 0 (same as idle) since it's just fetching approve-data, not generating a keypair.
+- **OnboardingFlow simplified to binary state**: Previously used a 4-step state machine (`select`, `credentials`, `submitting`, `success`) with its own form rendering. After extracting `AddExchangeForm`, OnboardingFlow only tracks `success` boolean — all form logic lives in the shared component.
+- **Account.tsx had 6 dead form signals**: `showWalletConnect`, `formApiKey`, `formSecret`, `formPassphrase`, `formSubmitting`, `needsPassphrase` were all replaced by `AddExchangeForm`'s internal state. Only `formInitialExchange` signal needed (to pre-select exchange for migration flow).
+- **`AddExchangeForm.initialExchange` prop enables migration pre-selection**: When "Migrate to agent wallet" is clicked on a direct-key Hyperliquid card, Account.tsx opens the form with `initialExchange='hyperliquid'`, auto-selecting the WalletConnectFlow path.
+
 *This file grows as Vox learns. Never delete entries.*
