@@ -63,6 +63,7 @@ export interface BackendResponse {
   success: boolean;
   data?: unknown;
   error?: string | null;
+  error_code?: string;
   warnings?: string[];
 }
 

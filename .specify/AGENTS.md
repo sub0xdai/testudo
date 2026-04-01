@@ -409,4 +409,10 @@
 - **Account.tsx had 6 dead form signals**: `showWalletConnect`, `formApiKey`, `formSecret`, `formPassphrase`, `formSubmitting`, `needsPassphrase` were all replaced by `AddExchangeForm`'s internal state. Only `formInitialExchange` signal needed (to pre-select exchange for migration flow).
 - **`AddExchangeForm.initialExchange` prop enables migration pre-selection**: When "Migrate to agent wallet" is clicked on a direct-key Hyperliquid card, Account.tsx opens the form with `initialExchange='hyperliquid'`, auto-selecting the WalletConnectFlow path.
 
+### 2026-04-01 — UXA-03-extension-error-recovery
+- **`error_code` flows through 4 layers**: `ErrorResponseSchema` (apiRequest HTTP error path) → `ApiResult` type → `normalizeBackendAck` (HTTP 200 logical error path) → `BackendResponse` type+schema → content.ts response cast. All four must carry `error_code` for end-to-end propagation.
+- **`DESK_URL` already includes `/desk` suffix**: Value is `http://localhost:3002/desk`, so account link is `${DESK_URL}/#/account`, NOT `${DESK_URL}/desk/#/account` as the spec template suggested. Fallback: `https://testudo.vip/desk/#/account`.
+- **Banner uses same Shadow DOM pattern as toasts**: Each banner gets its own shadow host (`testudo-sniper-banner`), reusing `TOAST_STYLES` (which includes `TOAST_CSS` + theme vars). Only one banner active at a time (tracked via `activeBanner` module var) — showing a new one removes the old.
+- **content.ts safely imports from utils.ts**: `DESK_URL` is a plain string constant. `utils.ts` imports only `type { Settings }` which tree-shakes. No Zod or webextension-polyfill pulled into content bundle. content.js grew 2.9kb (49.3→52.2kb).
+
 *This file grows as Vox learns. Never delete entries.*

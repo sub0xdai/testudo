@@ -18,6 +18,16 @@ const TOAST_CSS = `
   .toast.error .icon::before { content: "\\2717"; }
   .toast.info { background: #0a0a0a; color: #999; border: 1px solid #333; }
   .toast.info .icon::before { content: "\\2022"; }
+  .testudo-banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2147483647; font-family: 'Space Mono', monospace; font-size: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; max-width: 500px; opacity: 0; transition: opacity 0.3s; }
+  .testudo-banner.visible { opacity: 1; }
+  .testudo-banner.error { background: #0a0a0a; color: #f59e0b; border: 1px solid #3a2a0a; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .testudo-banner .icon { font-size: 14px; flex-shrink: 0; }
+  .testudo-banner .icon::before { content: "\\26A0"; }
+  .testudo-banner .message { flex: 1; }
+  .testudo-banner .action { color: #d4d4d4; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+  .testudo-banner .action:hover { color: #fff; }
+  .testudo-banner .dismiss { background: none; border: none; color: #666; cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1; }
+  .testudo-banner .dismiss:hover { color: #fff; }
 `;
 
 // --- Styles (injected into Shadow DOM) ---
@@ -345,6 +355,74 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
       if (idx !== -1) activeToasts.splice(idx, 1);
     }, 300);
   }, duration);
+}
+
+// --- Persistent Banners (for configuration errors) ---
+
+let activeBanner: HTMLElement | null = null;
+
+export function showBanner(message: string, action?: { label: string; url: string }): void {
+  // Remove existing banner before showing new one
+  if (activeBanner) {
+    activeBanner.remove();
+    activeBanner = null;
+  }
+
+  const host = document.createElement("div");
+  host.id = "testudo-sniper-banner";
+  const shadow = host.attachShadow({ mode: "open" });
+
+  // Apply extension theme
+  if (typeof chrome !== "undefined" && chrome.storage?.local) {
+    chrome.storage.local.get("testudo-theme", (result: Record<string, string>) => {
+      const theme = result["testudo-theme"];
+      if (theme && theme !== "amoled") {
+        host.setAttribute("data-theme", theme);
+      }
+    });
+  }
+
+  const style = document.createElement("style");
+  style.textContent = TOAST_STYLES;
+  shadow.appendChild(style);
+
+  const banner = document.createElement("div");
+  banner.className = "testudo-banner error";
+  banner.setAttribute("role", "alert");
+
+  const icon = document.createElement("span");
+  icon.className = "icon";
+  banner.appendChild(icon);
+
+  const msg = document.createElement("span");
+  msg.className = "message";
+  msg.textContent = message;
+  banner.appendChild(msg);
+
+  if (action) {
+    const link = document.createElement("a");
+    link.className = "action";
+    link.textContent = action.label;
+    link.href = action.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    banner.appendChild(link);
+  }
+
+  const dismiss = document.createElement("button");
+  dismiss.className = "dismiss";
+  dismiss.innerHTML = "&times;";
+  dismiss.addEventListener("click", () => {
+    host.remove();
+    activeBanner = null;
+  });
+  banner.appendChild(dismiss);
+
+  shadow.appendChild(banner);
+  document.body.appendChild(host);
+  activeBanner = host;
+
+  requestAnimationFrame(() => banner.classList.add("visible"));
 }
 
 export function showOrderToast(eventType: string, message: string): void {

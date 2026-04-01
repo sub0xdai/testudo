@@ -74,12 +74,14 @@ export const BackendResponseSchema = z.object({
   success: z.boolean(),
   data: z.unknown().optional(),
   error: z.string().nullable().optional(),
+  error_code: z.string().optional(),
   warnings: z.array(z.string()).optional(),
 });
 
 export const ErrorResponseSchema = z.object({
   error: z.string().optional(),
   message: z.string().optional(),
+  error_code: z.string().optional(),
 });
 
 const DecimalLikeStringSchema = z.union([z.string(), z.number()]).transform((v) => String(v));

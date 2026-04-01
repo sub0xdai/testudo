@@ -3,10 +3,11 @@ import { scrapeTradeSetup, scrapeSymbol, scrapeTimeframe } from "./scraper";
 // MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
 const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
 import type { TradeSetup } from "./scraper";
-import { showModal, showOrderToast, showToast, isVisible } from "./modal";
+import { showModal, showOrderToast, showToast, showBanner, isVisible } from "./modal";
 import type { ModalResult } from "./modal";
 import type { ManagementPreset, BalanceResponse, LiveBalanceResponse } from "./types";
 import { DEFAULT_MANAGEMENT_PRESET } from "./types";
+import { DESK_URL } from "./utils";
 
 console.log("Testudo Sniper loaded");
 
@@ -217,6 +218,44 @@ function handleModalResult(result: ModalResult, setup: TradeSetup | null): void 
   }
 }
 
+// --- Error Classification ---
+
+type ErrorSeverity = "transient" | "configuration";
+
+interface ClassifiedError {
+  severity: ErrorSeverity;
+  message: string;
+  action?: { label: string; url: string };
+}
+
+const DESK_ACCOUNT_URL = DESK_URL
+  ? `${DESK_URL}/#/account`
+  : "https://testudo.vip/desk/#/account";
+
+function classifyError(error: string, errorCode?: string): ClassifiedError {
+  switch (errorCode) {
+    case "agent_wallet_inactive":
+    case "agent_wallet_expired":
+      return {
+        severity: "configuration",
+        message: "Agent wallet needs re-authorization.",
+        action: { label: "Fix in Account Settings", url: DESK_ACCOUNT_URL },
+      };
+    case "rate_limited":
+      return {
+        severity: "transient",
+        message: "Exchange is busy — wait a moment and retry.",
+      };
+    case "insufficient_margin":
+      return {
+        severity: "transient",
+        message: "Insufficient margin — reduce size or increase leverage.",
+      };
+    default:
+      return { severity: "transient", message: error };
+  }
+}
+
 // --- Trade Execution ---
 
 async function executeTrade(setup: TradeSetup): Promise<void> {
@@ -236,7 +275,7 @@ async function executeTrade(setup: TradeSetup): Promise<void> {
           partial_tp: management.partial_tp,
         },
       },
-    }) as { success: boolean; data?: unknown; error?: string; warnings?: string[] };
+    }) as { success: boolean; data?: unknown; error?: string; error_code?: string; warnings?: string[] };
 
     if (response.success) {
       if (response.warnings && response.warnings.length > 0) {
@@ -245,7 +284,15 @@ async function executeTrade(setup: TradeSetup): Promise<void> {
         showToast("Order Sent", "success");
       }
     } else {
-      showToast(`Error: ${response.error || "Unknown error"}`, "error");
+      const classified = classifyError(
+        response.error || "Unknown error",
+        response.error_code,
+      );
+      if (classified.severity === "configuration") {
+        showBanner(classified.message, classified.action);
+      } else {
+        showToast(`Error: ${classified.message}`, "error");
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to send trade";

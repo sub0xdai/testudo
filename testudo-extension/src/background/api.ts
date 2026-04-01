@@ -44,7 +44,7 @@ interface ApiOpts {
   timeout?: number;
 }
 
-type ApiResult = { ok: true; raw: unknown } | { ok: false; error: string; httpError?: boolean };
+type ApiResult = { ok: true; raw: unknown } | { ok: false; error: string; error_code?: string; httpError?: boolean };
 
 // --- Normalizers ---
 
@@ -53,22 +53,24 @@ export function normalizeBackendAck(raw: unknown): BackendResponse {
     const obj = raw as Record<string, unknown>;
     const dataObj = obj.data && typeof obj.data === "object" ? obj.data as Record<string, unknown> : null;
     const warnings = Array.isArray(dataObj?.warnings) ? dataObj.warnings as string[] : undefined;
+    const error_code = typeof obj.error_code === "string" ? obj.error_code : undefined;
 
     if (typeof obj.success === "boolean") {
       return {
         success: obj.success,
         data: obj.data,
         error: typeof obj.error === "string" || obj.error === null ? obj.error : null,
+        error_code,
         warnings,
       };
     }
 
     if (typeof obj.error === "string") {
-      return { success: false, data: null, error: obj.error };
+      return { success: false, data: null, error: obj.error, error_code };
     }
 
     if (typeof obj.message === "string") {
-      return { success: false, data: null, error: obj.message };
+      return { success: false, data: null, error: obj.message, error_code };
     }
 
     return { success: true, data: raw, error: null, warnings };
@@ -184,7 +186,8 @@ export async function apiRequest(
       const raw = await response.json().catch(() => ({}));
       const json = ErrorResponseSchema.safeParse(raw);
       const errorMsg = json.success ? (json.data.error || json.data.message) : undefined;
-      return { ok: false, error: errorMsg || `HTTP ${response.status}`, httpError: true };
+      const errorCode = json.success ? json.data.error_code : undefined;
+      return { ok: false, error: errorMsg || `HTTP ${response.status}`, error_code: errorCode, httpError: true };
     }
 
     const raw = await response.json().catch(() => ({}));
@@ -280,7 +283,7 @@ export async function executeTrade(payload: RuntimeTradePayload): Promise<Backen
       method: "POST", body, auth: "hard",
       authError: "Authentication required — please log in",
     });
-    if (!result.ok) return { success: false, error: result.error };
+    if (!result.ok) return { success: false, error: result.error, error_code: result.error_code };
 
     const normalized = normalizeBackendAck(result.raw);
     const validated = BackendResponseSchema.safeParse(normalized);
