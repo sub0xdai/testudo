@@ -396,4 +396,10 @@
 - **Daily stats upsert after tx.commit() is correct**: The TradeEventWriter's transaction covers trade_events + managed_positions + journal_trades atomically. Daily stats are post-commit fire-and-forget because they're recomputable from journal_trades. Same SQL as JournalService::upsert_daily_stats — no abstraction needed, just copy the queries.
 - **Draft notes merge pattern**: DELETE FROM journal_trade_drafts RETURNING notes → UPDATE journal_trades SET notes WHERE trade_group_id. Uses pool (not transaction) since it's post-commit. Same pattern as JournalService lines 167-191.
 
+### 2026-04-01 — UXA-01-agent-wallet-visibility
+- **`ExchangeAccountResponse` constructed in 3 places**: `get_user_exchange_accounts()` (exchanges.rs:150), `add_exchange_account()` (exchanges.rs:260), and test in `types/exchanges.rs:275`. All three need `requires_reauthorization` field when adding new fields.
+- **`CexExchangeApi::load_credentials` also uses `list_by_user()`**: When modifying `list_by_user()` to include inactive accounts, CexExchangeApi's fallback path (no explicit account ID) now needs to filter to active accounts explicitly, otherwise it could pick an inactive agent wallet as the "first" account.
+- **`error_code_for()` parallel to `format_exchange_error()`**: Both functions match on the same `ExchangeApiError` enum. Keeping them separate (not merging into a single return struct) preserves backward compatibility — `format_exchange_error` is used in warning strings too, not just API responses.
+- **`ApiResponse` Deserialize requires `error_code` optional**: Since `ApiResponse` derives both Serialize and Deserialize, and existing JSON from clients/tests won't have `error_code`, it must be `Option<String>` with `skip_serializing_if` and default None for deserialization.
+
 *This file grows as Vox learns. Never delete entries.*
