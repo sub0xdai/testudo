@@ -206,9 +206,9 @@ function ExtensionChip() {
                 <button
                   onClick={generateCode}
                   disabled={generating()}
-                  class="w-full py-2 border border-text-tertiary text-text-tertiary font-mono text-[10px] tracking-wider hover:border-text-primary hover:text-text-primary transition-colors disabled:opacity-50"
+                  class="px-6 py-2 border border-container-border text-text-secondary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
                 >
-                  [ NEW CODE ]
+                  NEW CODE
                 </button>
               </div>
             </Show>
@@ -225,9 +225,9 @@ function ExtensionChip() {
                 <button
                   onClick={generateCode}
                   disabled={generating()}
-                  class="w-full py-2 border border-text-primary text-text-primary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
+                  class="px-6 py-2 border border-container-border text-text-secondary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
                 >
-                  {generating() ? 'GENERATING...' : '[ REGENERATE CODE ]'}
+                  {generating() ? 'GENERATING...' : 'REGENERATE CODE'}
                 </button>
               </div>
             </Show>
@@ -244,9 +244,9 @@ function ExtensionChip() {
                 <button
                   onClick={generateCode}
                   disabled={generating()}
-                  class="w-full py-2 border border-text-tertiary text-text-tertiary font-mono text-[10px] tracking-wider hover:border-text-primary hover:text-text-primary transition-colors disabled:opacity-50"
+                  class="px-6 py-2 border border-container-border text-text-secondary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
                 >
-                  {generating() ? 'GENERATING...' : '[ REGENERATE CODE ]'}
+                  {generating() ? 'GENERATING...' : 'REGENERATE CODE'}
                 </button>
               </div>
             </Show>
@@ -263,9 +263,9 @@ function ExtensionChip() {
                 <button
                   onClick={generateCode}
                   disabled={generating()}
-                  class="w-full py-2 border border-text-primary text-text-primary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors animate-glow-pulse disabled:opacity-50"
+                  class="px-6 py-2 border border-container-border text-text-secondary font-mono text-[10px] tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
                 >
-                  {generating() ? 'GENERATING...' : '[ PAIR EXTENSION ]'}
+                  {generating() ? 'GENERATING...' : 'PAIR EXTENSION'}
                 </button>
               </div>
             </Show>
@@ -299,12 +299,14 @@ function LockScreen() {
         <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
           Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
         </p>
-        <button
-          onClick={() => auth.connectWallet()}
-          class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-        >
-          [ CONNECT WALLET ]
-        </button>
+        <div class="flex justify-center">
+          <button
+            onClick={() => auth.connectWallet()}
+            class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+          >
+            CONNECT WALLET
+          </button>
+        </div>
         <a
           href="https://testudo.vip/docs/03-getting-started"
           class="block mt-4 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"

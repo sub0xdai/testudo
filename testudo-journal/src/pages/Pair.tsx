@@ -135,22 +135,24 @@ export default function Pair() {
             <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
               Install the Testudo Sniper extension to start trading from any chart.
             </p>
-            <a
-              href={CHROME_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="block w-full py-3 mb-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors text-center"
-            >
-              [ CHROME WEB STORE ]
-            </a>
-            <a
-              href={FIREFOX_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="block w-full py-3 mb-8 border border-container-border text-text-secondary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors text-center"
-            >
-              [ FIREFOX ADD-ONS ]
-            </a>
+            <div class="flex gap-4 justify-center mb-8">
+              <a
+                href={CHROME_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+              >
+                CHROME
+              </a>
+              <a
+                href={FIREFOX_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+              >
+                FIREFOX
+              </a>
+            </div>
             <div class="h-px bg-container-border mb-4" />
             <p class="font-mono text-[10px] text-text-tertiary">
               Already installed?{' '}
@@ -171,12 +173,14 @@ export default function Pair() {
             <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
               Connect your wallet to link your extension.
             </p>
-            <button
-              onClick={handleConnect}
-              class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors animate-glow-pulse"
-            >
-              [ CONNECT WALLET ]
-            </button>
+            <div class="flex justify-center">
+              <button
+                onClick={handleConnect}
+                class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+              >
+                CONNECT WALLET
+              </button>
+            </div>
           </Show>
 
           {/* State 3: Authenticated — show pairing code */}
@@ -222,22 +226,26 @@ export default function Pair() {
               <p class="font-mono text-sm text-text-secondary mb-6 leading-relaxed">
                 Pairing code has expired.
               </p>
-              <button
-                onClick={generateCode}
-                disabled={generating()}
-                class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-              >
-                [ GENERATE NEW CODE ]
-              </button>
+              <div class="flex justify-center">
+                <button
+                  onClick={generateCode}
+                  disabled={generating()}
+                  class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                >
+                  GENERATE NEW CODE
+                </button>
+              </div>
             </Show>
 
             <Show when={!code() && !expired() && !generating()}>
-              <button
-                onClick={generateCode}
-                class="w-full py-3 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-              >
-                [ GENERATE CODE ]
-              </button>
+              <div class="flex justify-center">
+                <button
+                  onClick={generateCode}
+                  class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                >
+                  GENERATE CODE
+                </button>
+              </div>
             </Show>
           </Show>
 
