@@ -12,5 +12,9 @@
 - [ ] Next add binance and other exchanges support - test functionality
 - [ ] save function not working properly on md notes  
 - [x] create comprehensive docs (astro handles it)  
-- [ ] apply for firefox/chrome extension store  
-- [ ] Break-even trigger, trailing stop, partial tp (perhaps remove that) 
+- [x] apply for firefox/chrome extension store  
+- [ ] Break-even trigger, trailing stop, partial tp (perhaps remove that) not important for now
+- [ ] the launch desk screen is empty, we could have a short description here about what to do, like a tldr
+- [ ] The save button on the journal doesnt save notes in journal  
+- [ ] pnl treemap is broken ux (charts) pnl could display on the positions card in extension 
+- [ ] change pw in env on n0x 
