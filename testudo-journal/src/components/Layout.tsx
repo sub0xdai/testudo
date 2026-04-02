@@ -289,9 +289,9 @@ function LockScreen() {
   const auth = useAuth()
   return (
     <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
-      <div class="flex flex-col items-center max-w-lg w-full text-center">
-        <a href="https://testudo.vip" target="_blank" rel="noopener noreferrer" class="mb-10 opacity-80 hover:opacity-100 transition-opacity">
-          <img src="https://testudo.vip/logo.png" alt="Testudo" class="h-12 md:h-16" />
+      <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
+        <a href="https://testudo.vip" target="_blank" rel="noopener noreferrer" class="inline-block mb-8 opacity-80 hover:opacity-100 transition-opacity">
+          <img src="https://testudo.vip/logo.png" alt="Testudo" class="h-8 md:h-10 w-auto" />
         </a>
         <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
           Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
