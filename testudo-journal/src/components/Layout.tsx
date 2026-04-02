@@ -290,9 +290,8 @@ function LockScreen() {
   return (
     <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
       <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
-        <a href="https://testudo.vip" target="_blank" rel="noopener noreferrer" class="inline-block mb-8 opacity-80 hover:opacity-100 transition-opacity">
-          <img src="/logo.png" alt="Testudo" style="max-width: 280px; height: auto;" />
-        </a>
+        <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
+        <p class="font-mono text-[10px] tracking-widest text-text-tertiary mb-8">TRADING TERMINAL</p>
         <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
           Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
         </p>
