@@ -40,10 +40,17 @@ export function PnlTreemap() {
           formatter: (params: any) => {
             const pnl = parseFloat(params.data.pnl)
             const pnlStr = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`
-            return `${params.name}\n${pnlStr}`
+            const symbol = params.name.replace(/_USDT?$/, '')
+            return `{name|${symbol}}\n{pnl|${pnlStr}}`
           },
-          fontSize: 12,
+          rich: {
+            name: { fontSize: 13, fontWeight: 'bold', fontFamily: "'Space Mono', monospace" },
+            pnl: { fontSize: 11, fontFamily: "'Space Mono', monospace" },
+          },
+          overflow: 'truncate',
+          ellipsis: '',
         },
+        upperLabel: { show: false },
         data: d.data.map((s) => {
           const pnl = parseFloat(s.total_pnl)
           return {
