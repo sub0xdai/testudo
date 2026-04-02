@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useOnboardingState } from './useOnboardingState'
 import { exchangeApi } from '../../api/client'
 
-const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/testudo-sniper/'
+const CHROME_STORE_URL = 'https://chromewebstore.google.com'
 
 export function Stepper() {
   const { steps, activeStep, allComplete, shouldShow, dismiss } = useOnboardingState()

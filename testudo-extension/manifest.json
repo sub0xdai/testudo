@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Testudo Sniper",
-  "version": "0.1.0",
-  "description": "Automated risk management for crypto traders. Position sizing, circuit breakers, and trade execution from TradingView.",
+  "name": "Testudo",
+  "version": "1.0.0",
+  "description": "Risk management overlay for crypto traders. Automated position sizing, circuit breakers, and one-click execution from TradingView, DexScreener, and Hyperliquid.",
   "permissions": [
     "storage",
     "activeTab"
@@ -28,8 +28,7 @@
         "*://*.gmx.io/*",
         "*://*.bybit.com/*",
         "*://app.hyperliquid.xyz/*",
-        "*://desk.testudo.vip/*",
-        "*://localhost/*"
+        "*://desk.testudo.vip/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"

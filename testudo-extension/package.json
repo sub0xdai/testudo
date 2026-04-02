@@ -1,8 +1,8 @@
 {
-  "name": "testudo-sniper",
-  "version": "0.1.0",
+  "name": "testudo-extension",
+  "version": "1.0.0",
   "private": true,
-  "description": "Testudo Sniper - TradingView to Testudo trade execution",
+  "description": "Testudo — risk management overlay for crypto traders",
   "scripts": {
     "build": "bun run build.ts",
     "build:prod": "BACKEND_URL=https://api.testudo.vip WS_URL=wss://ws.testudo.vip WEB_APP_URL=https://testudo.vip DESK_URL=https://desk.testudo.vip bun run build.ts",

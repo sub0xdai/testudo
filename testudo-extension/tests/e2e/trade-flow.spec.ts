@@ -104,7 +104,7 @@ test.describe("Trade Flow", () => {
     await page.keyboard.press("Alt+x");
 
     // Modal host element should appear
-    const modal = page.locator("#testudo-sniper-modal");
+    const modal = page.locator("#testudo-modal");
     await expect(modal).toBeAttached({ timeout: 3000 });
 
     // Dismiss with Escape
@@ -123,7 +123,7 @@ test.describe("Trade Flow", () => {
 
     // Open modal
     await page.keyboard.press("Alt+x");
-    const modal = page.locator("#testudo-sniper-modal");
+    const modal = page.locator("#testudo-modal");
     await expect(modal).toBeAttached({ timeout: 3000 });
 
     // Confirm trade with Enter
@@ -175,7 +175,7 @@ test.describe("Trade Flow", () => {
     await page.waitForTimeout(1000);
 
     await page.keyboard.press("Alt+x");
-    const modal = page.locator("#testudo-sniper-modal");
+    const modal = page.locator("#testudo-modal");
     await expect(modal).toBeAttached({ timeout: 3000 });
 
     // Dismiss
@@ -207,7 +207,7 @@ test.describe("Trade Flow", () => {
     });
 
     await page.keyboard.press("Alt+x");
-    const modal = page.locator("#testudo-sniper-modal");
+    const modal = page.locator("#testudo-modal");
     await expect(modal).toBeAttached({ timeout: 3000 });
 
     // Dismiss and confirm via trade

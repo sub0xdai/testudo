@@ -9,7 +9,7 @@ import type { ManagementPreset, BalanceResponse, LiveBalanceResponse } from "./t
 import { DEFAULT_MANAGEMENT_PRESET } from "./types";
 import { DESK_URL } from "./utils";
 
-console.log("Testudo Sniper loaded");
+console.log("Testudo loaded");
 
 // UX-01: Signal extension presence on pair page for auto-detection
 if (location.pathname === "/pair" || location.pathname === "/desk/pair") {

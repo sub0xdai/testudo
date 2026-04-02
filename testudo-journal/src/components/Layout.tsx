@@ -289,24 +289,19 @@ function LockScreen() {
   const auth = useAuth()
   return (
     <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
-      <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
-        <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-6">
-          // AUTHENTICATION_REQUIRED
-        </div>
-        <h2 class="font-mono text-2xl md:text-3xl tracking-widest text-text-primary mb-4">
-          TESTUDO DESK
-        </h2>
+      <div class="flex flex-col items-center max-w-lg w-full text-center">
+        <a href="https://testudo.vip" target="_blank" rel="noopener noreferrer" class="mb-10 opacity-80 hover:opacity-100 transition-opacity">
+          <img src="https://testudo.vip/logo.png" alt="Testudo" class="h-12 md:h-16" />
+        </a>
         <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
           Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
         </p>
-        <div class="flex justify-center">
-          <button
-            onClick={() => auth.connectWallet()}
-            class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-          >
-            CONNECT WALLET
-          </button>
-        </div>
+        <button
+          onClick={() => auth.connectWallet()}
+          class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+        >
+          CONNECT WALLET
+        </button>
         <a
           href="https://testudo.vip/docs/03-getting-started"
           class="block mt-4 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"

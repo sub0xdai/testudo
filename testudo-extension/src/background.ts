@@ -19,7 +19,7 @@ browser.runtime.onInstalled.addListener(async () => {
   // EXT-19: Clean up legacy paper trading storage keys
   await browser.storage.local.remove(["executionMode", "paperOnly"]);
   await browser.storage.local.set({ ...settings });
-  console.log("Testudo Sniper installed", settings);
+  console.log("Testudo installed", settings);
 });
 
 // --- Message Dispatch ---

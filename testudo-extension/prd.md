@@ -1,12 +1,12 @@
 # Product Requirements Document (PRD)
 
-**Project Name:** Testudo "Sniper" Extension
+**Project Name:** Testudo Extension
 **Version:** 1.0 (Draft)
 **Date:** February 8, 2026
 **Status:** Approved for Development
 
 ## 1. Executive Summary
-The Testudo Sniper Extension is a browser-based interface designed to bridge TradingView charts with the Testudo execution engine. It allows traders to visually plan trades using native TradingView drawing tools and execute them via a hotkey.
+The Testudo extension is a browser-based interface designed to bridge TradingView charts with the Testudo execution engine. It allows traders to visually plan trades using native TradingView drawing tools and execute them via a hotkey.
 
 **Key Differentiators:**
 * **"Point-and-Shoot" Workflow:** Uses standard Long/Short drawing tools.

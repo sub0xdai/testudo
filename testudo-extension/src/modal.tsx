@@ -193,7 +193,7 @@ export function showModal(
   dismiss();
 
   const host = document.createElement("div");
-  host.id = "testudo-sniper-modal";
+  host.id = "testudo-modal";
   if (theme && theme !== "amoled") {
     host.setAttribute("data-theme", theme);
   }
@@ -312,7 +312,7 @@ export function showToast(message: string, type: ToastStyle = "success"): void {
   }
 
   const host = document.createElement("div");
-  host.id = "testudo-sniper-toast";
+  host.id = "testudo-toast";
   const shadow = host.attachShadow({ mode: "open" });
 
   // Apply extension theme to toast host
@@ -369,7 +369,7 @@ export function showBanner(message: string, action?: { label: string; url: strin
   }
 
   const host = document.createElement("div");
-  host.id = "testudo-sniper-banner";
+  host.id = "testudo-banner";
   const shadow = host.attachShadow({ mode: "open" });
 
   // Apply extension theme
