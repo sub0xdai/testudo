@@ -384,7 +384,7 @@ export function Layout(props: { children: JSX.Element }) {
         <div class="max-w-[1400px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <a href="https://testudo.vip" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <img src={import.meta.env.BASE_URL + 'crest.png'} alt="" class="crest-logo w-6 h-6 object-contain" />
+              <img src={import.meta.env.BASE_URL + 'shield.svg'} alt="" class="crest-logo w-5 h-5 object-contain opacity-60" />
               <span class="font-mono text-lg tracking-widest text-text-primary">TESTUDO</span>
             </a>
             <button
