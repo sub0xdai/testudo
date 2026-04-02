@@ -44,11 +44,10 @@ export function PnlTreemap() {
             return `{name|${symbol}}\n{pnl|${pnlStr}}`
           },
           rich: {
-            name: { fontSize: 13, fontWeight: 'bold', fontFamily: "'Space Mono', monospace" },
-            pnl: { fontSize: 11, fontFamily: "'Space Mono', monospace" },
+            name: { fontSize: 13, fontWeight: 'bold', fontFamily: "'Space Mono', monospace", lineHeight: 18 },
+            pnl: { fontSize: 11, fontFamily: "'Space Mono', monospace", lineHeight: 16, padding: [2, 0, 0, 0] },
           },
-          overflow: 'truncate',
-          ellipsis: '',
+          overflow: 'break',
         },
         upperLabel: { show: false },
         data: d.data.map((s) => {
