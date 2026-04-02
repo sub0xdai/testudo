@@ -43,6 +43,11 @@
   --text-tertiary: 120 113 102;
 }
 
+/* --- Crest logo (white-on-transparent, invert for light) --- */
+[data-theme="light"] .crest-logo {
+  filter: invert(1);
+}
+
 /* --- Background overlay (Hadrian's Wall) --- */
 .bg-overlay {
   background: rgb(var(--bg-core) / 0.80);

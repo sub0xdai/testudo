@@ -290,6 +290,7 @@ function LockScreen() {
   return (
     <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
       <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
+        <img src={import.meta.env.BASE_URL + 'crest.png'} alt="Testudo" class="crest-logo w-28 md:w-32 mx-auto mb-6 opacity-80" />
         <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
         <p class="font-mono text-[10px] tracking-widest text-text-tertiary mb-8">TRADING TERMINAL</p>
         <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
@@ -382,8 +383,9 @@ export function Layout(props: { children: JSX.Element }) {
       <header class="fixed top-0 left-0 right-0 z-50 bg-main-bg/60 backdrop-blur-sm border-b border-container-border/30">
         <div class="max-w-[1400px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <a href="https://testudo.vip" class="font-mono text-lg tracking-widest text-text-primary hover:text-accent-steel transition-colors">
-              TESTUDO
+            <a href="https://testudo.vip" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <img src={import.meta.env.BASE_URL + 'crest.png'} alt="" class="crest-logo w-6 h-6 object-contain" />
+              <span class="font-mono text-lg tracking-widest text-text-primary">TESTUDO</span>
             </a>
             <button
               class="text-text-secondary hover:text-text-primary transition-colors"
