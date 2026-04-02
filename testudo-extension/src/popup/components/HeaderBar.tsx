@@ -71,6 +71,7 @@ export default function HeaderBar(props: HeaderBarProps) {
       <div data-testid="header-bar" class="flex items-center justify-between px-4 h-11 border-b border-border-subtle">
         {/* Left: wordmark + theme toggle */}
         <div class="flex items-center gap-3">
+          <img src="popup/images/shield.svg" alt="" class="crest-logo w-4 h-4 object-contain opacity-60" />
           <span class="font-mono text-[13px] font-bold tracking-[0.15em] text-text-primary">
             TESTUDO
           </span>
