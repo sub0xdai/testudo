@@ -33,11 +33,11 @@ cd testudo-web && bun run build
 ```
 
 ### When implementing a specification
-Use `/ralph-loop [spec-name]` or `/speckit.implement [spec-name]`.
+Use `/vox build [spec-name]`.
 Specs live in `.specify/specs/`. Constitution: `.specify/memory/constitution.md`.
 
 ### When creating a new feature
-Use `/speckit.specify [description]` first.
+Use `/vox plan [description]` or `/speckit.specify [description]` first.
 
 ### When brainstorming or planning
 Read `.claude/rules/workflow.md` — research-first, vertical slicing.
