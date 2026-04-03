@@ -100,17 +100,17 @@ const MODAL_STYLES = `
     background-color: color-mix(in srgb, var(--color-bg-panel) 95%, transparent);
     border: 1px solid var(--color-border);
     border-radius: 0;
-    padding: 22px 26px;
-    min-width: 320px;
-    max-width: 400px;
+    padding: 28px 32px;
+    min-width: 380px;
+    max-width: 480px;
     box-shadow: 0 24px 48px rgba(0,0,0,0.5);
   }
   .panel.live-mode { border-color: color-mix(in srgb, var(--color-signal-red) 40%, var(--color-border)); box-shadow: 0 24px 48px color-mix(in srgb, var(--color-signal-red) 15%, transparent); }
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
   .side-toggle { display: flex; gap: 4px; }
   .side-btn {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
-    padding: 5px 14px; border-radius: 0; border: 1px solid var(--color-border);
+    font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 7px 18px; border-radius: 0; border: 1px solid var(--color-border);
     background: transparent; color: var(--color-text-dim); cursor: pointer; transition: background-color 0.15s, color 0.15s, border-color 0.15s;
     font-family: 'Space Mono', ui-monospace, monospace;
   }

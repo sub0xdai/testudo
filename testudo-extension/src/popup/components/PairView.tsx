@@ -1,7 +1,10 @@
 import { createSignal, Show, onMount } from "solid-js";
+import browser from "webextension-polyfill";
 import { useAuth } from "../context/AuthContext";
 import { WEB_APP_URL } from "../../utils";
 import LoginPreview from "./LoginPreview";
+
+type ThemeKey = "amoled" | "light";
 
 export default function PairView(props: {
   onAuthenticated: () => void;
@@ -14,12 +17,28 @@ export default function PairView(props: {
   const [loading, setLoading] = createSignal(false);
   const [showSuccess, setShowSuccess] = createSignal(false);
 
+  const [theme, setTheme] = createSignal<ThemeKey>("amoled");
   let refs: HTMLInputElement[] = [];
 
-  onMount(() => {
+  onMount(async () => {
     // requestAnimationFrame ensures DOM is painted before focus (popup context)
     requestAnimationFrame(() => refs[0]?.focus());
+    const stored = await browser.storage.local.get("testudo-theme");
+    const t = stored["testudo-theme"] as ThemeKey | undefined;
+    if (t) setTheme(t);
   });
+
+  function toggleTheme() {
+    const next = theme() === "amoled" ? "light" : "amoled";
+    setTheme(next);
+    browser.storage.local.set({ "testudo-theme": next });
+    localStorage.setItem("testudo-theme", next);
+    if (next === "amoled") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", next);
+    }
+  }
 
   async function submitPair(code?: string) {
     const value = (code || digits()).trim();
@@ -93,8 +112,8 @@ export default function PairView(props: {
       {/* Foreground: glass pairing card */}
       <div class="absolute inset-0 flex flex-col items-center justify-center p-5">
         {/* Back button */}
-        <Show when={props.onBack}>
-          <div class="w-full max-w-[440px] flex items-center gap-3 mb-2">
+        <div class="w-full max-w-[440px] flex items-center justify-between mb-2">
+          <Show when={props.onBack} fallback={<div />}>
             <button
               class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-text-primary/5"
               onClick={props.onBack}
@@ -105,8 +124,32 @@ export default function PairView(props: {
                 <path d="M19 12H5M12 19l-7-7 7-7" />
               </svg>
             </button>
-          </div>
-        </Show>
+          </Show>
+          <button
+            class="icon-btn border-0 text-text-secondary hover:text-text-primary hover:bg-transparent p-0 cursor-pointer bg-transparent"
+            onClick={toggleTheme}
+            title={`Theme: ${theme() === "amoled" ? "Dark" : "Light"}`}
+            aria-label="Toggle theme"
+          >
+            {theme() === "amoled" ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
+        </div>
 
         <div class="login-glass-card w-full max-w-[440px] px-8 py-8">
           <Show when={showSuccess()} fallback={
@@ -140,11 +183,11 @@ export default function PairView(props: {
                 </Show>
 
                 {/* Numbered instructions */}
-                <ol class="text-[11px] text-text-secondary font-mono leading-relaxed mb-6 list-none space-y-1.5">
+                <ol class="text-[13px] text-text-secondary font-mono leading-relaxed mb-6 list-none space-y-2">
                   <li>
                     <span class="text-text-dim mr-1">1.</span> Visit{" "}
                     <button
-                      class="text-text-primary hover:underline border-0 bg-transparent p-0 font-mono text-[11px] cursor-pointer"
+                      class="text-text-primary hover:underline border-0 bg-transparent p-0 font-mono text-[13px] cursor-pointer"
                       onClick={() => window.open(`${WEB_APP_URL}/pair`, "_blank")}
                     >
                       testudo.vip/pair
