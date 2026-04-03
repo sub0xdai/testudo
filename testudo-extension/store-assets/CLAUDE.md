@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #6600 | 3:36 PM | ✅ | Browser Extension Store Assets Created | ~425 |
 | #6594 | 3:09 PM | ✅ | Extension Store Assets Prepared for Marketplace Submission | ~367 |
 | #6593 | 3:03 PM | ✅ | Browser Extension Store Icon Created | ~268 |
 | #6592 | " | ✅ | Chrome Web Store Icon Generated from Brand Shield | ~281 |

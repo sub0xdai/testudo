@@ -15,7 +15,7 @@
 - [x] apply for firefox/chrome extension store  
 - [ ] Break-even trigger, trailing stop, partial tp (perhaps remove that) not important for now
 - [ ] the launch desk screen is empty, we could have a short description here about what to do, like a tldr
-- [ ] The save button on the journal doesnt save notes in journal  
-- [ ] pnl treemap is broken ux (charts) pnl could display on the positions card in extension 
+- [x] The save button on the journal doesnt save notes in journal  
+- [x] pnl treemap is broken ux (charts) pnl could display on the positions card in extension 
 - [ ] change pw in env on n0x 
 - [ ]  The P&L display on position cards — that's a real feature gap worth closing 

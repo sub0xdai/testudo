@@ -154,7 +154,7 @@ function writeManifest(outdir: string, browser: "chrome" | "firefox"): void {
   if (browser === "firefox") {
     manifest.browser_specific_settings = {
       gecko: {
-        id: "testudo@testudo.vip",
+        id: "testudo-sniper@sub0xdai",
         strict_min_version: "112.0",
         data_collection_permissions: {
           required: ["none"],

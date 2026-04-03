@@ -22,6 +22,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #6607 | 3:55 PM | ✅ | Firefox Extension ID Updated in Build Configuration | ~417 |
+| #6606 | 3:49 PM | ✅ | Extension Version Bumped to 1.0.1 | ~278 |
 | #6595 | 3:10 PM | 🔵 | Comprehensive Brand Assets Audit Across Testudo Monorepo | ~640 |
 | #6575 | 2:12 PM | 🔵 | Browser Store Submission Audit Identified Critical Gaps | ~874 |
 </claude-mem-context>
