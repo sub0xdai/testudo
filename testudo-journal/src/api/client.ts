@@ -273,7 +273,7 @@ export async function fetchTradeDetail(tradeId: string): Promise<TradeDetail> {
 
 export async function updateTradeNotes(tradeId: string, notes: string | null): Promise<JournalTrade> {
   return fetchCrud<JournalTrade>(`trades/${tradeId}/notes`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify({ notes }),
   })
 }
