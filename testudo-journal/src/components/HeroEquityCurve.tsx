@@ -60,31 +60,34 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
     chart?.timeScale().fitContent()
   }
 
+  let resizeObserver: ResizeObserver | undefined
+  let unsubTheme: (() => void) | undefined
+
   onMount(() => {
-    initChart()
-
-    const resizeObserver = new ResizeObserver(() => {
-      chart?.applyOptions({ width: container.clientWidth })
-    })
-    resizeObserver.observe(container)
-
-    const unsubTheme = onThemeChange(() => {
-      initChart()
-      if (props.data?.length) {
-        setChartData(props.data)
-      }
-    })
-
     onCleanup(() => {
-      resizeObserver.disconnect()
-      unsubTheme()
+      resizeObserver?.disconnect()
+      unsubTheme?.()
       chart?.remove()
     })
   })
 
   createEffect(() => {
     const d = props.data
-    if (!d?.length || !baseline) return
+    if (!d?.length) return
+    // container is only in the DOM when data exists (inside <Show>)
+    if (!container) return
+
+    if (!chart) {
+      initChart()
+      resizeObserver = new ResizeObserver(() => {
+        chart?.applyOptions({ width: container.clientWidth })
+      })
+      resizeObserver.observe(container)
+      unsubTheme = onThemeChange(() => {
+        initChart()
+        if (props.data?.length) setChartData(props.data)
+      })
+    }
     setChartData(d)
   })
 
