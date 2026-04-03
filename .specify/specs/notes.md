@@ -18,3 +18,4 @@
 - [ ] The save button on the journal doesnt save notes in journal  
 - [ ] pnl treemap is broken ux (charts) pnl could display on the positions card in extension 
 - [ ] change pw in env on n0x 
+- [ ]  The P&L display on position cards — that's a real feature gap worth closing 

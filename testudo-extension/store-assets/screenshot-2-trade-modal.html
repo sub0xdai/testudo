@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280,height=800">
+<title>Testudo — Store Screenshot 2: Trade Modal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-core: #0a0a0a;
+    --bg-panel: #161616;
+    --bg-elevated: #1e1e1e;
+    --bg-hover: #282828;
+    --border-subtle: #323232;
+    --text-primary: #ededed;
+    --text-secondary: #999999;
+    --text-dim: #666666;
+    --signal-green: #22C55E;
+    --signal-red: #EF4444;
+    --signal-orange: #f59e0b;
+    --accent-steel: #94a3b8;
+  }
+
+  body {
+    width: 1280px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--bg-core);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  /* Background: fake TradingView chart */
+  .tv-background {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    opacity: 0.6;
+  }
+
+  .tv-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 79px, #1a2332 79px, #1a2332 80px),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #1a2332 39px, #1a2332 40px);
+    opacity: 0.4;
+  }
+
+  /* Chart candlesticks */
+  .candles {
+    position: absolute;
+    bottom: 120px;
+    left: 60px;
+    right: 200px;
+    height: 500px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 0 20px;
+  }
+
+  .candle {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .candle .wick {
+    width: 1px;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .candle .body {
+    width: 8px;
+    min-height: 4px;
+    background: currentColor;
+  }
+
+  .candle.green { color: #22C55E; }
+  .candle.red { color: #EF4444; }
+
+  /* Price axis */
+  .price-axis {
+    position: absolute;
+    right: 140px;
+    top: 80px;
+    bottom: 120px;
+    width: 1px;
+    background: var(--border-subtle);
+  }
+
+  .price-label {
+    position: absolute;
+    right: 148px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    transform: translateY(-50%);
+  }
+
+  /* TV toolbar */
+  .tv-toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: #1a1d23;
+    border-bottom: 1px solid #2a2e36;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+  }
+
+  .tv-toolbar .pair {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: #d1d5db;
+  }
+
+  .tv-toolbar .price {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    color: var(--signal-green);
+  }
+
+  .tv-toolbar .tf {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #6b7280;
+    padding: 4px 8px;
+    border: 1px solid #2a2e36;
+  }
+
+  /* Position tool overlay lines */
+  .position-tool {
+    position: absolute;
+    left: 400px;
+    right: 300px;
+    top: 180px;
+    bottom: 220px;
+    z-index: 2;
+  }
+
+  .tool-entry-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 55%;
+    height: 1px;
+    background: var(--text-primary);
+    opacity: 0.6;
+  }
+
+  .tool-entry-line::after {
+    content: '178.42';
+    position: absolute;
+    right: -70px;
+    top: -8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-primary);
+    background: rgba(30,30,30,0.8);
+    padding: 1px 6px;
+  }
+
+  .tool-sl-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--signal-red);
+    opacity: 0.6;
+  }
+
+  .tool-sl-line::after {
+    content: '171.20';
+    position: absolute;
+    right: -70px;
+    top: -8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--signal-red);
+    background: rgba(30,30,30,0.8);
+    padding: 1px 6px;
+  }
+
+  .tool-tp-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    background: var(--signal-green);
+    opacity: 0.6;
+  }
+
+  .tool-tp-line::after {
+    content: '195.00';
+    position: absolute;
+    right: -70px;
+    top: -8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--signal-green);
+    background: rgba(30,30,30,0.8);
+    padding: 1px 6px;
+  }
+
+  /* Green zone (entry to TP) */
+  .tool-tp-zone {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 45%;
+    background: rgba(34,197,94,0.06);
+  }
+
+  /* Red zone (entry to SL) */
+  .tool-sl-zone {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 55%;
+    bottom: 0;
+    background: rgba(239,68,68,0.06);
+  }
+
+  /* ========== MODAL BACKDROP ========== */
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 50;
+  }
+
+  /* ========== TRADE MODAL ========== */
+  .modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 380px;
+    background: rgba(22,22,22,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+      0 32px 80px rgba(0,0,0,0.9),
+      0 0 0 1px rgba(50,50,50,0.4),
+      0 0 60px rgba(0,0,0,0.4);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Modal Header */
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .modal-header .header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .badge-live {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: rgba(239,68,68,0.15);
+    color: var(--signal-red);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .badge-exchange {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: rgba(148,163,184,0.1);
+    color: var(--accent-steel);
+    letter-spacing: 0.05em;
+  }
+
+  .modal-close {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 16px;
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+  }
+
+  /* Side Toggle */
+  .side-toggle {
+    display: flex;
+    margin: 12px 16px 0;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .side-toggle .side-btn {
+    flex: 1;
+    padding: 8px 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+
+  .side-btn.long-active {
+    background: rgba(34,197,94,0.12);
+    color: var(--signal-green);
+    border-bottom: 2px solid var(--signal-green);
+  }
+
+  .side-btn.short-inactive {
+    background: transparent;
+    color: var(--text-dim);
+  }
+
+  /* Symbol */
+  .modal-symbol {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px 0;
+  }
+
+  .modal-symbol .sym {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .modal-symbol .auto-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: rgba(34,197,94,0.12);
+    color: var(--signal-green);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* Price Fields */
+  .price-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 16px 0;
+  }
+
+  .price-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    padding: 8px 12px;
+  }
+
+  .price-field .field-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .price-field .field-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .price-field .field-value.entry-val { color: var(--text-primary); }
+  .price-field .field-value.sl-val { color: var(--signal-red); }
+  .price-field .field-value.tp-val { color: var(--signal-green); }
+
+  /* Risk:Reward */
+  .rr-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+  }
+
+  .rr-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 10px;
+  }
+
+  .rr-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--signal-green);
+  }
+
+  /* Management Rules */
+  .mgmt-rules {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+    padding: 0 16px;
+    margin-top: 4px;
+  }
+
+  .mgmt-rule {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .mgmt-rule .rule-label {
+    color: var(--text-dim);
+  }
+
+  .mgmt-rule .rule-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .mgmt-rule .rule-value.on { color: var(--signal-green); }
+
+  /* Balance Summary */
+  .balance-summary {
+    margin: 10px 16px 0;
+    padding: 10px 12px;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px 10px;
+  }
+
+  .bal-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .bal-item .bal-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .bal-item .bal-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .bal-item .bal-value.green { color: var(--signal-green); }
+
+  /* Footer */
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    margin-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+    gap: 10px;
+  }
+
+  .confirm-hint {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  .confirm-hint kbd {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 1px 5px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    margin: 0 1px;
+  }
+
+  .btn-cancel {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 0.03em;
+  }
+
+  .btn-arm {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 20px;
+    background: rgba(239,68,68,0.15);
+    border: 1px solid var(--signal-red);
+    color: var(--signal-red);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Screenshot caption overlay */
+  .caption {
+    position: absolute;
+    bottom: 24px;
+    left: 40px;
+    z-index: 200;
+  }
+
+  .caption h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  }
+
+  .caption p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background: TradingView chart impression -->
+<div class="tv-background"></div>
+
+<div class="tv-toolbar">
+  <span class="pair">SOLUSDT.P</span>
+  <span class="price">178.42</span>
+  <span class="tf">1H</span>
+  <span class="tf">4H</span>
+</div>
+
+<!-- Candlestick chart -->
+<div class="candles">
+  <div class="candle green"><div class="wick" style="height:20px"></div><div class="body" style="height:28px"></div><div class="wick" style="height:12px"></div></div>
+  <div class="candle red"><div class="wick" style="height:15px"></div><div class="body" style="height:22px"></div><div class="wick" style="height:18px"></div></div>
+  <div class="candle green"><div class="wick" style="height:8px"></div><div class="body" style="height:35px"></div><div class="wick" style="height:10px"></div></div>
+  <div class="candle green"><div class="wick" style="height:12px"></div><div class="body" style="height:42px"></div><div class="wick" style="height:6px"></div></div>
+  <div class="candle red"><div class="wick" style="height:28px"></div><div class="body" style="height:18px"></div><div class="wick" style="height:22px"></div></div>
+  <div class="candle green"><div class="wick" style="height:6px"></div><div class="body" style="height:30px"></div><div class="wick" style="height:14px"></div></div>
+  <div class="candle red"><div class="wick" style="height:20px"></div><div class="body" style="height:16px"></div><div class="wick" style="height:26px"></div></div>
+  <div class="candle green"><div class="wick" style="height:10px"></div><div class="body" style="height:38px"></div><div class="wick" style="height:8px"></div></div>
+  <div class="candle green"><div class="wick" style="height:5px"></div><div class="body" style="height:25px"></div><div class="wick" style="height:20px"></div></div>
+  <div class="candle red"><div class="wick" style="height:18px"></div><div class="body" style="height:28px"></div><div class="wick" style="height:10px"></div></div>
+  <div class="candle green"><div class="wick" style="height:8px"></div><div class="body" style="height:45px"></div><div class="wick" style="height:5px"></div></div>
+  <div class="candle green"><div class="wick" style="height:4px"></div><div class="body" style="height:20px"></div><div class="wick" style="height:18px"></div></div>
+  <div class="candle red"><div class="wick" style="height:14px"></div><div class="body" style="height:24px"></div><div class="wick" style="height:12px"></div></div>
+  <div class="candle green"><div class="wick" style="height:10px"></div><div class="body" style="height:50px"></div><div class="wick" style="height:4px"></div></div>
+  <div class="candle green"><div class="wick" style="height:6px"></div><div class="body" style="height:22px"></div><div class="wick" style="height:15px"></div></div>
+  <div class="candle red"><div class="wick" style="height:20px"></div><div class="body" style="height:14px"></div><div class="wick" style="height:24px"></div></div>
+  <div class="candle green"><div class="wick" style="height:8px"></div><div class="body" style="height:36px"></div><div class="wick" style="height:10px"></div></div>
+  <div class="candle red"><div class="wick" style="height:16px"></div><div class="body" style="height:20px"></div><div class="wick" style="height:16px"></div></div>
+  <div class="candle green"><div class="wick" style="height:5px"></div><div class="body" style="height:32px"></div><div class="wick" style="height:12px"></div></div>
+  <div class="candle green"><div class="wick" style="height:3px"></div><div class="body" style="height:40px"></div><div class="wick" style="height:8px"></div></div>
+  <div class="candle red"><div class="wick" style="height:12px"></div><div class="body" style="height:15px"></div><div class="wick" style="height:20px"></div></div>
+  <div class="candle green"><div class="wick" style="height:6px"></div><div class="body" style="height:28px"></div><div class="wick" style="height:14px"></div></div>
+  <div class="candle green"><div class="wick" style="height:4px"></div><div class="body" style="height:34px"></div><div class="wick" style="height:6px"></div></div>
+</div>
+
+<!-- Position tool overlay -->
+<div class="position-tool">
+  <div class="tool-tp-zone"></div>
+  <div class="tool-sl-zone"></div>
+  <div class="tool-tp-line"></div>
+  <div class="tool-entry-line"></div>
+  <div class="tool-sl-line"></div>
+</div>
+
+<div class="price-axis"></div>
+<span class="price-label" style="top:120px">196.00</span>
+<span class="price-label" style="top:220px">190.00</span>
+<span class="price-label" style="top:320px">184.00</span>
+<span class="price-label" style="top:420px">178.00</span>
+<span class="price-label" style="top:520px">172.00</span>
+
+<!-- Modal Backdrop -->
+<div class="modal-backdrop"></div>
+
+<!-- Trade Confirmation Modal -->
+<div class="modal">
+  <!-- Header -->
+  <div class="modal-header">
+    <div class="header-badges">
+      <span class="badge-live">LIVE MODE</span>
+      <span class="badge-exchange">Hyperliquid</span>
+    </div>
+    <div class="modal-close">&times;</div>
+  </div>
+
+  <!-- Side Toggle -->
+  <div class="side-toggle">
+    <div class="side-btn long-active">LONG</div>
+    <div class="side-btn short-inactive">SHORT</div>
+  </div>
+
+  <!-- Symbol -->
+  <div class="modal-symbol">
+    <span class="sym">SOLUSDT</span>
+    <span class="auto-badge">AUTO</span>
+  </div>
+
+  <!-- Price Fields -->
+  <div class="price-fields">
+    <div class="price-field">
+      <span class="field-label">Entry</span>
+      <span class="field-value entry-val">178.42</span>
+    </div>
+    <div class="price-field">
+      <span class="field-label">Stop Loss</span>
+      <span class="field-value sl-val">171.20</span>
+    </div>
+    <div class="price-field">
+      <span class="field-label">Take Profit</span>
+      <span class="field-value tp-val">195.00</span>
+    </div>
+  </div>
+
+  <!-- Risk:Reward -->
+  <div class="rr-row">
+    <span class="rr-label">R:R</span>
+    <span class="rr-value">1 : 2.29</span>
+  </div>
+
+  <!-- Management Rules -->
+  <div class="mgmt-rules">
+    <div class="mgmt-rule">
+      <span class="rule-label">Risk:</span>
+      <span class="rule-value">2%</span>
+    </div>
+    <div class="mgmt-rule">
+      <span class="rule-label">Break-Even:</span>
+      <span class="rule-value on">On</span>
+    </div>
+    <div class="mgmt-rule">
+      <span class="rule-label">Trailing:</span>
+      <span class="rule-value">30%</span>
+    </div>
+    <div class="mgmt-rule">
+      <span class="rule-label">Partial TP:</span>
+      <span class="rule-value">50%</span>
+    </div>
+  </div>
+
+  <!-- Balance Summary -->
+  <div class="balance-summary">
+    <div class="bal-item">
+      <span class="bal-label">Size</span>
+      <span class="bal-value">0.82 SOL</span>
+    </div>
+    <div class="bal-item">
+      <span class="bal-label">Leverage</span>
+      <span class="bal-value">5x</span>
+    </div>
+    <div class="bal-item">
+      <span class="bal-label">Margin</span>
+      <span class="bal-value">$146.30</span>
+    </div>
+    <div class="bal-item">
+      <span class="bal-label">Risk</span>
+      <span class="bal-value green">$5.92 (2%)</span>
+    </div>
+    <div class="bal-item" style="grid-column: span 2">
+      <span class="bal-label">Available</span>
+      <span class="bal-value">$28,412</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="modal-footer">
+    <span class="confirm-hint"><kbd>&crarr;</kbd> <kbd>&crarr;</kbd> confirm</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn-cancel">Cancel</button>
+      <button class="btn-arm">ARM CONFIRM</button>
+    </div>
+  </div>
+</div>
+
+<!-- Caption -->
+<div class="caption">
+  <h2>One-Click Execution from TradingView</h2>
+  <p>Alt+X opens the trade modal &mdash; entry, stop, and target auto-scraped from your chart.</p>
+</div>
+
+</body>
+</html>

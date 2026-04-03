@@ -29,4 +29,14 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #4866 | 3:53 PM | 🔴 | Fixed extension balance display to recognize USDC as settlement currency | ~331 |
+
+### Apr 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #6595 | 3:10 PM | 🔵 | Comprehensive Brand Assets Audit Across Testudo Monorepo | ~640 |
+| #6587 | 2:41 PM | ✅ | Pairing Instructions Typography Improved | ~271 |
+| #6586 | " | 🟣 | Theme Toggle Button Added to Extension Pairing Screen | ~411 |
+| #6585 | " | 🟣 | Theme Switching Added to Extension Popup | ~413 |
+| #6576 | 2:18 PM | 🔵 | Extension UI Design Specifications Documented for Store Screenshot Creation | ~1349 |
 </claude-mem-context>

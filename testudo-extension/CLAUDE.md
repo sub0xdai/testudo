@@ -17,4 +17,11 @@
 |----|------|---|-------|------|
 | #3007 | 2:32 PM | 🔵 | Extension component CLAUDE.md exists but empty with 19 lines of whitespace | ~344 |
 | #2967 | 2:16 PM | 🔵 | Extension architecture with 42 source files organized into background, content, popup, and component layers | ~786 |
+
+### Apr 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #6595 | 3:10 PM | 🔵 | Comprehensive Brand Assets Audit Across Testudo Monorepo | ~640 |
+| #6575 | 2:12 PM | 🔵 | Browser Store Submission Audit Identified Critical Gaps | ~874 |
 </claude-mem-context>

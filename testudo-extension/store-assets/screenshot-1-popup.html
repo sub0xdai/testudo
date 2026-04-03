@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280,height=800">
+<title>Testudo — Store Screenshot 1: Portfolio Overview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-core: #0a0a0a;
+    --bg-panel: #161616;
+    --bg-elevated: #1e1e1e;
+    --bg-hover: #282828;
+    --border-subtle: #323232;
+    --text-primary: #ededed;
+    --text-secondary: #999999;
+    --text-dim: #666666;
+    --signal-green: #22C55E;
+    --signal-red: #EF4444;
+    --signal-orange: #f59e0b;
+    --accent-steel: #94a3b8;
+  }
+
+  body {
+    width: 1280px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--bg-core);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  /* Background: fake TradingView chart */
+  .tv-background {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    opacity: 0.6;
+  }
+
+  .tv-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 79px, #1a2332 79px, #1a2332 80px),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #1a2332 39px, #1a2332 40px);
+    opacity: 0.4;
+  }
+
+  /* Chart candlesticks */
+  .candles {
+    position: absolute;
+    bottom: 120px;
+    left: 60px;
+    right: 200px;
+    height: 500px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 0 20px;
+  }
+
+  .candle {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .candle .wick {
+    width: 1px;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .candle .body {
+    width: 8px;
+    min-height: 4px;
+    background: currentColor;
+  }
+
+  .candle.green { color: #22C55E; }
+  .candle.red { color: #EF4444; }
+
+  /* Price axis */
+  .price-axis {
+    position: absolute;
+    right: 140px;
+    top: 80px;
+    bottom: 120px;
+    width: 1px;
+    background: var(--border-subtle);
+  }
+
+  .price-label {
+    position: absolute;
+    right: 148px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    transform: translateY(-50%);
+  }
+
+  /* TV toolbar hint */
+  .tv-toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: #1a1d23;
+    border-bottom: 1px solid #2a2e36;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+  }
+
+  .tv-toolbar .pair {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: #d1d5db;
+  }
+
+  .tv-toolbar .price {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    color: var(--signal-green);
+  }
+
+  .tv-toolbar .tf {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #6b7280;
+    padding: 4px 8px;
+    border: 1px solid #2a2e36;
+  }
+
+  /* ========== EXTENSION POPUP ========== */
+  .popup {
+    position: absolute;
+    top: 60px;
+    right: 40px;
+    width: 520px;
+    height: 680px;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(50,50,50,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  /* Header */
+  .popup-header {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .popup-header .wordmark {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-primary);
+  }
+
+  .popup-header .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .popup-header .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  .popup-header .icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* Balance Panel */
+  .balance-panel {
+    padding: 24px 20px 20px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .balance-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.65) 100%);
+    z-index: 1;
+  }
+
+  .balance-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+    opacity: 0.5;
+  }
+
+  .balance-panel > * { position: relative; z-index: 2; }
+
+  .balance-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .balance-label .exch {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: white;
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .balance-amount {
+    font-family: 'Space Mono', monospace;
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 40px rgba(237,237,237,0.15);
+    margin-bottom: 6px;
+  }
+
+  .balance-delta {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .balance-delta .avail { color: var(--signal-green); }
+
+  /* Risk Gauge */
+  .risk-gauge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 4px;
+  }
+
+  .gauge-svg {
+    width: 180px;
+    height: 95px;
+  }
+
+  .gauge-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: -4px;
+  }
+
+  /* Tab Bar */
+  .tab-bar {
+    display: flex;
+    background: var(--bg-panel);
+    padding: 4px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+
+  .tab.active {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-top: 2px solid var(--text-primary);
+  }
+
+  .tab.inactive {
+    color: var(--text-dim);
+  }
+
+  .tab .count {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    margin-left: 4px;
+  }
+
+  .tab .count.green {
+    background: rgba(34,197,94,0.1);
+    color: var(--signal-green);
+  }
+
+  .tab .count.orange {
+    background: rgba(245,158,11,0.1);
+    color: var(--signal-orange);
+  }
+
+  /* Content Area */
+  .content {
+    flex: 1;
+    background: var(--bg-panel);
+    padding: 16px 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Position Card */
+  .position-card {
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .position-card.long { border-left: 3px solid var(--signal-green); }
+  .position-card.short { border-left: 3px solid var(--signal-red); }
+
+  .position-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .position-header .symbol {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .position-header .side {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    letter-spacing: 0.08em;
+  }
+
+  .side.long-badge { background: rgba(34,197,94,0.1); color: var(--signal-green); }
+  .side.short-badge { background: rgba(239,68,68,0.1); color: var(--signal-red); }
+
+  .position-header .status {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: rgba(34,197,94,0.1);
+    color: var(--signal-green);
+    letter-spacing: 0.05em;
+  }
+
+  .position-header .time {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .position-prices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .position-prices .price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .price-row .label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .price-row .value {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .position-pnl {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .position-pnl .pnl-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .position-pnl .pnl-value.profit { color: var(--signal-green); }
+  .position-pnl .pnl-value.loss { color: var(--signal-red); }
+
+  .position-pnl .pnl-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+
+  .position-pnl .pnl-pct.profit { color: var(--signal-green); }
+
+  .position-mgmt {
+    display: flex;
+    gap: 8px;
+  }
+
+  .mgmt-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border: 1px solid;
+    letter-spacing: 0.05em;
+  }
+
+  .mgmt-badge.active { border-color: var(--signal-green); color: var(--signal-green); }
+  .mgmt-badge.pending { border-color: var(--signal-orange); color: var(--signal-orange); }
+
+  /* Footer */
+  .popup-footer {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-core);
+    flex-shrink: 0;
+  }
+
+  .popup-footer .wallet {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  /* Screenshot caption overlay */
+  .caption {
+    position: absolute;
+    bottom: 24px;
+    left: 40px;
+    z-index: 20;
+  }
+
+  .caption h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  }
+
+  .caption p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background: TradingView chart impression -->
+<div class="tv-background"></div>
+
+<div class="tv-toolbar">
+  <span class="pair">BTCUSDT.P</span>
+  <span class="price">68,432.50</span>
+  <span class="tf">4H</span>
+  <span class="tf">D</span>
+</div>
+
+<!-- Candlestick chart (simplified) -->
+<div class="candles">
+  <div class="candle green"><div class="wick" style="height:30px"></div><div class="body" style="height:20px"></div><div class="wick" style="height:15px"></div></div>
+  <div class="candle red"><div class="wick" style="height:20px"></div><div class="body" style="height:35px"></div><div class="wick" style="height:10px"></div></div>
+  <div class="candle green"><div class="wick" style="height:10px"></div><div class="body" style="height:25px"></div><div class="wick" style="height:20px"></div></div>
+  <div class="candle green"><div class="wick" style="height:15px"></div><div class="body" style="height:40px"></div><div class="wick" style="height:8px"></div></div>
+  <div class="candle red"><div class="wick" style="height:25px"></div><div class="body" style="height:15px"></div><div class="wick" style="height:30px"></div></div>
+  <div class="candle green"><div class="wick" style="height:8px"></div><div class="body" style="height:30px"></div><div class="wick" style="height:12px"></div></div>
+  <div class="candle green"><div class="wick" style="height:12px"></div><div class="body" style="height:45px"></div><div class="wick" style="height:5px"></div></div>
+  <div class="candle red"><div class="wick" style="height:20px"></div><div class="body" style="height:20px"></div><div class="wick" style="height:25px"></div></div>
+  <div class="candle green"><div class="wick" style="height:5px"></div><div class="body" style="height:35px"></div><div class="wick" style="height:15px"></div></div>
+  <div class="candle red"><div class="wick" style="height:30px"></div><div class="body" style="height:10px"></div><div class="wick" style="height:20px"></div></div>
+  <div class="candle green"><div class="wick" style="height:10px"></div><div class="body" style="height:50px"></div><div class="wick" style="height:8px"></div></div>
+  <div class="candle green"><div class="wick" style="height:8px"></div><div class="body" style="height:30px"></div><div class="wick" style="height:18px"></div></div>
+  <div class="candle red"><div class="wick" style="height:15px"></div><div class="body" style="height:25px"></div><div class="wick" style="height:10px"></div></div>
+  <div class="candle green"><div class="wick" style="height:12px"></div><div class="body" style="height:55px"></div><div class="wick" style="height:6px"></div></div>
+  <div class="candle green"><div class="wick" style="height:6px"></div><div class="body" style="height:20px"></div><div class="wick" style="height:22px"></div></div>
+  <div class="candle red"><div class="wick" style="height:18px"></div><div class="body" style="height:30px"></div><div class="wick" style="height:8px"></div></div>
+  <div class="candle green"><div class="wick" style="height:10px"></div><div class="body" style="height:42px"></div><div class="wick" style="height:12px"></div></div>
+  <div class="candle green"><div class="wick" style="height:5px"></div><div class="body" style="height:18px"></div><div class="wick" style="height:28px"></div></div>
+  <div class="candle red"><div class="wick" style="height:22px"></div><div class="body" style="height:12px"></div><div class="wick" style="height:15px"></div></div>
+  <div class="candle green"><div class="wick" style="height:8px"></div><div class="body" style="height:38px"></div><div class="wick" style="height:10px"></div></div>
+  <div class="candle green"><div class="wick" style="height:4px"></div><div class="body" style="height:48px"></div><div class="wick" style="height:6px"></div></div>
+  <div class="candle red"><div class="wick" style="height:12px"></div><div class="body" style="height:18px"></div><div class="wick" style="height:20px"></div></div>
+  <div class="candle green"><div class="wick" style="height:6px"></div><div class="body" style="height:32px"></div><div class="wick" style="height:14px"></div></div>
+</div>
+
+<div class="price-axis"></div>
+<span class="price-label" style="top:100px">69,200</span>
+<span class="price-label" style="top:200px">68,800</span>
+<span class="price-label" style="top:300px">68,400</span>
+<span class="price-label" style="top:400px">68,000</span>
+<span class="price-label" style="top:500px">67,600</span>
+
+<!-- Extension Popup -->
+<div class="popup">
+  <!-- Header -->
+  <div class="popup-header">
+    <span class="wordmark">TESTUDO</span>
+    <div class="controls">
+      <span class="badge">Hyperliquid</span>
+      <div class="icon-btn">☰</div>
+    </div>
+  </div>
+
+  <!-- Balance -->
+  <div class="balance-panel">
+    <div class="balance-label">
+      Balance
+      <span class="exch">HL</span>
+    </div>
+    <div class="balance-amount">$32,847.62</div>
+    <div class="balance-delta">
+      <span class="avail">$28,412.30 available</span> · $4,435.32 locked
+    </div>
+
+    <div class="risk-gauge">
+      <svg class="gauge-svg" viewBox="0 0 180 95">
+        <!-- Gauge dots -->
+        <g transform="translate(90, 90)">
+          <circle cx="-80" cy="0" r="3" fill="#22C55E" opacity="0.9"/>
+          <circle cx="-77" cy="-18" r="3" fill="#22C55E" opacity="0.9"/>
+          <circle cx="-70" cy="-35" r="3" fill="#22C55E" opacity="0.9"/>
+          <circle cx="-60" cy="-49" r="3" fill="#22C55E" opacity="0.9"/>
+          <circle cx="-47" cy="-61" r="3" fill="#22C55E" opacity="0.9"/>
+          <circle cx="-32" cy="-69" r="3" fill="#4ade80" opacity="0.9"/>
+          <circle cx="-16" cy="-74" r="3" fill="#86efac" opacity="0.9"/>
+          <circle cx="0" cy="-76" r="3" fill="#fbbf24" opacity="0.6"/>
+          <circle cx="16" cy="-74" r="3" fill="#f59e0b" opacity="0.4"/>
+          <circle cx="32" cy="-69" r="3" fill="#f97316" opacity="0.3"/>
+          <circle cx="47" cy="-61" r="3" fill="#ef4444" opacity="0.3"/>
+          <circle cx="60" cy="-49" r="3" fill="#ef4444" opacity="0.2"/>
+          <circle cx="70" cy="-35" r="3" fill="#ef4444" opacity="0.2"/>
+          <circle cx="77" cy="-18" r="3" fill="#dc2626" opacity="0.2"/>
+          <circle cx="80" cy="0" r="3" fill="#dc2626" opacity="0.2"/>
+        </g>
+        <!-- Needle -->
+        <line x1="90" y1="90" x2="42" y2="50" stroke="#ededed" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="90" cy="90" r="4" fill="#ededed"/>
+        <!-- Center text -->
+        <text x="90" y="78" text-anchor="middle" font-family="Space Mono, monospace" font-size="16" font-weight="700" fill="#22C55E">13.5%</text>
+      </svg>
+      <span class="gauge-label">Exposure</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <div class="tab inactive">Trade</div>
+    <div class="tab active">Positions <span class="count green">2</span></div>
+    <div class="tab inactive">Account</div>
+  </div>
+
+  <!-- Positions -->
+  <div class="content">
+    <div class="position-card long">
+      <div class="position-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="symbol">BTCUSDT</span>
+          <span class="side long-badge">LONG</span>
+          <span class="status">ACTIVE</span>
+        </div>
+        <span class="time">4h ago</span>
+      </div>
+      <div class="position-prices">
+        <div class="price-row"><span class="label">Entry</span><span class="value">65,432.10</span></div>
+        <div class="price-row"><span class="label">SL</span><span class="value">63,210.50</span></div>
+        <div class="price-row"><span class="label">TP1 50%</span><span class="value">68,000.00</span></div>
+        <div class="price-row"><span class="label">TP2 50%</span><span class="value">70,500.00</span></div>
+      </div>
+      <div class="position-pnl">
+        <span class="pnl-value profit">+$1,247.83</span>
+        <span class="pnl-pct profit">+4.58%</span>
+      </div>
+      <div class="position-mgmt">
+        <span class="mgmt-badge active">BE: armed</span>
+        <span class="mgmt-badge active">Trail: 30%</span>
+        <span class="mgmt-badge pending">TP1: pending</span>
+      </div>
+    </div>
+
+    <div class="position-card short">
+      <div class="position-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="symbol">ETHUSDT</span>
+          <span class="side short-badge">SHORT</span>
+          <span class="status">ACTIVE</span>
+        </div>
+        <span class="time">12h ago</span>
+      </div>
+      <div class="position-prices">
+        <div class="price-row"><span class="label">Entry</span><span class="value">3,842.60</span></div>
+        <div class="price-row"><span class="label">SL</span><span class="value">3,920.00</span></div>
+        <div class="price-row"><span class="label">TP1 50%</span><span class="value">3,680.00</span></div>
+        <div class="price-row"><span class="label">TP2 50%</span><span class="value">3,520.00</span></div>
+      </div>
+      <div class="position-pnl">
+        <span class="pnl-value profit">+$318.45</span>
+        <span class="pnl-pct profit">+2.11%</span>
+      </div>
+      <div class="position-mgmt">
+        <span class="mgmt-badge active">BE: armed</span>
+        <span class="mgmt-badge pending">Trail: off</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="popup-footer">
+    <span class="wallet">0x3014...1b76</span>
+  </div>
+</div>
+
+<!-- Caption -->
+<div class="caption">
+  <h2>Portfolio at a Glance</h2>
+  <p>Track positions, exposure, and P&L across exchanges — all from TradingView.</p>
+</div>
+
+</body>
+</html>
