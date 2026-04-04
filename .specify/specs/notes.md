@@ -19,3 +19,4 @@
 - [x] pnl treemap is broken ux (charts) pnl could display on the positions card in extension 
 - [ ] change pw in env on n0x 
 - [ ]  The P&L display on position cards — that's a real feature gap worth closing 
+- [ ] User is unsure about what to press after downloading the extension and clicking link. It should be more like a connection process from there like "connect wallet entry to desk OR read more" 
