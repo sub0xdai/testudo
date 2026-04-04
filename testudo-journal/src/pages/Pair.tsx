@@ -1,6 +1,6 @@
 import { createSignal, onMount, onCleanup, Show } from 'solid-js'
 import { useAuth } from '../context/AuthContext'
-import { pairExtension } from '../api/client'
+import { pairExtension, checkPairStatus } from '../api/client'
 
 const CODE_TTL_SECONDS = 60
 
@@ -19,43 +19,20 @@ function ShieldIcon() {
   )
 }
 
-function ChromeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" class="w-6 h-6" fill="currentColor">
-      <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/>
-    </svg>
-  )
-}
-
-function FirefoxIcon() {
-  return (
-    <svg viewBox="0 0 24 24" class="w-6 h-6" fill="currentColor">
-      <path d="M8.824 7.287c.008 0 .004 0 0 0zm-2.8-1.4c.006 0 .003 0 0 0zm16.754 2.161c-.505-1.215-1.53-2.528-2.333-2.943.654 1.283 1.033 2.57 1.177 3.53l.002.02c-1.314-3.278-3.544-4.6-5.366-7.477-.091-.147-.184-.292-.273-.446a3.545 3.545 0 01-.13-.24 2.118 2.118 0 01-.172-.46.03.03 0 00-.027-.03.038.038 0 00-.021 0l-.006.001a.037.037 0 00-.01.005L15.624 0c-2.585 1.515-3.657 4.168-3.932 5.856a6.197 6.197 0 00-2.305.587.297.297 0 00-.147.37c.057.162.24.24.396.17a5.622 5.622 0 012.008-.523l.067-.005a5.847 5.847 0 011.957.222l.095.03a5.816 5.816 0 01.616.228c.08.036.16.073.238.112l.107.055a5.835 5.835 0 01.368.211 5.953 5.953 0 012.034 2.104c-.62-.437-1.733-.868-2.803-.681 4.183 2.09 3.06 9.292-2.737 9.02a5.164 5.164 0 01-1.513-.292 4.42 4.42 0 01-.538-.232c-1.42-.735-2.593-2.121-2.74-3.806 0 0 .537-2 3.845-2 .357 0 1.38-.998 1.398-1.287-.005-.095-2.029-.9-2.817-1.677-.422-.416-.622-.616-.8-.767a3.47 3.47 0 00-.301-.227 5.388 5.388 0 01-.032-2.842c-1.195.544-2.124 1.403-2.8 2.163h-.006c-.46-.584-.428-2.51-.402-2.913-.006-.025-.343.176-.389.206-.406.29-.787.616-1.136.974-.397.403-.76.839-1.085 1.303a9.816 9.816 0 00-1.562 3.52c-.003.013-.11.487-.19 1.073-.013.09-.026.181-.037.272a7.8 7.8 0 00-.069.667l-.002.034-.023.387-.001.06C.386 18.795 5.593 24 12.016 24c5.752 0 10.527-4.176 11.463-9.661.02-.149.035-.298.052-.448.232-1.994-.025-4.09-.753-5.844z"/>
-    </svg>
-  )
-}
-
 export default function Pair() {
   const auth = useAuth()
-  const [extensionDetected, setExtensionDetected] = createSignal(false)
   const [code, setCode] = createSignal<string | null>(null)
   const [countdown, setCountdown] = createSignal(0)
   const [generating, setGenerating] = createSignal(false)
   const [error, setError] = createSignal('')
   const [copied, setCopied] = createSignal(false)
   const [expired, setExpired] = createSignal(false)
+  const [paired, setPaired] = createSignal(false)
   let timer: ReturnType<typeof setInterval> | null = null
   let copyTimeout: ReturnType<typeof setTimeout> | null = null
-
-  // Listen for extension content script signal
-  function handleMessage(e: MessageEvent) {
-    if (e.data?.type === 'TESTUDO_INSTALLED') {
-      setExtensionDetected(true)
-    }
-  }
+  let pollTimer: ReturnType<typeof setInterval> | null = null
 
   onMount(() => {
-    window.addEventListener('message', handleMessage)
     // Auto-generate code if already authenticated
     if (auth.isAuthenticated()) {
       generateCode()
@@ -63,9 +40,9 @@ export default function Pair() {
   })
 
   onCleanup(() => {
-    window.removeEventListener('message', handleMessage)
     if (timer) clearInterval(timer)
     if (copyTimeout) clearTimeout(copyTimeout)
+    if (pollTimer) clearInterval(pollTimer)
   })
 
   async function generateCode() {
@@ -83,6 +60,8 @@ export default function Pair() {
           if (prev <= 1) {
             if (timer) clearInterval(timer)
             timer = null
+            if (pollTimer) clearInterval(pollTimer)
+            pollTimer = null
             setExpired(true)
             setCode(null)
             return 0
@@ -90,6 +69,20 @@ export default function Pair() {
           return prev - 1
         })
       }, 1000)
+
+      if (pollTimer) clearInterval(pollTimer)
+      pollTimer = setInterval(async () => {
+        try {
+          const { paired: isPaired } = await checkPairStatus()
+          if (isPaired) {
+            setPaired(true)
+            if (pollTimer) clearInterval(pollTimer)
+            pollTimer = null
+            if (timer) clearInterval(timer)
+            timer = null
+          }
+        } catch { /* ignore poll errors */ }
+      }, 3000)
     } catch {
       setError('Failed to generate code')
     } finally {
@@ -160,76 +153,17 @@ export default function Pair() {
 
           {/* Content area */}
           <div class="px-10 py-8">
-            {/* State 1: No extension detected */}
-            <Show when={!extensionDetected()}>
+            {/* State 1: Not authenticated */}
+            <Show when={!auth.isAuthenticated() && !paired()}>
               <div class="text-center">
                 <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
                   // CONNECT_EXTENSION
                 </div>
                 <h2 class="font-mono text-sm tracking-wider text-text-primary mb-4">
-                  EXTENSION HUB
+                  CONNECT WALLET
                 </h2>
                 <p class="font-mono text-xs text-text-secondary mb-8 leading-relaxed">
-                  Install the Testudo extension to activate risk management directly from any live chart.
-                </p>
-
-                {/* Browser buttons */}
-                <div class="flex gap-3 justify-center mb-8">
-                  <a
-                    href={CHROME_STORE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="flex items-center gap-3 px-6 py-3 border border-container-border text-text-secondary hover:bg-text-primary hover:text-main-bg transition-colors group"
-                  >
-                    <ChromeIcon />
-                    <div class="text-left">
-                      <div class="font-mono text-xs tracking-wider">CHROME</div>
-                      <div class="font-mono text-[9px] text-text-tertiary group-hover:text-main-bg/70">Extension</div>
-                    </div>
-                  </a>
-                  <a
-                    href={FIREFOX_STORE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="flex items-center gap-3 px-6 py-3 border border-container-border text-text-secondary hover:bg-text-primary hover:text-main-bg transition-colors group"
-                  >
-                    <FirefoxIcon />
-                    <div class="text-left">
-                      <div class="font-mono text-xs tracking-wider">FIREFOX</div>
-                      <div class="font-mono text-[9px] text-text-tertiary group-hover:text-main-bg/70">Extension</div>
-                    </div>
-                  </a>
-                </div>
-
-                {/* Verify section */}
-                <div class="border-t border-container-border pt-6">
-                  <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-3">
-                    VERIFY INSTALLATION
-                  </div>
-                  <p class="font-mono text-[10px] text-text-tertiary">
-                    Already installed?{' '}
-                    <button
-                      onClick={() => window.location.reload()}
-                      class="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors border border-container-border px-2 py-0.5 ml-1"
-                    >
-                      <span class="text-[10px]">&#8635;</span> REFRESH AND VERIFY
-                    </button>
-                  </p>
-                </div>
-              </div>
-            </Show>
-
-            {/* State 2: Extension detected, not authenticated */}
-            <Show when={extensionDetected() && !auth.isAuthenticated()}>
-              <div class="text-center">
-                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
-                  // AUTHENTICATE
-                </div>
-                <h2 class="font-mono text-sm tracking-wider text-text-primary mb-4">
-                  WALLET REQUIRED
-                </h2>
-                <p class="font-mono text-xs text-text-secondary mb-8 leading-relaxed">
-                  Connect your wallet to link your extension.
+                  Connect your wallet to activate the extension.
                 </p>
                 <button
                   onClick={handleConnect}
@@ -237,11 +171,19 @@ export default function Pair() {
                 >
                   CONNECT WALLET
                 </button>
+                <div class="border-t border-container-border mt-8 pt-6">
+                  <p class="font-mono text-[10px] text-text-tertiary">
+                    Need the extension?{' '}
+                    <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" class="text-text-secondary hover:text-text-primary transition-colors underline">Chrome</a>
+                    {' \u00b7 '}
+                    <a href={FIREFOX_STORE_URL} target="_blank" rel="noopener noreferrer" class="text-text-secondary hover:text-text-primary transition-colors underline">Firefox</a>
+                  </p>
+                </div>
               </div>
             </Show>
 
-            {/* State 3: Authenticated — show pairing code */}
-            <Show when={auth.isAuthenticated()}>
+            {/* State 2: Authenticated, not yet paired */}
+            <Show when={auth.isAuthenticated() && !paired()}>
               <div class="text-center">
                 <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
                   // PAIR_EXTENSION
@@ -304,6 +246,27 @@ export default function Pair() {
                     GENERATE CODE
                   </button>
                 </Show>
+              </div>
+            </Show>
+
+            {/* State 3: Successfully paired */}
+            <Show when={paired()}>
+              <div class="text-center">
+                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+                  // PAIRED
+                </div>
+                <h2 class="font-mono text-sm tracking-wider text-text-primary mb-4">
+                  ✓ EXTENSION LINKED
+                </h2>
+                <p class="font-mono text-xs text-text-secondary mb-8 leading-relaxed">
+                  Your extension is now connected to your wallet.
+                </p>
+                <a
+                  href="/desk/"
+                  class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                >
+                  OPEN TRADING DESK
+                </a>
               </div>
             </Show>
           </div>

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Testudo",
   "version": "1.0.1",
-  "description": "Risk management overlay for crypto traders. Automated position sizing, circuit breakers, and one-click execution from TradingView, DexScreener, and Hyperliquid.",
+  "description": "Risk management overlay for crypto traders. Position sizing, circuit breakers, and one-click execution from TradingView.",
   "permissions": [
     "storage",
     "activeTab"

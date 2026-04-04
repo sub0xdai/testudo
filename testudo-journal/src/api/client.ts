@@ -570,3 +570,9 @@ export async function pairExtension(): Promise<{ code: string }> {
   if (!res.ok) throw new Error('Failed to generate pairing code')
   return res.json()
 }
+
+export async function checkPairStatus(): Promise<{ paired: boolean }> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/auth/pair-status`)
+  if (!res.ok) return { paired: false }
+  return res.json()
+}
