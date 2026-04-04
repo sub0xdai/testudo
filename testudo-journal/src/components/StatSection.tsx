@@ -14,13 +14,13 @@ interface StatSectionProps {
 export function StatSection(props: StatSectionProps) {
   return (
     <div>
-      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-5 py-3 border-b border-container-border/50">
+      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-6 py-3 border-b border-container-border/50">
         {props.title}
       </div>
       <div class="py-1">
         <For each={props.items}>
           {(item) => (
-            <div class="flex items-center gap-2 px-4 py-1.5">
+            <div class="flex items-center gap-2 px-6 py-2">
               <span class="font-display text-xs text-text-secondary">{item.label}</span>
               <span class="flex-1 border-b border-dotted border-container-border/30" />
               <span class={`font-mono text-xs font-bold ${item.colorClass ?? 'text-text-primary'}`}>

@@ -15,7 +15,7 @@ interface ChartContainerProps {
 
 export function ChartContainer(props: ChartContainerProps) {
   return (
-    <div class={`bg-elevated border border-container-border p-5 ${props.class ?? ''}`}>
+    <div class={`bg-elevated border border-container-border p-6 ${props.class ?? ''}`}>
       <h3 class="font-display text-xs font-semibold tracking-section text-text-tertiary uppercase mb-4">
         {props.title}
       </h3>

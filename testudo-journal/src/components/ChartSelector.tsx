@@ -53,7 +53,7 @@ export function ChartSelector(props: ChartSelectorProps) {
   return (
     <div class="glass-panel flex flex-col overflow-hidden">
       {/* Panel header with embedded chart selector */}
-      <div class="flex items-center justify-between border-b border-container-border/50 px-5 py-3">
+      <div class="flex items-center justify-between border-b border-container-border/50 px-6 py-3">
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
@@ -67,7 +67,7 @@ export function ChartSelector(props: ChartSelectorProps) {
       </div>
 
       {/* Chart content */}
-      <div class="p-5 flex-grow relative min-h-[250px]">
+      <div class="p-6 flex-grow relative min-h-[250px]">
         <Suspense fallback={<ChartLoading />}>
           <Show when={selected() === 'symbol'}><SymbolBreakdown /></Show>
           <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
