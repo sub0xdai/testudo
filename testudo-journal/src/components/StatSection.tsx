@@ -20,8 +20,9 @@ export function StatSection(props: StatSectionProps) {
       <div class="py-1">
         <For each={props.items}>
           {(item) => (
-            <div class="flex items-center justify-between px-5 py-1.5">
+            <div class="flex items-center gap-2 px-4 py-1.5">
               <span class="font-display text-xs text-text-secondary">{item.label}</span>
+              <span class="flex-1 border-b border-dotted border-container-border/30" />
               <span class={`font-mono text-xs font-bold ${item.colorClass ?? 'text-text-primary'}`}>
                 {item.value}
               </span>

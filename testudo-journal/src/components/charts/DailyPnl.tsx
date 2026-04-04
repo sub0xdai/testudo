@@ -38,11 +38,20 @@ export function DailyPnl() {
           return `<span style="color:#fff">${p.name}</span><br/>${sign}$${p.value.toFixed(2)}`
         },
       },
-      grid: { left: 60, right: 20, top: 10, bottom: 30, containLabel: false },
+      grid: { left: 60, right: 20, top: 10, bottom: 20, containLabel: false },
       xAxis: {
         type: 'category',
         data: dates,
-        axisLabel: { color: textColor, fontSize: 10, rotate: 45 },
+        axisLabel: {
+          color: textColor,
+          fontSize: 10,
+          rotate: 0,
+          interval: (index: number) => {
+            const total = dates.length
+            const step = total <= 10 ? 0 : total <= 30 ? 4 : 6
+            return step === 0 || index % step === 0
+          },
+        },
         axisLine: { show: false },
         axisTick: { show: false },
       },

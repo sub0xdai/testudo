@@ -51,9 +51,9 @@ export function SymbolBreakdown() {
         type: 'bar',
         data: d.data.map((s, i) => ({
           value: s.trade_count,
-          itemStyle: { color: palette[i % palette.length] },
+          itemStyle: { color: palette[i % palette.length], opacity: 0.7 },
         })),
-        barWidth: '60%',
+        barWidth: '40%',
         label: {
           show: true,
           position: 'right',

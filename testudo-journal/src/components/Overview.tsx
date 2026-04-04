@@ -58,7 +58,7 @@ export function Overview() {
       <Show when={stats.loading && !stats()}>
         <div aria-live="polite" aria-busy="true" class="flex gap-0">
           {/* Stats sidebar skeleton */}
-          <div class="w-64 shrink-0 border-r border-container-border/50 hidden md:block">
+          <div class="w-52 shrink-0 border-r border-container-border/50 hidden md:block">
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
               {(section) => (
                 <div class="px-5 py-3 border-b border-container-border/50">
@@ -136,7 +136,7 @@ export function Overview() {
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
           {/* Left sidebar — stats */}
-          <aside class="w-64 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel border-r-0" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
+          <aside class="w-52 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel border-r-0" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />
@@ -145,7 +145,7 @@ export function Overview() {
           {/* Right main — hero P&L + charts (glass-panel for blur over texture) */}
           <div class="flex-1 min-w-0 glass-panel border-0 border-l border-container-border/50">
             {/* Hero metrics */}
-            <div class="px-5 py-4 border-b border-container-border/50">
+            <div class="px-5 py-2 border-b border-container-border/50">
               <div class="flex items-baseline gap-8 mb-1">
                 <div>
                   <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
