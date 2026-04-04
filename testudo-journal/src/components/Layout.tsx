@@ -288,26 +288,67 @@ function ExtensionChip() {
 function LockScreen() {
   const auth = useAuth()
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
-      <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
-        <img src={import.meta.env.BASE_URL + 'crest.png'} alt="Testudo" class="crest-logo w-28 md:w-32 mx-auto mb-6 opacity-80" />
-        <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
-        <p class="font-mono text-[10px] tracking-widest text-text-tertiary mb-8">TRADING TERMINAL</p>
-        <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
-          Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
-        </p>
-        <button
-          onClick={() => auth.connectWallet()}
-          class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-        >
-          CONNECT WALLET
-        </button>
-        <a
-          href="https://testudo.vip/docs/03-getting-started"
-          class="block mt-4 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
-        >
-          How does this work? &rarr;
-        </a>
+    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6 py-12">
+      <div class="border border-container-border bg-main-bg/75 backdrop-blur-md max-w-2xl w-full">
+        {/* Header */}
+        <div class="border-b border-container-border px-8 md:px-12 pt-10 pb-6 text-center">
+          <img src={import.meta.env.BASE_URL + 'crest.png'} alt="Testudo" class="crest-logo w-20 md:w-24 mx-auto mb-4 opacity-80" />
+          <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
+          <p class="font-mono text-[10px] tracking-widest text-text-tertiary">TRADING TERMINAL</p>
+        </div>
+
+        {/* Lore + Explainer */}
+        <div class="px-8 md:px-12 py-8 space-y-6">
+          <p class="font-mono text-xs text-text-secondary leading-relaxed">
+            The <a href="https://en.wikipedia.org/wiki/Testudo_formation" target="_blank" rel="noopener noreferrer" class="text-text-primary hover:text-accent-steel transition-colors underline underline-offset-2">testudo formation</a> was
+            the Roman legion's defensive shield wall — a system where discipline replaced impulse and structure neutralised chaos.
+            The same principle applies to markets.
+          </p>
+
+          <p class="font-mono text-xs text-text-secondary leading-relaxed">
+            Research in <a href="https://en.wikipedia.org/wiki/Behavioral_economics" target="_blank" rel="noopener noreferrer" class="text-text-primary hover:text-accent-steel transition-colors underline underline-offset-2">behavioral economics</a> shows
+            that traders who pre-commit to rules — position sizing, stop placement, risk limits — consistently
+            outperform those who decide in the moment. Your prefrontal cortex makes better decisions before the trade, not during it.
+          </p>
+
+          {/* Desk navigation */}
+          <div class="border border-container-border/50 bg-elevated/30 p-5">
+            <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// YOUR STATIONS</div>
+            <div class="space-y-3">
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-xs text-text-tertiary w-20 flex-shrink-0">OVERVIEW</span>
+                <span class="font-mono text-[11px] text-text-secondary">Equity curve, win rate, and performance metrics at a glance.</span>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-xs text-text-tertiary w-20 flex-shrink-0">JOURNAL</span>
+                <span class="font-mono text-[11px] text-text-secondary">Review every trade. Attach notes, tag setups, find your edge.</span>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-xs text-text-tertiary w-20 flex-shrink-0">ACCOUNT</span>
+                <span class="font-mono text-[11px] text-text-secondary">Connect exchanges, configure risk parameters, manage keys.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div class="text-center pt-2">
+            <button
+              onClick={() => auth.connectWallet()}
+              class="px-8 py-3 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+            >
+              CONNECT WALLET
+            </button>
+            <p class="font-mono text-[10px] text-text-tertiary mt-4">
+              Already connected?{' '}
+              <button
+                onClick={() => window.location.reload()}
+                class="text-text-secondary hover:text-text-primary transition-colors underline underline-offset-2"
+              >
+                Refresh to continue
+              </button>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   )
