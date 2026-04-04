@@ -46,6 +46,10 @@ export function DailyPnl() {
           color: textColor,
           fontSize: 10,
           rotate: 0,
+          formatter: (v: string) => {
+            const parts = v.split('-')
+            return `${parts[1]}/${parts[2]}`
+          },
           interval: (index: number) => {
             const total = dates.length
             const step = total <= 10 ? 0 : total <= 30 ? 4 : 6
