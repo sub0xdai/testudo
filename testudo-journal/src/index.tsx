@@ -15,6 +15,11 @@ const Journal = lazy(() => import('./pages/Journal').then(m => ({ default: m.Jou
 const Account = lazy(() => import('./pages/Account'))
 const Pair = lazy(() => import('./pages/Pair'))
 
+// Redirect bare root to /desk/ — router base doesn't catch paths outside /desk/*
+if (window.location.pathname === '/' || window.location.pathname === '') {
+  window.location.replace('/desk/')
+}
+
 const root = document.getElementById('root')
 
 render(
