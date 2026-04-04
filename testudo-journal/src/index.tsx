@@ -4,16 +4,14 @@ import { Router, Route, Navigate } from '@solidjs/router'
 import { FilterProvider } from './components/filterContext'
 import { AuthProvider } from './context/AuthContext'
 import { Layout } from './components/Layout'
-import { Overview } from './components/Overview'
-import { Trades } from './pages/Trades'
-import { Journal } from './pages/Journal'
 import './config/wallet' // initialize Reown AppKit
-import './lib/echarts-setup'
-import './lib/echarts-theme'
 import './styles/app.css'
 
-// Lazy-loaded pages
+// Lazy-loaded pages — keep main bundle lean
 import { lazy } from 'solid-js'
+const Overview = lazy(() => import('./components/Overview').then(m => ({ default: m.Overview })))
+const Trades = lazy(() => import('./pages/Trades').then(m => ({ default: m.Trades })))
+const Journal = lazy(() => import('./pages/Journal').then(m => ({ default: m.Journal })))
 const Account = lazy(() => import('./pages/Account'))
 const Pair = lazy(() => import('./pages/Pair'))
 

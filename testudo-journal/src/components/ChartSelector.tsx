@@ -1,16 +1,18 @@
-import { createSignal, Show } from 'solid-js'
-import { SymbolBreakdown } from './charts/SymbolBreakdown'
-import { MarketReturn } from './charts/MarketReturn'
-import { DurationScatter } from './charts/DurationScatter'
-import { ReturnHistogram } from './charts/ReturnHistogram'
-import { TimeHeatmap } from './charts/TimeHeatmap'
-import { DailyPnl } from './charts/DailyPnl'
-import { CumulativeProfit } from './charts/CumulativeProfit'
-import { DrawdownChart } from './charts/DrawdownChart'
-import { PnlTreemap } from './charts/PnlTreemap'
-import { ExpectancyBySymbol } from './charts/ExpectancyBySymbol'
-import { HoldingPeriodAnalysis } from './charts/HoldingPeriodAnalysis'
+import { createSignal, Show, lazy, Suspense } from 'solid-js'
 import type { EquityPoint } from '../api/client'
+
+// Lazy-load chart components — only fetched when selected
+const SymbolBreakdown = lazy(() => import('./charts/SymbolBreakdown').then(m => ({ default: m.SymbolBreakdown })))
+const MarketReturn = lazy(() => import('./charts/MarketReturn').then(m => ({ default: m.MarketReturn })))
+const DurationScatter = lazy(() => import('./charts/DurationScatter').then(m => ({ default: m.DurationScatter })))
+const ReturnHistogram = lazy(() => import('./charts/ReturnHistogram').then(m => ({ default: m.ReturnHistogram })))
+const TimeHeatmap = lazy(() => import('./charts/TimeHeatmap').then(m => ({ default: m.TimeHeatmap })))
+const DailyPnl = lazy(() => import('./charts/DailyPnl').then(m => ({ default: m.DailyPnl })))
+const CumulativeProfit = lazy(() => import('./charts/CumulativeProfit').then(m => ({ default: m.CumulativeProfit })))
+const DrawdownChart = lazy(() => import('./charts/DrawdownChart').then(m => ({ default: m.DrawdownChart })))
+const PnlTreemap = lazy(() => import('./charts/PnlTreemap').then(m => ({ default: m.PnlTreemap })))
+const ExpectancyBySymbol = lazy(() => import('./charts/ExpectancyBySymbol').then(m => ({ default: m.ExpectancyBySymbol })))
+const HoldingPeriodAnalysis = lazy(() => import('./charts/HoldingPeriodAnalysis').then(m => ({ default: m.HoldingPeriodAnalysis })))
 
 type ChartOption =
   | 'symbol' | 'market' | 'duration' | 'return' | 'heatmap'
@@ -30,6 +32,14 @@ const CHART_OPTIONS: { value: ChartOption; label: string }[] = [
   { value: 'return', label: 'Return Distribution' },
   { value: 'heatmap', label: 'Time Heatmap' },
 ]
+
+function ChartLoading() {
+  return (
+    <div class="flex items-center justify-center h-full min-h-[200px]">
+      <div class="w-4 h-4 border-2 border-text-secondary border-t-text-primary rounded-full animate-spin" />
+    </div>
+  )
+}
 
 interface ChartSelectorProps {
   defaultChart?: ChartOption
@@ -58,22 +68,24 @@ export function ChartSelector(props: ChartSelectorProps) {
 
       {/* Chart content */}
       <div class="p-5 flex-grow relative min-h-[250px]">
-        <Show when={selected() === 'symbol'}><SymbolBreakdown /></Show>
-        <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
-        <Show when={selected() === 'expectancy'}><ExpectancyBySymbol /></Show>
-        <Show when={selected() === 'daily-pnl'}><DailyPnl /></Show>
-        <Show when={selected() === 'cumulative'}>
-          <CumulativeProfit
-            data={props.equityData}
-            loading={props.equityLoading ?? false}
-          />
-        </Show>
-        <Show when={selected() === 'drawdown'}><DrawdownChart /></Show>
-        <Show when={selected() === 'holding'}><HoldingPeriodAnalysis /></Show>
-        <Show when={selected() === 'market'}><MarketReturn /></Show>
-        <Show when={selected() === 'duration'}><DurationScatter /></Show>
-        <Show when={selected() === 'return'}><ReturnHistogram /></Show>
-        <Show when={selected() === 'heatmap'}><TimeHeatmap /></Show>
+        <Suspense fallback={<ChartLoading />}>
+          <Show when={selected() === 'symbol'}><SymbolBreakdown /></Show>
+          <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
+          <Show when={selected() === 'expectancy'}><ExpectancyBySymbol /></Show>
+          <Show when={selected() === 'daily-pnl'}><DailyPnl /></Show>
+          <Show when={selected() === 'cumulative'}>
+            <CumulativeProfit
+              data={props.equityData}
+              loading={props.equityLoading ?? false}
+            />
+          </Show>
+          <Show when={selected() === 'drawdown'}><DrawdownChart /></Show>
+          <Show when={selected() === 'holding'}><HoldingPeriodAnalysis /></Show>
+          <Show when={selected() === 'market'}><MarketReturn /></Show>
+          <Show when={selected() === 'duration'}><DurationScatter /></Show>
+          <Show when={selected() === 'return'}><ReturnHistogram /></Show>
+          <Show when={selected() === 'heatmap'}><TimeHeatmap /></Show>
+        </Suspense>
       </div>
     </div>
   )

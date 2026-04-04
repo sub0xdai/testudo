@@ -15,5 +15,26 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-wallet': [
+            '@reown/appkit',
+            '@reown/appkit-adapter-ethers',
+            'ethers',
+          ],
+          'vendor-echarts': [
+            'echarts',
+            'echarts/core',
+            'echarts/charts',
+            'echarts/components',
+            'echarts/renderers',
+          ],
+          'vendor-charts': [
+            'lightweight-charts',
+          ],
+        },
+      },
+    },
   },
 })
