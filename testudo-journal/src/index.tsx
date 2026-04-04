@@ -1,6 +1,6 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
-import { Router, Route } from '@solidjs/router'
+import { Router, Route, Navigate } from '@solidjs/router'
 import { FilterProvider } from './components/filterContext'
 import { AuthProvider } from './context/AuthContext'
 import { Layout } from './components/Layout'
@@ -29,6 +29,7 @@ render(
           <Route path="/trades" component={Trades} />
           <Route path="/journal" component={Journal} />
           <Route path="/account" component={Account} />
+          <Route path="/*" component={() => <Navigate href="/" />} />
         </Router>
       </FilterProvider>
     </AuthProvider>
