@@ -53,10 +53,21 @@ export function HeroEquityCurve(props: HeroEquityCurveProps) {
 
   function setChartData(data: EquityPoint[]) {
     if (!baseline) return
-    baseline.setData(data.map((p) => ({
+
+    // JNL-13: Use true equity when available, fall back to cumulative P&L
+    const isTrueEquity = data[0]?.is_true_equity ?? false
+    const values = data.map((p) => ({
       time: p.date as string,
-      value: parseFloat(p.cumulative_pnl),
-    })))
+      value: parseFloat(p.equity ?? p.cumulative_pnl),
+    }))
+
+    // Dynamic baseline: first equity value for true equity, 0 for P&L
+    const baselineValue = isTrueEquity && values.length > 0 ? values[0].value : 0
+    baseline.applyOptions({
+      baseValue: { type: 'price' as const, price: baselineValue },
+    })
+
+    baseline.setData(values)
     chart?.timeScale().fitContent()
   }
 

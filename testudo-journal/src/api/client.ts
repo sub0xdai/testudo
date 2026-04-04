@@ -75,9 +75,11 @@ function buildParams(filters: StatsFilter): URLSearchParams {
 export interface EquityPoint {
   date: string
   cumulative_pnl: string
+  equity?: string
   peak: string
   drawdown: string
   drawdown_pct: string
+  is_true_equity?: boolean
 }
 
 export interface DailyPnlPoint {
