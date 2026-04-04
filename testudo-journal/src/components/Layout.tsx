@@ -484,7 +484,7 @@ export function Layout(props: { children: JSX.Element }) {
             {(error) => <ErrorScreen message={error()} onRetry={auth.connectWallet} />}
           </Show>
         }>
-          <main class="relative z-10 max-w-[1400px] mx-auto px-6 py-8">
+          <main class="relative z-10 max-w-[1400px] mx-auto px-8 py-10">
             {props.children}
           </main>
         </Show>
