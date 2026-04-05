@@ -1,5 +1,5 @@
 import { createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
-import { A } from '@solidjs/router'
+import { A, useLocation } from '@solidjs/router'
 import { useAuth } from '../context/AuthContext'
 import { appKit } from '../config/wallet'
 import { pairExtension } from '../api/client'
@@ -350,11 +350,9 @@ export function Layout(props: { children: JSX.Element }) {
     }
   })
 
-  // UX-01: Standalone pages bypass Layout shell entirely
-  const isStandalonePage = () => window.location.pathname.endsWith('/pair')
-  if (isStandalonePage()) {
-    return <>{props.children}</>
-  }
+  // UX-01: Standalone pages bypass Layout shell entirely (reactive via router)
+  const location = useLocation()
+  const isStandalonePage = () => location.pathname.endsWith('/pair')
 
   function cycleTheme() {
     const current = theme()
@@ -365,6 +363,7 @@ export function Layout(props: { children: JSX.Element }) {
   }
 
   return (
+    <Show when={!isStandalonePage()} fallback={<>{props.children}</>}>
     <div class="min-h-screen text-text-primary">
       {/* Hadrian's Wall background — shared with landing page */}
       <div class="fixed inset-0 z-0">
@@ -490,5 +489,6 @@ export function Layout(props: { children: JSX.Element }) {
         </Show>
       </Show>
     </div>
+    </Show>
   )
 }
