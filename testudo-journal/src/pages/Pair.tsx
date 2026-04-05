@@ -33,10 +33,7 @@ export default function Pair() {
   let pollTimer: ReturnType<typeof setInterval> | null = null
 
   onMount(() => {
-    // Auto-generate code if already authenticated
-    if (auth.isAuthenticated()) {
-      generateCode()
-    }
+    // Don't auto-generate — require explicit user action after auth gate
   })
 
   onCleanup(() => {
