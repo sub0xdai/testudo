@@ -6,6 +6,7 @@ interface PositionCardProps {
   onCancel: (tradeId: string) => void;
   cancelling?: boolean;
   isDex?: boolean;
+  unrealizedPnl?: string;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -97,6 +98,21 @@ export default function PositionCard(props: PositionCardProps) {
           </div>
         </Show>
       </div>
+
+      {/* Row 2b: Unrealized PnL */}
+      <Show when={props.unrealizedPnl}>
+        {(pnl) => {
+          const val = parseFloat(pnl());
+          return (
+            <div class="mb-1.5" data-testid="position-pnl">
+              <span class="text-[10px] text-text-dim font-sans">uPnL </span>
+              <span class={`text-[12px] font-mono font-bold ${val >= 0 ? "text-signal-green" : "text-signal-red"}`}>
+                {val >= 0 ? "+" : ""}{val.toFixed(2)}
+              </span>
+            </div>
+          );
+        }}
+      </Show>
 
       {/* Row 3: TP targets — KEEP: trading data colors */}
       <Show when={props.trade.take_profit_targets.length > 0}>

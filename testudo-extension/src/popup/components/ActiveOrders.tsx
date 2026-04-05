@@ -47,14 +47,17 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
       };
 
       if (response.success && response.data) {
-        setTrades(response.data);
+        // Deduplicate by trade ID to prevent duplicate cards from rapid WS refreshes
+        const seen = new Set<string>();
+        const unique = response.data.filter((t: TradeGroupResponse) => {
+          if (seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
+        setTrades(unique);
         setError("");
-        if (response.data.length === 0) {
-          setCancelError(""); // Clear stale errors before fallback
-          fetchExchangePositions();
-        } else {
-          setExchangeData(null);
-        }
+        // Always fetch exchange positions for PnL cross-reference
+        fetchExchangePositions();
       } else {
         setError(response.error || "Failed to load");
       }
@@ -158,6 +161,18 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
 
   const positions = createMemo(() => trades().filter((t) => t.status === "Active"));
   const pendingOrders = createMemo(() => trades().filter((t) => t.status === "Pending"));
+
+  // Cross-reference exchange data for unrealized PnL (from HL directly, accurate)
+  const pnlBySymbol = createMemo(() => {
+    const map: Record<string, string> = {};
+    const data = exchangeData();
+    if (data) {
+      for (const pos of data.positions) {
+        map[pos.symbol] = pos.unrealized_pnl;
+      }
+    }
+    return map;
+  });
 
   createEffect(() => {
     props.onCountChange?.(positions().length, pendingOrders().length);
@@ -405,6 +420,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                   onCancel={handleCancel}
                   cancelling={cancelling() === trade.id}
                   isDex={props.isDex}
+                  unrealizedPnl={pnlBySymbol()[trade.symbol]}
                 />
               )}
             </For>
@@ -434,6 +450,7 @@ export default function ActiveOrders(props: ActiveOrdersProps) {
                   onCancel={handleCancel}
                   cancelling={cancelling() === trade.id}
                   isDex={props.isDex}
+                  unrealizedPnl={pnlBySymbol()[trade.symbol]}
                 />
               )}
             </For>
