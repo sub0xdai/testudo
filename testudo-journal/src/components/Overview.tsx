@@ -134,7 +134,7 @@ export function Overview() {
         </div>
 
         {/* Desktop: 2-column layout */}
-        <div class="flex gap-4">
+        <div class="flex gap-0">
           {/* Left sidebar — stats */}
           <aside class="w-56 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
