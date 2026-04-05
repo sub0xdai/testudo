@@ -28,6 +28,7 @@ export default function Pair() {
   const [copied, setCopied] = createSignal(false)
   const [expired, setExpired] = createSignal(false)
   const [paired, setPaired] = createSignal(false)
+  const [walletConfirmed, setWalletConfirmed] = createSignal(false)
   let timer: ReturnType<typeof setInterval> | null = null
   let copyTimeout: ReturnType<typeof setTimeout> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -99,13 +100,20 @@ export default function Pair() {
   const minutes = () => Math.floor(countdown() / 60)
   const seconds = () => String(countdown() % 60).padStart(2, '0')
 
-  // After wallet connect succeeds, auto-generate code
+  // Gate: explicit wallet confirmation before pairing
   function handleConnect() {
+    if (auth.isAuthenticated()) {
+      // Already authed — confirm and proceed to code generation
+      setWalletConfirmed(true)
+      generateCode()
+      return
+    }
     auth.connectWallet()
     // Watch for auth state change
     const check = setInterval(() => {
       if (auth.isAuthenticated()) {
         clearInterval(check)
+        setWalletConfirmed(true)
         generateCode()
       }
     }, 500)
@@ -150,8 +158,8 @@ export default function Pair() {
 
           {/* Content area */}
           <div class="px-10 py-8">
-            {/* State 1: Not authenticated */}
-            <Show when={!auth.isAuthenticated() && !paired()}>
+            {/* State 1: Wallet not yet confirmed for this pairing session */}
+            <Show when={!walletConfirmed() && !paired()}>
               <div class="text-center">
                 <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
                   // CONNECT_EXTENSION
@@ -179,8 +187,8 @@ export default function Pair() {
               </div>
             </Show>
 
-            {/* State 2: Authenticated, not yet paired */}
-            <Show when={auth.isAuthenticated() && !paired()}>
+            {/* State 2: Wallet confirmed, not yet paired */}
+            <Show when={walletConfirmed() && !paired()}>
               <div class="text-center">
                 <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
                   // PAIR_EXTENSION
