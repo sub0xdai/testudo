@@ -1,8 +1,7 @@
 name: Deploy
 
 on:
-  push:
-    branches: [master]
+  workflow_dispatch:  # manual trigger only — re-enable push trigger when moving to k8s
 
 jobs:
   build-and-push:
