@@ -59,8 +59,12 @@ export class ExchangeGateway {
 
     try {
       await exchange.start();
-    } catch (err) {
-      console.error(`[${exchangeId}] start() failed:`, err);
+    } catch (err: any) {
+      // Extract meaningful message before re-throwing
+      const detail = err?.response?.data?.msg || err?.response?.data?.message || err?.message || String(err);
+      console.error(`[${exchangeId}] start() failed: ${detail}`);
+      // Clean up — don't leave a broken instance
+      try { exchange.dispose(); } catch {}
       throw err;
     }
 

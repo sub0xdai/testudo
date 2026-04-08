@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Testudo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Risk management overlay for crypto traders. Position sizing, circuit breakers, and one-click execution from TradingView.",
   "permissions": [
-    "storage",
-    "activeTab"
+    "storage"
   ],
   "host_permissions": [
     "*://*.tradingview.com/*",

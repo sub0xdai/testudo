@@ -46,14 +46,34 @@ export function parseEnvelope(body: any): Envelope {
   };
 }
 
+/** Extract the most useful error message, including from Axios errors. */
+function extractErrorMessage(err: any): string {
+  // Axios errors: dig into response.data for exchange-specific messages
+  if (err?.isAxiosError && err?.response?.data) {
+    const data = err.response.data;
+    const exchangeMsg = data.msg || data.message || data.error || JSON.stringify(data);
+    const status = err.response.status;
+    return `Exchange API error ${status}: ${exchangeMsg}`;
+  }
+  // safe-cex sometimes wraps errors with a message property
+  if (err?.message) return err.message;
+  return String(err);
+}
+
 /** Map errors to HTTP status codes matching CexClientError enum. */
 export function mapError(err: any): {
   status: number;
   body: { error: string; code: string };
 } {
-  const msg = String(err?.message || err);
+  const msg = extractErrorMessage(err);
   const lower = msg.toLowerCase();
-  if (lower.includes("401") || lower.includes("auth"))
+
+  // Binance error codes
+  const axiosCode = err?.response?.data?.code;
+  if (axiosCode === -2014 || axiosCode === -2015)
+    return { status: 401, body: { error: msg, code: "AuthenticationError" } };
+
+  if (lower.includes("401") || lower.includes("auth") || lower.includes("api-key") || lower.includes("invalid key"))
     return { status: 401, body: { error: msg, code: "AuthenticationError" } };
   if (lower.includes("insufficient") || lower.includes("margin"))
     return { status: 402, body: { error: msg, code: "InsufficientFunds" } };

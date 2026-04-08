@@ -78,3 +78,6 @@ test-results/
 
 # Runtime
 scripts/.pids/
+
+# bv (beads viewer) local config and caches
+.bv/

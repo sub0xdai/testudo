@@ -6,6 +6,16 @@ import { createHandlers } from "./handlers";
 import { setupFillStreaming } from "./ws-fills";
 import { pskGuard } from "./middleware/psk";
 
+// Prevent process crash on unhandled errors from safe-cex internals
+process.on("unhandledRejection", (reason: any) => {
+  const msg = reason?.response?.data?.msg || reason?.message || String(reason);
+  console.error("[UNHANDLED REJECTION]", msg);
+});
+
+process.on("uncaughtException", (err: Error) => {
+  console.error("[UNCAUGHT EXCEPTION]", err.message);
+});
+
 const app = express();
 app.use(express.json());
 app.use(pskGuard);
