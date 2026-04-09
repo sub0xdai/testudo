@@ -1,6 +1,6 @@
 import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { PieChart, BarChart, ScatterChart, HeatmapChart, TreemapChart, LineChart } from 'echarts/charts'
+import { PieChart, BarChart, ScatterChart, HeatmapChart, TreemapChart, LineChart, RadarChart } from 'echarts/charts'
 import {
   TitleComponent,
   TooltipComponent,
@@ -9,6 +9,7 @@ import {
   VisualMapComponent,
   CalendarComponent,
   MarkLineComponent,
+  RadarComponent,
 } from 'echarts/components'
 
 echarts.use([
@@ -19,6 +20,7 @@ echarts.use([
   HeatmapChart,
   TreemapChart,
   LineChart,
+  RadarChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent,
@@ -26,6 +28,7 @@ echarts.use([
   VisualMapComponent,
   CalendarComponent,
   MarkLineComponent,
+  RadarComponent,
 ])
 
 export { echarts }

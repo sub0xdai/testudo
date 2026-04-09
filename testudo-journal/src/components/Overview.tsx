@@ -1,7 +1,8 @@
 import { createResource, Show, For } from 'solid-js'
 import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
-import { HeroEquityCurve } from './HeroEquityCurve'
+import { PnlCalendar } from './charts/PnlCalendar'
+import { PerformanceRadar } from './charts/PerformanceRadar'
 import { ChartSelector } from './ChartSelector'
 import { PageSubHeader } from './PageSubHeader'
 import type { StatItem } from './StatSection'
@@ -13,6 +14,7 @@ export function Overview() {
   const { filters } = useFilters()
 
   const [stats, { refetch: refetchStats }] = createResource(filters, fetchOverview)
+  // Equity resource kept for CumulativeProfit in ChartSelector
   const [equity] = createResource(filters, fetchEquityCurve)
 
   function accountItems(): StatItem[] {
@@ -54,7 +56,7 @@ export function Overview() {
     <div>
       <PageSubHeader title="OVERVIEW" />
 
-      {/* Loading state — structural skeleton */}
+      {/* Loading state -- structural skeleton */}
       <Show when={stats.loading && !stats()}>
         <div aria-live="polite" aria-busy="true" class="flex gap-0">
           {/* Stats sidebar skeleton */}
@@ -135,14 +137,18 @@ export function Overview() {
 
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
-          {/* Left sidebar — stats */}
+          {/* Left sidebar -- stats + radar */}
           <aside class="w-56 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />
+            <PerformanceRadar
+              performance={stats()!.performance}
+              risk={stats()!.risk}
+            />
           </aside>
 
-          {/* Right main — hero P&L + charts (glass-panel for blur over texture) */}
+          {/* Right main -- hero P&L calendar + charts (glass-panel for blur over texture) */}
           <div class="flex-1 min-w-0 glass-panel border-0 border-l border-container-border/50">
             {/* Hero metrics */}
             <div class="px-8 py-6 border-b border-container-border/50">
@@ -168,16 +174,13 @@ export function Overview() {
               </div>
             </div>
 
-            {/* Hero Equity Curve */}
+            {/* P&L Calendar hero */}
             <div class="px-8 pt-6">
-              <span class="font-display text-xs tracking-section text-text-tertiary uppercase">EQUITY CURVE</span>
+              <span class="font-display text-xs tracking-section text-text-tertiary uppercase">P&L CALENDAR</span>
             </div>
-            <HeroEquityCurve
-              data={equity()?.data}
-              loading={equity.loading}
-            />
+            <PnlCalendar />
 
-            {/* Chart selectors — 2-column grid */}
+            {/* Chart selectors -- 2-column grid */}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 pt-8">
               <ChartSelector defaultChart="symbol" equityData={equity()} equityLoading={equity.loading} />
               <ChartSelector defaultChart="daily-pnl" equityData={equity()} equityLoading={equity.loading} />
