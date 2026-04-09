@@ -40,16 +40,16 @@ export function getSignalAmber(): string {
 // ── Accent colors ───────────────────────────────────────────────────
 
 export function getAccentPrimary(): string {
-  return getCSSVarRGB('--accent-primary', '196, 115, 90')
+  return getCSSVarRGB('--accent-primary', '180, 190, 200')
 }
 
 export function accentPrimaryAlpha(a: number): string {
-  const raw = getCSSVarRaw('--accent-primary', '196 115 90')
+  const raw = getCSSVarRaw('--accent-primary', '180 190 200')
   const parts = raw.split(' ').map(Number)
   if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
     return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
   }
-  return `rgba(196, 115, 90, ${a})`
+  return `rgba(180, 190, 200, ${a})`
 }
 
 // ── Background colors ────────────────────────────────────────────────
