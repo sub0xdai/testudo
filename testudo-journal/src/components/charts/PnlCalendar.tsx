@@ -312,9 +312,9 @@ export function PnlCalendar() {
                   <>
                     <div
                       class={`border border-container-border/50 min-h-[88px] p-2 relative transition-colors ${
-                        c.inMonth ? cellBg(c) : 'opacity-20'
-                      } ${hasData ? 'cursor-pointer hover:border-text-secondary/50' : ''} ${
-                        c.isToday ? 'ring-1 ring-inset ring-text-primary/20' : ''
+                        c.inMonth ? `bg-container-bg ${cellBg(c)}` : 'opacity-20'
+                      } ${hasData ? 'cursor-pointer hover:border-text-secondary/50 hover:bg-container-bg-hover' : ''} ${
+                        c.isToday ? 'ring-1 ring-inset ring-text-primary/30' : ''
                       }`}
                       onClick={() => hasData && drillDown(c.dateStr)}
                       role={hasData ? 'button' : undefined}
@@ -352,11 +352,11 @@ export function PnlCalendar() {
                         const weekIdx = Math.floor(i / 7)
                         const week = weeklySummaries()[weekIdx]
                         if (!week || week.tradingDays === 0) {
-                          return <div class="min-h-[88px] border border-container-border/15" />
+                          return <div class="min-h-[88px] border border-container-border/30" />
                         }
                         return (
                           <div
-                            class={`min-h-[88px] border border-container-border/15 flex flex-col items-center justify-center p-2 ${
+                            class={`min-h-[88px] border border-container-border/30 flex flex-col items-center justify-center p-2 bg-container-bg ${
                               week.pnl > 0 ? 'bg-signal-green/5' : week.pnl < 0 ? 'bg-signal-red/5' : ''
                             }`}
                             style={{ "box-shadow": weeklyGlow(week.pnl) }}

@@ -1,7 +1,7 @@
 import { createMemo } from 'solid-js'
 import { EChart } from './EChart'
 import type { PerformanceStats, RiskStats } from '../../api/client'
-import { getAccentPrimary, accentPrimaryAlpha, getTextTertiary } from '../../lib/tokens'
+import { getAccentPrimary, accentPrimaryAlpha, getTextTertiary, getBorder } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 interface PerformanceRadarProps {
@@ -17,6 +17,7 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
     const accent = getAccentPrimary()
     const accentFill = accentPrimaryAlpha(0.25)
     const tertiary = getTextTertiary()
+    const border = getBorder()
 
     // Normalize all values to 0-100 scale
     const winRate = clamp(parseFloat(p.win_rate))
@@ -49,8 +50,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
             fontFamily: "'Space Mono', monospace",
           },
         },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.15)' } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
+        axisLine: { lineStyle: { color: border } },
+        splitLine: { lineStyle: { color: border } },
         splitArea: { show: false },
       },
       series: [{
