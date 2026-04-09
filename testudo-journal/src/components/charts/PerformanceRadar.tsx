@@ -73,7 +73,7 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
       <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-6 py-4 border-b border-container-border/50">
         PERFORMANCE PROFILE
       </div>
-      <EChart option={option} height="220px" />
+      <EChart option={option} height="260px" />
     </div>
   )
 }

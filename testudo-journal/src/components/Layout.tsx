@@ -380,7 +380,7 @@ export function Layout(props: { children: JSX.Element }) {
       </div>
 
       <header class="fixed top-0 left-0 right-0 z-50 bg-main-bg/60 backdrop-blur-sm border-b border-container-border/30">
-        <div class="max-w-[1600px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
+        <div class="mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <a href="https://testudo.vip" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <img src={import.meta.env.BASE_URL + 'shield.svg'} alt="Testudo" class="crest-logo w-5 h-5 object-contain opacity-60" />
@@ -483,7 +483,7 @@ export function Layout(props: { children: JSX.Element }) {
             {(error) => <ErrorScreen message={error()} onRetry={auth.connectWallet} />}
           </Show>
         }>
-          <main class="relative z-10 max-w-[1600px] mx-auto px-8 py-10">
+          <main class="relative z-10 mx-auto px-8 py-10">
             {props.children}
           </main>
         </Show>

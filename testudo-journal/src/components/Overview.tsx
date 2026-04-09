@@ -60,7 +60,7 @@ export function Overview() {
       <Show when={stats.loading && !stats()}>
         <div aria-live="polite" aria-busy="true" class="flex gap-0">
           {/* Stats sidebar skeleton */}
-          <div class="w-56 shrink-0 border-r border-container-border/50 hidden md:block">
+          <div class="w-72 shrink-0 border-r border-container-border/50 hidden md:block">
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
               {(section) => (
                 <div class="px-6 py-3 border-b border-container-border/50">
@@ -138,7 +138,7 @@ export function Overview() {
         {/* Desktop: 2-column layout */}
         <div class="flex gap-0">
           {/* Left sidebar -- stats + radar */}
-          <aside class="w-56 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
+          <aside class="w-72 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />
