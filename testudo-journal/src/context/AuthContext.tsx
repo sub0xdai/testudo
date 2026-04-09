@@ -1,4 +1,5 @@
 import { createContext, useContext, createSignal, onCleanup, type JSX } from 'solid-js'
+import { base58 } from '@scure/base'
 import { appKit } from '../config/wallet'
 
 export interface User {
@@ -36,10 +37,12 @@ export function AuthProvider(props: { children: JSX.Element }) {
   // This prevents MetaMask popup on every page refresh.
   let userInitiatedConnect = false
 
-  // Track the EVM provider via subscribeProviders (correct AppKit API)
+  // Track providers via subscribeProviders (correct AppKit API)
   let evmProvider: any = null
+  let solanaProvider: any = null
   const unsubProviders = appKit.subscribeProviders((state: Record<string, any>) => {
     evmProvider = state['eip155'] ?? null
+    solanaProvider = state['solana'] ?? null
   })
 
   // Check existing cookie session on mount.
@@ -141,12 +144,89 @@ export function AuthProvider(props: { children: JSX.Element }) {
     }
   }
 
-  // Subscribe to account state — triggers SIWE only after explicit user action.
+  // Run SIWS (Sign In With Solana) — parallel to runSiwe for Solana wallets
+  async function runSiws(address: string) {
+    if (user() || loading() || siweInFlight) return
+    siweInFlight = true
+    setSiweError(null)
+
+    try {
+      // Wait briefly for Solana provider to be ready
+      let attempts = 0
+      while (!solanaProvider && attempts < 20) {
+        await new Promise(r => setTimeout(r, 100))
+        attempts++
+      }
+      if (!solanaProvider) throw new Error('Solana provider not ready — please try again')
+
+      // Re-check after async wait — /me may have resolved and set user()
+      if (user()) {
+        siweInFlight = false
+        return
+      }
+
+      // Get nonce from backend (shared endpoint)
+      const nonceRes = await fetchAuth('/nonce')
+      if (!nonceRes.ok) throw new Error('Failed to get nonce')
+      const { nonce } = await nonceRes.json() as { nonce: string }
+
+      // Build SIWS message
+      const message = [
+        `${window.location.host} wants you to sign in with your Solana account:`,
+        address, '', 'Sign in to Testudo', '',
+        `URI: ${window.location.origin}`,
+        `Nonce: ${nonce}`,
+        `Issued At: ${new Date().toISOString()}`,
+      ].join('\n')
+
+      // Sign via Solana provider — signMessage takes Uint8Array
+      const encoded = new TextEncoder().encode(message)
+      const sig = await solanaProvider.signMessage(encoded)
+      // sig may be Uint8Array or { signature: Uint8Array } depending on adapter
+      const sigBytes: Uint8Array = sig instanceof Uint8Array ? sig : sig.signature
+
+      // Base58-encode the signature for transport
+      const signatureB58 = base58.encode(sigBytes)
+
+      // Verify with backend
+      const verifyRes = await fetchAuth('/verify-siws', {
+        method: 'POST',
+        body: JSON.stringify({
+          message,
+          signature: signatureB58,
+          address,
+        }),
+      })
+      if (!verifyRes.ok) throw new Error('SIWS verification failed')
+
+      const { user: u } = await verifyRes.json() as { user: User }
+      setUser(u)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Authentication failed'
+      console.error('[SIWS] auth failed:', msg)
+      setSiweError(
+        /reject|denied|cancel/i.test(msg)
+          ? 'Signature rejected — click Connect to retry'
+          : msg
+      )
+      appKit.disconnect()
+    } finally {
+      siweInFlight = false
+      userInitiatedConnect = false
+    }
+  }
+
+  // Subscribe to account state — triggers SIWE/SIWS only after explicit user action.
   // On refresh, wallet auto-reconnects and fires this callback, but we must NOT
-  // auto-trigger SIWE — session cookies from /me handle auth restoration silently.
+  // auto-trigger signing — session cookies from /me handle auth restoration silently.
   const unsubAccount = appKit.subscribeAccount((state: { isConnected: boolean; address?: string }) => {
     if (state.isConnected && state.address && !user() && !siweInFlight && userInitiatedConnect) {
-      runSiwe(state.address)
+      const chainNs = appKit.getCaipNetwork()?.chainNamespace
+      if (chainNs === 'solana' && solanaProvider) {
+        runSiws(state.address)
+      } else if (evmProvider) {
+        runSiwe(state.address)
+      }
     }
   })
 
