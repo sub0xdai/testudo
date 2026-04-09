@@ -1,6 +1,6 @@
 // Single source of truth for all design tokens used in JS chart configs
 // Reads from CSS custom properties at runtime, with fallbacks for SSR/testing
-// Fallbacks synced to landing page (testudo-web) values
+// Cool marble palette — blue-shifted to read as stone/silver
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -55,39 +55,39 @@ export function accentPrimaryAlpha(a: number): string {
 // ── Background colors ────────────────────────────────────────────────
 
 export function getChartBg(): string {
-  return getCSSVarRGB('--bg-elevated', '30, 30, 30')
+  return getCSSVarRGB('--bg-elevated', '26, 28, 35')
 }
 
 export function getBgCore(): string {
-  return getCSSVarRGB('--bg-core', '10, 10, 10')
+  return getCSSVarRGB('--bg-core', '9, 10, 13')
 }
 
 export function getBgPanel(): string {
-  return getCSSVarRGB('--bg-panel', '22, 22, 22')
+  return getCSSVarRGB('--bg-panel', '19, 21, 26')
 }
 
 export function getBgHover(): string {
-  return getCSSVarRGB('--bg-hover', '40, 40, 40')
+  return getCSSVarRGB('--bg-hover', '35, 38, 46')
 }
 
 // ── Text colors ──────────────────────────────────────────────────────
 
 export function getTextPrimary(): string {
-  return getCSSVarRGB('--text-primary', '237, 237, 237')
+  return getCSSVarRGB('--text-primary', '235, 237, 242')
 }
 
 export function getTextSecondary(): string {
-  return getCSSVarRGB('--text-secondary', '190, 190, 190')
+  return getCSSVarRGB('--text-secondary', '185, 190, 200')
 }
 
 export function getTextTertiary(): string {
-  return getCSSVarRGB('--text-tertiary', '120, 120, 120')
+  return getCSSVarRGB('--text-tertiary', '115, 120, 130')
 }
 
 // ── Border / accent ──────────────────────────────────────────────────
 
 export function getBorder(): string {
-  return getCSSVarRGB('--border', '50, 50, 50')
+  return getCSSVarRGB('--border', '45, 48, 58')
 }
 
 export function getAccentSteel(): string {
@@ -138,7 +138,7 @@ export function getEntryTypeColors(): Record<string, string> {
 // ── Grid / axis colors for lightweight-charts ────────────────────────
 
 export function getGridLineColor(): string {
-  return getCSSVarRGB('--bg-hover', '40, 40, 40')
+  return getCSSVarRGB('--bg-hover', '35, 38, 46')
 }
 
 export function getCrosshairColor(): string {

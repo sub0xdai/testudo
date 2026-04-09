@@ -5,12 +5,12 @@
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
   color-scheme: dark;
-  /* Synced to landing page — warm-neutral, no blue tint */
-  --bg-core: 10 10 10;          /* #0A0A0A — canvas black */
-  --bg-panel: 22 22 22;         /* #161616 — sidebar, cards */
-  --bg-elevated: 30 30 30;      /* #1E1E1E — raised surfaces (calendar) */
-  --bg-hover: 40 40 40;         /* #282828 — hover state */
-  --border: 50 50 50;           /* #323232 — visible dividers */
+  /* Cool marble palette — blue-shifted to read as stone/silver */
+  --bg-core: 9 10 13;           /* cool black with blue bias */
+  --bg-panel: 19 21 26;         /* cool charcoal — sidebar, cards */
+  --bg-elevated: 26 28 35;      /* cool raised — calendar, radar */
+  --bg-hover: 35 38 46;         /* cool hover */
+  --border: 45 48 58;           /* cool dividers */
   --border-active-accent: 237 237 237;
   --accent-steel: 148 163 184;  /* #94A3B8 — cool blue-grey */
   --accent-steel-hover: 203 213 225;
@@ -18,9 +18,9 @@
   --signal-green: 34 197 94;    /* #22C55E — standard green-500 */
   --signal-red: 239 68 68;      /* #EF4444 — standard red-500 */
   --signal-amber: 245 158 11;   /* #F59E0B — amber-500 */
-  --text-primary: 237 237 237;  /* #EDEDED — warm off-white */
-  --text-secondary: 190 190 190; /* #BEBEBE — readable grey */
-  --text-tertiary: 120 120 120; /* #787878 — muted */
+  --text-primary: 235 237 242;  /* cool off-white */
+  --text-secondary: 185 190 200; /* cool silver */
+  --text-tertiary: 115 120 130; /* cool muted */
 
   /* Layout */
   --header-h: 57px;
@@ -52,9 +52,9 @@
   filter: invert(1);
 }
 
-/* --- Background overlay (Hadrian's Wall) --- */
+/* --- Background overlay (Hadrian's Wall — marble texture seep) --- */
 .bg-overlay {
-  background: rgb(var(--bg-core));
+  background: rgb(var(--bg-core) / 0.90);
 }
 [data-theme="light"] .bg-overlay {
   background: rgb(var(--bg-core) / 0.90);
