@@ -390,7 +390,10 @@ export function JournalTimeline() {
         {/* Empty state */}
         <Show when={!entriesData.loading && filteredEntries().length === 0}>
           <div class="text-center py-16">
-            <div class="font-mono text-text-tertiary text-sm mb-4">NO ENTRIES YET</div>
+            <p class="font-mono text-sm text-text-secondary mb-2">NO JOURNAL ENTRIES</p>
+            <p class="font-mono text-xs text-text-tertiary mb-4">
+              Click on a trade to open the detail panel, then write your thesis in the notes section.
+            </p>
             <button
               class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
               onClick={handleNewEntry}

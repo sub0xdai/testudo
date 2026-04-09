@@ -288,26 +288,92 @@ function ExtensionChip() {
 function LockScreen() {
   const auth = useAuth()
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
-      <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
-        <img src={import.meta.env.BASE_URL + 'crest.png'} alt="Testudo" class="crest-logo w-28 md:w-32 mx-auto mb-6 opacity-80" />
-        <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
-        <p class="font-mono text-[10px] tracking-widest text-text-tertiary mb-8">TRADING TERMINAL</p>
-        <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
-          Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
-        </p>
-        <button
-          onClick={() => auth.connectWallet()}
-          class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-        >
-          CONNECT WALLET
-        </button>
-        <a
-          href="https://testudo.vip/docs/03-getting-started"
-          class="block mt-4 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
-        >
-          How does this work? &rarr;
-        </a>
+    <div class="relative min-h-[calc(100vh-var(--header-h))]">
+      {/* Dimmed, blurred preview of the desk */}
+      <div class="absolute inset-0 overflow-hidden opacity-20 blur-sm pointer-events-none select-none" aria-hidden="true">
+        <div class="max-w-[1400px] mx-auto px-8 pt-16">
+          <div class="flex gap-0">
+            {/* Fake sidebar */}
+            <div class="w-56 shrink-0 border-r border-container-border/50 hidden md:block">
+              <div class="px-6 py-3 border-b border-container-border/50">
+                <div class="font-display text-xs tracking-section text-text-tertiary uppercase">ACCOUNT</div>
+                <div class="mt-3 space-y-3">
+                  <div class="flex justify-between">
+                    <span class="font-mono text-[10px] text-text-tertiary">Total P&L</span>
+                    <span class="font-mono text-xs text-signal-green">$12,847.32</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="font-mono text-[10px] text-text-tertiary">Win Rate</span>
+                    <span class="font-mono text-xs text-text-primary">68.2%</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="font-mono text-[10px] text-text-tertiary">Trades</span>
+                    <span class="font-mono text-xs text-text-primary">147</span>
+                  </div>
+                </div>
+              </div>
+              <div class="px-6 py-3 border-b border-container-border/50">
+                <div class="font-display text-xs tracking-section text-text-tertiary uppercase">PERFORMANCE</div>
+                <div class="mt-3 space-y-3">
+                  <div class="flex justify-between">
+                    <span class="font-mono text-[10px] text-text-tertiary">Profit Factor</span>
+                    <span class="font-mono text-xs text-signal-green">2.14</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="font-mono text-[10px] text-text-tertiary">Expectancy</span>
+                    <span class="font-mono text-xs text-signal-green">$87.40</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="font-mono text-[10px] text-text-tertiary">R-Multiple</span>
+                    <span class="font-mono text-xs text-text-primary">1.8R</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Fake hero area */}
+            <div class="flex-1 min-w-0 px-8 py-6">
+              <div class="border-l-2 border-accent-primary pl-6 mb-8">
+                <span class="font-mono text-5xl font-bold text-signal-green">$12,847.32</span>
+                <span class="font-mono text-sm text-text-secondary ml-3">net P&L</span>
+              </div>
+              {/* Fake equity curve */}
+              <div class="h-64 border border-container-border/30 relative overflow-hidden">
+                <svg class="w-full h-full" viewBox="0 0 400 150" preserveAspectRatio="none">
+                  <polyline
+                    fill="none"
+                    stroke="rgb(var(--accent-primary))"
+                    stroke-width="2"
+                    points="0,120 40,110 80,95 120,100 160,80 200,70 240,55 280,60 320,40 360,30 400,20"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Auth card (on top) */}
+      <div class="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-h))] px-6">
+        <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
+          <img src={import.meta.env.BASE_URL + 'crest.png'} alt="Testudo" class="crest-logo w-28 md:w-32 mx-auto mb-6 opacity-80" />
+          <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
+          <p class="font-mono text-[10px] tracking-widest text-text-tertiary mb-8">TRADING TERMINAL</p>
+          <p class="font-mono text-sm text-text-secondary mb-8 leading-relaxed">
+            Connect your wallet to access the trading dashboard, manage exchanges, and view analytics.
+          </p>
+          <button
+            onClick={() => auth.connectWallet()}
+            class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+          >
+            CONNECT WALLET
+          </button>
+          <a
+            href="https://testudo.vip/docs/03-getting-started"
+            class="block mt-4 font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
+          >
+            How does this work? &rarr;
+          </a>
+        </div>
       </div>
     </div>
   )

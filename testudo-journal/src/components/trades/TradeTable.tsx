@@ -48,6 +48,12 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
     return Math.max(1, Math.ceil(d.total / d.limit))
   }
 
+  const hasActiveFilters = () => {
+    const f = filters()
+    const lf = localFilters()
+    return !!(f.exchange || f.symbol || f.dateFrom || f.dateTo || lf.side || lf.tag)
+  }
+
   function toggleSort(field: string) {
     const s = sort()
     if (s.field === field) {
@@ -88,7 +94,7 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                       >
                         {col.label}
                         <Show when={sort().field === col.key}>
-                          <span class="ml-1">{sort().order === 'asc' ? '▲' : '▼'}</span>
+                          <span class="ml-1">{sort().order === 'asc' ? '\u25B2' : '\u25BC'}</span>
                         </Show>
                       </button>
                     ) : col.label}
@@ -123,8 +129,30 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                 when={data()?.trades.length}
                 fallback={
                   <tr>
-                    <td colspan={COLUMNS.length} class="px-3 py-12 text-center text-text-tertiary font-mono text-sm">
-                      NO TRADES FOUND
+                    <td colspan={COLUMNS.length} class="px-3 py-16 text-center">
+                      <Show
+                        when={hasActiveFilters()}
+                        fallback={
+                          <>
+                            <p class="font-mono text-sm text-text-secondary mb-2">NO TRADES YET</p>
+                            <p class="font-mono text-xs text-text-tertiary mb-1">
+                              Trades appear automatically after your first fill on a connected exchange.
+                            </p>
+                            <p class="font-mono text-xs text-text-tertiary">
+                              Or import history from the{' '}
+                              <a href="/account" class="text-accent-steel hover:text-text-primary transition-colors underline">
+                                Account
+                              </a>{' '}
+                              page.
+                            </p>
+                          </>
+                        }
+                      >
+                        <p class="font-mono text-sm text-text-secondary mb-2">NO MATCHING TRADES</p>
+                        <p class="font-mono text-xs text-text-tertiary">
+                          Try adjusting your filters or time range.
+                        </p>
+                      </Show>
                     </td>
                   </tr>
                 }

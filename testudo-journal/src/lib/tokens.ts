@@ -36,6 +36,21 @@ export function getSignalAmber(): string {
   return getCSSVarRGB('--signal-amber', '245, 158, 11')
 }
 
+// ── Accent colors ───────────────────────────────────────────────────
+
+export function getAccentPrimary(): string {
+  return getCSSVarRGB('--accent-primary', '196, 115, 90')
+}
+
+export function accentPrimaryAlpha(a: number): string {
+  const raw = getCSSVarRaw('--accent-primary', '196 115 90')
+  const parts = raw.split(' ').map(Number)
+  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+    return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
+  }
+  return `rgba(196, 115, 90, ${a})`
+}
+
 // ── Background colors ────────────────────────────────────────────────
 
 export function getChartBg(): string {

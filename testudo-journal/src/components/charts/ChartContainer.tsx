@@ -70,6 +70,11 @@ export function ChartContainer(props: ChartContainerProps) {
               Clear filters
             </button>
           </Show>
+          <Show when={!props.hasActiveFilters}>
+            <p class="font-mono text-[10px] text-text-tertiary mt-1">
+              Data populates as you close trades.
+            </p>
+          </Show>
         </div>
       </Show>
 

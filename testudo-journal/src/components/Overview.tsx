@@ -146,22 +146,24 @@ export function Overview() {
           <div class="flex-1 min-w-0 glass-panel border-0 border-l border-container-border/50">
             {/* Hero metrics */}
             <div class="px-8 py-6 border-b border-container-border/50">
-              <div class="flex items-baseline gap-8 mb-1">
-                <div>
-                  <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
-                    {formatCurrency(stats()!.account.net_pnl)}
-                  </span>
-                  <span class="font-mono text-sm text-text-secondary ml-3">
-                    net P&L
-                  </span>
-                </div>
-                <div>
-                  <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(parseFloat(stats()!.performance.avg_r_multiple))}`}>
-                    {formatNumber(stats()!.performance.avg_r_multiple)}R
-                  </span>
-                  <span class="font-mono text-sm text-text-secondary ml-3">
-                    R-multiple
-                  </span>
+              <div class="border-l-2 border-accent-primary pl-6">
+                <div class="flex items-baseline gap-8 mb-1">
+                  <div>
+                    <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
+                      {formatCurrency(stats()!.account.net_pnl)}
+                    </span>
+                    <span class="font-mono text-sm text-text-secondary ml-3">
+                      net P&L
+                    </span>
+                  </div>
+                  <div>
+                    <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(parseFloat(stats()!.performance.avg_r_multiple))}`}>
+                      {formatNumber(stats()!.performance.avg_r_multiple)}R
+                    </span>
+                    <span class="font-mono text-sm text-text-secondary ml-3">
+                      R-multiple
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
