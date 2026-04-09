@@ -4,6 +4,7 @@
 
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
+  color-scheme: dark;
   --bg-core: 10 10 10;
   --bg-panel: 22 22 22;
   --bg-elevated: 30 30 30;
