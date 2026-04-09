@@ -154,7 +154,7 @@ export function Overview() {
               <div class="border-l-2 border-accent-primary pl-8">
                 <div class="flex items-baseline gap-10">
                   <div>
-                    <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
+                    <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)} ${parseFloat(String(stats()!.account.net_pnl)) >= 0 ? 'hero-glow-green' : 'hero-glow-red'}`}>
                       {formatCurrency(stats()!.account.net_pnl)}
                     </span>
                     <span class="font-mono text-sm text-text-secondary ml-3">

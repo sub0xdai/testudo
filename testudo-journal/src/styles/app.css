@@ -5,22 +5,22 @@
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
   color-scheme: dark;
-  /* 60-30-10 dark palette */
-  --bg-core: 11 12 16;          /* #0B0C10 — 60% deepest background */
-  --bg-panel: 24 26 32;         /* #181A20 — 30% elevated surfaces */
-  --bg-elevated: 34 37 45;      /* #22252D — interactive surface */
-  --bg-hover: 42 46 56;         /* slightly above elevated */
-  --border: 45 49 58;           /* #2D313A — subtle grid/dividers */
-  --border-active-accent: 242 244 248;
-  --accent-steel: 148 163 184;
-  --accent-steel-hover: 203 213 225;
+  /* True Black premium palette */
+  --bg-core: 5 5 5;             /* #050505 — the void */
+  --bg-panel: 12 12 14;         /* ~rgba(255,255,255,0.03) on black */
+  --bg-elevated: 20 20 23;      /* ~rgba(255,255,255,0.06) on black */
+  --bg-hover: 28 28 32;         /* ~rgba(255,255,255,0.08) on black */
+  --border: 32 32 38;           /* faint structural dividers */
+  --border-active-accent: 255 255 255;
+  --accent-steel: 161 161 170;  /* #A1A1AA — zinc-400 metallic */
+  --accent-steel-hover: 212 212 216;
   --accent-primary: 196 115 90;
-  --signal-green: 74 222 128;   /* #4ADE80 — desaturated positive */
-  --signal-red: 248 113 113;    /* #F87171 — desaturated negative */
-  --signal-amber: 251 191 36;   /* #FBBF24 — desaturated warn */
-  --text-primary: 242 244 248;  /* #F2F4F8 — high emphasis */
-  --text-secondary: 139 148 158; /* #8B949E — low emphasis */
-  --text-tertiary: 99 110 123;  /* muted labels */
+  --signal-green: 110 231 183;  /* #6EE7B7 — muted mint/sage */
+  --signal-red: 253 164 175;    /* #FDA4AF — soft coral/rose */
+  --signal-amber: 253 224 71;   /* #FDE047 — soft yellow */
+  --text-primary: 255 255 255;  /* #FFFFFF — pure white hero text */
+  --text-secondary: 161 161 170; /* #A1A1AA — zinc-400 metallic */
+  --text-tertiary: 113 113 122; /* #71717A — zinc-500 */
 
   /* Layout */
   --header-h: 57px;
@@ -52,9 +52,9 @@
   filter: invert(1);
 }
 
-/* --- Background overlay (Hadrian's Wall) — watermark mode --- */
+/* --- Background overlay (Hadrian's Wall) — barely perceptible texture --- */
 .bg-overlay {
-  background: rgb(var(--bg-core) / 0.82);
+  background: rgb(var(--bg-core) / 0.97);
 }
 [data-theme="light"] .bg-overlay {
   background: rgb(var(--bg-core) / 0.90);
@@ -68,10 +68,10 @@ select, option {
 
 /* --- Glass Panel --- */
 .glass-panel {
-  background: rgb(var(--bg-panel) / 0.7);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgb(var(--border) / 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 [data-theme="light"] .glass-panel {
   background: rgb(var(--bg-panel) / 0.92);
@@ -182,6 +182,18 @@ body {
 :focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgb(var(--bg-core)), 0 0 0 4px rgb(var(--text-primary) / 0.4);
+}
+
+/* ── Hero P&L emissive glow ──────────────────────── */
+.hero-glow-green {
+  text-shadow: 0 0 20px rgba(110, 231, 183, 0.3), 0 0 40px rgba(110, 231, 183, 0.1);
+}
+.hero-glow-red {
+  text-shadow: 0 0 20px rgba(253, 164, 175, 0.3), 0 0 40px rgba(253, 164, 175, 0.1);
+}
+[data-theme="light"] .hero-glow-green,
+[data-theme="light"] .hero-glow-red {
+  text-shadow: none;
 }
 
 /* Reduced motion */
