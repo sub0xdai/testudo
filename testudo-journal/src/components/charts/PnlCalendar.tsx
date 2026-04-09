@@ -202,8 +202,8 @@ export function PnlCalendar() {
 
   /** Weekly summary glow style */
   function weeklyGlow(pnl: number): string {
-    if (pnl > 0) return '0 0 12px rgba(110, 231, 183, 0.2), inset 0 0 8px rgba(110, 231, 183, 0.06)'
-    if (pnl < 0) return '0 0 12px rgba(253, 164, 175, 0.2), inset 0 0 8px rgba(253, 164, 175, 0.06)'
+    if (pnl > 0) return '0 0 12px rgba(52, 211, 153, 0.2), inset 0 0 8px rgba(52, 211, 153, 0.06)'
+    if (pnl < 0) return '0 0 12px rgba(251, 113, 133, 0.2), inset 0 0 8px rgba(251, 113, 133, 0.06)'
     return ''
   }
 

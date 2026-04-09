@@ -5,21 +5,21 @@
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
   color-scheme: dark;
-  /* True Black premium palette */
-  --bg-core: 5 5 5;             /* #050505 — the void */
-  --bg-panel: 12 12 14;         /* ~rgba(255,255,255,0.03) on black */
-  --bg-elevated: 20 20 23;      /* ~rgba(255,255,255,0.06) on black */
-  --bg-hover: 28 28 32;         /* ~rgba(255,255,255,0.08) on black */
-  --border: 32 32 38;           /* faint structural dividers */
-  --border-active-accent: 255 255 255;
-  --accent-steel: 161 161 170;  /* #A1A1AA — zinc-400 metallic */
+  /* Recalibrated 60-30-10 with structural contrast */
+  --bg-core: 9 9 11;            /* #09090B — zinc-950 base */
+  --bg-panel: 24 24 27;         /* #18181B — zinc-900 elevated surfaces */
+  --bg-elevated: 39 39 42;      /* #27272A — zinc-800 interactive */
+  --bg-hover: 52 52 56;         /* #343438 — hover state */
+  --border: 39 39 42;           /* ~rgba(255,255,255,0.10) on zinc-950 */
+  --border-active-accent: 250 250 250;
+  --accent-steel: 161 161 170;  /* #A1A1AA — zinc-400 */
   --accent-steel-hover: 212 212 216;
   --accent-primary: 196 115 90;
-  --signal-green: 110 231 183;  /* #6EE7B7 — muted mint/sage */
-  --signal-red: 253 164 175;    /* #FDA4AF — soft coral/rose */
-  --signal-amber: 253 224 71;   /* #FDE047 — soft yellow */
-  --text-primary: 255 255 255;  /* #FFFFFF — pure white hero text */
-  --text-secondary: 161 161 170; /* #A1A1AA — zinc-400 metallic */
+  --signal-green: 52 211 153;   /* #34D399 — emerald-400 luminous */
+  --signal-red: 251 113 133;    /* #FB7185 — rose-400 vivid */
+  --signal-amber: 251 191 36;   /* #FBBF24 */
+  --text-primary: 250 250 250;  /* #FAFAFA — zinc-50 ultra-bright */
+  --text-secondary: 161 161 170; /* #A1A1AA — zinc-400 crisp silver */
   --text-tertiary: 113 113 122; /* #71717A — zinc-500 */
 
   /* Layout */
@@ -52,9 +52,9 @@
   filter: invert(1);
 }
 
-/* --- Background overlay (Hadrian's Wall) — barely perceptible texture --- */
+/* --- Background overlay (Hadrian's Wall) --- */
 .bg-overlay {
-  background: rgb(var(--bg-core) / 0.97);
+  background: rgb(var(--bg-core) / 0.92);
 }
 [data-theme="light"] .bg-overlay {
   background: rgb(var(--bg-core) / 0.90);
@@ -68,10 +68,10 @@ select, option {
 
 /* --- Glass Panel --- */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--bg-panel) / 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 [data-theme="light"] .glass-panel {
   background: rgb(var(--bg-panel) / 0.92);
@@ -186,10 +186,10 @@ body {
 
 /* ── Hero P&L emissive glow ──────────────────────── */
 .hero-glow-green {
-  text-shadow: 0 0 20px rgba(110, 231, 183, 0.3), 0 0 40px rgba(110, 231, 183, 0.1);
+  text-shadow: 0 0 20px rgba(52, 211, 153, 0.3), 0 0 40px rgba(52, 211, 153, 0.1);
 }
 .hero-glow-red {
-  text-shadow: 0 0 20px rgba(253, 164, 175, 0.3), 0 0 40px rgba(253, 164, 175, 0.1);
+  text-shadow: 0 0 20px rgba(251, 113, 133, 0.3), 0 0 40px rgba(251, 113, 133, 0.1);
 }
 [data-theme="light"] .hero-glow-green,
 [data-theme="light"] .hero-glow-red {
