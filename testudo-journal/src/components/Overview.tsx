@@ -33,7 +33,7 @@ export function Overview() {
     if (!d) return []
     return [
       { label: 'Win Rate', value: formatPercent(d.performance.win_rate) },
-      { label: 'Profit Factor', value: formatNumber(d.performance.profit_factor), colorClass: parseFloat(d.performance.profit_factor) > 1 ? 'text-signal-green' : parseFloat(d.performance.profit_factor) < 1 ? 'text-signal-red' : undefined },
+      { label: 'Profit Factor', value: parseFloat(d.performance.profit_factor) > 999 ? '∞' : formatNumber(d.performance.profit_factor), colorClass: parseFloat(d.performance.profit_factor) > 1 ? 'text-signal-green' : parseFloat(d.performance.profit_factor) < 1 ? 'text-signal-red' : undefined },
       { label: 'Expectancy', value: formatCurrency(d.performance.expectancy), colorClass: pnlColor(d.performance.expectancy) },
       { label: 'R-Multiple', value: formatNumber(d.performance.avg_r_multiple), colorClass: rColor(d.performance.avg_r_multiple) },
       { label: 'Trades/Day', value: formatNumber(d.performance.trades_per_day, 1) },
