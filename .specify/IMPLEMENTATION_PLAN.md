@@ -1,54 +1,105 @@
 # Implementation Plan
 
-> Last updated: 2026-04-04
-> Current spec: JNL-13-true-equity-curve
-> Phase: PLANNING COMPLETE
+> Last updated: 2026-04-09
+> Current spec: AUTH-03-solana-auth
+> Phase: BUILD
 
 ---
 
-## Active Spec: JNL-13-true-equity-curve
+## Active Spec: AUTH-03-solana-auth
 
-True equity curve via balance snapshots — fixes misleading max drawdown percentage and makes equity chart show actual account value.
+### Track A: Backend (Rust) — independent, no frontend dependency
 
-### Tasks
+| Task | Description | Status | Files |
+|------|-------------|--------|-------|
+| T1 | Add `ed25519-dalek` + `bs58` deps to router Cargo.toml | pending | `crates/router/Cargo.toml` |
+| T2 | Implement `siws.rs` — parse, validate, verify + unit tests | pending | `services/auth/siws.rs` (new), `services/auth/mod.rs` |
+| T3 | Add `normalize_wallet_address()` + tests | pending | `services/auth/mod.rs` |
+| T4 | Add `POST /verify-siws` endpoint + route registration | pending | `routes/auth.rs`, `main.rs` |
 
-| ID | Task | Status | Complexity | Depends On |
-|----|------|--------|------------|------------|
-| T1 | Migration: create `balance_snapshots` table + add `starting_balance` column to `exchange_accounts` (FR-1, FR-3) | complete | simple | — |
-| T2 | Balance snapshot service: insert snapshot, query snapshots by user/date range, resolve exchange_account_id from (user_id, exchange_name) (FR-2) | complete | medium | T1 |
-| T3 | Hook snapshot capture into TradeEventWriter on TradeClosed events — spawn background balance fetch after journal co-write (FR-2) | pending | medium | T2 |
-| T4 | Update equity curve computation: prefer snapshots → starting_balance fallback → cumulative P&L fallback. Add `is_true_equity` flag to response (FR-4, FR-6) | complete | medium | T2 |
-| T5 | Update drawdown calculation: use peak equity as denominator when snapshots exist (FR-5) | complete | medium | T2 |
-| T6 | Starting balance PATCH endpoint + exchange account repo update (FR-3, FR-7) | pending | simple | T1 |
-| T7 | Frontend: HeroEquityCurve dynamic baseline + EquityPoint type update (FR-8) | complete | simple | T4 |
-| T8 | Frontend: starting balance input in Account settings page (FR-7) | pending | simple | T6 |
+### Track B: Frontend (TypeScript) — independent, no backend dependency
 
-### Key Decisions
+| Task | Description | Status | Files |
+|------|-------------|--------|-------|
+| T5 | Add Solana adapter + network to AppKit config | pending | `config/wallet.ts`, `package.json` |
+| T6 | Add `runSiws()` + namespace branching to AuthContext | pending | `context/AuthContext.tsx` |
 
-- Snapshot capture is fire-and-forget (`tokio::spawn`) — must not block trade event persistence
-- `TradeEvent` lacks `exchange_account_id`; snapshot service resolves from `(user_id, exchange_name)` via exchange_accounts table
-- Three-tier fallback for equity: real snapshots → starting_balance + cumulative P&L → raw cumulative P&L
-- `is_true_equity` boolean flag in API response tells frontend which data source is active
-- exchange constraint on `exchange_accounts` is `UNIQUE(user_id, exchange_name)` — lookup is deterministic
+### Track C: Verification — depends on A + B
 
-### Discoveries
-
-- `TradeEvent` struct (engine crate) only carries `user_id`, `group_id`, `symbol`, `payload` — no `exchange_account_id`
-- TradeClosed payload has `exchange` (string) field, parseable in `parse_trade_close_payload()`
-- `trade_event_writer.rs` already has fire-and-forget pattern for daily stats upsert (post-commit block, lines 181-227)
-- `exchange_accounts` table has `UNIQUE(user_id, exchange_name)` constraint — can resolve account_id from user+exchange
-- `cex_client.fetch_balance()` needs `SidecarCredentials` — requires decrypting the exchange account in the snapshot service
-- HeroEquityCurve uses `lightweight-charts` BaselineSeries with baseline at 0 — baseline value is configurable
+| Task | Description | Status | Files |
+|------|-------------|--------|-------|
+| T7 | E2E verification: clippy, tests, build, manual Phantom + MetaMask test | pending | spec.md |
 
 ---
 
-## Completed Specs
+## Task Details
 
-- UX-01-pair-page (COMPLETE)
-- UX-02-overview-polish (COMPLETE)
-- REL-02-hl-journal-pipeline (COMPLETE)
-- REL-03-hl-group-reconciliation (COMPLETE)
-- CON-01a-daily-stats-regression (COMPLETE)
-- UXA-01-agent-wallet-visibility (COMPLETE)
-- UXA-02-desk-reauth-ux (COMPLETE)
-- UXA-03-extension-error-recovery (COMPLETE)
+### T1: Add ed25519-dalek and bs58 dependencies
+- Add `ed25519-dalek = "2"` and `bs58 = "0.5"` to `testudo-exchange/crates/router/Cargo.toml`
+- Verify `cargo check` passes
+
+### T2: Implement siws.rs — parse + verify + unit tests
+- Create `testudo-exchange/crates/router/src/services/auth/siws.rs`
+- Implement `SiwsMessage` struct, `parse_siws_message()`, `validate_siws_message()`, `verify_siws_signature()`
+- Mirror patterns from `siwe.rs` — same error types, same validation flow
+- Header format: `"{domain} wants you to sign in with your Solana account:"`
+- No Chain ID or Version fields (Solana is one chain, no spec to version)
+- Fields: domain, address (base58), statement (optional), URI, Nonce, Issued At, Expiration Time (optional)
+- Write comprehensive unit tests:
+  - Parse valid SIWS message with/without statement
+  - Parse with expiration
+  - Reject invalid/short/malformed messages
+  - Reject missing fields
+  - Reject invalid base58 address
+  - Verify real Ed25519 signature (generate keypair in test)
+  - Reject tampered signature
+  - Domain match/mismatch
+  - Nonce valid/invalid
+  - Expired message rejection
+  - Full sign + verify round-trip with real keypair
+- Export from `services/auth/mod.rs`
+
+### T3: Add normalize_wallet_address + tests
+- Add to `services/auth/mod.rs`
+- EVM: `0x`-prefixed, 42 chars → lowercase
+- Solana: 32-44 chars, valid base58 → preserve case
+- Reject anything else
+- Tests for: EVM valid, Solana valid, too short, bad chars, empty
+
+### T4: Add /verify-siws endpoint + route registration
+- `VerifySiwsRequest { message, signature, address }` — all Strings
+- Handler flow mirrors `verify_siwe()`:
+  1. `parse_siws_message()`
+  2. `nonce_store.consume()`
+  3. `validate_siws_message()` with `SIWE_DOMAIN` env var
+  4. `verify_siws_signature()` with message, signature, address
+  5. Assert `parsed.address == body.address`
+  6. `normalize_wallet_address()`
+  7. `user_repo.find_or_create_by_wallet()`
+  8. `create_session_tokens()` + cookies
+- Register: `.route("/verify-siws", web::post().to(auth::verify_siws))` in main.rs at line ~867
+
+### T5: Add Solana adapter + network to AppKit config
+- `bun add @reown/appkit-adapter-solana` (check if bs58 also needed)
+- `wallet.ts`: import `SolanaAdapter`, `solana` network
+- Add to adapters and networks arrays
+- `bun run build` must pass
+
+### T6: Add runSiws() + namespace branching to AuthContext
+- Track `solanaProvider` via `subscribeProviders` state `['solana']`
+- In `subscribeAccount`: detect `appKit.getCaipNetwork()?.chainNamespace`
+- `'solana'` → `runSiws(address)`, else → `runSiwe(address)`
+- Fallback: if chainNamespace unavailable, detect by address format
+- `runSiws()` implementation:
+  - Fetch nonce, build SIWS message (Solana header, no Chain ID/Version)
+  - `TextEncoder().encode(message)` → `solanaProvider.signMessage()`
+  - Handle `Uint8Array` return (AppKit unwraps it)
+  - Base58-encode signature → POST `/verify-siws` with `{ message, signature, address }`
+  - Same error handling as `runSiwe()`
+
+### T7: E2E verification
+- `cargo clippy --all-targets && cargo test`
+- `cd testudo-journal && bun run build`
+- Manual: Phantom Solana sign-in works
+- Manual: MetaMask EVM sign-in unchanged
+- Update spec status → Complete
