@@ -1,4 +1,4 @@
-import { createResource, createSignal, createMemo, Show, For, Index } from 'solid-js'
+import { createResource, createSignal, createMemo, Show, For } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { useFilters } from '../filterContext'
 import { fetchDailyPnl } from '../../api/client'
@@ -304,9 +304,9 @@ export function PnlCalendar() {
             </div>
 
             {/* Calendar cells + weekly summaries */}
-            <Index each={cells()}>
-              {(cell, i) => {
-                const c = cell()
+            <For each={cells()}>
+              {(c, idx) => {
+                const i = idx()
                 const hasData = !!c.data
                 return (
                   <>
@@ -375,7 +375,7 @@ export function PnlCalendar() {
                   </>
                 )
               }}
-            </Index>
+            </For>
           </div>
         </div>
       </Show>
