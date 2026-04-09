@@ -10,7 +10,6 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 function compactPnl(value: number): string {
   const abs = Math.abs(value)
   const sign = value > 0 ? '+' : value < 0 ? '-' : ''
-  if (abs >= 10000) return `${sign}$${(abs / 1000).toFixed(1)}K`
   if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}K`
   return `${sign}$${abs.toFixed(0)}`
 }
@@ -213,7 +212,7 @@ export function PnlCalendar() {
       </Show>
 
       {/* Calendar grid */}
-      <Show when={!data.loading || data()}>
+      <Show when={(!data.loading || data()) && !isEmpty()}>
         <div class="px-8 pb-6 overflow-x-auto">
           <div class="grid gap-px min-w-[600px]" style={{ "grid-template-columns": "repeat(7, 1fr) auto" }}>
             {/* Column headers: Sun-Sat + Weekly */}
