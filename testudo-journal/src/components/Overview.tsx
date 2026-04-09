@@ -138,13 +138,13 @@ export function Overview() {
         <div class="flex flex-1 min-h-0">
           {/* Left sidebar — anchored left, full height */}
           <aside class="w-80 shrink-0 overflow-y-auto hidden md:block bg-container-bg border-r border-container-border/50">
-            <StatSection title="ACCOUNT" items={accountItems()} />
-            <StatSection title="PERFORMANCE" items={performanceItems()} />
-            <StatSection title="RISK" items={riskItems()} />
             <PerformanceRadar
               performance={stats()!.performance}
               risk={stats()!.risk}
             />
+            <StatSection title="ACCOUNT" items={accountItems()} />
+            <StatSection title="PERFORMANCE" items={performanceItems()} />
+            <StatSection title="RISK" items={riskItems()} />
           </aside>
 
           {/* Right main — fills remaining space, scrollable */}

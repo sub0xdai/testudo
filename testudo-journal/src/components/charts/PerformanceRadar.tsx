@@ -9,6 +9,39 @@ interface PerformanceRadarProps {
   risk: RiskStats
 }
 
+/** Normalize each axis to 0-100 for fair radar comparison */
+function normalizeAxes(p: PerformanceStats, r: RiskStats) {
+  const winRate = clamp(parseFloat(p.win_rate))
+  const profitFactor = clamp(parseFloat(p.profit_factor) * 20)           // 5.0 PF = 100
+  const avgWinLoss = clamp(avgWinLossRatio(p) * 20)                      // 5:1 ratio = 100
+  const maxDD = clamp(100 - parseFloat(r.max_drawdown_pct))              // INVERTED: low DD = high
+  const avgR = clamp(parseFloat(p.avg_r_multiple) * 25)                  // 4.0R = 100
+  const tradesPerDay = clamp(parseFloat(p.trades_per_day) * 20)          // 5 trades/day = 100
+
+  return { winRate, profitFactor, avgWinLoss, maxDD, avgR, tradesPerDay }
+}
+
+/** Composite Dignitas Score: weighted average of all 6 axes */
+function computeDignitasScore(p: PerformanceStats, r: RiskStats): number {
+  const n = normalizeAxes(p, r)
+  // Weights: PF and DD matter most, then win/loss, then rest
+  const weighted =
+    n.winRate * 0.15 +
+    n.profitFactor * 0.25 +
+    n.avgWinLoss * 0.20 +
+    n.maxDD * 0.20 +
+    n.avgR * 0.10 +
+    n.tradesPerDay * 0.10
+  return clamp(weighted)
+}
+
+function avgWinLossRatio(p: PerformanceStats): number {
+  const avgWin = Math.abs(parseFloat(p.avg_win))
+  const avgLoss = Math.abs(parseFloat(p.avg_loss))
+  if (avgLoss === 0) return avgWin > 0 ? 5 : 0
+  return avgWin / avgLoss
+}
+
 export function PerformanceRadar(props: PerformanceRadarProps) {
   const option = createMemo((): EChartsOption => {
     const p = props.performance
@@ -19,15 +52,7 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
     const tertiary = getTextTertiary()
     const border = getBorder()
 
-    // Normalize all values to 0-100 scale
-    const winRate = clamp(parseFloat(p.win_rate))
-    const profitFactor = clamp(parseFloat(p.profit_factor) * 20)      // 5.0 = 100
-    const avgR = clamp(parseFloat(p.avg_r_multiple) * 25)             // 4.0R = 100
-    const maxDD = clamp(100 - parseFloat(r.max_drawdown_pct))         // INVERTED: low DD = high
-    const consistency = clamp((winRate * parseFloat(p.profit_factor)) / 2)
-    const recovery = clamp(
-      (r.best_streak / (Math.abs(r.worst_streak) + 1)) * 20
-    )
+    const n = normalizeAxes(p, r)
 
     return {
       radar: {
@@ -38,10 +63,10 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
         indicator: [
           { name: 'Win Rate', max: 100 },
           { name: 'Profit Factor', max: 100 },
-          { name: 'Consistency', max: 100 },
+          { name: 'Avg W/L', max: 100 },
           { name: 'Max DD', max: 100 },
           { name: 'Avg R', max: 100 },
-          { name: 'Recovery', max: 100 },
+          { name: 'Activity', max: 100 },
         ],
         name: {
           textStyle: {
@@ -57,8 +82,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
       series: [{
         type: 'radar',
         data: [{
-          value: [winRate, profitFactor, consistency, maxDD, avgR, recovery],
-          name: 'Performance',
+          value: [n.winRate, n.profitFactor, n.avgWinLoss, n.maxDD, n.avgR, n.tradesPerDay],
+          name: 'Dignitas',
         }],
         lineStyle: { color: accent, width: 2 },
         areaStyle: { color: accentFill },
@@ -69,12 +94,29 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
     }
   })
 
+  const score = createMemo(() => computeDignitasScore(props.performance, props.risk))
+
+  // Score color: green > 60, amber 30-60, red < 30
+  const scoreColor = createMemo(() => {
+    const s = score()
+    if (s >= 60) return 'text-signal-green'
+    if (s >= 30) return 'text-signal-amber'
+    return 'text-signal-red'
+  })
+
   return (
     <div class="bg-elevated/40">
       <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-8 py-5 border-b border-container-border/50">
-        PERFORMANCE PROFILE
+        DIGNITAS
       </div>
-      <EChart option={option} height="260px" />
+      <EChart option={option} height="240px" />
+      {/* Composite score */}
+      <div class="px-8 pb-5 flex items-center justify-between">
+        <span class="font-display text-xs text-text-secondary">Score</span>
+        <span class={`font-mono text-2xl font-bold ${scoreColor()}`}>
+          {score().toFixed(1)}
+        </span>
+      </div>
     </div>
   )
 }
