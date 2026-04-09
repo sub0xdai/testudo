@@ -32,8 +32,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
       radar: {
         shape: 'circle',
         splitNumber: 4,
-        center: ['50%', '55%'],
-        radius: '65%',
+        center: ['50%', '52%'],
+        radius: '55%',
         indicator: [
           { name: 'Win Rate', max: 100 },
           { name: 'Profit Factor', max: 100 },
