@@ -98,13 +98,15 @@ export function AuthProvider(props: { children: JSX.Element }) {
       if (!nonceRes.ok) throw new Error('Failed to get nonce')
       const { nonce } = await nonceRes.json() as { nonce: string }
 
-      // Build SIWE message
+      // Build SIWE message — chain-agnostic, uses whatever chain the wallet is on
+      const chainId = appKit.getChainId() ?? 1
+
       const message = [
         `${window.location.host} wants you to sign in with your Ethereum account:`,
         address, '', 'Sign in to Testudo', '',
         `URI: ${window.location.origin}`,
         `Version: 1`,
-        `Chain ID: 42161`,
+        `Chain ID: ${chainId}`,
         `Nonce: ${nonce}`,
         `Issued At: ${new Date().toISOString()}`,
       ].join('\n')
