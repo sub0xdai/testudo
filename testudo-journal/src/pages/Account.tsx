@@ -134,15 +134,15 @@ export default function Account() {
   }
 
   return (
-    <div class="flex flex-col h-full overflow-y-auto bg-container-bg">
+    <div class="flex flex-col h-full overflow-y-auto">
       <Show when={!isOnboarding()}>
-        <div class="flex items-center justify-between px-8 py-5 shrink-0 border-b border-container-border/50">
+        <div class="flex items-center justify-between px-8 py-5 shrink-0 border-b border-container-border/50 bg-container-bg">
           <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight text-text-primary">ACCOUNT</h1>
         </div>
       </Show>
 
       <Show when={error()}>
-        <div role="alert" class="border border-signal-red bg-signal-red/10 p-4 mb-6 font-mono text-sm text-signal-red">
+        <div role="alert" class="border border-signal-red bg-signal-red/10 p-4 mx-8 mt-6 font-mono text-sm text-signal-red">
           {error()}
         </div>
       </Show>
@@ -169,8 +169,9 @@ export default function Account() {
 
         {/* Normal account management */}
         <Show when={!isOnboarding()}>
-          {/* Exchange card grid */}
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {/* Exchange card grid — constrained width, glass cards */}
+          <div class="max-w-5xl mx-auto w-full px-8 py-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <For each={accounts()}>
               {(acc) => (
                 <ExchangeCard
@@ -196,7 +197,7 @@ export default function Account() {
 
           {/* Add exchange form */}
           <Show when={showForm()}>
-            <div class="flex justify-center mb-8">
+            <div class="flex justify-center">
               <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 w-full max-w-lg">
                 <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// ADD_EXCHANGE</div>
                 <h3 class="font-mono text-sm font-bold text-text-primary mb-4">ADD EXCHANGE</h3>
@@ -235,6 +236,7 @@ export default function Account() {
               </div>
             </div>
           </Show>
+          </div>
         </Show>
       </Show>
     </div>
