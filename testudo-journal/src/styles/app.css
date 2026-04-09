@@ -54,7 +54,7 @@
 
 /* --- Background overlay (Hadrian's Wall) --- */
 .bg-overlay {
-  background: rgb(var(--bg-core) / 0.98);
+  background: rgb(var(--bg-core));
 }
 [data-theme="light"] .bg-overlay {
   background: rgb(var(--bg-core) / 0.90);

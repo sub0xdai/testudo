@@ -379,7 +379,7 @@ export function Layout(props: { children: JSX.Element }) {
         <div class="absolute inset-0 bg-overlay" />
       </div>
 
-      <header class="relative z-50 shrink-0 bg-main-bg/80 backdrop-blur-sm border-b border-container-border/50">
+      <header class="relative z-50 shrink-0 bg-main-bg border-b border-container-border">
         <div class="px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <a href="https://testudo.vip" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -446,7 +446,7 @@ export function Layout(props: { children: JSX.Element }) {
 
         {/* Mobile nav panel */}
         <Show when={menuOpen()}>
-          <nav class="md:hidden border-t border-container-border py-2 bg-main-bg/95 backdrop-blur-sm">
+          <nav class="md:hidden border-t border-container-border py-2 bg-main-bg">
             <Show when={auth.isAuthenticated()}>
               <For each={NAV_ITEMS}>
                 {(item) => (
