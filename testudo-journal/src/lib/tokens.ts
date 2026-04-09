@@ -1,5 +1,6 @@
 // Single source of truth for all design tokens used in JS chart configs
 // Reads from CSS custom properties at runtime, with fallbacks for SSR/testing
+// Fallbacks synced to landing page (testudo-web) values
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -25,15 +26,15 @@ function getCSSVarRaw(name: string, fallback: string): string {
 // ── Signal colors ────────────────────────────────────────────────────
 
 export function getSignalGreen(): string {
-  return getCSSVarRGB('--signal-green', '52, 211, 153')
+  return getCSSVarRGB('--signal-green', '34, 197, 94')
 }
 
 export function getSignalRed(): string {
-  return getCSSVarRGB('--signal-red', '251, 113, 133')
+  return getCSSVarRGB('--signal-red', '239, 68, 68')
 }
 
 export function getSignalAmber(): string {
-  return getCSSVarRGB('--signal-amber', '251, 191, 36')
+  return getCSSVarRGB('--signal-amber', '245, 158, 11')
 }
 
 // ── Accent colors ───────────────────────────────────────────────────
@@ -54,63 +55,63 @@ export function accentPrimaryAlpha(a: number): string {
 // ── Background colors ────────────────────────────────────────────────
 
 export function getChartBg(): string {
-  return getCSSVarRGB('--bg-elevated', '39, 39, 42')
+  return getCSSVarRGB('--bg-elevated', '30, 30, 30')
 }
 
 export function getBgCore(): string {
-  return getCSSVarRGB('--bg-core', '9, 9, 11')
+  return getCSSVarRGB('--bg-core', '10, 10, 10')
 }
 
 export function getBgPanel(): string {
-  return getCSSVarRGB('--bg-panel', '24, 24, 27')
+  return getCSSVarRGB('--bg-panel', '22, 22, 22')
 }
 
 export function getBgHover(): string {
-  return getCSSVarRGB('--bg-hover', '52, 52, 56')
+  return getCSSVarRGB('--bg-hover', '40, 40, 40')
 }
 
 // ── Text colors ──────────────────────────────────────────────────────
 
 export function getTextPrimary(): string {
-  return getCSSVarRGB('--text-primary', '250, 250, 250')
+  return getCSSVarRGB('--text-primary', '237, 237, 237')
 }
 
 export function getTextSecondary(): string {
-  return getCSSVarRGB('--text-secondary', '161, 161, 170')
+  return getCSSVarRGB('--text-secondary', '190, 190, 190')
 }
 
 export function getTextTertiary(): string {
-  return getCSSVarRGB('--text-tertiary', '113, 113, 122')
+  return getCSSVarRGB('--text-tertiary', '120, 120, 120')
 }
 
 // ── Border / accent ──────────────────────────────────────────────────
 
 export function getBorder(): string {
-  return getCSSVarRGB('--border', '39, 39, 42')
+  return getCSSVarRGB('--border', '50, 50, 50')
 }
 
 export function getAccentSteel(): string {
-  return getCSSVarRGB('--accent-steel', '161, 161, 170')
+  return getCSSVarRGB('--accent-steel', '148, 163, 184')
 }
 
 // ── Alpha variants (read raw channels for rgba composition) ──────────
 
 export function signalGreenAlpha(a: number): string {
-  const raw = getCSSVarRaw('--signal-green', '52 211 153')
+  const raw = getCSSVarRaw('--signal-green', '34 197 94')
   const parts = raw.split(' ').map(Number)
   if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
     return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
   }
-  return `rgba(52, 211, 153, ${a})`
+  return `rgba(34, 197, 94, ${a})`
 }
 
 export function signalRedAlpha(a: number): string {
-  const raw = getCSSVarRaw('--signal-red', '251 113 133')
+  const raw = getCSSVarRaw('--signal-red', '239 68 68')
   const parts = raw.split(' ').map(Number)
   if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
     return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${a})`
   }
-  return `rgba(251, 113, 133, ${a})`
+  return `rgba(239, 68, 68, ${a})`
 }
 
 // ── Tag color palette ────────────────────────────────────────────────
@@ -137,7 +138,7 @@ export function getEntryTypeColors(): Record<string, string> {
 // ── Grid / axis colors for lightweight-charts ────────────────────────
 
 export function getGridLineColor(): string {
-  return getCSSVarRGB('--bg-hover', '52, 52, 56')
+  return getCSSVarRGB('--bg-hover', '40, 40, 40')
 }
 
 export function getCrosshairColor(): string {

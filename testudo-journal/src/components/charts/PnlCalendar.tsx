@@ -202,13 +202,13 @@ export function PnlCalendar() {
 
   /** Weekly summary glow style */
   function weeklyGlow(pnl: number): string {
-    if (pnl > 0) return '0 0 12px rgba(52, 211, 153, 0.2), inset 0 0 8px rgba(52, 211, 153, 0.06)'
-    if (pnl < 0) return '0 0 12px rgba(251, 113, 133, 0.2), inset 0 0 8px rgba(251, 113, 133, 0.06)'
+    if (pnl > 0) return '0 0 12px rgba(34, 197, 94, 0.2), inset 0 0 8px rgba(34, 197, 94, 0.06)'
+    if (pnl < 0) return '0 0 12px rgba(239, 68, 68, 0.2), inset 0 0 8px rgba(239, 68, 68, 0.06)'
     return ''
   }
 
   return (
-    <div class="border-b border-container-border/50 bg-elevated/40">
+    <div class="border border-container-border bg-elevated">
       {/* Header: title + navigation + monthly stats */}
       <div class="flex items-center justify-between px-8 py-3 border-b border-container-border/30">
         <div class="flex items-center gap-4">

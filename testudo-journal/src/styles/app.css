@@ -5,22 +5,22 @@
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
   color-scheme: dark;
-  /* Recalibrated 60-30-10 with structural contrast */
-  --bg-core: 9 9 11;            /* #09090B — zinc-950 base */
-  --bg-panel: 24 24 27;         /* #18181B — zinc-900 elevated surfaces */
-  --bg-elevated: 39 39 42;      /* #27272A — zinc-800 interactive */
-  --bg-hover: 52 52 56;         /* #343438 — hover state */
-  --border: 39 39 42;           /* ~rgba(255,255,255,0.10) on zinc-950 */
-  --border-active-accent: 250 250 250;
-  --accent-steel: 161 161 170;  /* #A1A1AA — zinc-400 */
-  --accent-steel-hover: 212 212 216;
-  --accent-primary: 196 115 90;
-  --signal-green: 52 211 153;   /* #34D399 — emerald-400 luminous */
-  --signal-red: 251 113 133;    /* #FB7185 — rose-400 vivid */
-  --signal-amber: 251 191 36;   /* #FBBF24 */
-  --text-primary: 250 250 250;  /* #FAFAFA — zinc-50 ultra-bright */
-  --text-secondary: 161 161 170; /* #A1A1AA — zinc-400 crisp silver */
-  --text-tertiary: 113 113 122; /* #71717A — zinc-500 */
+  /* Synced to landing page — warm-neutral, no blue tint */
+  --bg-core: 10 10 10;          /* #0A0A0A — canvas black */
+  --bg-panel: 22 22 22;         /* #161616 — sidebar, cards */
+  --bg-elevated: 30 30 30;      /* #1E1E1E — raised surfaces (calendar) */
+  --bg-hover: 40 40 40;         /* #282828 — hover state */
+  --border: 50 50 50;           /* #323232 — visible dividers */
+  --border-active-accent: 237 237 237;
+  --accent-steel: 148 163 184;  /* #94A3B8 — cool blue-grey */
+  --accent-steel-hover: 203 213 225;
+  --accent-primary: 196 115 90; /* terracotta/rust brand */
+  --signal-green: 34 197 94;    /* #22C55E — standard green-500 */
+  --signal-red: 239 68 68;      /* #EF4444 — standard red-500 */
+  --signal-amber: 245 158 11;   /* #F59E0B — amber-500 */
+  --text-primary: 237 237 237;  /* #EDEDED — warm off-white */
+  --text-secondary: 190 190 190; /* #BEBEBE — readable grey */
+  --text-tertiary: 120 120 120; /* #787878 — muted */
 
   /* Layout */
   --header-h: 57px;
@@ -68,10 +68,10 @@ select, option {
 
 /* --- Glass Panel --- */
 .glass-panel {
-  background: rgb(var(--bg-panel) / 0.85);
+  background: rgb(var(--bg-panel) / 0.80);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgb(var(--border) / 0.5);
 }
 [data-theme="light"] .glass-panel {
   background: rgb(var(--bg-panel) / 0.92);
@@ -186,10 +186,10 @@ body {
 
 /* ── Hero P&L emissive glow ──────────────────────── */
 .hero-glow-green {
-  text-shadow: 0 0 20px rgba(52, 211, 153, 0.3), 0 0 40px rgba(52, 211, 153, 0.1);
+  text-shadow: 0 0 20px rgba(34, 197, 94, 0.25), 0 0 40px rgba(34, 197, 94, 0.08);
 }
 .hero-glow-red {
-  text-shadow: 0 0 20px rgba(251, 113, 133, 0.3), 0 0 40px rgba(251, 113, 133, 0.1);
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.25), 0 0 40px rgba(239, 68, 68, 0.08);
 }
 [data-theme="light"] .hero-glow-green,
 [data-theme="light"] .hero-glow-red {

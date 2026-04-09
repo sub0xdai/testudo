@@ -60,7 +60,7 @@ export function Overview() {
       <Show when={stats.loading && !stats()}>
         <div aria-live="polite" aria-busy="true" class="flex flex-1 min-h-0">
           {/* Stats sidebar skeleton */}
-          <div class="w-80 shrink-0 border-r border-container-border/50 hidden md:block bg-container-bg">
+          <div class="w-80 shrink-0 border-r border-container-border hidden md:block bg-container-bg">
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
               {(section) => (
                 <div class="px-8 py-4 border-b border-container-border/50">
@@ -82,8 +82,8 @@ export function Overview() {
             </For>
           </div>
           {/* Hero area skeleton */}
-          <div class="flex-1 min-w-0 bg-container-bg">
-            <div class="px-10 py-8 border-b border-container-border/50">
+          <div class="flex-1 min-w-0 bg-main-bg">
+            <div class="px-10 py-8 border-b border-container-border">
               <SkeletonBar width="200px" height="40px" class="mb-2" />
               <div class="flex gap-6">
                 <SkeletonBar width="100px" />
@@ -137,7 +137,7 @@ export function Overview() {
         {/* Desktop: edge-to-edge 2-column layout */}
         <div class="flex flex-1 min-h-0">
           {/* Left sidebar — anchored left, full height */}
-          <aside class="w-80 shrink-0 overflow-y-auto hidden md:block bg-container-bg border-r border-container-border/50">
+          <aside class="w-80 shrink-0 overflow-y-auto hidden md:block bg-container-bg border-r border-container-border">
             <PerformanceRadar
               performance={stats()!.performance}
               risk={stats()!.risk}
@@ -148,9 +148,9 @@ export function Overview() {
           </aside>
 
           {/* Right main — fills remaining space, scrollable */}
-          <div class="flex-1 min-w-0 overflow-y-auto bg-container-bg">
+          <div class="flex-1 min-w-0 overflow-y-auto bg-main-bg">
             {/* Hero metrics — generous isolation */}
-            <div class="px-10 py-8 border-b border-container-border/50">
+            <div class="px-10 py-8 border-b border-container-border">
               <div class="border-l-2 border-accent-primary pl-8">
                 <div class="flex items-baseline gap-10">
                   <div>

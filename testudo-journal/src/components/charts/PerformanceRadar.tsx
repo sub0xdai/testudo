@@ -105,8 +105,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
   })
 
   return (
-    <div class="bg-elevated/40">
-      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-8 py-5 border-b border-container-border/50">
+    <div class="bg-elevated">
+      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-8 py-5 border-b border-container-border">
         DIGNITAS
       </div>
       <EChart option={option} height="240px" />
