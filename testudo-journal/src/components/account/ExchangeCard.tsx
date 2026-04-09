@@ -33,6 +33,8 @@ function KebabMenu(props: KebabMenuProps) {
   return (
     <div ref={ref} class="relative">
       <button
+        aria-label="Account options"
+        aria-expanded={open()}
         onClick={() => {
           if (open()) setConfirmAction(null)
           setOpen(!open())

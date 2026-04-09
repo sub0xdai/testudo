@@ -1,4 +1,4 @@
-import { createSignal, Show, For } from 'solid-js'
+import { createSignal, Show, For, onMount } from 'solid-js'
 import { createTag, updateTag, deleteTag, type JournalTag } from '../../api/client'
 import { useEscapeClose } from '../../lib/useEscapeClose'
 import { createFocusTrap } from '../../lib/createFocusTrap'
@@ -20,6 +20,11 @@ export function TagManager(props: {
   let dialogRef!: HTMLDivElement
 
   createFocusTrap(() => dialogRef)
+
+  onMount(() => {
+    const firstFocusable = dialogRef?.querySelector('button, input, [tabindex="0"]') as HTMLElement
+    firstFocusable?.focus()
+  })
 
   function requestClose() {
     setClosing(true)
@@ -105,13 +110,13 @@ export function TagManager(props: {
                     <span class="w-3 h-3 rounded-full flex-shrink-0" style={{ background: tag.color || '#94a3b8' }} />
                     <span class="font-mono text-sm text-text-primary flex-1">{tag.name}</span>
                     <button
-                      class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+                      class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       onClick={() => startEdit(tag)}
                     >
                       [Edit]
                     </button>
                     <button
-                      class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       onClick={() => handleDelete(tag.id)}
                       disabled={loading()}
                     >

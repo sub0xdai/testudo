@@ -41,9 +41,10 @@ export function TradeFilters(props: {
       </div>
 
       {/* Tag filter */}
-      <label class="flex items-center gap-1.5">
+      <label for="trade-filter-tag" class="flex items-center gap-1.5">
         <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
         <input
+          id="trade-filter-tag"
           type="text"
           placeholder="TAG"
           value={props.filters.tag ?? ''}

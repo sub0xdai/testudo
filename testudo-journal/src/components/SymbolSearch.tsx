@@ -85,6 +85,7 @@ export function SymbolSearch(props: {
         onClick={() => hasSymbols() && openDropdown()}
         aria-haspopup="listbox"
         aria-expanded={open()}
+        aria-controls="symbol-listbox"
         aria-labelledby="symbol-label"
         disabled={!hasSymbols()}
       >
@@ -102,17 +103,19 @@ export function SymbolSearch(props: {
               ref={inputRef}
               type="text"
               placeholder="Search symbols..."
+              aria-label="Search symbols"
               class="w-full bg-container-bg border border-container-border text-text-primary font-mono text-xs px-2 py-1.5 rounded placeholder:text-text-tertiary"
               value={search()}
               onInput={(e) => handleInput(e.currentTarget.value)}
               onKeyDown={onKeyDown}
               aria-haspopup="listbox"
               aria-expanded={open()}
+              aria-controls="symbol-listbox"
             />
           </div>
 
           {/* Options list */}
-          <div role="listbox" aria-label="Symbol filter" class="max-h-60 overflow-y-auto">
+          <div id="symbol-listbox" role="listbox" aria-label="Symbol filter" class="max-h-60 overflow-y-auto">
             {/* ALL option */}
             <button
               role="option"

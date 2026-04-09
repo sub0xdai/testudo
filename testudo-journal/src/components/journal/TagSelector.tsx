@@ -30,6 +30,7 @@ export function TagSelector(props: {
           onClick={() => setOpen(!open())}
           aria-haspopup="listbox"
           aria-expanded={open()}
+          aria-controls="tag-listbox"
         >
           + Add Tag
         </button>
@@ -37,6 +38,7 @@ export function TagSelector(props: {
 
       <Show when={open()}>
         <div
+          id="tag-listbox"
           role="listbox"
           aria-label="Available tags"
           class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 min-w-48 animate-dropdown-in"

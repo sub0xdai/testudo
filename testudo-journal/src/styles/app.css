@@ -19,7 +19,7 @@
   --signal-amber: 245 158 11;
   --text-primary: 237 237 237;
   --text-secondary: 153 153 153;
-  --text-tertiary: 102 102 102;
+  --text-tertiary: 130 130 130;
 
   /* Layout */
   --header-h: 57px;
@@ -42,7 +42,7 @@
   --signal-amber: 190 100 5;
   --text-primary: 26 23 20;
   --text-secondary: 82 76 66;
-  --text-tertiary: 120 113 102;
+  --text-tertiary: 100 94 84;
 }
 
 /* --- Crest logo (white-on-transparent, invert for light) --- */

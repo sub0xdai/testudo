@@ -44,11 +44,12 @@ export function TradeSelector(props: {
           onFocus={() => setOpen(true)}
           aria-haspopup="listbox"
           aria-expanded={open()}
+          aria-controls="trade-listbox"
         />
       </Show>
 
       <Show when={open() && !props.value}>
-        <div role="listbox" aria-label="Trade results" class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
+        <div id="trade-listbox" role="listbox" aria-label="Trade results" class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
           <Show when={trades.loading}>
             <div class="px-3 py-2 space-y-1.5">
               <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '80%' }} />

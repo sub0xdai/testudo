@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, For, onCleanup } from 'solid-js'
+import { createSignal, createResource, Show, For, onCleanup, onMount } from 'solid-js'
 import {
   fetchTradeDetail,
   fetchTags,
@@ -64,6 +64,11 @@ export function TradeDetail(props: TradeDetailProps) {
   const [creatingTag, setCreatingTag] = createSignal(false)
 
   createFocusTrap(() => panelRef)
+
+  onMount(() => {
+    const firstFocusable = panelRef?.querySelector('button, [tabindex="0"]') as HTMLElement
+    firstFocusable?.focus()
+  })
 
   function requestClose() {
     setClosing(true)
@@ -472,7 +477,7 @@ export function TradeDetail(props: TradeDetailProps) {
             )}
           </Show>
           <button
-            class="text-text-secondary hover:text-text-primary text-lg transition-colors"
+            class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary text-lg transition-colors"
             onClick={requestClose}
             aria-label="Close trade detail"
           >

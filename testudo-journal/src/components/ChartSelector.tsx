@@ -35,7 +35,7 @@ const CHART_OPTIONS: { value: ChartOption; label: string }[] = [
 
 function ChartLoading() {
   return (
-    <div class="flex items-center justify-center h-full min-h-[200px]">
+    <div aria-live="polite" aria-busy="true" class="flex items-center justify-center h-full min-h-[200px]">
       <div class="w-4 h-4 border-2 border-text-secondary border-t-text-primary rounded-full animate-spin" />
     </div>
   )
@@ -58,7 +58,7 @@ export function ChartSelector(props: ChartSelectorProps) {
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
           class="bg-main-bg font-mono text-xs text-text-tertiary uppercase outline-none cursor-pointer hover:text-text-primary transition-colors"
-          aria-label="Select chart type"
+          aria-label="Chart type"
         >
           {CHART_OPTIONS.map((opt) => (
             <option value={opt.value} class="bg-main-bg text-text-primary">{opt.label}</option>

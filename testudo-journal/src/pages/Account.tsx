@@ -142,13 +142,13 @@ export default function Account() {
       </Show>
 
       <Show when={error()}>
-        <div class="border border-signal-red bg-signal-red/10 p-4 mb-6 font-mono text-sm text-signal-red">
+        <div role="alert" class="border border-signal-red bg-signal-red/10 p-4 mb-6 font-mono text-sm text-signal-red">
           {error()}
         </div>
       </Show>
 
       <Show when={!accounts.loading} fallback={
-        <div class="flex items-center justify-center py-20">
+        <div aria-live="polite" aria-busy="true" class="flex items-center justify-center py-20">
           <div class="w-4 h-4 border-2 border-text-secondary border-t-text-primary rounded-full animate-spin" />
         </div>
       }>

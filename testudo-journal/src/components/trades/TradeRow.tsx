@@ -17,8 +17,16 @@ export function TradeRow(props: {
 
   return (
     <tr
-      class="border-b border-container-border/30 hover:bg-elevated cursor-pointer transition-colors even:bg-text-primary/[0.02]"
+      tabIndex={0}
+      role="button"
+      class="border-b border-container-border/30 hover:bg-elevated focus:bg-elevated cursor-pointer transition-colors even:bg-text-primary/[0.02] outline-none"
       onClick={props.onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          props.onClick()
+        }
+      }}
     >
       <td class="px-3 py-2.5 text-xs font-mono text-text-secondary whitespace-nowrap">
         {formatDate(t().closed_at)}

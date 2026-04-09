@@ -67,10 +67,12 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
     <div class="space-y-4">
       {/* Exchange dropdown */}
       <div>
-        <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+        <label for="exchange-select" class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
           EXCHANGE
         </label>
         <select
+          id="exchange-select"
+          aria-label="Exchange"
           value={selectedExchange()}
           onChange={(e) => handleExchangeChange(e.currentTarget.value)}
           class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary focus:border-text-secondary focus:outline-none"
@@ -95,10 +97,11 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
       <Show when={selectedExchange() && !isHyperliquid()}>
         <form onSubmit={handleSubmit} class="space-y-4">
           <div>
-            <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+            <label for="exchange-api-key" class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
               API KEY
             </label>
             <input
+              id="exchange-api-key"
               type="password"
               value={apiKey()}
               onInput={(e) => setApiKey(e.currentTarget.value)}
@@ -109,10 +112,11 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
           </div>
 
           <div>
-            <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+            <label for="exchange-api-secret" class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
               SECRET
             </label>
             <input
+              id="exchange-api-secret"
               type="password"
               value={apiSecret()}
               onInput={(e) => setApiSecret(e.currentTarget.value)}
@@ -124,10 +128,11 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
 
           <Show when={needsPassphrase()}>
             <div>
-              <label class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
+              <label for="exchange-passphrase" class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
                 PASSPHRASE
               </label>
               <input
+                id="exchange-passphrase"
                 type="password"
                 value={passphrase()}
                 onInput={(e) => setPassphrase(e.currentTarget.value)}
@@ -139,7 +144,7 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
           </Show>
 
           <Show when={error()}>
-            <div class="px-4 py-3 border border-signal-red bg-signal-red/10 font-mono text-xs text-signal-red">
+            <div role="alert" class="px-4 py-3 border border-signal-red bg-signal-red/10 font-mono text-xs text-signal-red">
               {error()}
             </div>
           </Show>

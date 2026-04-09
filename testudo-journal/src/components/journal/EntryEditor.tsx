@@ -43,6 +43,11 @@ export function EntryEditor(props: {
 
   createFocusTrap(() => dialogRef)
 
+  onMount(() => {
+    const firstFocusable = dialogRef?.querySelector('button, input, select, textarea, [tabindex="0"]') as HTMLElement
+    firstFocusable?.focus()
+  })
+
   const [title, setTitle] = createSignal(props.entry?.title ?? '')
   const [body, setBody] = createSignal(props.entry?.body ?? '')
   const [entryType, setEntryType] = createSignal(props.entry?.entry_type ?? 'note')
@@ -241,6 +246,7 @@ export function EntryEditor(props: {
           <label class="flex items-center gap-1.5">
             <span class="sr-only">Entry type</span>
             <select
+              aria-label="Entry type"
               class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary"
               value={entryType()}
               onChange={(e) => setEntryType(e.currentTarget.value)}
@@ -286,7 +292,7 @@ export function EntryEditor(props: {
               {saving() ? 'Saving...' : 'Save'}
             </button>
             <button
-              class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+              class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
               onClick={requestClose}
               aria-label="Close editor"
             >
