@@ -7,9 +7,9 @@ export function Trades() {
   const [selectedTradeId, setSelectedTradeId] = createSignal<string | null>(null)
 
   return (
-    <div>
+    <div class="flex flex-col h-full">
       <PageSubHeader title="JOURNAL" />
-      <div class="border border-container-border bg-container-bg">
+      <div class="flex-1 min-h-0 overflow-y-auto border-t-0 border border-container-border bg-container-bg">
         <TradeTable onSelectTrade={(id) => {
           setSelectedTradeId(id)
         }} />

@@ -81,8 +81,8 @@ export function PageSubHeader(props: PageSubHeaderProps) {
   }
 
   return (
-    <div class="relative border-b border-container-border bg-container-bg">
-      <div class="max-w-[1800px] mx-auto px-8 py-5 flex items-center gap-4">
+    <div class="relative shrink-0 border-b border-container-border/50 bg-container-bg">
+      <div class="px-8 py-5 flex items-center gap-4">
         <h1 class="font-display text-lg font-bold tracking-wider">{props.title}</h1>
 
         {/* Exchange dropdown */}

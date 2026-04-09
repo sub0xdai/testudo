@@ -53,21 +53,21 @@ export function Overview() {
   }
 
   return (
-    <div>
+    <div class="flex flex-col h-full">
       <PageSubHeader title="OVERVIEW" />
 
       {/* Loading state -- structural skeleton */}
       <Show when={stats.loading && !stats()}>
-        <div aria-live="polite" aria-busy="true" class="flex gap-0">
+        <div aria-live="polite" aria-busy="true" class="flex flex-1 min-h-0">
           {/* Stats sidebar skeleton */}
-          <div class="w-80 shrink-0 border-r border-container-border/50 hidden md:block">
+          <div class="w-80 shrink-0 border-r border-container-border/50 hidden md:block bg-container-bg">
             <For each={['ACCOUNT', 'PERFORMANCE', 'RISK']}>
               {(section) => (
-                <div class="px-6 py-3 border-b border-container-border/50">
+                <div class="px-8 py-4 border-b border-container-border/50">
                   <span class="font-display text-xs tracking-section text-text-tertiary uppercase">
                     {section}
                   </span>
-                  <div class="mt-3 space-y-2">
+                  <div class="mt-3 space-y-3">
                     <For each={Array(4)}>
                       {() => (
                         <div class="flex justify-between">
@@ -82,8 +82,8 @@ export function Overview() {
             </For>
           </div>
           {/* Hero area skeleton */}
-          <div class="flex-1 min-w-0">
-            <div class="px-6 py-4 border-b border-container-border/50">
+          <div class="flex-1 min-w-0 bg-container-bg">
+            <div class="px-10 py-8 border-b border-container-border/50">
               <SkeletonBar width="200px" height="40px" class="mb-2" />
               <div class="flex gap-6">
                 <SkeletonBar width="100px" />
@@ -92,7 +92,6 @@ export function Overview() {
               </div>
             </div>
             <div class="relative" style={{ "min-height": "400px" }}>
-              {/* Axis lines */}
               <div class="absolute left-8 top-4 bottom-8 w-px bg-container-border/20" />
               <div class="absolute left-8 right-4 bottom-8 h-px bg-container-border/20" />
               <div class="absolute inset-0 skeleton-shimmer" />
@@ -115,10 +114,10 @@ export function Overview() {
         </div>
       </Show>
 
-      {/* Main 2-column layout */}
+      {/* Main 2-column layout — fills remaining viewport */}
       <Show when={stats() && !stats.loading}>
         {/* Mobile: condensed stats strip */}
-        <div class="md:hidden mb-4">
+        <div class="md:hidden px-6 py-4 bg-container-bg border-b border-container-border/50">
           <div class="flex items-baseline gap-4 mb-2">
             <span class={`font-mono text-4xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
               {formatCurrency(stats()!.account.net_pnl)}
@@ -135,10 +134,10 @@ export function Overview() {
           </div>
         </div>
 
-        {/* Desktop: 2-column layout */}
-        <div class="flex gap-0">
-          {/* Left sidebar -- stats + radar */}
-          <aside class="w-80 shrink-0 overflow-y-auto hidden md:block sticky top-[var(--header-h)] glass-panel" style={{ "max-height": "calc(100vh - var(--header-h))" }}>
+        {/* Desktop: edge-to-edge 2-column layout */}
+        <div class="flex flex-1 min-h-0">
+          {/* Left sidebar — anchored left, full height */}
+          <aside class="w-80 shrink-0 overflow-y-auto hidden md:block bg-container-bg border-r border-container-border/50">
             <StatSection title="ACCOUNT" items={accountItems()} />
             <StatSection title="PERFORMANCE" items={performanceItems()} />
             <StatSection title="RISK" items={riskItems()} />
@@ -148,12 +147,12 @@ export function Overview() {
             />
           </aside>
 
-          {/* Right main -- hero P&L calendar + charts (glass-panel for blur over texture) */}
-          <div class="flex-1 min-w-0 glass-panel border-0 border-l border-container-border/50">
-            {/* Hero metrics */}
-            <div class="px-8 py-6 border-b border-container-border/50">
-              <div class="border-l-2 border-accent-primary pl-6">
-                <div class="flex items-baseline gap-8 mb-1">
+          {/* Right main — fills remaining space, scrollable */}
+          <div class="flex-1 min-w-0 overflow-y-auto bg-container-bg">
+            {/* Hero metrics — generous isolation */}
+            <div class="px-10 py-8 border-b border-container-border/50">
+              <div class="border-l-2 border-accent-primary pl-8">
+                <div class="flex items-baseline gap-10">
                   <div>
                     <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
                       {formatCurrency(stats()!.account.net_pnl)}
@@ -178,7 +177,7 @@ export function Overview() {
             <PnlCalendar />
 
             {/* Chart selectors -- 2-column grid */}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 pt-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8">
               <ChartSelector defaultChart="symbol" equityData={equity()} equityLoading={equity.loading} />
               <ChartSelector defaultChart="daily-pnl" equityData={equity()} equityLoading={equity.loading} />
             </div>

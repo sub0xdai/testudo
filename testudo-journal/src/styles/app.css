@@ -50,12 +50,12 @@
   filter: invert(1);
 }
 
-/* --- Background overlay (Hadrian's Wall) --- */
+/* --- Background overlay (Hadrian's Wall) — watermark mode --- */
 .bg-overlay {
-  background: rgb(var(--bg-core) / 0.80);
+  background: rgb(var(--bg-core) / 0.93);
 }
 [data-theme="light"] .bg-overlay {
-  background: rgb(var(--bg-core) / 0.75);
+  background: rgb(var(--bg-core) / 0.92);
 }
 
 /* --- Native form elements (dark theme compat) --- */

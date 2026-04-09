@@ -288,7 +288,7 @@ function ExtensionChip() {
 function LockScreen() {
   const auth = useAuth()
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center px-6">
+    <div class="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-10 md:p-14 max-w-lg w-full text-center">
           <img src={import.meta.env.BASE_URL + 'crest.png'} alt="Testudo" class="crest-logo w-28 md:w-32 mx-auto mb-6 opacity-80" />
           <h2 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">TESTUDO</h2>
@@ -315,7 +315,7 @@ function LockScreen() {
 
 function ConnectingScreen() {
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-4">
+    <div class="relative z-10 flex-1 flex flex-col items-center justify-center gap-4">
       <div class="w-4 h-4 border-2 border-text-secondary border-t-text-primary rounded-full animate-spin" />
       <p class="font-mono text-xs text-text-secondary tracking-wider">VERIFYING WALLET...</p>
     </div>
@@ -324,7 +324,7 @@ function ConnectingScreen() {
 
 function ErrorScreen(props: { message: string; onRetry: () => void }) {
   return (
-    <div class="relative z-10 min-h-[calc(100vh-var(--header-h))] flex flex-col items-center justify-center gap-6 px-6">
+    <div class="relative z-10 flex-1 flex flex-col items-center justify-center gap-6 px-6">
       <p class="font-mono text-sm text-signal-red max-w-md text-center">{props.message}</p>
       <button
         onClick={props.onRetry}
@@ -364,8 +364,8 @@ export function Layout(props: { children: JSX.Element }) {
 
   return (
     <Show when={!isStandalonePage()} fallback={<>{props.children}</>}>
-    <div class="min-h-screen text-text-primary">
-      {/* Hadrian's Wall background — shared with landing page */}
+    <div class="h-screen w-screen overflow-hidden text-text-primary flex flex-col">
+      {/* Hadrian's Wall background — low-opacity watermark */}
       <div class="fixed inset-0 z-0">
         <div
           class="absolute inset-0"
@@ -379,8 +379,8 @@ export function Layout(props: { children: JSX.Element }) {
         <div class="absolute inset-0 bg-overlay" />
       </div>
 
-      <header class="fixed top-0 left-0 right-0 z-50 bg-main-bg/60 backdrop-blur-sm border-b border-container-border/30">
-        <div class="max-w-[1800px] mx-auto px-6 md:px-8 py-4 flex items-center justify-between">
+      <header class="relative z-50 shrink-0 bg-main-bg/80 backdrop-blur-sm border-b border-container-border/50">
+        <div class="px-6 md:px-8 py-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <a href="https://testudo.vip" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <img src={import.meta.env.BASE_URL + 'shield.svg'} alt="Testudo" class="crest-logo w-5 h-5 object-contain opacity-60" />
@@ -473,17 +473,14 @@ export function Layout(props: { children: JSX.Element }) {
         </Show>
       </header>
 
-      {/* Spacer for fixed header */}
-      <div style={{ height: 'var(--header-h)' }} />
-
-      {/* Auth-gated content */}
+      {/* Auth-gated content — fills remaining viewport */}
       <Show when={!auth.loading()} fallback={<ConnectingScreen />}>
         <Show when={auth.isAuthenticated()} fallback={
           <Show when={auth.siweError()} fallback={<LockScreen />}>
             {(error) => <ErrorScreen message={error()} onRetry={auth.connectWallet} />}
           </Show>
         }>
-          <main class="relative z-10 max-w-[1800px] mx-auto px-8 py-10">
+          <main class="relative z-10 flex-1 min-h-0 overflow-y-auto">
             {props.children}
           </main>
         </Show>
