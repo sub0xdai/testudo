@@ -45,7 +45,7 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
 
       {/* Popout panel */}
       <div class="absolute left-0 right-0 z-40 bg-container-bg border-b border-container-border shadow-lg shadow-black/30 animate-dropdown-in">
-        <div class="max-w-[1400px] mx-auto px-6 py-4 flex items-center gap-4 flex-wrap">
+        <div class="max-w-[1600px] mx-auto px-6 py-4 flex items-center gap-4 flex-wrap">
           {/* Symbol search */}
           <div class="flex items-center gap-2">
             <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider" id="symbol-label">Symbol</span>

@@ -175,9 +175,6 @@ export function Overview() {
             </div>
 
             {/* P&L Calendar hero */}
-            <div class="px-8 pt-6">
-              <span class="font-display text-xs tracking-section text-text-tertiary uppercase">P&L CALENDAR</span>
-            </div>
             <PnlCalendar />
 
             {/* Chart selectors -- 2-column grid */}
