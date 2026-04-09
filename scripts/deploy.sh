@@ -14,7 +14,7 @@ echo ""
 # 1. Pull latest code
 echo "[1/6] Pulling latest code..."
 cd "$TESTUDO_DIR"
-git checkout -- testudo-journal/dist/ 2>/dev/null || true
+git checkout -- testudo-journal/dist/ testudo-journal/bun.lock 2>/dev/null || true
 git pull --ff-only
 
 # Pull submodules that are proper repos (not empty submodule stubs)
