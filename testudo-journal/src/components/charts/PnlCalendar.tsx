@@ -208,9 +208,9 @@ export function PnlCalendar() {
   }
 
   return (
-    <div class="border-b border-container-border/50">
+    <div class="border-b border-container-border/50 bg-elevated/40">
       {/* Header: title + navigation + monthly stats */}
-      <div class="flex items-center justify-between px-8 py-3">
+      <div class="flex items-center justify-between px-8 py-3 border-b border-container-border/30">
         <div class="flex items-center gap-4">
           <span class="font-display text-xs tracking-section text-text-tertiary uppercase">P&L Calendar</span>
           <div class="flex items-center gap-3">
@@ -311,7 +311,7 @@ export function PnlCalendar() {
                 return (
                   <>
                     <div
-                      class={`border border-container-border/30 min-h-[88px] p-2 relative transition-colors ${
+                      class={`border border-container-border/50 min-h-[88px] p-2 relative transition-colors ${
                         c.inMonth ? cellBg(c) : 'opacity-20'
                       } ${hasData ? 'cursor-pointer hover:border-text-secondary/50' : ''} ${
                         c.isToday ? 'ring-1 ring-inset ring-text-primary/20' : ''

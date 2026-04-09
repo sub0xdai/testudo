@@ -15,7 +15,7 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
     const r = props.risk
 
     const accent = getAccentPrimary()
-    const accentFill = accentPrimaryAlpha(0.15)
+    const accentFill = accentPrimaryAlpha(0.25)
     const tertiary = getTextTertiary()
 
     // Normalize all values to 0-100 scale
@@ -49,8 +49,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
             fontFamily: "'Space Mono', monospace",
           },
         },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.15)' } },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
         splitArea: { show: false },
       },
       series: [{
@@ -69,8 +69,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
   })
 
   return (
-    <div>
-      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-6 py-4 border-b border-container-border/50">
+    <div class="bg-elevated/30">
+      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-6 py-4 border-y border-container-border/50">
         PERFORMANCE PROFILE
       </div>
       <EChart option={option} height="260px" />

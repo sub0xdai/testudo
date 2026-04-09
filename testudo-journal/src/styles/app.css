@@ -5,11 +5,11 @@
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
   color-scheme: dark;
-  --bg-core: 10 10 10;
-  --bg-panel: 22 22 22;
-  --bg-elevated: 30 30 30;
-  --bg-hover: 40 40 40;
-  --border: 50 50 50;
+  --bg-core: 8 8 8;
+  --bg-panel: 18 18 18;
+  --bg-elevated: 32 32 32;
+  --bg-hover: 44 44 44;
+  --border: 55 55 55;
   --border-active-accent: 237 237 237;
   --accent-steel: 148 163 184;
   --accent-steel-hover: 203 213 225;
@@ -28,11 +28,11 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --bg-core: 245 240 232;
-  --bg-panel: 250 247 242;
-  --bg-elevated: 255 252 247;
-  --bg-hover: 235 229 219;
-  --border: 180 173 162;
+  --bg-core: 240 235 225;
+  --bg-panel: 248 245 238;
+  --bg-elevated: 255 253 248;
+  --bg-hover: 230 224 212;
+  --border: 170 162 150;
   --border-active-accent: 26 23 20;
   --accent-steel: 80 93 112;
   --accent-steel-hover: 55 68 88;
