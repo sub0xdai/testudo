@@ -27,6 +27,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --bg-core: 245 240 232;
   --bg-panel: 250 247 242;
   --bg-elevated: 255 252 247;
