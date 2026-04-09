@@ -52,10 +52,10 @@
 
 /* --- Background overlay (Hadrian's Wall) — watermark mode --- */
 .bg-overlay {
-  background: rgb(var(--bg-core) / 0.93);
+  background: rgb(var(--bg-core) / 0.82);
 }
 [data-theme="light"] .bg-overlay {
-  background: rgb(var(--bg-core) / 0.92);
+  background: rgb(var(--bg-core) / 0.88);
 }
 
 /* --- Native form elements (dark theme compat) --- */

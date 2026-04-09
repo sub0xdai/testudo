@@ -170,8 +170,8 @@ export default function Account() {
         {/* Normal account management */}
         <Show when={!isOnboarding()}>
           {/* Exchange card grid — constrained width, glass cards */}
-          <div class="max-w-5xl mx-auto w-full px-8 py-8">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="max-w-4xl mx-auto w-full px-8 py-10">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <For each={accounts()}>
               {(acc) => (
                 <ExchangeCard

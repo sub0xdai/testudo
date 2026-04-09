@@ -174,7 +174,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
       needsReauth()
         ? 'border-signal-amber bg-signal-amber/5'
         : 'border-container-border glass-panel'
-    } p-6 flex flex-col gap-4`}>
+    } p-8 flex flex-col gap-5 min-h-[200px]`}>
       {/* Header: heartbeat + name + badge + kebab */}
       <div class="flex justify-between items-start">
         <div class="flex items-center gap-3">
