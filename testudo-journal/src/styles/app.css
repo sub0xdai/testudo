@@ -5,21 +5,22 @@
 /* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
 :root, [data-theme="amoled"] {
   color-scheme: dark;
-  --bg-core: 8 8 8;
-  --bg-panel: 18 18 18;
-  --bg-elevated: 32 32 32;
-  --bg-hover: 44 44 44;
-  --border: 55 55 55;
-  --border-active-accent: 237 237 237;
+  /* 60-30-10 dark palette */
+  --bg-core: 11 12 16;          /* #0B0C10 — 60% deepest background */
+  --bg-panel: 24 26 32;         /* #181A20 — 30% elevated surfaces */
+  --bg-elevated: 34 37 45;      /* #22252D — interactive surface */
+  --bg-hover: 42 46 56;         /* slightly above elevated */
+  --border: 45 49 58;           /* #2D313A — subtle grid/dividers */
+  --border-active-accent: 242 244 248;
   --accent-steel: 148 163 184;
   --accent-steel-hover: 203 213 225;
   --accent-primary: 196 115 90;
-  --signal-green: 34 197 94;
-  --signal-red: 239 68 68;
-  --signal-amber: 245 158 11;
-  --text-primary: 237 237 237;
-  --text-secondary: 153 153 153;
-  --text-tertiary: 130 130 130;
+  --signal-green: 74 222 128;   /* #4ADE80 — desaturated positive */
+  --signal-red: 248 113 113;    /* #F87171 — desaturated negative */
+  --signal-amber: 251 191 36;   /* #FBBF24 — desaturated warn */
+  --text-primary: 242 244 248;  /* #F2F4F8 — high emphasis */
+  --text-secondary: 139 148 158; /* #8B949E — low emphasis */
+  --text-tertiary: 99 110 123;  /* muted labels */
 
   /* Layout */
   --header-h: 57px;

@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchDailyPnl } from '../../api/client'
-import { getSignalGreen, getSignalRed, getTextTertiary } from '../../lib/tokens'
+import { getSignalGreen, getSignalRed, getTextTertiary, getBorder } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function DailyPnl() {
@@ -66,7 +66,7 @@ export function DailyPnl() {
           fontSize: 10,
           formatter: (v: number) => `$${v.toFixed(0)}`,
         },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        splitLine: { lineStyle: { color: getBorder() } },
       },
       series: [{
         type: 'bar',
