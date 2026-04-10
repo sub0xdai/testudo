@@ -120,7 +120,7 @@ export default function Pair() {
         <div
           class="absolute inset-0"
           style={{
-            'background-image': 'url(https://testudo.vip/Roman-testudo-Trajan-column-966204074.jpg)',
+            'background-image': 'url(/hadrian-wall.jpg)',
             'background-size': 'cover',
             'background-position': 'center',
             'background-repeat': 'no-repeat',
