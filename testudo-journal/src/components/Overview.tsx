@@ -82,8 +82,8 @@ export function Overview() {
             </For>
           </div>
           {/* Hero area skeleton */}
-          <div class="flex-1 min-w-0 bg-main-bg">
-            <div class="px-10 py-8 border-b border-container-border">
+          <div class="flex-1 min-w-0">
+            <div class="px-10 py-8 border-b border-container-border bg-container-bg">
               <SkeletonBar width="200px" height="40px" class="mb-2" />
               <div class="flex gap-6">
                 <SkeletonBar width="100px" />
@@ -147,10 +147,10 @@ export function Overview() {
             <StatSection title="RISK" items={riskItems()} />
           </aside>
 
-          {/* Right main — fills remaining space, scrollable */}
-          <div class="flex-1 min-w-0 overflow-y-auto bg-main-bg">
-            {/* Hero metrics — generous isolation */}
-            <div class="px-10 py-8 border-b border-container-border">
+          {/* Right main — transparent so Hadrian's Wall shows through */}
+          <div class="flex-1 min-w-0 overflow-y-auto">
+            {/* Hero metrics — glass panel */}
+            <div class="px-10 py-8 bg-container-bg border-b border-container-border">
               <div class="border-l-2 border-accent-primary pl-8">
                 <div class="flex items-baseline gap-10">
                   <div>
@@ -173,10 +173,12 @@ export function Overview() {
               </div>
             </div>
 
-            {/* P&L Calendar hero */}
-            <PnlCalendar />
+            {/* P&L Calendar — aligned with charts below */}
+            <div class="p-8 pb-0">
+              <PnlCalendar />
+            </div>
 
-            {/* Chart selectors -- 2-column grid */}
+            {/* Chart selectors -- 2-column grid, aligned with calendar */}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8">
               <ChartSelector defaultChart="symbol" equityData={equity()} equityLoading={equity.loading} />
               <ChartSelector defaultChart="daily-pnl" equityData={equity()} equityLoading={equity.loading} />
