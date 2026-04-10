@@ -57,7 +57,7 @@
   background: rgb(var(--bg-core) / 0.90);
 }
 [data-theme="light"] .bg-overlay {
-  background: rgb(var(--bg-core) / 0.92);
+  background: rgb(var(--bg-core));
 }
 
 /* --- Native form elements (dark theme compat) --- */
