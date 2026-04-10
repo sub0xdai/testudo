@@ -197,7 +197,10 @@ export function AuthProvider(props: { children: JSX.Element }) {
           address,
         }),
       })
-      if (!verifyRes.ok) throw new Error('SIWS verification failed')
+      if (!verifyRes.ok) {
+        const errBody = await verifyRes.text().catch(() => '')
+        throw new Error(`SIWS verification failed: ${errBody || verifyRes.statusText}`)
+      }
 
       const { user: u } = await verifyRes.json() as { user: User }
       setUser(u)
