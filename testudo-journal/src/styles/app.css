@@ -32,8 +32,8 @@
   /* High-contrast light — dark elements on light background */
   --bg-core: 241 243 247;         /* #F1F3F7 — cool grey base */
   --bg-panel: 255 255 255;        /* #FFFFFF — pure white surfaces */
-  --bg-elevated: 246 247 250;     /* #F6F7FA — subtle lift */
-  --bg-hover: 235 237 242;        /* #EBEDF2 — visible hover */
+  --bg-elevated: 234 236 242;     /* #EAECF2 — visible tinted surface */
+  --bg-hover: 225 228 236;        /* #E1E4EC — clear hover */
   --border: 195 200 212;          /* #C3C8D4 — strong visible borders */
   --border-active-accent: 10 15 30;
   --accent-steel: 55 65 81;       /* #374151 — dark slate */
