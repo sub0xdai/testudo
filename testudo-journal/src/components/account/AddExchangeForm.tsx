@@ -18,7 +18,7 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
   const [error, setError] = createSignal('')
   const [submitting, setSubmitting] = createSignal(false)
 
-  const needsPassphrase = () => selectedExchange() === 'okx' || selectedExchange() === 'kucoin'
+  const needsPassphrase = () => ['okx', 'kucoin', 'bitget', 'blofin'].includes(selectedExchange())
   const isHyperliquid = () => selectedExchange() === 'hyperliquid'
 
   function handleExchangeChange(value: string) {
