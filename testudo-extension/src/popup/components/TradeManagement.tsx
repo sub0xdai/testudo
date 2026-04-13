@@ -27,7 +27,8 @@ export default function TradeManagement() {
 
   function sliderStyle(value: number, min: number, max: number): string {
     const pct = ((value - min) / (max - min)) * 100;
-    return `background: linear-gradient(to right, var(--color-accent-steel) 0%, var(--color-accent-steel) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
+    const bg = `linear-gradient(to right, var(--color-accent-steel) 0%, var(--color-accent-steel) ${pct}%, var(--color-bg-elevated) ${pct}%)`;
+    return `--slider-bg: ${bg}; background: ${bg}`;
   }
 
   /** Traffic light gradient for risk: muted green -> amber -> red with smooth blending */
@@ -42,12 +43,15 @@ export default function TradeManagement() {
     const z1 = ((2 - 0.1) / (10 - 0.1)) * 100;   // ~19% green->amber transition
     const z2 = ((5 - 0.1) / (10 - 0.1)) * 100;   // ~50% amber->red transition
 
+    let bg: string;
     if (pct <= z1) {
-      return `background: linear-gradient(to right, ${green} 0%, ${green} ${pct}%, ${dark} ${pct}%)`;
+      bg = `linear-gradient(to right, ${green} 0%, ${green} ${pct}%, ${dark} ${pct}%)`;
     } else if (pct <= z2) {
-      return `background: linear-gradient(to right, ${green} 0%, ${amber} ${z1}%, ${amber} ${pct}%, ${dark} ${pct}%)`;
+      bg = `linear-gradient(to right, ${green} 0%, ${amber} ${z1}%, ${amber} ${pct}%, ${dark} ${pct}%)`;
+    } else {
+      bg = `linear-gradient(to right, ${green} 0%, ${amber} ${z1}%, ${red} ${z2}%, ${red} ${pct}%, ${dark} ${pct}%)`;
     }
-    return `background: linear-gradient(to right, ${green} 0%, ${amber} ${z1}%, ${red} ${z2}%, ${red} ${pct}%, ${dark} ${pct}%)`;
+    return `--slider-bg: ${bg}; background: ${bg}`;
   }
 
   function riskColor(value: number): string {
