@@ -50,6 +50,32 @@ describe("scrapeSymbol", () => {
     expect(scrapeSymbol()).toBe("BTCUSDT");
   });
 
+  // CEX-08: Bybit embedded TradingView widget symbol formats
+  it("strips .Bybit exchange suffix", () => {
+    document.body.innerHTML = `<div id="header-toolbar-symbol-search">BTCUSDT.Bybit</div>`;
+    expect(scrapeSymbol()).toBe("BTCUSDT");
+  });
+
+  it("strips leading dot + market prefix (.MBTCUSDT.Bybit)", () => {
+    document.body.innerHTML = `<div id="header-toolbar-symbol-search">.MBTCUSDT.Bybit</div>`;
+    expect(scrapeSymbol()).toBe("BTCUSDT");
+  });
+
+  it("strips .Binance exchange suffix", () => {
+    document.body.innerHTML = `<div id="header-toolbar-symbol-search">ETHUSDT.Binance</div>`;
+    expect(scrapeSymbol()).toBe("ETHUSDT");
+  });
+
+  it("strips .OKX exchange suffix (case insensitive)", () => {
+    document.body.innerHTML = `<div id="header-toolbar-symbol-search">SOLUSDT.okx</div>`;
+    expect(scrapeSymbol()).toBe("SOLUSDT");
+  });
+
+  it("strips leading dot without market prefix (.BTCUSDT)", () => {
+    document.body.innerHTML = `<div id="header-toolbar-symbol-search">.BTCUSDT</div>`;
+    expect(scrapeSymbol()).toBe("BTCUSDT");
+  });
+
   it("falls back to legend-source-item selector", () => {
     document.body.innerHTML = `
       <div data-name="legend-source-item">

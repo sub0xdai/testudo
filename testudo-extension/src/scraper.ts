@@ -140,6 +140,13 @@ export function scrapeSymbol(): string | null {
     }
     // Remove perpetual suffix (.P, PERP)
     text = text.replace(/\.P$/, "").replace(/PERP$/, "");
+    // CEX-08: Strip exchange suffix (.Bybit, .Binance, .OKX, etc.)
+    // Embedded TradingView widgets use format like ".MBTCUSDT.Bybit"
+    text = text.replace(/\.(Bybit|Binance|OKX|Bitget|Gate|Phemex|BloFin)$/i, "");
+    // Strip TradingView continuous contract prefix ".M" (e.g., ".MBTCUSDT" → "BTCUSDT")
+    text = text.replace(/^\.M(?=[A-Z]{2,})/, "");
+    // Strip remaining leading dots (e.g., ".BTCUSDT" → "BTCUSDT")
+    text = text.replace(/^\.+/, "");
     // Remove whitespace and trailing dots
     text = text.replace(/\s+/g, "").replace(/\.+$/, "");
 

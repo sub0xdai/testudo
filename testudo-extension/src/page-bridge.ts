@@ -172,6 +172,12 @@
           if (sym.includes(":")) sym = sym.split(":").pop()!;
           // Strip perpetual suffixes
           sym = sym.replace(/\.P$/, "").replace(/PERP$/, "");
+          // CEX-08: Strip exchange suffix (.Bybit, .Binance, etc.)
+          sym = sym.replace(/\.(Bybit|Binance|OKX|Bitget|Gate|Phemex|BloFin)$/i, "");
+          // Strip TradingView continuous contract prefix ".M"
+          sym = sym.replace(/^\.M(?=[A-Z]{2,})/, "");
+          // Strip remaining leading dots
+          sym = sym.replace(/^\.+/, "");
           return sym;
         }
       }
