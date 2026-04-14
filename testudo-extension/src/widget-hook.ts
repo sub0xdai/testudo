@@ -11,6 +11,7 @@
 
   function patchConstructor(tv: any): void {
     if (!tv || typeof tv.widget !== "function" || tv.__testudo_patched__) return;
+    tv.__testudo_patched__ = true; // Set guard BEFORE assignment to prevent recursion
     const Orig = tv.widget;
     tv.widget = function (this: any, ...args: any[]) {
       const instance = new (Orig as any)(...args);
@@ -18,7 +19,6 @@
       return instance;
     };
     tv.widget.prototype = Orig.prototype;
-    tv.__testudo_patched__ = true;
   }
 
   // If TradingView is already defined (unlikely at document_start), patch now

@@ -356,23 +356,25 @@ function findPositionToolByChartApi(): PositionToolData | null {
   return { entry, stop, target, side };
 }
 
-// EXT-46: Query across main document AND same-origin iframes (e.g. Bybit blob iframe).
-// TradingView charting library on exchange sites renders inside iframes.
-function queryAll(selector: string): Element | null {
-  // Try main document first
-  const main = document.querySelector(selector);
-  if (main) return main;
-
-  // Try same-origin iframes
+// EXT-46: Get all searchable documents (main + same-origin iframes).
+function getDocuments(): Document[] {
+  const docs: Document[] = [document];
   const iframes = document.querySelectorAll("iframe");
   for (const iframe of iframes) {
     try {
       const doc = (iframe as HTMLIFrameElement).contentDocument;
-      if (doc) {
-        const el = doc.querySelector(selector);
-        if (el) return el;
-      }
+      if (doc) docs.push(doc);
     } catch { /* cross-origin — skip */ }
+  }
+  return docs;
+}
+
+// EXT-46: Query across main document AND same-origin iframes (e.g. Bybit blob iframe).
+// TradingView charting library on exchange sites renders inside iframes.
+function queryAll(selector: string): Element | null {
+  for (const doc of getDocuments()) {
+    const el = doc.querySelector(selector);
+    if (el) return el;
   }
   return null;
 }
@@ -411,6 +413,36 @@ function findPositionToolByDataName(): PositionToolData | null {
       }
     }
   }
+
+  // EXT-46: Positional fallback for embedded TradingView (DexScreener, etc.)
+  // where data-name attributes are missing. The dialog has a consistent input order:
+  // [title, accountSize, lotSize, risk, entry, profitTicks, profitPrice, stopTicks, stopPrice]
+  for (const doc of getDocuments()) {
+    const inputs = doc.querySelectorAll("input");
+    // Find the title input that says "Long Position" or "Short Position"
+    for (let i = 0; i < inputs.length; i++) {
+      const val = (inputs[i] as HTMLInputElement).value?.trim().toLowerCase();
+      if (val !== "long position" && val !== "short position") continue;
+
+      const side: "LONG" | "SHORT" = val === "long position" ? "LONG" : "SHORT";
+      // Entry is 4 inputs after title, target price is 6 after, stop price is 8 after
+      const entryEl = inputs[i + 4] as HTMLInputElement | undefined;
+      const targetEl = inputs[i + 6] as HTMLInputElement | undefined;
+      const stopEl = inputs[i + 8] as HTMLInputElement | undefined;
+
+      if (entryEl?.value && targetEl?.value && stopEl?.value) {
+        const entry = parsePrice(entryEl.value);
+        const target = parsePrice(targetEl.value);
+        const stop = parsePrice(stopEl.value);
+
+        if (entry !== null && target !== null && stop !== null &&
+            entry > 0 && target > 0 && stop > 0) {
+          return { entry, stop, target, side };
+        }
+      }
+    }
+  }
+
   return null;
 }
 
