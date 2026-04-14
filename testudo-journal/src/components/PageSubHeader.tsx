@@ -95,6 +95,12 @@ export function PageSubHeader(props: PageSubHeaderProps) {
           <option value="">ALL</option>
           <option value="woo">WOO</option>
           <option value="binance">BINANCE</option>
+          <option value="bybit">BYBIT</option>
+          <option value="okx">OKX</option>
+          <option value="bitget">BITGET</option>
+          <option value="gate">GATE.IO</option>
+          <option value="phemex">PHEMEX</option>
+          <option value="blofin">BLOFIN</option>
           <option value="hyperliquid">HYPERLIQUID</option>
         </select>
 
