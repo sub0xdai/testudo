@@ -26,22 +26,11 @@ export default function Account() {
   const [deletingId, setDeletingId] = createSignal<string | null>(null)
   const [revokingId, setRevokingId] = createSignal<string | null>(null)
   const [importingId, setImportingId] = createSignal<string | null>(null)
-  const [importedExchanges, setImportedExchanges] = createSignal<Set<string>>(new Set())
   const [showForm, setShowForm] = createSignal(false)
   const [formInitialExchange, setFormInitialExchange] = createSignal('')
   const [reauthAccountId, setReauthAccountId] = createSignal<string | null>(null)
 
-  // Check which exchanges have completed imports
   onMount(async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_URL || ''
-      const res = await fetch(`${API_BASE}/api/v1/trades/import/status`, { credentials: 'include' })
-      if (res.ok) {
-        const jobs: Array<{ exchange_name: string; status: string }> = await res.json()
-        const done = new Set(jobs.filter(j => j.status === 'completed').map(j => j.exchange_name))
-        setImportedExchanges(done)
-      }
-    } catch { /* non-critical */ }
   })
 
   const [setupComplete, setSetupComplete] = createSignal(false)
@@ -110,8 +99,8 @@ export default function Account() {
         credentials: 'include',
         body: JSON.stringify({ exchange_name: exchangeName }),
       })
-      if (res.ok) {
-        setImportedExchanges(prev => new Set([...prev, exchangeName]))
+      if (!res.ok) {
+        setError('Import failed')
       }
     } catch {
       setError('Failed to trigger import')
@@ -187,7 +176,6 @@ export default function Account() {
                   onReauthorize={() => setReauthAccountId(acc.id)}
                   onImport={() => handleImport(acc.exchange_name)}
                   isImporting={importingId() === acc.exchange_name}
-                  isImported={importedExchanges().has(acc.exchange_name)}
                 />
               )}
             </For>

@@ -10,7 +10,6 @@ interface KebabMenuProps {
   showImport: boolean
   isTesting: boolean
   isImporting: boolean
-  isImported: boolean
 }
 
 function KebabMenu(props: KebabMenuProps) {
@@ -61,11 +60,9 @@ function KebabMenu(props: KebabMenuProps) {
                 setOpen(false)
               }}
               disabled={props.isImporting}
-              class={`text-left px-4 py-2.5 text-xs font-mono border-t border-container-border transition-colors disabled:opacity-50 ${
-                props.isImporting ? 'text-text-tertiary' : 'text-text-secondary hover:bg-main-bg'
-              }`}
+              class="text-left px-4 py-2.5 text-xs font-mono border-t border-container-border transition-colors disabled:opacity-50 text-text-secondary hover:bg-main-bg"
             >
-              {props.isImporting ? 'IMPORTING...' : props.isImported ? 'RE-IMPORT' : 'IMPORT HISTORY'}
+              {props.isImporting ? 'IMPORTING...' : 'IMPORT'}
             </button>
           </Show>
           <Show when={props.showRevoke}>
@@ -159,7 +156,6 @@ interface ExchangeCardProps {
   onReauthorize: () => void
   onImport: () => void
   isImporting: boolean
-  isImported: boolean
 }
 
 export function ExchangeCard(props: ExchangeCardProps) {
@@ -206,7 +202,6 @@ export function ExchangeCard(props: ExchangeCardProps) {
           showImport={true}
           isTesting={props.isTesting}
           isImporting={props.isImporting}
-          isImported={props.isImported}
         />
       </div>
 
