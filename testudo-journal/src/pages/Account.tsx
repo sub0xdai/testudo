@@ -101,7 +101,6 @@ export default function Account() {
   }
 
   async function handleImport(exchangeName: string) {
-    if (importedExchanges().has(exchangeName)) return
     setImportingId(exchangeName)
     try {
       const API_BASE = import.meta.env.VITE_API_URL || ''

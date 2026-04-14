@@ -57,17 +57,15 @@ function KebabMenu(props: KebabMenuProps) {
           <Show when={props.showImport}>
             <button
               onClick={() => {
-                if (!props.isImported) {
-                  props.onImport()
-                  setOpen(false)
-                }
+                props.onImport()
+                setOpen(false)
               }}
-              disabled={props.isImporting || props.isImported}
+              disabled={props.isImporting}
               class={`text-left px-4 py-2.5 text-xs font-mono border-t border-container-border transition-colors disabled:opacity-50 ${
-                props.isImported ? 'text-signal-green' : 'text-text-secondary hover:bg-main-bg'
+                props.isImporting ? 'text-text-tertiary' : 'text-text-secondary hover:bg-main-bg'
               }`}
             >
-              {props.isImported ? 'IMPORTED \u2713' : props.isImporting ? 'IMPORTING...' : 'IMPORT HISTORY'}
+              {props.isImporting ? 'IMPORTING...' : props.isImported ? 'RE-IMPORT' : 'IMPORT HISTORY'}
             </button>
           </Show>
           <Show when={props.showRevoke}>
