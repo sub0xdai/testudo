@@ -36,13 +36,27 @@ function isChartPlatform(): boolean {
     || host.includes("dexscreener.com")
     || isHyperliquid()
     || host.includes("gmx.io")
-    || host.includes("bybit.com");
+    || host.includes("bybit.com")
+    || host.includes("binance.com")
+    || host.includes("okx.com")
+    || host.includes("bitget.com")
+    || host.includes("gate.io")
+    || host.includes("phemex.com")
+    || host.includes("blofin.com");
 }
 
 // --- Main-World Bridge (EXT-43) ---
 
 let bridgeReady = false;
 let bridgeRequestId = 0;
+
+function injectWidgetHook(): void {
+  if (document.getElementById("testudo-widget-hook")) return;
+  const script = document.createElement("script");
+  script.id = "testudo-widget-hook";
+  script.src = browser.runtime.getURL("widget-hook.js");
+  (document.head || document.documentElement).appendChild(script);
+}
 
 function injectBridge(): void {
   if (document.getElementById("testudo-bridge")) return;
@@ -88,8 +102,9 @@ function bridgeRequest(action: "probe" | "getPositionTool" | "getSymbol"): Promi
   });
 }
 
-// Inject bridge on chart platforms
+// Inject widget hook + bridge on chart platforms
 if (isChartPlatform()) {
+  injectWidgetHook();
   injectBridge();
 }
 
@@ -108,109 +123,116 @@ async function getManagementPreset(): Promise<ManagementPreset> {
   }
 }
 
-// --- Hotkey Listener ---
+// --- Hotkey Trigger ---
 
 let altXPending = false;
 
-document.addEventListener("keydown", async (e: KeyboardEvent) => {
-  if (e.altKey && e.key.toLowerCase() === "x" && !isVisible() && !altXPending) {
-    altXPending = true;
+async function triggerTradeModal(): Promise<void> {
+  if (isVisible() || altXPending) return;
+  altXPending = true;
+
+  try {
+    let setup: TradeSetup | null = null;
+
+    // 1. Bridge — Chart API in main world (all chart platforms)
+    if (isChartPlatform()) {
+      const bridgeData = await bridgeRequest("getPositionTool");
+      if (bridgeData && bridgeData.entry > 0) {
+        let symbol = await bridgeRequest("getSymbol");
+        if (!symbol) symbol = scrapeSymbol();
+        if (symbol) {
+          setup = {
+            symbol,
+            side: bridgeData.side,
+            entry: bridgeData.entry,
+            stop: bridgeData.stop,
+            target: bridgeData.target,
+            timeframe: isTradingView() ? scrapeTimeframe() : "chart",
+          };
+        }
+      }
+    }
+
+    // 2. DOM strategies — all chart platforms (reads position tool dialog from isolated world)
+    if (!setup) {
+      setup = scrapeTradeSetup();
+    }
+
+    // 3. Symbol-only fallback (all chart platforms)
+    if (!setup && isChartPlatform()) {
+      const symbol = scrapeSymbol();
+      if (symbol) {
+        setup = { symbol, side: "LONG", entry: 0, stop: 0, target: 0, timeframe: "manual" };
+      }
+    }
+
+    const management = await getManagementPreset();
+
+    // Fetch live balance from active exchange
+    let balance: BalanceResponse[] | null = null;
+    try {
+      const resp = await browser.runtime.sendMessage({ type: "GET_BALANCE" }) as {
+        success: boolean; data?: LiveBalanceResponse;
+      };
+      balance = resp?.success && resp.data ? resp.data.balances : null;
+    } catch { /* non-blocking */ }
+
+    // Fetch active exchange name for modal badge
+    let activeExchangeName: string | null = null;
+    try {
+      const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
+      if (activeRes?.exchangeId) {
+        const accountsRes = await browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as { success: boolean; data?: Array<{ id: string; exchange_name: string; account_name: string }> };
+        if (accountsRes?.success && accountsRes.data) {
+          const active = accountsRes.data.find(a => a.id === activeRes.exchangeId);
+          activeExchangeName = active?.account_name || active?.exchange_name || null;
+        }
+      }
+    } catch { /* non-blocking */ }
+
+    // Convert symbol-only setup to proper initialSetup for the form
+    const modalSetup = setup && setup.entry > 0 ? setup : null;
+    const symbolHint = setup?.symbol || null;
+
+    // If we only have a symbol, create a partial setup for the modal
+    const initialSetup = modalSetup ?? (symbolHint ? {
+      symbol: symbolHint,
+      side: "LONG" as const,
+      entry: 0,
+      stop: 0,
+      target: 0,
+      timeframe: "manual",
+    } : null);
+
+    // Read theme before opening modal (sync with extension popup)
+    let theme: string | undefined;
+    try {
+      const stored = await browser.storage.local.get("testudo-theme");
+      theme = stored["testudo-theme"] as string | undefined;
+    } catch { /* default dark */ }
+
+    showModal(initialSetup, management, handleModalResult, balance, activeExchangeName, theme);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("Extension context invalidated")) {
+      showToast("Extension updated — refresh this page", "error");
+    } else {
+      showToast(`Error: ${msg}`, "error");
+    }
+  } finally {
+    altXPending = false;
+  }
+}
+
+// DOM-level hotkey (works on TradingView and sites that don't intercept Alt+X)
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (e.altKey && e.key.toLowerCase() === "x") {
     e.preventDefault();
     e.stopPropagation();
-
-    try {
-      let setup: TradeSetup | null = null;
-
-      // 1. Bridge — Chart API in main world (all chart platforms)
-      if (isChartPlatform()) {
-        const bridgeData = await bridgeRequest("getPositionTool");
-        if (bridgeData && bridgeData.entry > 0) {
-          let symbol = await bridgeRequest("getSymbol");
-          if (!symbol) symbol = scrapeSymbol();
-          if (symbol) {
-            setup = {
-              symbol,
-              side: bridgeData.side,
-              entry: bridgeData.entry,
-              stop: bridgeData.stop,
-              target: bridgeData.target,
-              timeframe: isTradingView() ? scrapeTimeframe() : "chart",
-            };
-          }
-        }
-      }
-
-      // 2. DOM strategies (unchanged — only on TradingView)
-      if (!setup && isTradingView()) {
-        setup = scrapeTradeSetup();
-      }
-
-      // 3. Symbol-only fallback (all chart platforms)
-      if (!setup && isChartPlatform()) {
-        const symbol = scrapeSymbol();
-        if (symbol) {
-          setup = { symbol, side: "LONG", entry: 0, stop: 0, target: 0, timeframe: "manual" };
-        }
-      }
-
-      const management = await getManagementPreset();
-
-      // Fetch live balance from active exchange
-      let balance: BalanceResponse[] | null = null;
-      try {
-        const resp = await browser.runtime.sendMessage({ type: "GET_BALANCE" }) as {
-          success: boolean; data?: LiveBalanceResponse;
-        };
-        balance = resp?.success && resp.data ? resp.data.balances : null;
-      } catch { /* non-blocking */ }
-
-      // Fetch active exchange name for modal badge
-      let activeExchangeName: string | null = null;
-      try {
-        const activeRes = await browser.runtime.sendMessage({ type: "GET_ACTIVE_EXCHANGE" }) as { exchangeId: string | null };
-        if (activeRes?.exchangeId) {
-          const accountsRes = await browser.runtime.sendMessage({ type: "LIST_EXCHANGE_ACCOUNTS" }) as { success: boolean; data?: Array<{ id: string; exchange_name: string; account_name: string }> };
-          if (accountsRes?.success && accountsRes.data) {
-            const active = accountsRes.data.find(a => a.id === activeRes.exchangeId);
-            activeExchangeName = active?.account_name || active?.exchange_name || null;
-          }
-        }
-      } catch { /* non-blocking */ }
-
-      // Convert symbol-only setup to proper initialSetup for the form
-      const modalSetup = setup && setup.entry > 0 ? setup : null;
-      const symbolHint = setup?.symbol || null;
-
-      // If we only have a symbol, create a partial setup for the modal
-      const initialSetup = modalSetup ?? (symbolHint ? {
-        symbol: symbolHint,
-        side: "LONG" as const,
-        entry: 0,
-        stop: 0,
-        target: 0,
-        timeframe: "manual",
-      } : null);
-
-      // Read theme before opening modal (sync with extension popup)
-      let theme: string | undefined;
-      try {
-        const stored = await browser.storage.local.get("testudo-theme");
-        theme = stored["testudo-theme"] as string | undefined;
-      } catch { /* default dark */ }
-
-      showModal(initialSetup, management, handleModalResult, balance, activeExchangeName, theme);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("Extension context invalidated")) {
-        showToast("Extension updated — refresh this page", "error");
-      } else {
-        showToast(`Error: ${msg}`, "error");
-      }
-    } finally {
-      altXPending = false;
-    }
+    triggerTradeModal();
   }
 }, true);
+
 
 function handleModalResult(result: ModalResult, setup: TradeSetup | null): void {
   if (result === "confirm" && setup) {
@@ -304,6 +326,11 @@ async function executeTrade(setup: TradeSetup): Promise<void> {
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as { type: string; data?: Record<string, unknown> };
+  // EXT-46: Browser-level command fallback (bypasses all page event interception)
+  if (msg.type === "TRIGGER_ALT_X") {
+    triggerTradeModal();
+    return;
+  }
   if (msg.type === "PING") {
     return Promise.resolve({ status: "alive" });
   }

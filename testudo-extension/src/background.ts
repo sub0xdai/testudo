@@ -22,6 +22,17 @@ browser.runtime.onInstalled.addListener(async () => {
   console.log("Testudo installed", settings);
 });
 
+// --- EXT-46: Browser-level Alt+X shortcut (bypasses all page event interception) ---
+
+browser.commands.onCommand.addListener(async (command: string) => {
+  if (command === "trigger-trade") {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]?.id) {
+      browser.tabs.sendMessage(tabs[0].id, { type: "TRIGGER_ALT_X" }).catch(() => {});
+    }
+  }
+});
+
 // --- Message Dispatch ---
 
 browser.runtime.onMessage.addListener((message: unknown) => {

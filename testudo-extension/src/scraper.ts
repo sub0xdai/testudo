@@ -128,7 +128,8 @@ export function scrapeSymbol(): string | null {
   }
 
   for (const selector of SYMBOL_SELECTORS) {
-    const el = document.querySelector(selector);
+    // EXT-46: Check main document + same-origin iframes (chart may be in blob iframe)
+    const el = queryAll(selector);
     if (!el?.textContent) continue;
 
     // Extract symbol text, strip exchange prefix (e.g., "BINANCE:" or "BYBIT:")
@@ -355,6 +356,27 @@ function findPositionToolByChartApi(): PositionToolData | null {
   return { entry, stop, target, side };
 }
 
+// EXT-46: Query across main document AND same-origin iframes (e.g. Bybit blob iframe).
+// TradingView charting library on exchange sites renders inside iframes.
+function queryAll(selector: string): Element | null {
+  // Try main document first
+  const main = document.querySelector(selector);
+  if (main) return main;
+
+  // Try same-origin iframes
+  const iframes = document.querySelectorAll("iframe");
+  for (const iframe of iframes) {
+    try {
+      const doc = (iframe as HTMLIFrameElement).contentDocument;
+      if (doc) {
+        const el = doc.querySelector(selector);
+        if (el) return el;
+      }
+    } catch { /* cross-origin — skip */ }
+  }
+  return null;
+}
+
 // Data-name patterns for the properties dialog inputs (Feb 2026)
 const RISK_REWARD_INPUTS = {
   long: {
@@ -373,11 +395,11 @@ const RISK_REWARD_INPUTS = {
 // This is the primary strategy — uses stable, semantic attributes.
 // Requires the properties dialog to be open (double-click the position tool).
 function findPositionToolByDataName(): PositionToolData | null {
-  // Try long first, then short
+  // Try long first, then short — queries main doc + same-origin iframes (EXT-46)
   for (const [side, selectors] of Object.entries(RISK_REWARD_INPUTS)) {
-    const entryEl = document.querySelector(selectors.entry) as HTMLInputElement | null;
-    const targetEl = document.querySelector(selectors.target) as HTMLInputElement | null;
-    const stopEl = document.querySelector(selectors.stop) as HTMLInputElement | null;
+    const entryEl = queryAll(selectors.entry) as HTMLInputElement | null;
+    const targetEl = queryAll(selectors.target) as HTMLInputElement | null;
+    const stopEl = queryAll(selectors.stop) as HTMLInputElement | null;
 
     if (entryEl?.value && targetEl?.value && stopEl?.value) {
       const entry = parsePrice(entryEl.value);

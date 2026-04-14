@@ -166,11 +166,7 @@ function writeManifest(outdir: string, browser: "chrome" | "firefox"): void {
       scripts: ["background.js"],
       type: "module",
     };
-    // EXT-46: Strip MAIN world content scripts — Firefox < 128 doesn't support them.
-    // Firefox users still get widget discovery via window property scan in page-bridge.
-    manifest.content_scripts = manifest.content_scripts.filter(
-      (cs: any) => cs.world !== "MAIN"
-    );
+    // EXT-46: Widget hook injected via <script> tag from content.ts — works on all browsers.
   }
 
   writeFileSync(join(outdir, "manifest.json"), JSON.stringify(manifest, null, 2));

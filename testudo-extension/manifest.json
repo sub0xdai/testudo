@@ -11,6 +11,12 @@
     "*://*.dexscreener.com/*",
     "*://*.gmx.io/*",
     "*://*.bybit.com/*",
+    "*://*.binance.com/*",
+    "*://*.okx.com/*",
+    "*://*.bitget.com/*",
+    "*://*.gate.io/*",
+    "*://*.phemex.com/*",
+    "*://*.blofin.com/*",
     "*://app.hyperliquid.xyz/*",
     "*://api.testudo.vip/*",
     "*://ws.testudo.vip/*"
@@ -26,18 +32,12 @@
         "*://*.dexscreener.com/*",
         "*://*.gmx.io/*",
         "*://*.bybit.com/*",
-        "*://app.hyperliquid.xyz/*"
-      ],
-      "js": ["widget-hook.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
-    },
-    {
-      "matches": [
-        "*://*.tradingview.com/*",
-        "*://*.dexscreener.com/*",
-        "*://*.gmx.io/*",
-        "*://*.bybit.com/*",
+        "*://*.binance.com/*",
+        "*://*.okx.com/*",
+        "*://*.bitget.com/*",
+        "*://*.gate.io/*",
+        "*://*.phemex.com/*",
+        "*://*.blofin.com/*",
         "*://app.hyperliquid.xyz/*",
         "*://desk.testudo.vip/*"
       ],
@@ -58,8 +58,16 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "commands": {
+    "trigger-trade": {
+      "suggested_key": {
+        "default": "Alt+X"
+      },
+      "description": "Open trade confirmation modal"
+    }
+  },
   "web_accessible_resources": [{
-    "resources": ["popup/fonts/*.woff2", "page-bridge.js"],
+    "resources": ["popup/fonts/*.woff2", "page-bridge.js", "widget-hook.js"],
     "matches": ["<all_urls>"]
   }]
 }
