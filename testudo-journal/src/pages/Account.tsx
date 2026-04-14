@@ -182,10 +182,20 @@ export default function Account() {
             <AddExchangeCard onClick={() => openForm()} />
           </div>
 
-          {/* Add exchange form */}
+          {/* Add exchange form — centered overlay */}
           <Show when={showForm()}>
-            <div class="flex justify-center">
-              <div class="border border-container-border bg-main-bg/75 backdrop-blur-md p-8 w-full max-w-lg">
+            <div
+              class="fixed inset-0 z-50 flex items-center justify-center bg-main-bg/80 backdrop-blur-sm"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false) }}
+            >
+              <div class="relative border border-container-border bg-container-bg p-8 w-full max-w-lg mx-4 shadow-2xl">
+                <button
+                  onClick={() => setShowForm(false)}
+                  class="absolute top-4 right-4 text-text-tertiary hover:text-text-primary font-mono text-lg leading-none transition-colors"
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
                 <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// ADD_EXCHANGE</div>
                 <h3 class="font-mono text-sm font-bold text-text-primary mb-4">ADD EXCHANGE</h3>
 
