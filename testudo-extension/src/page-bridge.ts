@@ -12,9 +12,40 @@
 
   function findChartWidget(): any | null {
     const w = window as any;
-    const widget = w.TradingViewApi || w.ChartApiInstance || w.tvWidget;
-    if (!widget || typeof widget.activeChart !== "function") return null;
-    return widget;
+
+    // Tier 1: Captured by EXT-46 constructor hook (handles closure-stored widgets)
+    if (w.__TESTUDO_TV_WIDGET__ && typeof w.__TESTUDO_TV_WIDGET__.activeChart === "function") {
+      return w.__TESTUDO_TV_WIDGET__;
+    }
+
+    // Tier 2: Known global names (fast path — covers tradingview.com)
+    for (const name of ["TradingViewApi", "ChartApiInstance", "tvWidget"]) {
+      const val = w[name];
+      if (val && typeof val.activeChart === "function") return val;
+    }
+
+    // Tier 3: Window property scan (catches any global variable name)
+    try {
+      for (const key of Object.getOwnPropertyNames(w)) {
+        try {
+          const val = w[key];
+          if (
+            val &&
+            typeof val === "object" &&
+            !Array.isArray(val) &&
+            typeof val.activeChart === "function"
+          ) {
+            return val;
+          }
+        } catch {
+          /* skip cross-origin frames, throwing getters */
+        }
+      }
+    } catch {
+      /* getOwnPropertyNames itself can fail on some environments */
+    }
+
+    return null;
   }
 
   // --- Tick Size Calculation ---

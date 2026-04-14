@@ -30,9 +30,10 @@ const IIFE_ENTRIES = [
   { in: "src/popup/index.tsx", out: "popup/popup" },
 ];
 
-// Page bridge runs in MAIN world (injected via <script> tag) — plain IIFE, no Solid
+// Page bridge and widget hook run in MAIN world — plain IIFE, no Solid
 const BRIDGE_ENTRIES = [
   { in: "src/page-bridge.ts", out: "page-bridge" },
+  { in: "src/widget-hook.ts", out: "widget-hook" },
 ];
 
 async function bundle(outdir: string): Promise<void> {
@@ -165,6 +166,11 @@ function writeManifest(outdir: string, browser: "chrome" | "firefox"): void {
       scripts: ["background.js"],
       type: "module",
     };
+    // EXT-46: Strip MAIN world content scripts — Firefox < 128 doesn't support them.
+    // Firefox users still get widget discovery via window property scan in page-bridge.
+    manifest.content_scripts = manifest.content_scripts.filter(
+      (cs: any) => cs.world !== "MAIN"
+    );
   }
 
   writeFileSync(join(outdir, "manifest.json"), JSON.stringify(manifest, null, 2));
