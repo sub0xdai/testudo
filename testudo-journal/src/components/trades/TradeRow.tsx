@@ -69,7 +69,7 @@ export function TradeRow(props: {
               <For each={props.tags!.slice(0, 2)}>
                 {(tag, i) => (
                   <span
-                    class="inline-flex items-center gap-0.5 px-1.5 py-0 text-[10px] font-mono border rounded"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-0 text-[10px] font-mono border"
                     style={{
                       'border-color': tag.color || '#555',
                       color: tag.color || '#555',

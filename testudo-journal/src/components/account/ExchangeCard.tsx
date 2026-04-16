@@ -38,7 +38,7 @@ function KebabMenu(props: KebabMenuProps) {
           if (open()) setConfirmAction(null)
           setOpen(!open())
         }}
-        class="text-text-tertiary hover:text-text-primary px-2 py-1 text-lg leading-none"
+        class="btn-ghost text-text-tertiary hover:text-text-primary px-2 py-1 text-lg leading-none"
       >
         &#x22EE;
       </button>
@@ -49,7 +49,7 @@ function KebabMenu(props: KebabMenuProps) {
               props.onTest()
               setOpen(false)
             }}
-            class="text-left px-4 py-2.5 text-xs font-mono text-text-secondary hover:bg-main-bg transition-colors"
+            class="btn-ghost text-left px-4 py-2.5 text-text-secondary hover:bg-main-bg transition-colors"
           >
             {props.isTesting ? 'TESTING...' : 'TEST CONNECTION'}
           </button>
@@ -60,7 +60,7 @@ function KebabMenu(props: KebabMenuProps) {
                 setOpen(false)
               }}
               disabled={props.isImporting}
-              class="text-left px-4 py-2.5 text-xs font-mono border-t border-container-border transition-colors disabled:opacity-50 text-text-secondary hover:bg-main-bg"
+              class="btn-ghost text-left px-4 py-2.5 border-t border-container-border transition-colors disabled:opacity-50 text-text-secondary hover:bg-main-bg"
             >
               {props.isImporting ? 'IMPORTING...' : 'IMPORT'}
             </button>
@@ -84,13 +84,13 @@ function KebabMenu(props: KebabMenuProps) {
                     setOpen(false)
                     setConfirmAction(null)
                   }}
-                  class="flex-1 px-4 py-2.5 text-xs font-mono text-signal-red hover:bg-signal-red/10 transition-colors"
+                  class="btn-destructive flex-1 px-4 py-2.5 border-0"
                 >
                   CONFIRM
                 </button>
                 <button
                   onClick={() => setConfirmAction(null)}
-                  class="px-4 py-2.5 text-xs font-mono text-text-tertiary hover:bg-main-bg border-l border-container-border transition-colors"
+                  class="btn-ghost px-4 py-2.5 text-text-tertiary hover:bg-main-bg border-l border-container-border transition-colors"
                 >
                   NO
                 </button>
@@ -115,13 +115,13 @@ function KebabMenu(props: KebabMenuProps) {
                   setOpen(false)
                   setConfirmAction(null)
                 }}
-                class="flex-1 px-4 py-2.5 text-xs font-mono text-signal-red hover:bg-signal-red/10 transition-colors"
+                class="btn-destructive flex-1 px-4 py-2.5 border-0"
               >
                 CONFIRM
               </button>
               <button
                 onClick={() => setConfirmAction(null)}
-                class="px-4 py-2.5 text-xs font-mono text-text-tertiary hover:bg-main-bg border-l border-container-border transition-colors"
+                class="btn-ghost px-4 py-2.5 text-text-tertiary hover:bg-main-bg border-l border-container-border transition-colors"
               >
                 NO
               </button>
@@ -167,7 +167,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
     <div class={`border ${
       needsReauth()
         ? 'border-signal-amber bg-signal-amber/5'
-        : 'border-container-border glass-panel'
+        : 'border-container-border bg-container-bg'
     } p-8 flex flex-col gap-5 min-h-[200px]`}>
       {/* Header: heartbeat + name + badge + kebab */}
       <div class="flex justify-between items-start">

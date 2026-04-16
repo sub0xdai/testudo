@@ -66,19 +66,6 @@ select, option {
   color: rgb(var(--text-primary));
 }
 
-/* --- Glass Panel --- */
-.glass-panel {
-  background: rgb(var(--bg-panel) / 0.80);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgb(var(--border) / 0.5);
-}
-[data-theme="light"] .glass-panel {
-  background: rgb(var(--bg-panel) / 0.95);
-  border: 1px solid rgb(var(--border));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
 * {
   margin: 0;
   padding: 0;
@@ -195,6 +182,83 @@ body {
 [data-theme="light"] .hero-glow-green,
 [data-theme="light"] .hero-glow-red {
   text-shadow: none;
+}
+
+/* ── Button Hierarchy — UX-07 ────────────────────── */
+
+.btn-primary {
+  background: rgb(var(--text-primary));
+  color: rgb(var(--bg-core));
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.75rem 2rem;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:disabled {
+  background: rgb(var(--text-tertiary));
+  color: rgb(var(--bg-core));
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  border: 1px solid rgb(var(--text-primary));
+  color: rgb(var(--text-primary));
+  background: transparent;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.btn-secondary:hover {
+  background: rgb(var(--text-primary));
+  color: rgb(var(--bg-core));
+}
+.btn-secondary:disabled {
+  border-style: dashed;
+  border-color: rgb(var(--text-tertiary));
+  color: rgb(var(--text-tertiary));
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  color: rgb(var(--text-secondary));
+  background: transparent;
+  border: none;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+.btn-ghost:hover { color: rgb(var(--text-primary)); }
+.btn-ghost:disabled {
+  color: rgb(var(--text-tertiary) / 0.5);
+  cursor: not-allowed;
+}
+
+.btn-destructive {
+  border: 1px solid rgb(var(--signal-red));
+  color: rgb(var(--signal-red));
+  background: transparent;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.btn-destructive:hover {
+  background: rgb(var(--signal-red));
+  color: rgb(var(--bg-core));
 }
 
 /* Reduced motion */

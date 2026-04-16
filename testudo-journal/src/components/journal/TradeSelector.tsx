@@ -21,12 +21,12 @@ export function TradeSelector(props: {
       <Show
         when={!props.value}
         fallback={
-          <div class="flex items-center gap-2 bg-container-bg border border-container-border rounded px-3 py-2">
+          <div class="flex items-center gap-2 bg-container-bg border border-container-border px-3 py-2">
             <span class="font-mono text-sm text-text-primary flex-1 truncate">
               {props.value!.symbol} {props.value!.side.toUpperCase()} {formatDateFull(props.value!.closed_at)} ({formatCurrency(props.value!.net_pnl)})
             </span>
             <button
-              class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors"
+              class="btn-ghost text-text-tertiary hover:text-signal-red transition-colors"
               onClick={() => props.onSelect(null)}
               aria-label="Clear trade selection"
             >
@@ -38,7 +38,7 @@ export function TradeSelector(props: {
         <input
           type="text"
           placeholder="Search trades by symbol..."
-          class="w-full bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
+          class="w-full bg-container-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
           value={search()}
           onInput={(e) => { setSearch(e.currentTarget.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
@@ -49,11 +49,11 @@ export function TradeSelector(props: {
       </Show>
 
       <Show when={open() && !props.value}>
-        <div id="trade-listbox" role="listbox" aria-label="Trade results" class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
+        <div id="trade-listbox" role="listbox" aria-label="Trade results" class="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-container-border shadow-lg shadow-black/30 max-h-48 overflow-y-auto animate-dropdown-in">
           <Show when={trades.loading}>
             <div class="px-3 py-2 space-y-1.5">
-              <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '80%' }} />
-              <div class="h-3 bg-container-border/15 rounded skeleton-shimmer" style={{ width: '60%' }} />
+              <div class="h-3 bg-container-border/15 skeleton-shimmer" style={{ width: '80%' }} />
+              <div class="h-3 bg-container-border/15 skeleton-shimmer" style={{ width: '60%' }} />
             </div>
           </Show>
           <Show when={!trades.loading && trades()?.length === 0}>

@@ -91,7 +91,7 @@ export function TagManager(props: {
         <div class="flex items-center justify-between mb-6">
           <h2 id="tag-manager-title" class="font-display text-sm tracking-section text-text-primary uppercase">Tag Manager</h2>
           <button
-            class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            class="btn-ghost"
             onClick={requestClose}
             aria-label="Close tag manager"
           >
@@ -106,17 +106,17 @@ export function TagManager(props: {
               <Show
                 when={editingId() === tag.id}
                 fallback={
-                  <div class="flex items-center gap-3 px-3 py-2 rounded border border-container-border">
+                  <div class="flex items-center gap-3 px-3 py-2 border border-container-border">
                     <span class="w-3 h-3 rounded-full flex-shrink-0" style={{ background: tag.color || '#94a3b8' }} />
                     <span class="font-mono text-sm text-text-primary flex-1">{tag.name}</span>
                     <button
-                      class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      class="btn-ghost px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       onClick={() => startEdit(tag)}
                     >
                       [Edit]
                     </button>
                     <button
-                      class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      class="btn-ghost hover:text-signal-red disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       onClick={() => handleDelete(tag.id)}
                       disabled={loading()}
                     >
@@ -125,7 +125,7 @@ export function TagManager(props: {
                   </div>
                 }
               >
-                <div class="flex items-center gap-2 px-3 py-2 rounded border border-border-active">
+                <div class="flex items-center gap-2 px-3 py-2 border border-border-active">
                   <div class="flex gap-1 flex-shrink-0">
                     <For each={palette()}>
                       {(c) => (
@@ -140,20 +140,20 @@ export function TagManager(props: {
                     </For>
                   </div>
                   <input
-                    class="flex-1 bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary"
+                    class="flex-1 bg-container-bg border border-container-border px-2 py-1 font-mono text-xs text-text-primary"
                     value={editName()}
                     onInput={(e) => setEditName(e.currentTarget.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
                   />
                   <button
-                    class="font-mono text-xs text-text-primary hover:text-text-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn-ghost text-text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => handleUpdate(tag.id)}
                     disabled={loading()}
                   >
                     [Save]
                   </button>
                   <button
-                    class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+                    class="btn-ghost"
                     onClick={() => setEditingId(null)}
                   >
                     [X]
@@ -185,13 +185,13 @@ export function TagManager(props: {
           <div class="flex gap-2">
             <input
               placeholder="New tag name..."
-              class="flex-1 bg-container-bg border border-container-border rounded px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
+              class="flex-1 bg-container-bg border border-container-border px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
               value={newName()}
               onInput={(e) => setNewName(e.currentTarget.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
             <button
-              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-secondary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleCreate}
               disabled={loading() || !newName().trim()}
             >

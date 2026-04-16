@@ -87,7 +87,7 @@ export function PageSubHeader(props: PageSubHeaderProps) {
 
         {/* Exchange dropdown */}
         <select
-          class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
+          class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5"
           value={filters().exchange ?? ''}
           onChange={(e) => selectExchange(e.currentTarget.value)}
           aria-label="Exchange filter"
@@ -109,7 +109,7 @@ export function PageSubHeader(props: PageSubHeaderProps) {
           <For each={PRESETS}>
             {(p) => (
               <button
-                class={`font-mono text-xs px-2.5 py-1 rounded transition-colors ${
+                class={`font-mono text-xs px-2.5 py-1 transition-colors ${
                   preset() === p.key
                     ? 'bg-text-primary/10 text-text-primary'
                     : 'text-text-tertiary hover:text-text-primary'
@@ -124,7 +124,7 @@ export function PageSubHeader(props: PageSubHeaderProps) {
 
         {/* Filter toggle (symbol search + custom dates) */}
         <button
-          class={`font-mono text-xs px-3 py-1.5 rounded border transition-colors ${
+          class={`font-mono text-xs px-3 py-1.5 border transition-colors ${
             showPopout()
               ? 'border-text-primary text-text-primary'
               : 'border-container-border text-text-secondary hover:text-text-primary hover:border-text-secondary'

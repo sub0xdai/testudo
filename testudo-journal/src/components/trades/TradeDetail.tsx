@@ -226,7 +226,7 @@ export function TradeDetail(props: TradeDetailProps) {
         <Show
           when={!previewMode()}
           fallback={
-            <div class="px-3 py-2 bg-main-bg border border-container-border rounded min-h-[80px]">
+            <div class="px-3 py-2 bg-main-bg border border-container-border min-h-[80px]">
               <MarkdownPreview content={notes()} />
             </div>
           }
@@ -239,12 +239,12 @@ export function TradeDetail(props: TradeDetailProps) {
             }}
             onBlur={() => { if (notesDirty()) saveNotes() }}
             placeholder={props.isActive ? 'Write your thesis...' : 'Markdown notes...'}
-            class="w-full h-32 px-3 py-2 bg-main-bg border border-container-border rounded text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-y"
+            class="w-full h-32 px-3 py-2 bg-main-bg border border-container-border text-text-primary text-xs font-mono placeholder:text-text-tertiary resize-y"
           />
         </Show>
         <Show when={notesDirty()}>
           <button
-            class="mt-1 px-3 py-1 text-xs font-mono border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="btn-primary mt-1 px-3 py-1 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={saveNotes}
             disabled={saving()}
           >
@@ -338,7 +338,7 @@ export function TradeDetail(props: TradeDetailProps) {
               TAGS
             </span>
             <button
-              class="text-xs font-mono text-text-secondary hover:text-text-primary transition-colors"
+              class="btn-ghost"
               onClick={() => setShowTagPicker(!showTagPicker())}
             >
               + Add
@@ -364,7 +364,7 @@ export function TradeDetail(props: TradeDetailProps) {
             <div
               role="listbox"
               aria-label="Available tags"
-              class="mt-2 p-2 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 animate-dropdown-in"
+              class="mt-2 p-2 bg-elevated border border-container-border shadow-lg shadow-black/30 animate-dropdown-in"
             >
               <Show when={availableTags().length > 0}>
                 <div class="flex flex-wrap gap-1.5 mb-2">
@@ -477,7 +477,7 @@ export function TradeDetail(props: TradeDetailProps) {
             )}
           </Show>
           <button
-            class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary text-lg transition-colors"
+            class="btn-ghost p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-lg"
             onClick={requestClose}
             aria-label="Close trade detail"
           >

@@ -26,7 +26,7 @@ export function TagSelector(props: {
           )}
         </For>
         <button
-          class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-0.5 border border-dashed border-container-border rounded hover:border-text-primary"
+          class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-0.5 border border-dashed border-container-border hover:border-text-primary"
           onClick={() => setOpen(!open())}
           aria-haspopup="listbox"
           aria-expanded={open()}
@@ -41,7 +41,7 @@ export function TagSelector(props: {
           id="tag-listbox"
           role="listbox"
           aria-label="Available tags"
-          class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border rounded shadow-lg shadow-black/30 min-w-48 animate-dropdown-in"
+          class="absolute z-50 top-full left-0 mt-1 bg-elevated border border-container-border shadow-lg shadow-black/30 min-w-48 animate-dropdown-in"
         >
           <Show when={available().length === 0}>
             <div class="px-3 py-2 font-mono text-xs text-text-tertiary">No more tags</div>

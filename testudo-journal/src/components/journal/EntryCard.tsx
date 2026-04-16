@@ -56,7 +56,7 @@ export function EntryCard(props: {
         style={{ 'border-left': `3px solid ${typeStyle().color}` }}
       >
         <span
-          class="font-mono text-[10px] tracking-[0.15em] font-bold px-2 py-0.5 rounded"
+          class="font-mono text-[10px] tracking-[0.15em] font-bold px-2 py-0.5"
           style={{ color: typeStyle().color, background: `${typeStyle().color}15` }}
         >
           {typeStyle().label}
@@ -93,22 +93,22 @@ export function EntryCard(props: {
         </span>
         <div class="flex gap-2">
           <button
-            class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            class="btn-ghost transition-colors"
             onClick={() => { exportEntry(props.entry, props.tags) }}
           >
             [Export]
           </button>
           <button
-            class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            class="btn-ghost transition-colors"
             onClick={props.onEdit}
           >
             [Edit]
           </button>
           <button
-            class={`font-mono text-xs transition-colors ${
+            class={`btn-ghost transition-colors ${
               confirmDelete()
                 ? 'text-signal-red'
-                : 'text-text-tertiary hover:text-signal-red'
+                : 'hover:text-signal-red'
             }`}
             onClick={handleDeleteClick}
           >

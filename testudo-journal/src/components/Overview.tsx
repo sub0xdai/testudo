@@ -106,7 +106,7 @@ export function Overview() {
           <p class="font-mono text-signal-red text-sm mb-2">FAILED TO LOAD STATS</p>
           <p class="font-mono text-text-tertiary text-xs mb-4">{String(stats.error)}</p>
           <button
-            class="font-mono text-xs text-text-secondary hover:text-text-primary transition-colors border border-container-border px-3 py-1.5 rounded"
+            class="btn-ghost border border-container-border px-3 py-1.5"
             onClick={() => refetchStats()}
           >
             Retry

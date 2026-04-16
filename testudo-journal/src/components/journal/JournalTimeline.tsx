@@ -280,20 +280,20 @@ export function JournalTimeline() {
               <span class="font-mono text-xs text-text-tertiary">Exporting {exportProgress()}...</span>
             </Show>
             <button
-              class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleBulkExport}
               disabled={exporting() || filteredEntries().length === 0}
             >
               Export All
             </button>
             <button
-              class="px-3 py-1.5 border border-container-border text-text-secondary font-mono text-xs hover:border-border-active hover:text-text-primary transition-colors"
+              class="btn-secondary px-3 py-1.5"
               onClick={() => setShowTagManager(true)}
             >
               Tags
             </button>
             <button
-              class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
+              class="btn-primary px-3 py-1.5 text-xs"
               onClick={handleNewEntry}
             >
               + New Entry
@@ -306,7 +306,7 @@ export function JournalTimeline() {
           <label class="flex items-center gap-1.5">
             <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Type</span>
             <select
-              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              class="bg-elevated border border-container-border px-3 py-1.5 font-mono text-xs text-text-primary"
               value={typeFilter()}
               onChange={(e) => setTypeFilter(e.currentTarget.value)}
             >
@@ -319,7 +319,7 @@ export function JournalTimeline() {
           <label class="flex items-center gap-1.5">
             <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Tag</span>
             <select
-              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              class="bg-elevated border border-container-border px-3 py-1.5 font-mono text-xs text-text-primary"
               value={tagFilter()}
               onChange={(e) => setTagFilter(e.currentTarget.value)}
             >
@@ -334,7 +334,7 @@ export function JournalTimeline() {
             <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">From</span>
             <input
               type="date"
-              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              class="bg-elevated border border-container-border px-3 py-1.5 font-mono text-xs text-text-primary"
               value={dateFrom()}
               onInput={(e) => setDateFrom(e.currentTarget.value)}
             />
@@ -343,7 +343,7 @@ export function JournalTimeline() {
             <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">To</span>
             <input
               type="date"
-              class="bg-elevated border border-container-border rounded px-3 py-1.5 font-mono text-xs text-text-primary"
+              class="bg-elevated border border-container-border px-3 py-1.5 font-mono text-xs text-text-primary"
               value={dateTo()}
               onInput={(e) => setDateTo(e.currentTarget.value)}
             />
@@ -351,7 +351,7 @@ export function JournalTimeline() {
 
           <Show when={typeFilter() || tagFilter() || dateFrom() || dateTo()}>
             <button
-              class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+              class="btn-ghost"
               onClick={handleClearFilters}
             >
               [Clear]
@@ -395,7 +395,7 @@ export function JournalTimeline() {
               Click on a trade to open the detail panel, then write your thesis in the notes section.
             </p>
             <button
-              class="px-4 py-2 border border-text-primary text-text-primary font-mono text-xs hover:bg-text-primary hover:text-main-bg transition-colors"
+              class="btn-primary px-4 py-2 text-xs"
               onClick={handleNewEntry}
             >
               Write your first entry

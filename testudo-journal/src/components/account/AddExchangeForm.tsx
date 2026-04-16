@@ -153,7 +153,7 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
             <button
               type="submit"
               disabled={submitting() || !apiKey() || !apiSecret()}
-              class="py-3 px-6 border border-text-primary text-text-primary font-mono font-bold text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50"
+              class="btn-primary py-3 px-6 disabled:opacity-50"
             >
               {submitting() ? 'VALIDATING...' : '[ CONNECT EXCHANGE ]'}
             </button>
@@ -161,7 +161,7 @@ export function AddExchangeForm(props: AddExchangeFormProps) {
               <button
                 type="button"
                 onClick={props.onCancel}
-                class="px-6 py-3 font-mono text-xs text-text-secondary hover:text-text-primary transition-colors"
+                class="btn-ghost px-6 py-3"
               >
                 CANCEL
               </button>

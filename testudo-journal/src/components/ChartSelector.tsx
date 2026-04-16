@@ -51,7 +51,7 @@ export function ChartSelector(props: ChartSelectorProps) {
   const [selected, setSelected] = createSignal<ChartOption>(props.defaultChart ?? 'symbol')
 
   return (
-    <div class="glass-panel flex flex-col overflow-hidden">
+    <div class="bg-container-bg flex flex-col overflow-hidden">
       {/* Panel header with embedded chart selector */}
       <div class="flex items-center justify-between border-b border-container-border/50 px-6 py-3">
         <select

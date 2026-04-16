@@ -26,7 +26,7 @@ export function Pagination(props: {
   return (
     <nav aria-label="Pagination" class="flex items-center justify-center gap-1 py-4 font-mono text-sm">
       <button
-        class="px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        class="btn-ghost px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
         disabled={props.page <= 1}
         onClick={() => props.onPageChange(props.page - 1)}
         aria-label="Previous page"
@@ -39,10 +39,10 @@ export function Pagination(props: {
             <span class="px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-text-tertiary">&hellip;</span>
           ) : (
             <button
-              class={`px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${
+              class={`btn-ghost px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${
                 p === props.page
                   ? 'text-text-primary border-b border-text-primary'
-                  : 'text-text-secondary hover:text-text-primary'
+                  : ''
               }`}
               onClick={() => props.onPageChange(p as number)}
               aria-current={p === props.page ? 'page' : undefined}
@@ -54,7 +54,7 @@ export function Pagination(props: {
         }
       </For>
       <button
-        class="px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        class="btn-ghost px-3 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
         disabled={props.page >= props.totalPages}
         onClick={() => props.onPageChange(props.page + 1)}
         aria-label="Next page"

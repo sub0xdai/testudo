@@ -64,7 +64,7 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
             <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">From</span>
             <input
               type="date"
-              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5"
               value={customFrom()}
               onInput={(e) => applyCustomFrom(e.currentTarget.value)}
             />
@@ -73,7 +73,7 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
             <span class="font-mono text-xs text-text-tertiary uppercase tracking-wider">To</span>
             <input
               type="date"
-              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5 rounded"
+              class="bg-elevated border border-container-border text-text-primary font-mono text-sm px-3 py-1.5"
               value={customTo()}
               onInput={(e) => applyCustomTo(e.currentTarget.value)}
             />
@@ -81,7 +81,7 @@ export function FilterPopout(props: { symbols: SymbolCount[]; onClose: () => voi
 
           {/* Clear all */}
           <button
-            class="font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors ml-auto"
+            class="btn-ghost font-mono text-xs text-text-tertiary hover:text-signal-red transition-colors ml-auto"
             onClick={clearAll}
           >
             Clear all

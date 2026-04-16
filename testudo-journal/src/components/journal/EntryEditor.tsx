@@ -247,7 +247,7 @@ export function EntryEditor(props: {
             <span class="sr-only">Entry type</span>
             <select
               aria-label="Entry type"
-              class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary"
+              class="bg-container-bg border border-container-border px-2 py-1 font-mono text-xs text-text-primary"
               value={entryType()}
               onChange={(e) => setEntryType(e.currentTarget.value)}
             >
@@ -276,7 +276,7 @@ export function EntryEditor(props: {
               <span class="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">Date</span>
               <input
                 type="date"
-                class="bg-container-bg border border-container-border rounded px-2 py-1 font-mono text-xs text-text-primary"
+                class="bg-container-bg border border-container-border px-2 py-1 font-mono text-xs text-text-primary"
                 value={entryDate()}
                 onInput={(e) => setEntryDate(e.currentTarget.value)}
               />
@@ -285,14 +285,14 @@ export function EntryEditor(props: {
 
           <div class="flex items-center gap-2 ml-auto flex-shrink-0">
             <button
-              class="px-3 py-1.5 border border-text-primary text-text-primary font-mono text-xs rounded hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-primary px-3 py-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleSave}
               disabled={saving()}
             >
               {saving() ? 'Saving...' : 'Save'}
             </button>
             <button
-              class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+              class="btn-ghost p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
               onClick={requestClose}
               aria-label="Close editor"
             >
@@ -313,7 +313,7 @@ export function EntryEditor(props: {
 
         {/* Error */}
         <Show when={error()}>
-          <div role="alert" aria-live="polite" class="mx-5 mt-3 font-mono text-xs text-signal-red bg-signal-red/10 border border-signal-red/30 rounded px-3 py-2">
+          <div role="alert" aria-live="polite" class="mx-5 mt-3 font-mono text-xs text-signal-red bg-signal-red/10 border border-signal-red/30 px-3 py-2">
             {error()}
           </div>
         </Show>
@@ -359,7 +359,7 @@ export function EntryEditor(props: {
               />
             </label>
             <button
-              class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+              class="btn-ghost"
               onClick={handleExport}
             >
               Export .md
@@ -373,7 +373,7 @@ export function EntryEditor(props: {
             when={!showPreview()}
             fallback={
               <div
-                class="bg-container-bg border border-container-border rounded p-4 min-h-[400px]"
+                class="bg-container-bg border border-container-border p-4 min-h-[400px]"
                 style={{ 'border-left': `3px solid ${typeColor()}` }}
               >
                 <MarkdownPreview content={body()} />
@@ -382,7 +382,7 @@ export function EntryEditor(props: {
           >
             <textarea
               ref={textareaRef!}
-              class={`w-full bg-container-bg border border-container-border rounded px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary resize-y min-h-[400px] ${dragging() ? 'border-text-primary border-dashed' : ''}`}
+              class={`w-full bg-container-bg border border-container-border px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary resize-y min-h-[400px] ${dragging() ? 'border-text-primary border-dashed' : ''}`}
               style={{ 'border-left': `3px solid ${typeColor()}` }}
               placeholder="Write your journal entry in markdown... Paste images or drag files here."
               value={body()}
@@ -401,7 +401,7 @@ export function EntryEditor(props: {
             Ctrl+Enter to save
           </span>
           <button
-            class="font-mono text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            class="btn-ghost"
             onClick={requestClose}
           >
             [Close]

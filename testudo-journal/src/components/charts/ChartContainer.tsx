@@ -44,7 +44,7 @@ export function ChartContainer(props: ChartContainerProps) {
             <p class="font-mono text-xs text-text-tertiary mt-1">{props.error}</p>
             <Show when={props.onRetry}>
               <button
-                class="mt-3 font-mono text-xs text-text-secondary hover:text-text-primary transition-colors border border-container-border px-3 py-1.5 rounded"
+                class="btn-ghost mt-3 border border-container-border px-3 py-1.5"
                 onClick={props.onRetry}
               >
                 Retry
@@ -64,7 +64,7 @@ export function ChartContainer(props: ChartContainerProps) {
               Try adjusting your filters
             </p>
             <button
-              class="font-mono text-xs text-text-secondary hover:text-text-primary transition-colors"
+              class="btn-ghost"
               onClick={props.onClearFilters}
             >
               Clear filters
