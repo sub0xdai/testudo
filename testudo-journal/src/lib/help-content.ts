@@ -6,7 +6,7 @@ export const HELP: Record<string, string> = {
   'page.account': 'Manage exchange connections, import trade history, and configure agent wallets for automated execution.',
 
   // ── Dignitas Radar ──
-  'radar.dignitas': 'Composite score (0–100) rating overall trading quality. Weights: Profit Factor 25%, Drawdown 20%, Avg W/L 20%, Win Rate 15%, Avg R 10%, Activity 10%.',
+  'radar.dignitas': 'Your standing as a trader — measured across six virtues. Higher score, stronger formation.',
 
   // ── Charts ──
   'chart.symbol': 'Trade count by trading pair — shows where you trade most.',

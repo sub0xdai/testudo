@@ -268,6 +268,7 @@ body {
   align-items: center;
   margin-left: 4px;
   vertical-align: middle;
+  z-index: 60;
 }
 .help-tip-trigger {
   display: inline-flex;
@@ -302,9 +303,11 @@ body {
   border: 1px solid rgb(var(--border));
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+  isolation: isolate;
 }
 .help-tip-above { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
 .help-tip-below { top: calc(100% + 6px); left: 0; }
+.help-tip-above, .help-tip-below, .help-tip-left, .help-tip-right { z-index: 9999; }
 .help-tip-left  { right: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
 .help-tip-right { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
 
