@@ -1,8 +1,6 @@
 import { createResource, createSignal, createMemo, Show, For } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { useFilters } from '../filterContext'
-import { HelpTip } from '../HelpTip'
-import { HELP } from '../../lib/help-content'
 import { fetchDailyPnl } from '../../api/client'
 import type { StatsFilter, DailyPnlPoint } from '../../api/client'
 import { pnlColor } from '../../lib/formatters'
@@ -214,7 +212,7 @@ export function PnlCalendar() {
       {/* Header: title + navigation + monthly stats */}
       <div class="flex items-center justify-between px-8 py-3 border-b border-container-border/30">
         <div class="flex items-center gap-4">
-          <span class="font-display text-xs tracking-section text-text-tertiary uppercase">P&L Calendar <HelpTip text={HELP['calendar']} /></span>
+          <span class="font-display text-xs tracking-section text-text-tertiary uppercase">P&L Calendar</span>
           <div class="flex items-center gap-3">
             <button
               onClick={prevMonth}

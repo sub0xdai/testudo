@@ -55,7 +55,7 @@ export function ChartSelector(props: ChartSelectorProps) {
   return (
     <div class="bg-container-bg flex flex-col overflow-hidden">
       {/* Panel header with embedded chart selector */}
-      <div class="flex items-center justify-between border-b border-container-border/50 px-6 py-3">
+      <div class="flex items-center border-b border-container-border/50 px-6 py-3">
         <select
           value={selected()}
           onChange={(e) => setSelected(e.currentTarget.value as ChartOption)}
@@ -66,7 +66,7 @@ export function ChartSelector(props: ChartSelectorProps) {
             <option value={opt.value} class="bg-main-bg text-text-primary">{opt.label}</option>
           ))}
         </select>
-        <HelpTip text={HELP[`chart.${selected()}`] ?? ''} />
+        <HelpTip text={HELP[`chart.${selected()}`] ?? ''} position="below" />
       </div>
 
       {/* Chart content */}

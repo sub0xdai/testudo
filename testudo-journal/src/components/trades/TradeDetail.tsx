@@ -24,8 +24,6 @@ import {
   rColor,
   sideColor,
 } from '../../lib/formatters'
-import { HelpTip } from '../HelpTip'
-import { HELP } from '../../lib/help-content'
 import { SkeletonBar } from '../SkeletonBar'
 import { createFocusTrap } from '../../lib/createFocusTrap'
 import { CLOSE_ANIMATION_MS } from '../../lib/tokens'
@@ -296,13 +294,13 @@ export function TradeDetail(props: TradeDetailProps) {
           <DetailRow label="Entry" value={formatPrice(d().entry_price)} />
           <DetailRow label="Exit" value={formatPrice(d().exit_price)} />
           <Show when={d().stop_price}>
-            <DetailRow label="Stop" value={formatPrice(d().stop_price!)} helpKey="detail.stop" />
+            <DetailRow label="Stop" value={formatPrice(d().stop_price!)} />
           </Show>
           <Show when={d().target_price}>
-            <DetailRow label="Target" value={formatPrice(d().target_price!)} helpKey="detail.target" />
+            <DetailRow label="Target" value={formatPrice(d().target_price!)} />
           </Show>
           <DetailRow label="Quantity" value={formatNumber(d().quantity, 4)} />
-          <DetailRow label="Leverage" value={`${d().leverage}x`} helpKey="detail.leverage" />
+          <DetailRow label="Leverage" value={`${d().leverage}x`} />
         </div>
 
         {/* Divider */}
@@ -320,7 +318,6 @@ export function TradeDetail(props: TradeDetailProps) {
               label="R-Multiple"
               value={`${parseFloat(d().r_multiple!).toFixed(1)}R`}
               valueClass={rColor(d().r_multiple)}
-              helpKey="detail.rMultiple"
             />
           </Show>
           <DetailRow label="Fees" value={formatCurrency(d().fees)} />
@@ -328,7 +325,6 @@ export function TradeDetail(props: TradeDetailProps) {
             label="Return"
             value={formatPercent(d().realized_pnl_pct)}
             valueClass={pnlColor(d().realized_pnl_pct)}
-            helpKey="detail.return"
           />
         </div>
 
@@ -535,13 +531,10 @@ export function TradeDetail(props: TradeDetailProps) {
   )
 }
 
-function DetailRow(props: { label: string; value: string; valueClass?: string; helpKey?: string }) {
+function DetailRow(props: { label: string; value: string; valueClass?: string }) {
   return (
     <div class="flex justify-between items-baseline">
-      <span class="text-xs font-display text-text-secondary">
-        {props.label}
-        {props.helpKey && <HelpTip text={HELP[props.helpKey]} position="left" />}
-      </span>
+      <span class="text-xs font-display text-text-secondary">{props.label}</span>
       <span class={`text-sm font-mono ${props.valueClass ?? 'text-text-primary'}`}>{props.value}</span>
     </div>
   )
