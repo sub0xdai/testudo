@@ -1,6 +1,7 @@
 import { createSignal, createResource, Show, For, type JSX } from 'solid-js'
 import { useFilters } from './filterContext'
 import { FilterPopout } from './FilterPopout'
+import { HelpTip } from './HelpTip'
 import { fetchFilterOptions } from '../api/client'
 
 type Preset = '1w' | '1m' | '3m' | 'ytd' | 'all'
@@ -42,6 +43,7 @@ function computeDateFrom(key: Preset): string | undefined {
 
 interface PageSubHeaderProps {
   title: string
+  helpText?: string
   children?: JSX.Element
 }
 
@@ -83,7 +85,10 @@ export function PageSubHeader(props: PageSubHeaderProps) {
   return (
     <div class="relative shrink-0 border-b border-container-border bg-container-bg">
       <div class="px-8 py-5 flex items-center gap-4">
-        <h1 class="font-display text-lg font-bold tracking-wider">{props.title}</h1>
+        <h1 class="font-display text-lg font-bold tracking-wider">
+          {props.title}
+          {props.helpText && <HelpTip text={props.helpText} position="below" />}
+        </h1>
 
         {/* Exchange dropdown */}
         <select

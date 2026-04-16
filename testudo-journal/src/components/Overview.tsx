@@ -9,6 +9,7 @@ import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve, exchangeApi } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, rColor, streakSign } from '../lib/formatters'
+import { HELP } from '../lib/help-content'
 
 export function Overview() {
   const { filters } = useFilters()
@@ -74,7 +75,7 @@ export function Overview() {
 
   return (
     <div class="flex flex-col h-full">
-      <PageSubHeader title="OVERVIEW" />
+      <PageSubHeader title="OVERVIEW" helpText={HELP['page.overview']} />
 
       {/* Loading state -- structural skeleton */}
       <Show when={stats.loading && !stats()}>

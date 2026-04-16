@@ -2,13 +2,14 @@ import { createSignal, Show } from 'solid-js'
 import { TradeTable } from '../components/trades/TradeTable'
 import { TradeDetail } from '../components/trades/TradeDetail'
 import { PageSubHeader } from '../components/PageSubHeader'
+import { HELP } from '../lib/help-content'
 
 export function Trades() {
   const [selectedTradeId, setSelectedTradeId] = createSignal<string | null>(null)
 
   return (
     <div class="flex flex-col h-full">
-      <PageSubHeader title="JOURNAL" />
+      <PageSubHeader title="JOURNAL" helpText={HELP['page.journal']} />
       <div class="flex-1 min-h-0 overflow-y-auto border-t-0 border border-container-border bg-container-bg">
         <TradeTable onSelectTrade={(id) => {
           setSelectedTradeId(id)

@@ -1,4 +1,10 @@
 export const HELP: Record<string, string> = {
+  // ── Page Explainers ──
+  'page.overview': 'Your trading dashboard. Performance stats, P&L calendar, and analytical charts — all filtered by exchange, symbol, and time period.',
+  'page.journal': 'Trade history with sorting, filtering, and detailed breakdowns. Click any trade to view full metrics, add notes, and tag for review.',
+  'page.entries': 'Write pre-trade plans, post-trade reviews, and daily/weekly reflections. Link entries to specific trades to build a complete trading journal.',
+  'page.account': 'Manage exchange connections, import trade history, and configure agent wallets for automated execution.',
+
   // ── Dignitas Radar ──
   'radar.dignitas': 'Composite score (0–100) rating overall trading quality. Weights: Profit Factor 25%, Drawdown 20%, Avg W/L 20%, Win Rate 15%, Avg R 10%, Activity 10%.',
 

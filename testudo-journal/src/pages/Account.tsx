@@ -5,6 +5,8 @@ import {
   type TestConnectionResult,
   type ExchangeBalanceResponse,
 } from '../api/client'
+import { HelpTip } from '../components/HelpTip'
+import { HELP } from '../lib/help-content'
 import { ExchangeCard } from '../components/account/ExchangeCard'
 import { AddExchangeCard } from '../components/account/AddExchangeCard'
 import { AddExchangeForm } from '../components/account/AddExchangeForm'
@@ -125,7 +127,10 @@ export default function Account() {
     <div class="flex flex-col h-full overflow-y-auto">
       <Show when={!isOnboarding()}>
         <div class="flex items-center justify-between px-8 py-5 shrink-0 border-b border-container-border/50 bg-container-bg">
-          <h1 class="text-2xl md:text-3xl font-display font-bold tracking-tight text-text-primary">ACCOUNT</h1>
+          <h1 class="font-display text-lg font-bold tracking-wider text-text-primary">
+            ACCOUNT
+            <HelpTip text={HELP['page.account']} position="below" />
+          </h1>
         </div>
       </Show>
 
