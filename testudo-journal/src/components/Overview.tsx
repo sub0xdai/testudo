@@ -1,4 +1,4 @@
-import { createResource, Show, For } from 'solid-js'
+import { createResource, createSignal, Show, For, onMount } from 'solid-js'
 import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { PnlCalendar } from './charts/PnlCalendar'
@@ -7,7 +7,7 @@ import { ChartSelector } from './ChartSelector'
 import { PageSubHeader } from './PageSubHeader'
 import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
-import { fetchOverview, fetchEquityCurve } from '../api/client'
+import { fetchOverview, fetchEquityCurve, exchangeApi } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, rColor, streakSign } from '../lib/formatters'
 
 export function Overview() {
@@ -16,6 +16,26 @@ export function Overview() {
   const [stats, { refetch: refetchStats }] = createResource(filters, fetchOverview)
   // Equity resource kept for CumulativeProfit in ChartSelector
   const [equity] = createResource(filters, fetchEquityCurve)
+
+  // Aggregate account balance across all exchanges
+  const [totalBalance, setTotalBalance] = createSignal<number | null>(null)
+  onMount(async () => {
+    try {
+      const accounts = await exchangeApi.listAccounts()
+      if (!accounts.length) return
+      let sum = 0
+      const results = await Promise.allSettled(
+        accounts.map(acc => exchangeApi.fetchBalance(acc.id))
+      )
+      for (const r of results) {
+        if (r.status !== 'fulfilled') continue
+        const primary = r.value.balances.find(b => b.asset === 'USDT' || b.asset === 'USDC')
+          || r.value.balances[0]
+        if (primary) sum += parseFloat(primary.total) || 0
+      }
+      setTotalBalance(sum)
+    } catch { /* non-blocking */ }
+  })
 
   function accountItems(): StatItem[] {
     const d = stats()
@@ -35,7 +55,7 @@ export function Overview() {
       { label: 'Win Rate', value: formatPercent(d.performance.win_rate) },
       { label: 'Profit Factor', value: parseFloat(d.performance.profit_factor) > 999 ? '∞' : formatNumber(d.performance.profit_factor), colorClass: parseFloat(d.performance.profit_factor) > 1 ? 'text-signal-green' : parseFloat(d.performance.profit_factor) < 1 ? 'text-signal-red' : undefined },
       { label: 'Expectancy', value: formatCurrency(d.performance.expectancy), colorClass: pnlColor(d.performance.expectancy) },
-      { label: 'R-Multiple', value: formatNumber(d.performance.avg_r_multiple), colorClass: rColor(d.performance.avg_r_multiple) },
+      { label: 'R-Multiple', value: parseFloat(d.performance.avg_r_multiple) ? `${formatNumber(d.performance.avg_r_multiple)}R` : '—', colorClass: parseFloat(d.performance.avg_r_multiple) ? rColor(d.performance.avg_r_multiple) : undefined },
       { label: 'Trades/Day', value: formatNumber(d.performance.trades_per_day, 1) },
     ]
   }
@@ -122,9 +142,11 @@ export function Overview() {
             <span class={`font-mono text-4xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
               {formatCurrency(stats()!.account.net_pnl)}
             </span>
-            <span class={`font-mono text-2xl font-bold ${pnlColor(parseFloat(stats()!.performance.avg_r_multiple))}`}>
-              {formatNumber(stats()!.performance.avg_r_multiple)}R
-            </span>
+            <Show when={totalBalance() !== null}>
+              <span class="font-mono text-2xl font-bold text-text-primary">
+                ${formatNumber(totalBalance()!)}
+              </span>
+            </Show>
           </div>
           <div class="flex gap-4 font-mono text-xs text-text-secondary">
             <span>Exp <span class="text-text-primary font-bold">{formatCurrency(stats()!.performance.expectancy)}</span></span>
@@ -161,14 +183,16 @@ export function Overview() {
                       net P&L
                     </span>
                   </div>
-                  <div>
-                    <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(parseFloat(stats()!.performance.avg_r_multiple))}`}>
-                      {formatNumber(stats()!.performance.avg_r_multiple)}R
-                    </span>
-                    <span class="font-mono text-sm text-text-secondary ml-3">
-                      R-multiple
-                    </span>
-                  </div>
+                  <Show when={totalBalance() !== null}>
+                    <div>
+                      <span class="font-mono text-4xl md:text-5xl font-bold text-text-primary">
+                        ${formatNumber(totalBalance()!)}
+                      </span>
+                      <span class="font-mono text-sm text-text-secondary ml-3">
+                        balance
+                      </span>
+                    </div>
+                  </Show>
                 </div>
               </div>
             </div>

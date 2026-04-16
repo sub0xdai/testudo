@@ -59,6 +59,12 @@ export default function MainView(props: { onLogout: () => void }) {
   const available = () => (usdt() ? parseFloat(usdt()!.available) : null);
   const locked = () => (usdt() ? parseFloat(usdt()!.locked) : null);
   const total = () => {
+    const u = usdt();
+    if (!u) return null;
+    // Use the exchange's total (includes unrealized PnL) rather than available+locked
+    const t = parseFloat(u.total);
+    if (!isNaN(t)) return t;
+    // Fallback: sum available + locked if total missing
     const a = available();
     const l = locked();
     if (a === null && l === null) return null;

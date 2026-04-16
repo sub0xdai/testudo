@@ -55,6 +55,7 @@ export interface TradePayload {
 
 export interface BalanceResponse {
   asset: string;
+  total: string;
   available: string;
   locked: string;
 }

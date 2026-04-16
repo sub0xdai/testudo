@@ -401,7 +401,7 @@ export async function getLiveBalance(): Promise<{ success: boolean; data?: LiveB
   if (!json.success) return { success: false, error: "Malformed balance response" };
 
   const balances: BalanceResponse[] = json.data.balances.map((b) => ({
-    asset: b.asset, available: b.free, locked: b.used,
+    asset: b.asset, total: b.total, available: b.free, locked: b.used,
   }));
   return { success: true, data: { exchange_name: json.data.exchange_name, balances } };
 }
