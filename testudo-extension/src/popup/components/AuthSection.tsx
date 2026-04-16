@@ -58,7 +58,7 @@ export default function AuthSection(props: {
         <Show when={props.onBack}>
           <div class="w-full max-w-[440px] flex items-center gap-3 mb-2">
             <button
-              class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-text-primary/5"
+              class="btn-ghost icon-btn p-0"
               onClick={props.onBack}
               data-testid="auth-back"
               title="Back"
@@ -126,10 +126,9 @@ export default function AuthSection(props: {
                 <label for="field-password" class="text-[11px] text-text-secondary font-mono font-medium tracking-wider uppercase">
                   Password
                 </label>
-                {/* UXP-17: white hover instead of signal-green */}
                 <button
                   type="button"
-                  class="text-[10px] font-mono text-text-dim tracking-wider cursor-pointer hover:text-text-primary transition-colors border-0 bg-transparent p-0"
+                  class="btn-ghost text-[10px] tracking-wider cursor-pointer p-0"
                   onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/forgot-password` })}
                 >
                   FORGOT?
@@ -149,7 +148,7 @@ export default function AuthSection(props: {
                   data-testid="login-password"
                 />
                 <button
-                  class="absolute right-0 top-0 h-full w-10 flex items-center justify-center border-0 bg-transparent text-text-secondary hover:text-text-primary hover:bg-transparent p-0 transition-colors"
+                  class="btn-ghost absolute right-0 top-0 h-full w-10 flex items-center justify-center p-0"
                   onClick={() => setShowPassword(!showPassword())}
                   type="button"
                   title={showPassword() ? "Hide password" : "Show password"}
@@ -166,9 +165,9 @@ export default function AuthSection(props: {
               </div>
             </div>
 
-            {/* Submit — UXP-17: white outline instead of signal-green bg */}
+            {/* Submit — UX-07: primary CTA */}
             <button
-              class={`w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono mt-6 flex items-center justify-center gap-2.5 border border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core transition-colors ${
+              class={`btn-primary w-full py-3.5 text-[12px] tracking-[0.2em] font-mono mt-6 flex items-center justify-center gap-2.5 ${
                 loading() ? "opacity-70" : ""
               }`}
               onClick={handleSubmit}
@@ -191,7 +190,7 @@ export default function AuthSection(props: {
             {/* Register link */}
             <div class="flex flex-col gap-2 mt-5">
               <button
-                class="w-full py-2.5 text-[11px] tracking-[0.15em] font-mono text-text-secondary border-transparent hover:border-border-active hover:text-text-primary"
+                class="btn-ghost w-full py-2.5 text-[11px] tracking-[0.15em] font-mono"
                 onClick={() => browser.tabs.create({ url: `${WEB_APP_URL}/register` })}
                 data-testid="create-account-btn"
               >

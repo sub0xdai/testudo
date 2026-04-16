@@ -26,18 +26,18 @@
 }
 
 /* --- Design Tokens (Tailwind v4 @theme) --- */
-/* UXP-17: Monochrome-first — pure blacks, gray borders, signal colors for data only */
+/* UX-07: Synced to journal canonical palette — cool grays, no terra cotta */
 @theme {
-    --color-bg-core: #0a0a0a;
-    --color-bg-panel: #161616;
-    --color-bg-elevated: #1e1e1e;
-    --color-bg-hover: #282828;
-    --color-bg-surface: #121212;
-    --color-border-subtle: #323232;
-    --color-border-active: #444444;
+    --color-bg-core: #090a0d;
+    --color-bg-panel: #13151a;
+    --color-bg-elevated: #1a1c23;
+    --color-bg-hover: #23262e;
+    --color-bg-surface: #090a0d;
+    --color-border-subtle: #2d303a;
+    --color-border-active: #ededed;
     --color-border-grid: #2a2a2a;
     --color-accent-steel: #94a3b8;
-    --color-accent-primary: #c4735a;
+    --color-accent-primary: #94a3b8;
     --color-signal-green: #22C55E;
     --color-signal-green-dim: rgba(34, 197, 94, 0.12);
     --color-signal-red: #EF4444;
@@ -47,36 +47,36 @@
     --color-accent-green: #22C55E;
     --color-signal-blue: #3b82f6;
     --color-text-primary: #ededed;
-    --color-text-secondary: #999999;
-    --color-text-dim: #666666;
+    --color-text-secondary: #b9bec8;
+    --color-text-dim: #737882;
     --font-family-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
     --font-family-mono: "Space Mono", ui-monospace, monospace;
 }
 
-/* --- Theme Overrides (UXP-18: Multi-Theme Support) --- */
-/* Light: warm paper tones, WCAG AA darkened signals */
+/* --- Theme Overrides (UX-07: cool grays, synced to journal) --- */
+/* Light: cool gray palette, WCAG AA darkened signals */
 [data-theme="light"] {
-    --color-bg-core: #f5f0e8;
-    --color-bg-panel: #e8e3d7;
-    --color-bg-elevated: #f0ebe2;
-    --color-bg-hover: #ebe5db;
-    --color-bg-surface: #fdf9f4;
-    --color-border-subtle: #b4ada2;
-    --color-border-active: #8a8278;
+    --color-bg-core: #f1f3f7;
+    --color-bg-panel: #ffffff;
+    --color-bg-elevated: #eaecf2;
+    --color-bg-hover: #e1e4ec;
+    --color-bg-surface: #f1f3f7;
+    --color-border-subtle: #c3c8d4;
+    --color-border-active: #0a0f1e;
     --color-border-grid: #c8c1b6;
-    --color-accent-steel: #505d70;
-    --color-accent-primary: #9e5a44;
-    --color-signal-green: #146426;
-    --color-signal-green-dim: rgba(20, 100, 38, 0.15);
-    --color-signal-red: #a00024;
-    --color-signal-red-dim: rgba(160, 0, 36, 0.15);
-    --color-signal-orange: #be6405;
-    --color-signal-orange-dim: rgba(190, 100, 5, 0.15);
-    --color-accent-green: #146426;
+    --color-accent-steel: #374151;
+    --color-accent-primary: #374151;
+    --color-signal-green: #05963c;
+    --color-signal-green-dim: rgba(5, 150, 60, 0.15);
+    --color-signal-red: #c81419;
+    --color-signal-red-dim: rgba(200, 20, 25, 0.15);
+    --color-signal-orange: #b46e00;
+    --color-signal-orange-dim: rgba(180, 110, 0, 0.15);
+    --color-accent-green: #05963c;
     --color-signal-blue: #1d4ed8;
-    --color-text-primary: #1a1714;
-    --color-text-secondary: #524c42;
-    --color-text-dim: #787166;
+    --color-text-primary: #0a0c14;
+    --color-text-secondary: #373e4e;
+    --color-text-dim: #5f6676;
 }
 
 /* ============================================================
@@ -189,7 +189,7 @@
         color: var(--color-text-primary);
     }
 
-    /* --- Button Base Styles (UXP-17: white-bordered outline, invert on hover) --- */
+    /* --- Button Base Styles (secondary tier: border + invert on hover) --- */
     button {
         background: transparent;
         border: 1px solid var(--color-border-subtle);
@@ -521,10 +521,9 @@
         user-select: none;
     }
 
+    /* T5: backdrop-filter removed */
     .login-glass-card {
         background: color-mix(in srgb, var(--color-bg-core) 85%, transparent);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
         border: 1px solid var(--color-border-subtle);
         border-radius: 0;
         box-shadow:
@@ -546,6 +545,63 @@
             inset 0 1px 0 rgba(0, 0, 0, 0.04);
     }
 
+    /* Button Hierarchy — UX-07 */
+    .btn-primary {
+        background: var(--color-text-primary);
+        color: var(--color-bg-core);
+        font-family: var(--font-family-sans);
+        font-weight: 700;
+        font-size: 14px;
+        padding: 0.75rem 2rem;
+        letter-spacing: 0.05em;
+        border: none;
+    }
+    .btn-primary:hover {
+        opacity: 0.9;
+        background: var(--color-text-primary);
+        color: var(--color-bg-core);
+        border: none;
+    }
+    .btn-primary:disabled {
+        background: var(--color-text-dim);
+        color: var(--color-bg-core);
+        opacity: 1;
+        cursor: not-allowed;
+    }
+
+    .btn-ghost {
+        color: var(--color-text-secondary);
+        background: transparent;
+        border: none;
+        font-family: var(--font-family-mono);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+    }
+    .btn-ghost:hover {
+        color: var(--color-text-primary);
+        background: transparent;
+        border: none;
+    }
+    .btn-ghost:disabled {
+        color: var(--color-text-dim);
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-destructive {
+        border: 1px solid var(--color-signal-red);
+        color: var(--color-signal-red);
+        background: transparent;
+        font-family: var(--font-family-mono);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+    }
+    .btn-destructive:hover {
+        background: var(--color-signal-red);
+        color: var(--color-bg-core);
+        border-color: var(--color-signal-red);
+    }
 }
 
 /* --- Keyframes (outside layers) --- */

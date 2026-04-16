@@ -76,7 +76,7 @@ export default function HeaderBar(props: HeaderBarProps) {
             TESTUDO
           </span>
           <button
-            class="text-text-secondary hover:text-text-primary hover:bg-transparent hover:border-0 transition-colors border-0 bg-transparent cursor-pointer p-0"
+            class="btn-ghost p-0 transition-colors cursor-pointer"
             onClick={toggleTheme}
             title={`Theme: ${theme() === "amoled" ? "Dark" : "Light"}`}
             aria-label="Toggle theme"
@@ -132,7 +132,7 @@ export default function HeaderBar(props: HeaderBarProps) {
                   fallback={
                     <button
                       role="menuitem"
-                      class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-text-primary hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                      class="btn-ghost w-full px-4 py-2.5 text-left text-[13px] font-sans hover:bg-bg-panel transition-colors cursor-pointer"
                       onClick={() => { setMenuOpen(false); props.onLogout(); }}
                       data-testid="menu-sign-in"
                     >
@@ -145,7 +145,7 @@ export default function HeaderBar(props: HeaderBarProps) {
                   </div>
                   <button
                     role="menuitem"
-                    class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-text-primary hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                    class="btn-ghost w-full px-4 py-2.5 text-left text-[13px] font-sans hover:bg-bg-panel transition-colors cursor-pointer"
                     onClick={() => { setMenuOpen(false); window.open(DESK_URL, "_blank"); }}
                     data-testid="menu-trading-desk"
                   >
@@ -153,7 +153,7 @@ export default function HeaderBar(props: HeaderBarProps) {
                   </button>
                   <button
                     role="menuitem"
-                    class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-text-primary hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                    class="btn-ghost w-full px-4 py-2.5 text-left text-[13px] font-sans hover:bg-bg-panel transition-colors cursor-pointer"
                     onClick={() => { setMenuOpen(false); window.open(`${DESK_URL}/account?source=extension`, "_blank"); }}
                     data-testid="menu-manage-account"
                   >
@@ -162,7 +162,7 @@ export default function HeaderBar(props: HeaderBarProps) {
                   <div class="border-t border-border-subtle" />
                   <button
                     role="menuitem"
-                    class="w-full px-4 py-2.5 text-left text-[13px] font-sans text-signal-red hover:bg-bg-panel transition-colors border-0 bg-transparent cursor-pointer"
+                    class="btn-ghost w-full px-4 py-2.5 text-left text-[13px] font-sans text-signal-red hover:bg-bg-panel transition-colors cursor-pointer"
                     onClick={handleLogout}
                     data-testid="menu-logout"
                   >

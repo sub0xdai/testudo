@@ -115,7 +115,7 @@ export default function PairView(props: {
         <div class="w-full max-w-[440px] flex items-center justify-between mb-2">
           <Show when={props.onBack} fallback={<div />}>
             <button
-              class="icon-btn border-0 text-text-dim hover:text-text-primary hover:bg-text-primary/5"
+              class="btn-ghost icon-btn p-0"
               onClick={props.onBack}
               data-testid="pair-back"
               title="Back"
@@ -126,7 +126,7 @@ export default function PairView(props: {
             </button>
           </Show>
           <button
-            class="icon-btn border-0 text-text-secondary hover:text-text-primary hover:bg-transparent p-0 cursor-pointer bg-transparent"
+            class="btn-ghost icon-btn p-0 cursor-pointer"
             onClick={toggleTheme}
             title={`Theme: ${theme() === "amoled" ? "Dark" : "Light"}`}
             aria-label="Toggle theme"
@@ -187,7 +187,7 @@ export default function PairView(props: {
                   <li>
                     <span class="text-text-dim mr-1">1.</span> Visit{" "}
                     <button
-                      class="text-text-primary hover:underline border-0 bg-transparent p-0 font-mono text-[13px] cursor-pointer"
+                      class="btn-ghost text-text-primary hover:underline p-0 font-mono text-[13px] cursor-pointer"
                       onClick={() => window.open(`${WEB_APP_URL}/pair`, "_blank")}
                     >
                       testudo.vip/pair
@@ -238,9 +238,9 @@ export default function PairView(props: {
                   </div>
                 </Show>
 
-                {/* Submit button */}
+                {/* Submit button — UX-07: primary CTA */}
                 <button
-                  class={`w-full py-3.5 text-[12px] font-bold tracking-[0.2em] font-mono mt-2 flex items-center justify-center gap-2.5 border border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core transition-colors ${
+                  class={`btn-primary w-full py-3.5 text-[12px] tracking-[0.2em] font-mono mt-2 flex items-center justify-center gap-2.5 ${
                     loading() ? "opacity-70" : ""
                   }`}
                   onClick={() => submitPair()}

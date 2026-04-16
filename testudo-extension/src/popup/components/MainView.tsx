@@ -158,9 +158,9 @@ export default function MainView(props: { onLogout: () => void }) {
                     <p class="text-sm text-text-dim mb-2">
                       {exchangeMode() === "dex" ? "No wallet connected" : "No CEX exchange linked"}
                     </p>
-                    {/* UXP-17: white outline instead of accent bg */}
+                    {/* UX-07: primary CTA */}
                     <button
-                      class="px-4 py-1.5 text-xs font-medium border border-text-primary text-text-primary hover:bg-text-primary hover:text-bg-core transition cursor-pointer"
+                      class="btn-primary"
                       onClick={() => window.open(`${DESK_URL}/account?source=extension`, "_blank")}
                       data-testid="connect-account-cta"
                     >
