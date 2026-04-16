@@ -108,8 +108,8 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
 
   return (
     <div class="bg-elevated">
-      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-8 py-5 border-b border-container-border">
-        DIGNITAS <HelpTip text={HELP['radar.dignitas']} position="right" />
+      <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-8 py-5 border-b border-container-border relative z-10" style={{ overflow: 'visible' }}>
+        DIGNITAS <HelpTip text={HELP['radar.dignitas']} position="below" />
       </div>
       <EChart option={option} height="240px" />
       {/* Composite score */}
