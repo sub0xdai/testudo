@@ -125,8 +125,8 @@ describe("background message router", () => {
     it("returns default settings when storage is empty", async () => {
       const result = await messageHandler({ type: "GET_SETTINGS" });
       expect(result).toEqual({
-        backendUrl: "http://localhost:8080",
-        wsUrl: "ws://127.0.0.1:4000",
+        backendUrl: "https://api.testudo.vip",
+        wsUrl: "wss://ws.testudo.vip",
       });
     });
 
@@ -205,7 +205,7 @@ describe("background message router", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8080/api/v1/auth/extension-pair",
+        "https://api.testudo.vip/api/v1/auth/extension-pair",
         expect.objectContaining({ method: "POST" }),
       );
       expect(mockStorage.accessToken).toBe("access-123");
@@ -269,7 +269,7 @@ describe("background message router", () => {
 
       expect(result).toEqual({ success: true, data: { id: "order-1" }, error: null });
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:8080/api/v1/trades");
+      expect(url).toBe("https://api.testudo.vip/api/v1/trades");
       const body = JSON.parse(options.body);
       expect(body.symbol).toBe("BTC_USDT");
       expect(body.side).toBe("buy");

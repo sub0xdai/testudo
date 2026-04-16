@@ -13,12 +13,12 @@ export function getExchangeType(exchangeName: string): ExchangeMode {
 // --- Constants ---
 
 export const DEFAULT_SETTINGS: Settings = {
-  backendUrl: process.env.BACKEND_URL || "http://localhost:8080",
-  wsUrl: process.env.WS_URL || "ws://127.0.0.1:4000",
+  backendUrl: process.env.BACKEND_URL || "https://api.testudo.vip",
+  wsUrl: process.env.WS_URL || "wss://ws.testudo.vip",
 };
 
-export const WEB_APP_URL = process.env.WEB_APP_URL || "http://localhost:3001";
-export const DESK_URL = process.env.DESK_URL || "http://localhost:3002/desk";
+export const WEB_APP_URL = process.env.WEB_APP_URL || "https://testudo.vip";
+export const DESK_URL = process.env.DESK_URL || "https://desk.testudo.vip";
 
 export const WS_MAX_RECONNECT_DELAY = 30000;
 export const WS_BASE_RECONNECT_DELAY = 1000;

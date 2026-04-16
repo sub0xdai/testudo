@@ -179,8 +179,8 @@ describe("nextReconnectDelay", () => {
 
 describe("constants", () => {
   it("has correct default settings", () => {
-    expect(DEFAULT_SETTINGS.backendUrl).toBe("http://localhost:8080");
-    expect(DEFAULT_SETTINGS.wsUrl).toBe("ws://127.0.0.1:4000");
+    expect(DEFAULT_SETTINGS.backendUrl).toBe("https://api.testudo.vip");
+    expect(DEFAULT_SETTINGS.wsUrl).toBe("wss://ws.testudo.vip");
   });
 
   it("has quote currencies list", () => {

@@ -5,7 +5,7 @@
   "description": "Testudo — risk management overlay for crypto traders",
   "scripts": {
     "build": "bun run build.ts",
-    "build:prod": "BACKEND_URL=https://api.testudo.vip WS_URL=wss://ws.testudo.vip WEB_APP_URL=https://testudo.vip DESK_URL=https://desk.testudo.vip bun run build.ts",
+    "build:dev": "BACKEND_URL=http://localhost:8080 WS_URL=ws://127.0.0.1:4000 WEB_APP_URL=http://localhost:3001 DESK_URL=http://localhost:3002/desk bun run build.ts",
     "build:chrome": "bun run build.ts --chrome",
     "build:firefox": "bun run build.ts --firefox",
     "dev": "bun run build.ts --watch",

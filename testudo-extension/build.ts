@@ -100,8 +100,9 @@ function buildTailwindCSS(outdir: string): void {
 }
 
 function copyStaticFiles(outdir: string): void {
-  // Copy popup HTML
+  // Copy popup HTML + theme init script
   cpSync("src/popup/popup.html", join(outdir, "popup/popup.html"));
+  cpSync("src/popup/theme-init.js", join(outdir, "popup/theme-init.js"));
 
   // Copy bundled fonts
   const fontsDir = join(outdir, "popup/fonts");

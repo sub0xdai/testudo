@@ -4,19 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=520, initial-scale=1.0">
   <title>Testudo</title>
-  <script>
-    let t = localStorage.getItem('testudo-theme');
-    if (t === 'soft-dark') { t = 'amoled'; localStorage.setItem('testudo-theme', t); }
-    if (t && t !== 'amoled') document.documentElement.setAttribute('data-theme', t);
-    /* Fallback: browser.storage.local is authoritative for extensions */
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.local.get('testudo-theme', function(r) {
-        var s = r['testudo-theme'];
-        if (s && s !== 'amoled') document.documentElement.setAttribute('data-theme', s);
-        else if (s === 'amoled') document.documentElement.removeAttribute('data-theme');
-      });
-    }
-  </script>
+  <script src="theme-init.js"></script>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body style="width:520px;height:680px;margin:0;padding:0;overflow:hidden">
