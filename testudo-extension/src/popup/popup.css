@@ -521,7 +521,6 @@
         user-select: none;
     }
 
-    /* T5: backdrop-filter removed */
     .login-glass-card {
         background: color-mix(in srgb, var(--color-bg-core) 85%, transparent);
         border: 1px solid var(--color-border-subtle);
