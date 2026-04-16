@@ -4,6 +4,62 @@ import { pairExtension, checkPairStatus } from '../api/client'
 
 const CODE_TTL_SECONDS = 60
 
+// ─── Theme toggle (standalone — Pair bypasses Layout shell) ───
+type Theme = 'amoled' | 'light'
+
+function applyTheme(theme: Theme) {
+  if (theme === 'amoled') {
+    document.documentElement.removeAttribute('data-theme')
+  } else {
+    document.documentElement.setAttribute('data-theme', theme)
+  }
+  localStorage.setItem('testudo-theme', theme)
+}
+
+function ThemeToggle() {
+  const [theme, setTheme] = createSignal<Theme>('amoled')
+
+  onMount(() => {
+    const stored = localStorage.getItem('testudo-theme') as Theme | null
+    if (stored && (stored === 'amoled' || stored === 'light')) {
+      setTheme(stored)
+    }
+  })
+
+  function toggle() {
+    const next: Theme = theme() === 'amoled' ? 'light' : 'amoled'
+    setTheme(next)
+    applyTheme(next)
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      class="text-text-tertiary hover:text-text-primary transition-colors"
+      title={`Theme: ${theme() === 'amoled' ? 'DARK' : 'LIGHT'}`}
+      aria-label="Toggle theme"
+    >
+      <Show when={theme() === 'amoled'} fallback={
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      }>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      </Show>
+    </button>
+  )
+}
+
 const CHROME_STORE_URL = 'https://chromewebstore.google.com'
 const FIREFOX_STORE_URL = 'https://addons.mozilla.org/en-US/firefox/addon/testudo-sniper/'
 
@@ -133,7 +189,10 @@ export default function Pair() {
       <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-12">
         <div class="border border-container-border bg-main-bg/80 backdrop-blur-md max-w-lg w-full">
           {/* Header band */}
-          <div class="border-b border-container-border px-10 pt-10 pb-6 text-center">
+          <div class="border-b border-container-border px-10 pt-10 pb-6 text-center relative">
+            <div class="absolute top-4 right-4">
+              <ThemeToggle />
+            </div>
             <h1 class="font-mono text-2xl md:text-3xl tracking-[0.3em] text-text-primary mb-1">
               TESTUDO
             </h1>

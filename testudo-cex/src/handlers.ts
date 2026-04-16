@@ -117,11 +117,13 @@ export function createHandlers(gateway: ExchangeGateway) {
       const balance = exchange.store.balance;
 
       // safe-cex balance is a single object for the futures account.
-      // Return as array matching SidecarBalanceEntry[] shape.
+      // total = wallet balance, upnl = unrealized PnL.
+      // Report equity (total + upnl) as "total" — matches what the exchange UI shows.
+      const equity = (balance.total || 0) + (balance.upnl || 0);
       const result = [
         {
           asset: "USDT",
-          total: stringify(balance.total),
+          total: stringify(equity),
           free: stringify(balance.free),
           used: stringify(balance.used),
         },

@@ -1,4 +1,6 @@
 import { createSignal, Show, lazy, Suspense } from 'solid-js'
+import { HelpTip } from './HelpTip'
+import { HELP } from '../lib/help-content'
 import type { EquityPoint } from '../api/client'
 
 // Lazy-load chart components — only fetched when selected
@@ -64,6 +66,7 @@ export function ChartSelector(props: ChartSelectorProps) {
             <option value={opt.value} class="bg-main-bg text-text-primary">{opt.label}</option>
           ))}
         </select>
+        <HelpTip text={HELP[`chart.${selected()}`] ?? ''} />
       </div>
 
       {/* Chart content */}

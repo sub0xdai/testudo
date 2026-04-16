@@ -1,5 +1,7 @@
 import { createMemo } from 'solid-js'
 import { EChart } from './EChart'
+import { HelpTip } from '../HelpTip'
+import { HELP } from '../../lib/help-content'
 import type { PerformanceStats, RiskStats } from '../../api/client'
 import { getAccentPrimary, accentPrimaryAlpha, getTextTertiary, getBorder } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
@@ -107,7 +109,7 @@ export function PerformanceRadar(props: PerformanceRadarProps) {
   return (
     <div class="bg-elevated">
       <div class="font-display text-xs font-bold tracking-section text-text-secondary uppercase px-8 py-5 border-b border-container-border">
-        DIGNITAS
+        DIGNITAS <HelpTip text={HELP['radar.dignitas']} />
       </div>
       <EChart option={option} height="240px" />
       {/* Composite score */}

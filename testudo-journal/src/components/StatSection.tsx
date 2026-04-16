@@ -1,9 +1,12 @@
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
+import { HelpTip } from './HelpTip'
+import { HELP } from '../lib/help-content'
 
 export interface StatItem {
   label: string
   value: string
   colorClass?: string
+  helpKey?: string
 }
 
 interface StatSectionProps {
@@ -22,6 +25,9 @@ export function StatSection(props: StatSectionProps) {
           {(item) => (
             <div class="flex items-center gap-2 px-8 py-3">
               <span class="font-display text-xs text-text-secondary">{item.label}</span>
+              <Show when={item.helpKey}>
+                <HelpTip text={HELP[item.helpKey!]} />
+              </Show>
               <span class="flex-1 border-b border-dotted border-container-border" />
               <span class={`font-mono text-xs font-bold ${item.colorClass ?? 'text-text-primary'}`}>
                 {item.value}

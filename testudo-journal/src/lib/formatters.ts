@@ -34,16 +34,24 @@ export function streakSign(value: number): string {
 }
 
 export function formatDuration(secs: number): string {
-  if (secs < 60) return `${secs}s`
-  if (secs < 3600) return `${Math.floor(secs / 60)}m`
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  if (h >= 24) {
-    const d = Math.floor(h / 24)
-    const rem = h % 24
-    return rem > 0 ? `${d}d ${rem}h` : `${d}d`
+  const abs = Math.abs(secs)
+  let result: string
+  if (abs < 60) {
+    result = `${abs}s`
+  } else if (abs < 3600) {
+    result = `${Math.floor(abs / 60)}m`
+  } else {
+    const h = Math.floor(abs / 3600)
+    const m = Math.floor((abs % 3600) / 60)
+    if (h >= 24) {
+      const d = Math.floor(h / 24)
+      const rem = h % 24
+      result = rem > 0 ? `${d}d ${rem}h` : `${d}d`
+    } else {
+      result = m > 0 ? `${h}h ${m}m` : `${h}h`
+    }
   }
-  return m > 0 ? `${h}h ${m}m` : `${h}h`
+  return result
 }
 
 export function formatPrice(value: string | number): string {

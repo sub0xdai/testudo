@@ -1,4 +1,6 @@
 import { createSignal, createEffect, onCleanup, Show } from 'solid-js'
+import { HelpTip } from '../HelpTip'
+import { HELP } from '../../lib/help-content'
 import type { ExchangeAccount, TestConnectionResult, ExchangeBalanceResponse } from '../../api/client'
 
 interface KebabMenuProps {
@@ -187,10 +189,12 @@ export function ExchangeCard(props: ExchangeCardProps) {
           <span class="text-[10px] text-text-tertiary font-mono bg-main-bg px-2 py-0.5 border border-container-border">
             {isAgentWallet() ? 'DEX' : 'CEX'}
           </span>
+          <HelpTip text={HELP['account.cexDex']} />
           <Show when={needsReauth()}>
             <span class="text-[10px] text-signal-amber font-mono bg-signal-amber/10 px-2 py-0.5 border border-signal-amber/30">
               REAUTH REQUIRED
             </span>
+            <HelpTip text={HELP['account.reauth']} />
           </Show>
         </div>
         <KebabMenu
@@ -208,7 +212,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
       {/* Identifier */}
       <span class="text-xs text-text-tertiary font-mono truncate">
         {walletAddr()
-          ? `${walletAddr()!.slice(0, 6)}...${walletAddr()!.slice(-4)}`
+          ? <>{`${walletAddr()!.slice(0, 6)}...${walletAddr()!.slice(-4)}`} <HelpTip text={HELP['account.agentWallet']} /></>
           : props.account.account_name}
       </span>
 

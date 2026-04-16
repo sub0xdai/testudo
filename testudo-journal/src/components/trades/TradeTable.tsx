@@ -1,6 +1,8 @@
 import { createSignal, createResource, Show, For } from 'solid-js'
 import { fetchTrades, type TradeListParams } from '../../api/client'
 import { useFilters } from '../filterContext'
+import { HelpTip } from '../HelpTip'
+import { HELP } from '../../lib/help-content'
 import { TradeRow } from './TradeRow'
 import { TradeFilters, type TradeFilterState } from './TradeFilters'
 import { Pagination } from './Pagination'
@@ -11,13 +13,13 @@ type SortState = { field: string; order: 'asc' | 'desc' }
 const COLUMNS = [
   { key: 'closed_at', label: 'DATE', sortable: true, align: 'left' },
   { key: 'symbol', label: 'SYMBOL', sortable: false, align: 'left' },
-  { key: 'exchange', label: 'EXCH', sortable: false, align: 'left' },
+  { key: 'exchange', label: 'EXCH', sortable: false, align: 'left', helpKey: 'col.exch' },
   { key: 'side', label: 'SIDE', sortable: false, align: 'left' },
   { key: 'entry', label: 'ENTRY', sortable: false, align: 'right' },
   { key: 'exit', label: 'EXIT', sortable: false, align: 'right' },
-  { key: 'net_pnl', label: 'NET P&L', sortable: true, align: 'right' },
-  { key: 'r_multiple', label: 'R', sortable: true, align: 'right' },
-  { key: 'duration_secs', label: 'DURATION', sortable: true, align: 'right' },
+  { key: 'net_pnl', label: 'NET P&L', sortable: true, align: 'right', helpKey: 'col.netPnl' },
+  { key: 'r_multiple', label: 'R', sortable: true, align: 'right', helpKey: 'col.r' },
+  { key: 'duration_secs', label: 'DURATION', sortable: true, align: 'right', helpKey: 'col.duration' },
   { key: 'tags', label: 'TAGS', sortable: false, align: 'left' },
 ] as const
 
@@ -93,11 +95,17 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                         onClick={() => toggleSort(col.key)}
                       >
                         {col.label}
+                        {'helpKey' in col && col.helpKey && <HelpTip text={HELP[col.helpKey]} />}
                         <Show when={sort().field === col.key}>
                           <span class="ml-1">{sort().order === 'asc' ? '\u25B2' : '\u25BC'}</span>
                         </Show>
                       </button>
-                    ) : col.label}
+                    ) : (
+                      <>
+                        {col.label}
+                        {'helpKey' in col && col.helpKey && <HelpTip text={HELP[col.helpKey]} />}
+                      </>
+                    )}
                   </th>
                 )}
               </For>

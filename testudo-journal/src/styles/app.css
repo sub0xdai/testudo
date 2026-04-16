@@ -261,6 +261,53 @@ body {
   color: rgb(var(--bg-core));
 }
 
+/* ── Help Tooltips ── */
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.help-tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  line-height: 1;
+  color: rgb(var(--text-tertiary));
+  border: 1px solid rgb(var(--border));
+  cursor: help;
+  transition: color 150ms, border-color 150ms;
+}
+.help-tip:hover .help-tip-trigger,
+.help-tip:focus-within .help-tip-trigger {
+  color: rgb(var(--text-secondary));
+  border-color: rgb(var(--text-tertiary));
+}
+.help-tip-popup {
+  position: absolute;
+  z-index: 50;
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgb(var(--text-primary));
+  background: rgb(var(--bg-elevated));
+  border: 1px solid rgb(var(--border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.help-tip-above { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.help-tip-below { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.help-tip-left  { right: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+.help-tip-right { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

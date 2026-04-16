@@ -9,6 +9,8 @@ import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
 import { fetchOverview, fetchEquityCurve, exchangeApi } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, rColor, streakSign } from '../lib/formatters'
+import { HelpTip } from './HelpTip'
+import { HELP } from '../lib/help-content'
 
 export function Overview() {
   const { filters } = useFilters()
@@ -41,10 +43,10 @@ export function Overview() {
     const d = stats()
     if (!d) return []
     return [
-      { label: 'Total P&L', value: formatCurrency(d.account.total_pnl), colorClass: pnlColor(d.account.total_pnl) },
-      { label: 'Net P&L', value: formatCurrency(d.account.net_pnl), colorClass: pnlColor(d.account.net_pnl) },
-      { label: 'Fees', value: formatCurrency(d.account.total_fees) },
-      { label: 'Trades', value: formatInteger(d.account.total_trades) },
+      { label: 'Total P&L', value: formatCurrency(d.account.total_pnl), colorClass: pnlColor(d.account.total_pnl), helpKey: 'stat.totalPnl' },
+      { label: 'Net P&L', value: formatCurrency(d.account.net_pnl), colorClass: pnlColor(d.account.net_pnl), helpKey: 'stat.netPnl' },
+      { label: 'Fees', value: formatCurrency(d.account.total_fees), helpKey: 'stat.fees' },
+      { label: 'Trades', value: formatInteger(d.account.total_trades), helpKey: 'stat.trades' },
     ]
   }
 
@@ -52,11 +54,11 @@ export function Overview() {
     const d = stats()
     if (!d) return []
     return [
-      { label: 'Win Rate', value: formatPercent(d.performance.win_rate) },
-      { label: 'Profit Factor', value: parseFloat(d.performance.profit_factor) > 999 ? '∞' : formatNumber(d.performance.profit_factor), colorClass: parseFloat(d.performance.profit_factor) > 1 ? 'text-signal-green' : parseFloat(d.performance.profit_factor) < 1 ? 'text-signal-red' : undefined },
-      { label: 'Expectancy', value: formatCurrency(d.performance.expectancy), colorClass: pnlColor(d.performance.expectancy) },
-      { label: 'R-Multiple', value: parseFloat(d.performance.avg_r_multiple) ? `${formatNumber(d.performance.avg_r_multiple)}R` : '—', colorClass: parseFloat(d.performance.avg_r_multiple) ? rColor(d.performance.avg_r_multiple) : undefined },
-      { label: 'Trades/Day', value: formatNumber(d.performance.trades_per_day, 1) },
+      { label: 'Win Rate', value: formatPercent(d.performance.win_rate), helpKey: 'stat.winRate' },
+      { label: 'Profit Factor', value: parseFloat(d.performance.profit_factor) > 999 ? '∞' : formatNumber(d.performance.profit_factor), colorClass: parseFloat(d.performance.profit_factor) > 1 ? 'text-signal-green' : parseFloat(d.performance.profit_factor) < 1 ? 'text-signal-red' : undefined, helpKey: 'stat.profitFactor' },
+      { label: 'Expectancy', value: formatCurrency(d.performance.expectancy), colorClass: pnlColor(d.performance.expectancy), helpKey: 'stat.expectancy' },
+      { label: 'R-Multiple', value: parseFloat(d.performance.avg_r_multiple) ? `${formatNumber(d.performance.avg_r_multiple)}R` : '—', colorClass: parseFloat(d.performance.avg_r_multiple) ? rColor(d.performance.avg_r_multiple) : undefined, helpKey: 'stat.rMultiple' },
+      { label: 'Trades/Day', value: formatNumber(d.performance.trades_per_day, 1), helpKey: 'stat.tradesPerDay' },
     ]
   }
 
@@ -64,11 +66,11 @@ export function Overview() {
     const d = stats()
     if (!d) return []
     return [
-      { label: 'Max DD', value: formatPercent(d.risk.max_drawdown_pct), colorClass: 'text-signal-red' },
-      { label: 'Worst Day', value: formatCurrency(d.risk.worst_day), colorClass: pnlColor(d.risk.worst_day) },
-      { label: 'Worst Week', value: formatCurrency(d.risk.worst_week), colorClass: pnlColor(d.risk.worst_week) },
-      { label: 'Streak', value: streakSign(d.risk.current_streak), colorClass: pnlColor(d.risk.current_streak) },
-      { label: 'Best Streak', value: `+${d.risk.best_streak}`, colorClass: 'text-signal-green' },
+      { label: 'Max DD', value: formatPercent(d.risk.max_drawdown_pct), colorClass: 'text-signal-red', helpKey: 'stat.maxDd' },
+      { label: 'Worst Day', value: formatCurrency(d.risk.worst_day), colorClass: pnlColor(d.risk.worst_day), helpKey: 'stat.worstDay' },
+      { label: 'Worst Week', value: formatCurrency(d.risk.worst_week), colorClass: pnlColor(d.risk.worst_week), helpKey: 'stat.worstWeek' },
+      { label: 'Streak', value: streakSign(d.risk.current_streak), colorClass: pnlColor(d.risk.current_streak), helpKey: 'stat.streak' },
+      { label: 'Best Streak', value: `+${d.risk.best_streak}`, colorClass: 'text-signal-green', helpKey: 'stat.bestStreak' },
     ]
   }
 
@@ -180,7 +182,7 @@ export function Overview() {
                       {formatCurrency(stats()!.account.net_pnl)}
                     </span>
                     <span class="font-mono text-sm text-text-secondary ml-3">
-                      net P&L
+                      net P&L <HelpTip text={HELP['hero.netPnl']} />
                     </span>
                   </div>
                   <Show when={totalBalance() !== null}>
@@ -189,7 +191,7 @@ export function Overview() {
                         ${formatNumber(totalBalance()!)}
                       </span>
                       <span class="font-mono text-sm text-text-secondary ml-3">
-                        balance
+                        balance <HelpTip text={HELP['hero.balance']} />
                       </span>
                     </div>
                   </Show>
