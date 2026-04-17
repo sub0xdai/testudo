@@ -15,6 +15,8 @@ export const HELP: Record<string, string> = {
   'risk.long_short': 'Share of notional biased long vs short. Balanced numbers = market-neutral; lopsided = directional bet.',
   'risk.pulse': 'Live aggregate of your positions across every venue. Click to jump to the Account hub.',
   'risk.positions_by_venue': 'Open positions grouped by exchange. Surfaces exchange-side state directly — covers trades placed via Testudo and manually on the venue.',
+  'risk.margin_by_venue': 'Free capital per venue, sorted from most to least available. Use it to pick where to deploy your next position.',
+  'risk.correlation': 'Positions grouped by asset family and direction — surfaces directional stacking (e.g., three longs on BTC/ETH/SOL trading as one BTC-beta bet).',
 
   // ── Charts ──
   'chart.symbol': 'Trade count by trading pair — shows where you trade most.',

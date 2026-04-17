@@ -181,16 +181,16 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-journal && bun run build` ✅
 **Acceptance:** Component ready to render venues from `snapshot.positions_by_venue`; empty-state path renders without layout collapse. Live rendering with 2+ open positions across 2 venues is exercised in T12 manual verification.
 
-#### T8: MarginByVenue + CorrelationStack widgets — `pending`
+#### T8: MarginByVenue + CorrelationStack widgets — `complete`
 **Scope:** CP-4 + CP-5 — 2-col grid below positions; mobile 1-col.
 **Files:**
-- `testudo-journal/src/components/account/MarginByVenue.tsx` — NEW. Sorted descending by `free_usd`. Each row: venue name + free / used / total bars (mono numbers, dotted leader line à la `StatSection`). Accepts `snapshot: RiskSnapshot`.
-- `testudo-journal/src/components/account/CorrelationStack.tsx` — NEW. Renders one bar per `correlation_stack[]` bucket, width proportional to `effective_notional_usd`, color per `direction` (signal-green / signal-red / amber for mixed). Hover/touch shows `contributing_symbols`. MVP — no statistical correlation (spec risk #2 mitigation).
-- `testudo-journal/src/pages/Account.tsx` — wrap both in `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">` below `<PositionsByVenue>`.
-- `testudo-journal/src/lib/help-content.ts` — add `'risk.margin_by_venue'`, `'risk.correlation'`.
+- `testudo-journal/src/components/account/MarginByVenue.tsx` — NEW. Sorted descending by `free_usd`. Each row: venue name + free on a dotted leader line, with used/total as small subtitle. Header shows total free margin as aggregate hint.
+- `testudo-journal/src/components/account/CorrelationStack.tsx` — NEW. Per-bucket row with horizontal bar (width proportional to max bucket's effective notional, min 2% for visibility), direction-coded color (signal-green/red/amber). Contributing symbols listed both as `title` attr (hover) and as visible inline row (`·` separated) — MVP, no statistical correlation.
+- `testudo-journal/src/pages/Account.tsx` — composed inside the existing `Show when={snapshot()}` block below `<PositionsByVenue>`, wrapped in `grid grid-cols-1 lg:grid-cols-2 gap-8`. Outer container bumped to `flex flex-col gap-8` so the strip, positions, and grid share one rhythm.
+- `testudo-journal/src/lib/help-content.ts` — added `'risk.margin_by_venue'`, `'risk.correlation'`.
 
-**Validate:** `cd testudo-journal && bun run build`
-**Acceptance:** Both widgets render side-by-side at `lg` breakpoint, stack at `md` and below; correlation bars sum visually to total notional; help tips present on both section headers.
+**Validate:** `cd testudo-journal && bun run build` ✅
+**Acceptance:** Both widgets render side-by-side at `lg` breakpoint, stack at `md` and below; correlation bars scaled to max bucket for visual comparability; help tips present on both section headers. Visual verification with populated data exercised in T12.
 
 #### T9: CoachBanner placeholder slot — `pending`
 **Scope:** CP-7 — empty slot reserved for RSK-03.
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T8 — `MarginByVenue` + `CorrelationStack` widgets. Mount in `grid grid-cols-1 lg:grid-cols-2 gap-8` below PositionsByVenue on Account.tsx. MarginByVenue sorted desc by `free_usd`, rows styled like `StatSection`. CorrelationStack renders bars per bucket (width proportional to `effective_notional_usd`, color per `direction` — green/red/amber). Add `risk.margin_by_venue` + `risk.correlation` help entries.
+Next task: T9 — `CoachBanner` placeholder slot. Create `testudo-journal/src/components/account/CoachBanner.tsx` that returns `null`, mount after the 2-col widget grid in Account.tsx. Slot must be present for RSK-03 consumption without re-layout.
