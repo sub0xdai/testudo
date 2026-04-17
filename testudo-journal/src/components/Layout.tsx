@@ -1,10 +1,16 @@
-import { createSignal, createResource, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
+import { createSignal, createResource, createEffect, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
 import { useAuth } from '../context/AuthContext'
 import { appKit } from '../config/wallet'
 import { pairExtension, fetchRiskSnapshot } from '../api/client'
 import { markExtensionPaired } from './onboarding/useOnboardingState'
 import { PulseStrip } from './PulseStrip'
+import { createRiskWsClient } from '../lib/ws'
+
+const STALE_THRESHOLD_MS = 60_000
+const POLL_FALLBACK_MS = 30_000
+const STALE_TICK_MS = 10_000
+const REFETCH_DEBOUNCE_MS = 500
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -357,10 +363,71 @@ export function Layout(props: { children: JSX.Element }) {
 
   // RSK-01 T6: Pulse strip snapshot. Fetched only when authenticated.
   // Server-side 5s cache makes the duplicate fetch (Layout + Account) effectively free.
-  const [pulseSnapshot] = createResource(
+  const [pulseSnapshot, { refetch: refetchPulse }] = createResource(
     () => auth.isAuthenticated(),
     async (authed) => (authed ? fetchRiskSnapshot() : null),
   )
+
+  // RSK-01 T10: live push via order.{user_id} WS + 30s polling fallback + stale flag.
+  const [now, setNow] = createSignal(Date.now())
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let pollTimer: ReturnType<typeof setInterval> | null = null
+  let staleTicker: ReturnType<typeof setInterval> | null = null
+
+  function debouncedRefetch() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null
+      refetchPulse()
+    }, REFETCH_DEBOUNCE_MS)
+  }
+
+  const wsClient = createRiskWsClient(debouncedRefetch)
+
+  // Gate the WS on authentication + user id. Reconnect when either flips.
+  createEffect(() => {
+    const authed = auth.isAuthenticated()
+    const uid = auth.user()?.id
+    if (authed && uid) {
+      wsClient.connect(uid)
+    } else {
+      wsClient.disconnect()
+    }
+  })
+
+  // When WS disconnects, poll every 30s so values keep refreshing.
+  createEffect(() => {
+    const authed = auth.isAuthenticated()
+    if (!authed) {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      return
+    }
+    if (wsClient.connected()) {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    } else if (!pollTimer) {
+      pollTimer = setInterval(() => refetchPulse(), POLL_FALLBACK_MS)
+    }
+  })
+
+  onMount(() => {
+    staleTicker = setInterval(() => setNow(Date.now()), STALE_TICK_MS)
+  })
+
+  onCleanup(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    if (pollTimer) clearInterval(pollTimer)
+    if (staleTicker) clearInterval(staleTicker)
+    wsClient.disconnect()
+  })
+
+  const pulseStale = () => {
+    const snap = pulseSnapshot()
+    if (!snap) return false
+    now() // reactive dependency on the tick signal
+    const ts = Date.parse(snap.as_of)
+    if (Number.isNaN(ts)) return false
+    return Date.now() - ts > STALE_THRESHOLD_MS
+  }
 
   function cycleTheme() {
     const current = theme()
@@ -389,7 +456,11 @@ export function Layout(props: { children: JSX.Element }) {
 
       <Show when={auth.isAuthenticated()}>
         <div class="relative z-50 shrink-0">
-          <PulseStrip snapshot={pulseSnapshot() ?? null} />
+          <PulseStrip
+            snapshot={pulseSnapshot() ?? null}
+            isStale={pulseStale()}
+            connected={wsClient.connected()}
+          />
         </div>
       </Show>
 

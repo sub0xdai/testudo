@@ -205,17 +205,17 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 
 ### Track D: Live updates + UX polish
 
-#### T10: WebSocket live push + polling fallback + stale indicator — `pending`
+#### T10: WebSocket live push + polling fallback + stale indicator — `complete`
 **Scope:** CP-6 — sub-2s update on position change.
 **Files:**
-- `testudo-journal/src/lib/ws.ts` — NEW. Minimal WS client. Connect to `VITE_WS_URL` (env var, default `ws://localhost:4000`); subscribe to `order.{user_id}` channel using the existing `WsMessage { method: "SUBSCRIBE", params: ["order.{user_id}"], id: 1 }` shape (`ws-stream/src/types.rs:11`); on any message → call provided callback (debounced 500ms by caller). Auto-reconnect with exponential backoff, capped at 30s. Expose `connected: Accessor<boolean>`.
-- `testudo-journal/src/components/Layout.tsx` — own the WS lifecycle: `onMount` connects + subscribes, `onCleanup` closes. Pass `onMessage = debounce(refetchSnapshot, 500)`. When `connected() === false`, fall back to 30s polling (`setInterval(refetchSnapshot, 30000)`).
-- `testudo-journal/src/components/PulseStrip.tsx` — render `● stale` (signal-amber) when `Date.now() - new Date(snapshot.as_of).getTime() > 60_000`. Render `●` (signal-green pulsing) when WS connected, plain `●` when polling.
-- `testudo-journal/src/api/client.ts` — `fetchRiskSnapshot` already exists (T4); no changes needed.
-- `testudo-journal/.env.example` (or `vite-env.d.ts`) — document `VITE_WS_URL`.
+- `testudo-journal/src/lib/ws.ts` — NEW. Minimal WS client. Connects to `VITE_WS_URL` (default `ws://localhost:4000`), subscribes to `order.{user_id}` using the `WsMessage { method: "SUBSCRIBE", params: ["order.{user_id}"], id: 1 }` shape (matches `ws-stream/src/types.rs:10`). On frames where `stream` starts with `order.`, calls the injected `onRiskEvent` callback. Exponential reconnect backoff 1s → 30s (cap). Exposes `connected: Accessor<boolean>` via `createSignal`. Idempotent `connect(userId)` / `disconnect()` — safe to call repeatedly inside a `createEffect`.
+- `testudo-journal/src/components/Layout.tsx` — captures `{ refetch }` from the existing `createResource(fetchRiskSnapshot)`. Debounced refetch (500ms) fires on every WS risk event. Two `createEffect`s: (a) reconciles WS connect/disconnect with `auth.isAuthenticated()` + `auth.user()?.id`; (b) toggles a 30s `setInterval(refetchPulse, 30_000)` polling path when `!wsClient.connected()`. A `now` signal ticks every 10s so `pulseStale()` stays reactive between fetches. All timers (debounce / poll / stale tick) cleaned up in `onCleanup`; the WS client is disconnected there too.
+- `testudo-journal/src/components/PulseStrip.tsx` — new optional `connected?: boolean` prop (defaults true for back-compat). Dot states: stale → amber static, connected → green pulsing, polling → green static (no pulse). Same `Show` / `classList` structure — zero snapshot-consumer API changes.
+- `testudo-journal/src/api/client.ts` — unchanged (`fetchRiskSnapshot` from T4 reused).
+- `VITE_WS_URL` — referenced via `import.meta.env` with an inline default; documented in `ws.ts` header comment.
 
-**Validate:** `cd testudo-journal && bun run build`
-**Acceptance:** With backend running, place an order via the extension → snapshot values update on Account page within 2s without manual refresh. Force-disconnect WS in DevTools → polling continues every 30s and stale indicator appears after 60s.
+**Validate:** `cd testudo-journal && bun run build` ✅ (17.92s, no TS or Vite errors)
+**Acceptance:** Ready for live QA in T12. With WS connected, a place-order event triggers a single debounced refetch within 0.5s of the frame arrival; WS drops → the 30s polling path takes over; `as_of` older than 60s flips the strip to `● stale` (amber).
 
 #### T11: Pulse Strip preference toggle — `pending`
 **Scope:** CP-8 — FR-11 user control.
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T10 — WebSocket live push + polling fallback + stale indicator. Build `testudo-journal/src/lib/ws.ts` subscribing to `order.{user_id}`, own the lifecycle in `Layout.tsx` (WS → 500ms-debounced snapshot refetch; disconnect → 30s polling), render stale + live indicators in `PulseStrip.tsx`.
+Next task: T11 — Pulse Strip preference toggle. Read `testudo-pulse-strip` from localStorage (default `'on'`) in Layout and gate `<PulseStrip>` render on it. Add a compact ON/OFF toggle near the top of `Account.tsx` that writes the preference and updates a shared signal so Layout reacts without a reload.

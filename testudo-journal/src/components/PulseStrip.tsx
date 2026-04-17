@@ -6,6 +6,7 @@ import { formatCurrency, formatNumber } from '../lib/formatters'
 interface PulseStripProps {
   snapshot: RiskSnapshot | null
   isStale?: boolean
+  connected?: boolean
 }
 
 function stripDollarSign(formatted: string): string {
@@ -19,6 +20,9 @@ export function PulseStrip(props: PulseStripProps) {
   const leverage = () => (props.snapshot ? `${formatNumber(props.snapshot.aggregate_leverage, 1)}x` : '0.0x')
   const freeMargin = () => (props.snapshot ? stripDollarSign(formatCurrency(props.snapshot.free_margin_usd)) : '$0.00')
 
+  // Connected defaults to true so existing/mock callers keep the pulsing green dot.
+  const isLive = () => props.connected ?? true
+
   return (
     <button
       type="button"
@@ -30,7 +34,13 @@ export function PulseStrip(props: PulseStripProps) {
         <div class="flex items-center gap-2 font-mono text-[10px] tracking-wider text-text-tertiary uppercase">
           <Show
             when={props.isStale}
-            fallback={<span class="inline-block w-1.5 h-1.5 rounded-full bg-signal-green animate-pulse" aria-hidden="true" />}
+            fallback={
+              <span
+                class="inline-block w-1.5 h-1.5 rounded-full bg-signal-green"
+                classList={{ 'animate-pulse': isLive() }}
+                aria-hidden="true"
+              />
+            }
           >
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-signal-amber" aria-hidden="true" />
           </Show>
