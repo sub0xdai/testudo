@@ -29,22 +29,22 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  /* Warm parchment — paper-on-paper depth, not white-on-white */
-  --bg-core: 248 245 238;         /* #F8F5EE — warm parchment, the paper between cards */
-  --bg-panel: 254 251 244;        /* #FEFBF4 — warm cream, lifted card surface */
-  --bg-elevated: 240 234 221;     /* #F0EADD — stone-tan, recessed wells (calendar cells, chart bodies) */
-  --bg-hover: 244 238 226;        /* #F4EEE2 — warm hover */
-  --border: 205 193 172;          /* #CDC1AC — warm stone divider */
+  /* Carrara marble — cool silver-grey, matches Hadrian's Wall stone */
+  --bg-core: 238 240 244;         /* #EEF0F4 — cool marble ground, paper between cards */
+  --bg-panel: 250 251 253;        /* #FAFBFD — refined off-white card (not pure white — preserves elevation headroom) */
+  --bg-elevated: 225 228 234;     /* #E1E4EA — cool stone recessed well */
+  --bg-hover: 232 235 241;        /* #E8EBF1 — cool hover */
+  --border: 192 198 210;          /* #C0C6D2 — cool stone divider */
   --border-active-accent: 10 15 30;
   --accent-steel: 55 65 81;       /* #374151 — dark slate */
   --accent-steel-hover: 35 45 60; /* #232D3C */
   --accent-primary: 80 90 108;    /* #505A6C — deep marble */
-  --signal-green: 5 130 55;       /* #058237 — readable on warm paper */
-  --signal-red: 185 20 25;        /* #B91419 — readable on warm paper */
+  --signal-green: 4 120 87;       /* #047857 — emerald, professional on cool marble */
+  --signal-red: 185 28 28;        /* #B91C1C — deep crimson, readable on cool marble */
   --signal-amber: 180 110 0;      /* #B46E00 — rich amber */
-  --text-primary: 28 24 16;       /* #1C1810 — warm near-black */
-  --text-secondary: 70 60 45;     /* #463C2D — warm dark grey, WCAG AA */
-  --text-tertiary: 118 108 90;    /* #766C5A — warm muted grey */
+  --text-primary: 18 22 30;       /* #12161E — cool near-black */
+  --text-secondary: 58 66 80;     /* #3A4250 — cool dark grey, WCAG AA */
+  --text-tertiary: 100 108 122;   /* #646C7A — cool muted grey */
 }
 
 /* --- Crest logo (white-on-transparent, invert for light) --- */
@@ -64,8 +64,8 @@
 /* --- Light theme: soft cast shadow on card surfaces for paper-on-paper lift --- */
 [data-theme="light"] .bg-container-bg {
   box-shadow:
-    0 1px 2px rgba(60, 45, 25, 0.04),
-    0 4px 12px rgba(60, 45, 25, 0.05);
+    0 1px 2px rgba(20, 28, 45, 0.05),
+    0 4px 12px rgba(20, 28, 45, 0.06);
 }
 
 /* --- Native form elements (dark theme compat) --- */
