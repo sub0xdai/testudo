@@ -1,9 +1,10 @@
-import { createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
+import { createSignal, createResource, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
 import { useAuth } from '../context/AuthContext'
 import { appKit } from '../config/wallet'
-import { pairExtension } from '../api/client'
+import { pairExtension, fetchRiskSnapshot } from '../api/client'
 import { markExtensionPaired } from './onboarding/useOnboardingState'
+import { PulseStrip } from './PulseStrip'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -354,6 +355,13 @@ export function Layout(props: { children: JSX.Element }) {
   const location = useLocation()
   const isStandalonePage = () => location.pathname.endsWith('/pair')
 
+  // RSK-01 T6: Pulse strip snapshot. Fetched only when authenticated.
+  // Server-side 5s cache makes the duplicate fetch (Layout + Account) effectively free.
+  const [pulseSnapshot] = createResource(
+    () => auth.isAuthenticated(),
+    async (authed) => (authed ? fetchRiskSnapshot() : null),
+  )
+
   function cycleTheme() {
     const current = theme()
     const idx = THEME_CYCLE.indexOf(current)
@@ -378,6 +386,12 @@ export function Layout(props: { children: JSX.Element }) {
         />
         <div class="absolute inset-0 bg-overlay" />
       </div>
+
+      <Show when={auth.isAuthenticated()}>
+        <div class="relative z-50 shrink-0">
+          <PulseStrip snapshot={pulseSnapshot() ?? null} />
+        </div>
+      </Show>
 
       <header class="relative z-50 shrink-0 bg-main-bg border-b border-container-border">
         <div class="px-6 md:px-8 py-4 flex items-center justify-between">

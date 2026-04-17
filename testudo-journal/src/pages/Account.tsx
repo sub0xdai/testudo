@@ -1,9 +1,10 @@
-import { createSignal, createResource, For, Show, onMount } from 'solid-js'
+import { createSignal, createResource, For, Show } from 'solid-js'
 import {
   exchangeApi,
-  type ExchangeAccount,
+  fetchRiskSnapshot,
   type TestConnectionResult,
   type ExchangeBalanceResponse,
+  type VenueMargin,
 } from '../api/client'
 import { HelpTip } from '../components/HelpTip'
 import { HELP } from '../lib/help-content'
@@ -12,6 +13,7 @@ import { AddExchangeCard } from '../components/account/AddExchangeCard'
 import { AddExchangeForm } from '../components/account/AddExchangeForm'
 import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
+import { LiveRiskStrip } from '../components/account/LiveRiskStrip'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
@@ -22,7 +24,9 @@ export default function Account() {
     return exchangeApi.listExchanges()
   })
 
-  const [balances, setBalances] = createSignal<Record<string, ExchangeBalanceResponse>>({})
+  // RSK-01 T6: Snapshot drives LiveRiskStrip and per-card balance display
+  const [snapshot] = createResource(fetchRiskSnapshot)
+
   const [testResults, setTestResults] = createSignal<Record<string, TestConnectionResult>>({})
   const [testingId, setTestingId] = createSignal<string | null>(null)
   const [deletingId, setDeletingId] = createSignal<string | null>(null)
@@ -32,26 +36,20 @@ export default function Account() {
   const [formInitialExchange, setFormInitialExchange] = createSignal('')
   const [reauthAccountId, setReauthAccountId] = createSignal<string | null>(null)
 
-  onMount(async () => {
-  })
-
   const [setupComplete, setSetupComplete] = createSignal(false)
   const [error, setError] = createSignal('')
 
-  // Fetch balances for all accounts
-  function fetchBalances(accs: ExchangeAccount[]) {
-    for (const acc of accs) {
-      exchangeApi.fetchBalance(acc.id)
-        .then(b => setBalances(prev => ({ ...prev, [acc.id]: b })))
-        .catch(() => {})
-    }
+  function venueMarginFor(accountId: string): VenueMargin | undefined {
+    return snapshot()?.margin_by_venue.find((m) => m.exchange_id === accountId)
   }
 
-  // Refetch when accounts load
-  createResource(() => accounts(), (accs) => {
-    if (accs) fetchBalances(accs)
-    return accs
-  })
+  function balanceForCard(accountId: string): ExchangeBalanceResponse | undefined {
+    const m = venueMarginFor(accountId)
+    if (!m) return undefined
+    return {
+      balances: [{ asset: 'USDT', total: m.total_usd, available: m.free_usd, used: m.used_usd }],
+    }
+  }
 
   const isOnboarding = () => !accounts.loading && (accounts()?.length ?? 0) === 0 && !setupComplete()
 
@@ -132,6 +130,14 @@ export default function Account() {
             <HelpTip text={HELP['page.account']} position="below" />
           </h1>
         </div>
+
+        <Show when={snapshot()}>
+          {(snap) => (
+            <div class="px-8 pt-6">
+              <LiveRiskStrip snapshot={snap()} />
+            </div>
+          )}
+        </Show>
       </Show>
 
       <Show when={error()}>
@@ -170,7 +176,7 @@ export default function Account() {
                 <ExchangeCard
                   account={acc}
                   testResult={testResults()[acc.id]}
-                  balance={balances()[acc.id]}
+                  balance={balanceForCard(acc.id)}
                   isTesting={testingId() === acc.id}
                   isDeleting={deletingId() === acc.id}
                   isRevoking={revokingId() === acc.id}

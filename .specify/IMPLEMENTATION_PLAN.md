@@ -152,7 +152,7 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-journal && bun run build`
 **Acceptance:** Mounted in a temporary scratch route or rendered with hard-coded mock prop, both components match the existing brutalist aesthetic (no glass, no rounded, mono-font, signal palette only).
 
-#### T6: Wire components to real endpoint + Layout mount + Account page composition — `pending`
+#### T6: Wire components to real endpoint + Layout mount + Account page composition — `complete`
 **Scope:** CP-1 + CP-2 close — replace mocks with `createResource(fetchRiskSnapshot)`, mount strip in Layout, mount LiveRiskStrip on Account.
 **Files:**
 - `testudo-journal/src/components/Layout.tsx` — add `<PulseStrip snapshot={snapshot()} />` as a sibling above the existing `<header>`. Mount inside the existing `Show when={!isStandalonePage()}` carve-out. Drive from a `createResource(fetchRiskSnapshot)` in Layout (separate from Account's resource — Layout is the long-lived owner). Skip the resource entirely when `!auth.isAuthenticated()`.
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T6 — Wire components to real endpoint + Layout mount + Account page composition. Add `createResource(fetchRiskSnapshot)` owned by Layout for PulseStrip and by Account for LiveRiskStrip. Mount PulseStrip above the existing Layout header (inside the existing `!isStandalonePage()` carve-out, gated on `auth.isAuthenticated()`). Mount LiveRiskStrip immediately after PageSubHeader on Account; remove redundant per-account `fetchBalances` + `balances` signal; derive per-venue balance from `snapshot.margin_by_venue`. Add help tip entries in `lib/help-content.ts`.
+Next task: T7 — `PositionsByVenue` widget. Accepts `snapshot: RiskSnapshot`, renders one section per venue with its positions (symbol / side / entry / size / unrealized PnL). Empty state shows "no open positions across N venue(s)". Mount on Account.tsx below the exchange card grid. Add `risk.positions_by_venue` help entry.
