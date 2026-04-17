@@ -121,18 +121,14 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`
 **Acceptance:** Manual curl with a user holding 2 positions on 2 venues returns plausible non-zero aggregate metrics; second curl within 5s is faster (cache hit logged at debug level).
 
-#### T3: Backend integration tests — `pending`
+#### T3: Backend integration tests — `complete`
 **Scope:** CP-2 — fixture-driven aggregation tests.
+**Implementation note:** The router crate is binary-only (no `lib.rs` / `[[lib]]` target), so a top-level `tests/risk_snapshot_test.rs` integration binary can't `use` internal modules without a crate-wide restructure. Instead: extracted a pure `pub fn aggregate_snapshot(positions, margins, as_of) -> RiskSnapshot` from `build_snapshot` (SRP — separates fetch from aggregate), and added the three fixture-driven cases as inline `#[cfg(test)]` tests in `services/risk_snapshot.rs`. Same coverage, same `cargo test risk_snapshot` command, no binary/lib restructure.
 **Files:**
-- `testudo-exchange/crates/router/tests/risk_snapshot_test.rs` — NEW. Three cases:
-  1. Empty (no accounts) → all zeros, empty arrays, `as_of` populated.
-  2. Single venue, single long position → exposure = position notional, long_pct = 1.0, short_pct = 0, net_delta = +notional, single bucket.
-  3. Multi-venue, mixed long/short across two asset families → verifies bucket grouping, leverage math, long/short partitioning.
-  Fixtures use stub `ExchangeApi` adapters (the same trait already in `services/exchange_api.rs`) to avoid live exchange calls.
-- One unit test in `risk_snapshot.rs` asserting unknown coin falls into `"other"` bucket (spec risk #5).
+- `testudo-exchange/crates/router/src/services/risk_snapshot.rs` — MODIFIED. Extracted `aggregate_snapshot()` pure function. Added 3 fixture cases (empty, single long single venue, multi-venue mixed direction two families). Existing bucket-fallback unit test (`unknown_coin_falls_into_other_bucket`) already covered spec risk #5.
 
-**Validate:** `cd testudo-exchange && cargo test risk_snapshot`
-**Acceptance:** All three integration tests + the bucket fallback unit test pass; `cargo test` exit 0.
+**Validate:** `cd testudo-exchange && cargo test -p router risk_snapshot`
+**Acceptance:** 12/12 tests pass (3 new + 9 prior). `cargo clippy --all-targets` clean on risk_snapshot changes (2 pre-existing warnings in cex_client.rs + evaluator.rs unchanged).
 
 ---
 

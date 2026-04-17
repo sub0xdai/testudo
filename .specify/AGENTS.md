@@ -432,4 +432,11 @@
 - **9 unit tests cover bucket map, base-asset extraction, correlation aggregation, cache invalidation, and JSON shape**: Integration tests against a real `AppState` are deferred to T3 (which needs stub `ExchangeApi` adapters per the plan). The pure helpers (`bucket_for`, `extract_base_asset`, `build_correlation_stack`) are fully testable without DB or HTTP.
 - **`(Vec<_>, Vec<_>)` from `Iterator::unzip()`**: Cleaner than two `.iter().map().collect()` calls when the per-account fan-out returns `Option<(VenueMargin, VenuePositions)>` — `flatten()` drops the failed accounts, then `unzip()` splits margin/positions.
 
+### 2026-04-17 — RSK-01 T3 (Backend aggregation tests)
+- **Router is a binary-only crate**: No `src/lib.rs`, no `[[lib]]` target in `Cargo.toml`. A top-level `tests/*.rs` integration file can't `use router::services::…` because there's no library target to link against. The project's established pattern is inline `#[cfg(test)] mod tests` inside each module — `services/hyperliquid/tests/` is the only exception and lives as a submodule too.
+- **Extract pure aggregation for testability**: Splitting `build_snapshot` into `(fan-out) → (aggregate_snapshot pure fn) → (cache_put)` isolates the math from HTTP/DB dependencies. Tests construct `Vec<VenuePositions>` + `Vec<VenueMargin>` fixtures directly and assert on the returned `RiskSnapshot`. No mock `AppState` or `CexClient` needed.
+- **Spec's "stub ExchangeApi adapters" hint was wrong**: The `ExchangeApi` trait in `services/exchange_api.rs` is for order placement/amendment/cancellation — not balance or positions. `build_snapshot` uses `cex_client` + `hl_http_client` directly, not through `ExchangeApi`. Refactoring to a balance+positions trait would be a cross-cutting change out of T3 scope.
+- **`dec!(0.6)` exact for 12000/20000**: `rust_decimal` division is exact for these fixture values, so `assert_eq!(aggregate_leverage, dec!(0.6))` passes without precision tolerance. Same for `0.5` long/short split — exact in decimal.
+- **`margin_by_venue` sort is a contract**: Tests assert ordering (`hyperliquid` before `bybit` when hl has more free margin) — FR-3 calls for "sorted descending" and the frontend widget relies on it. Verifying order in tests prevents regression if future refactors drop the `sort_by`.
+
 *This file grows as Vox learns. Never delete entries.*
