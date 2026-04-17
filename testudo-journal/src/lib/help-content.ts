@@ -14,6 +14,7 @@ export const HELP: Record<string, string> = {
   'risk.margin': 'Free margin available across all connected exchanges. The dry powder you can still deploy.',
   'risk.long_short': 'Share of notional biased long vs short. Balanced numbers = market-neutral; lopsided = directional bet.',
   'risk.pulse': 'Live aggregate of your positions across every venue. Click to jump to the Account hub.',
+  'risk.positions_by_venue': 'Open positions grouped by exchange. Surfaces exchange-side state directly — covers trades placed via Testudo and manually on the venue.',
 
   // ── Charts ──
   'chart.symbol': 'Trade count by trading pair — shows where you trade most.',

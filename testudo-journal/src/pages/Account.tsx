@@ -14,6 +14,7 @@ import { AddExchangeForm } from '../components/account/AddExchangeForm'
 import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
 import { LiveRiskStrip } from '../components/account/LiveRiskStrip'
+import { PositionsByVenue } from '../components/account/PositionsByVenue'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
@@ -245,6 +246,14 @@ export default function Account() {
             </div>
           </Show>
           </div>
+
+          <Show when={snapshot()}>
+            {(snap) => (
+              <div class="px-8 pb-10">
+                <PositionsByVenue snapshot={snap()} />
+              </div>
+            )}
+          </Show>
         </Show>
       </Show>
     </div>

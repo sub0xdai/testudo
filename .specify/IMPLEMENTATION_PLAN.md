@@ -171,15 +171,15 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 
 ### Track C: Account body widgets
 
-#### T7: PositionsByVenue widget — `pending`
+#### T7: PositionsByVenue widget — `complete`
 **Scope:** CP-3 — grouped active positions block, source = `snapshot.positions_by_venue`.
 **Files:**
-- `testudo-journal/src/components/account/PositionsByVenue.tsx` — NEW. Accepts `snapshot: RiskSnapshot`. Renders one section per venue with venue header (`HYPERLIQUID`, `BYBIT`, etc.) + a positions table (symbol / side / entry / size / unrealized PnL). Empty state ("no open positions across N venue(s)"). Reuses `bg-container-bg`, `border-container-border`, mono font, `pnlColor`.
-- `testudo-journal/src/pages/Account.tsx` — mount `<PositionsByVenue snapshot={snapshot()} />` below the exchange card grid.
-- `testudo-journal/src/lib/help-content.ts` — add `'risk.positions_by_venue'`.
+- `testudo-journal/src/components/account/PositionsByVenue.tsx` — NEW. Renders section header with pulse dot + total-position badge; one per-venue subsection with venue header (exchange_name + position count) and table columns: SYMBOL / SIDE / ENTRY / MARK / SIZE / UNREALIZED. Venues with zero positions are filtered out before rendering (keeps the view dense when one venue is idle). Empty-state fallback when total positions = 0 ("No open positions across N venue(s)"). `overflow-x-auto` around the table for narrow viewports. Reuses `bg-container-bg`, `border-container-border`, `formatPrice`, `formatNumber`, `formatCurrency`, `pnlColor`.
+- `testudo-journal/src/pages/Account.tsx` — mount `<PositionsByVenue snapshot={snap()} />` inside a `<Show when={snapshot()}>` block **after** the `max-w-4xl` card grid container (full-width at `px-8 pb-10` — matching LiveRiskStrip's pattern rather than the narrower card grid).
+- `testudo-journal/src/lib/help-content.ts` — added `'risk.positions_by_venue'`.
 
-**Validate:** `cd testudo-journal && bun run build`
-**Acceptance:** With 2+ open exchange positions across 2 venues, the section renders both venues and all positions; with zero positions, the section shows the empty state without layout collapse.
+**Validate:** `cd testudo-journal && bun run build` ✅
+**Acceptance:** Component ready to render venues from `snapshot.positions_by_venue`; empty-state path renders without layout collapse. Live rendering with 2+ open positions across 2 venues is exercised in T12 manual verification.
 
 #### T8: MarginByVenue + CorrelationStack widgets — `pending`
 **Scope:** CP-4 + CP-5 — 2-col grid below positions; mobile 1-col.
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T7 — `PositionsByVenue` widget. Accepts `snapshot: RiskSnapshot`, renders one section per venue with its positions (symbol / side / entry / size / unrealized PnL). Empty state shows "no open positions across N venue(s)". Mount on Account.tsx below the exchange card grid. Add `risk.positions_by_venue` help entry.
+Next task: T8 — `MarginByVenue` + `CorrelationStack` widgets. Mount in `grid grid-cols-1 lg:grid-cols-2 gap-8` below PositionsByVenue on Account.tsx. MarginByVenue sorted desc by `free_usd`, rows styled like `StatSection`. CorrelationStack renders bars per bucket (width proportional to `effective_notional_usd`, color per `direction` — green/red/amber). Add `risk.margin_by_venue` + `risk.correlation` help entries.
