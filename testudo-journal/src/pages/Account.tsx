@@ -11,8 +11,6 @@ import { AddExchangeCard } from '../components/account/AddExchangeCard'
 import { AddExchangeForm } from '../components/account/AddExchangeForm'
 import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
-import { PositionsByVenue } from '../components/account/PositionsByVenue'
-import { MarginByVenue } from '../components/account/MarginByVenue'
 import { CorrelationStack } from '../components/account/CorrelationStack'
 import { CoachBanner } from '../components/account/CoachBanner'
 
@@ -229,11 +227,7 @@ export default function Account() {
           <Show when={snapshot()}>
             {(snap) => (
               <div class="px-8 pb-10 flex flex-col gap-8">
-                <PositionsByVenue snapshot={snap()} />
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <MarginByVenue snapshot={snap()} />
-                  <CorrelationStack snapshot={snap()} />
-                </div>
+                <CorrelationStack snapshot={snap()} />
                 <CoachBanner />
               </div>
             )}

@@ -1,5 +1,12 @@
-import { createSignal, createEffect, onCleanup, Show } from 'solid-js'
-import type { ExchangeAccount, TestConnectionResult, RiskSnapshot, VenueMargin } from '../../api/client'
+import { createSignal, createEffect, onCleanup, For, Show } from 'solid-js'
+import type {
+  ExchangeAccount,
+  TestConnectionResult,
+  RiskSnapshot,
+  VenueMargin,
+  PositionEntry,
+} from '../../api/client'
+import { formatCurrency, formatNumber, formatPrice, pnlColor } from '../../lib/formatters'
 
 interface KebabMenuProps {
   onTest: () => void
@@ -148,6 +155,52 @@ function freeRatio(margin: VenueMargin): number {
   return Math.max(0, Math.min(100, pct))
 }
 
+function PositionsSection(props: { positions: PositionEntry[] }) {
+  const count = () => props.positions.length
+  return (
+    <div class="flex flex-col gap-2 pt-3 border-t border-container-border/50">
+      <Show
+        when={count() > 0}
+        fallback={
+          <div class="font-mono text-[10px] tracking-widest text-text-tertiary uppercase">
+            ── NO OPEN POSITIONS ──
+          </div>
+        }
+      >
+        <div class="font-mono text-[10px] tracking-widest text-text-tertiary uppercase">
+          ── {count()} {count() === 1 ? 'POSITION' : 'POSITIONS'} ──
+        </div>
+        <div class="flex flex-col gap-2">
+          <For each={props.positions}>{(pos) => <PositionRow pos={pos} />}</For>
+        </div>
+      </Show>
+    </div>
+  )
+}
+
+function PositionRow(props: { pos: PositionEntry }) {
+  const sideClass = () =>
+    props.pos.side === 'long' ? 'text-signal-green' : 'text-signal-red'
+  return (
+    <div class="flex flex-col gap-0.5">
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-xs text-text-primary">{props.pos.symbol}</span>
+        <span class="font-mono text-[10px] text-text-tertiary">·</span>
+        <span class={`font-mono text-[10px] uppercase tracking-wider ${sideClass()}`}>
+          {props.pos.side}
+        </span>
+      </div>
+      <div class="font-mono text-[10px] text-text-tertiary">
+        {formatNumber(props.pos.quantity, 4)} @ {formatPrice(props.pos.entry_price)} &rarr;{' '}
+        {formatPrice(props.pos.mark_price)}
+      </div>
+      <div class={`font-mono text-[10px] ${pnlColor(props.pos.unrealized_pnl_usd)}`}>
+        {formatCurrency(props.pos.unrealized_pnl_usd)}
+      </div>
+    </div>
+  )
+}
+
 interface ExchangeCardProps {
   account: ExchangeAccount
   testResult?: TestConnectionResult
@@ -170,6 +223,9 @@ export function ExchangeCard(props: ExchangeCardProps) {
   const needsReauth = () => props.account.requires_reauthorization === true
   const venueMargin = (): VenueMargin | undefined =>
     props.snapshot?.margin_by_venue.find((m) => m.exchange_id === props.account.id)
+  const venuePositions = (): PositionEntry[] =>
+    props.snapshot?.positions_by_venue.find((v) => v.exchange_id === props.account.id)
+      ?.positions ?? []
 
   return (
     <div class={`border ${
@@ -262,6 +318,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
                 </div>
               )}
             </Show>
+            <PositionsSection positions={venuePositions()} />
             <Show when={props.testResult}>
               {(result) => (
                 <div class="font-mono text-xs">

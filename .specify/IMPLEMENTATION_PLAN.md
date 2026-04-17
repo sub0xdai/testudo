@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-18
 > Current spec: RSK-01a-account-consolidation
-> Phase: BUILD (T1–T2 complete, next: T3)
+> Phase: BUILD (T1–T3 complete, next: T4)
 
 ---
 
@@ -174,7 +174,7 @@ T1 → T2 → T3 → T4 → T5 (verification)
 
 ---
 
-### T3: ExchangeCard absorbs positions + delete PositionsByVenue + MarginByVenue — `pending`
+### T3: ExchangeCard absorbs positions + delete PositionsByVenue + MarginByVenue — `complete`
 
 **Scope:** CP-3 (FR-4 positions half, FR-5, FR-6). Inline positions list rendered inside each ExchangeCard. `PositionsByVenue` + `MarginByVenue` files deleted. Help content cleaned up.
 
