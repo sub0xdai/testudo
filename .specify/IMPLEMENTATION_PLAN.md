@@ -134,7 +134,7 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 
 ### Track B: Frontend strip + plumbing
 
-#### T4: Frontend types + API client — `pending`
+#### T4: Frontend types + API client — `complete`
 **Scope:** CP-1 prep — define wire contract on the JS side; safe to do before T2 lands since both work from the spec's type table.
 **Files:**
 - `testudo-journal/src/api/client.ts` — add `RiskSnapshot`, `VenuePositions`, `VenueMargin`, `CorrelationBucket` interfaces matching backend shape (numerics as strings per repo convention). Add `fetchRiskSnapshot(): Promise<RiskSnapshot>` using existing `fetchWithCredentials` helper.
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T1 — Backend types + route stub (`services/risk_snapshot.rs`, `routes/risk.rs`, register under `/api/v1/risk` with JWT middleware; returns zeroed snapshot envelope).
+Next task: T5 — LiveRiskStrip + PulseStrip components (mock data). Build pure presentational SolidJS components in `testudo-journal/src/components/account/LiveRiskStrip.tsx` and `testudo-journal/src/components/PulseStrip.tsx`, each accepting a `RiskSnapshot` prop, matching brutalist aesthetic (mono font, signal palette, no glass/rounded). Verify responsive collapse at `md` breakpoint.

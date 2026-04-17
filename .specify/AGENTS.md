@@ -439,4 +439,11 @@
 - **`dec!(0.6)` exact for 12000/20000**: `rust_decimal` division is exact for these fixture values, so `assert_eq!(aggregate_leverage, dec!(0.6))` passes without precision tolerance. Same for `0.5` long/short split — exact in decimal.
 - **`margin_by_venue` sort is a contract**: Tests assert ordering (`hyperliquid` before `bybit` when hl has more free margin) — FR-3 calls for "sorted descending" and the frontend widget relies on it. Verifying order in tests prevents regression if future refactors drop the `sort_by`.
 
+### 2026-04-17 — RSK-01 T4 (Frontend types + API client)
+- **`rust_decimal` → string convention is universal in this client**: Existing interfaces (`AccountStats`, `EquityPoint`, `ExchangeBalanceEntry`, `JournalTrade`) all type Decimal fields as `string`. The `formatters.ts` helpers `parseFloat` at render time. RiskSnapshot follows the same pattern — `net_exposure_usd: string`, `aggregate_leverage: string`, etc.
+- **`Uuid` → `string` in payloads**: The backend's `exchange_id: Uuid` serializes to a plain string via serde. The frontend already types `ExchangeAccount.id: string`, so `VenuePositions.exchange_id: string` matches the existing convention.
+- **`DateTime<Utc>` → ISO string**: `chrono` serializes to RFC3339 strings by default. Same pattern as `JournalEntry.created_at: string`, `ExchangeAccount.created_at: string`.
+- **Narrowed union types for `side` / `direction`**: Used `'long' | 'short'` and `'long' | 'short' | 'mixed'` literal unions. Backend returns these as plain `String`, but the constraints are enforced by the aggregator code (`build_correlation_stack` hard-codes the values). Typing them narrowly on the frontend enables exhaustive switches in T7/T8 widgets.
+- **`fetchWithCredentials` already handles 401 + refresh**: The existing helper (cookie-based) is reused — no new auth path. `fetchRiskSnapshot` is a one-liner that throws on non-2xx (matches `fetchOverview` etc.).
+
 *This file grows as Vox learns. Never delete entries.*
