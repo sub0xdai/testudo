@@ -29,22 +29,22 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  /* High-contrast light — dark elements on light background */
-  --bg-core: 241 243 247;         /* #F1F3F7 — cool grey base */
-  --bg-panel: 255 255 255;        /* #FFFFFF — pure white surfaces */
-  --bg-elevated: 234 236 242;     /* #EAECF2 — visible tinted surface */
-  --bg-hover: 225 228 236;        /* #E1E4EC — clear hover */
-  --border: 195 200 212;          /* #C3C8D4 — strong visible borders */
+  /* Warm parchment — paper-on-paper depth, not white-on-white */
+  --bg-core: 248 245 238;         /* #F8F5EE — warm parchment, the paper between cards */
+  --bg-panel: 254 251 244;        /* #FEFBF4 — warm cream, lifted card surface */
+  --bg-elevated: 240 234 221;     /* #F0EADD — stone-tan, recessed wells (calendar cells, chart bodies) */
+  --bg-hover: 244 238 226;        /* #F4EEE2 — warm hover */
+  --border: 205 193 172;          /* #CDC1AC — warm stone divider */
   --border-active-accent: 10 15 30;
   --accent-steel: 55 65 81;       /* #374151 — dark slate */
   --accent-steel-hover: 35 45 60; /* #232D3C */
   --accent-primary: 80 90 108;    /* #505A6C — deep marble */
-  --signal-green: 5 150 60;       /* #05963C — saturated deep green */
-  --signal-red: 200 20 25;        /* #C81419 — saturated crimson */
+  --signal-green: 5 130 55;       /* #058237 — readable on warm paper */
+  --signal-red: 185 20 25;        /* #B91419 — readable on warm paper */
   --signal-amber: 180 110 0;      /* #B46E00 — rich amber */
-  --text-primary: 10 12 20;       /* #0A0C14 — near-black, high contrast */
-  --text-secondary: 55 62 78;     /* #373E4E — dark grey, WCAG AA */
-  --text-tertiary: 95 102 118;    /* #5F6676 — medium grey, legible */
+  --text-primary: 28 24 16;       /* #1C1810 — warm near-black */
+  --text-secondary: 70 60 45;     /* #463C2D — warm dark grey, WCAG AA */
+  --text-tertiary: 118 108 90;    /* #766C5A — warm muted grey */
 }
 
 /* --- Crest logo (white-on-transparent, invert for light) --- */
@@ -57,7 +57,15 @@
   background: rgb(var(--bg-core) / 0.90);
 }
 [data-theme="light"] .bg-overlay {
-  background: rgb(var(--bg-core) / 0.85);
+  /* Let the marble breathe in light mode — warm paper tint mixes with stone */
+  background: rgb(var(--bg-core) / 0.70);
+}
+
+/* --- Light theme: soft cast shadow on card surfaces for paper-on-paper lift --- */
+[data-theme="light"] .bg-container-bg {
+  box-shadow:
+    0 1px 2px rgba(60, 45, 25, 0.04),
+    0 4px 12px rgba(60, 45, 25, 0.05);
 }
 
 /* --- Native form elements (dark theme compat) --- */
