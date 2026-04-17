@@ -14,7 +14,7 @@
   --border-active-accent: 237 237 237;
   --accent-steel: 148 163 184;  /* #94A3B8 — cool blue-grey */
   --accent-steel-hover: 203 213 225;
-  --accent-primary: 180 190 200; /* #B4BEC8 — silver marble */
+  --accent-primary: 180 155 220; /* #B49BDC — soft amethyst, stands off charcoal */
   --signal-green: 34 197 94;    /* #22C55E — standard green-500 */
   --signal-red: 239 68 68;      /* #EF4444 — standard red-500 */
   --signal-amber: 245 158 11;   /* #F59E0B — amber-500 */
@@ -38,7 +38,7 @@
   --border-active-accent: 10 15 30;
   --accent-steel: 55 65 81;       /* #374151 — dark slate */
   --accent-steel-hover: 35 45 60; /* #232D3C */
-  --accent-primary: 80 90 108;    /* #505A6C — deep marble */
+  --accent-primary: 95 75 135;    /* #5F4B87 — aged amethyst, reads on cool marble */
   --signal-green: 4 120 87;       /* #047857 — emerald, professional on cool marble */
   --signal-red: 185 28 28;        /* #B91C1C — deep crimson, readable on cool marble */
   --signal-amber: 180 110 0;      /* #B46E00 — rich amber */
