@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-18
 > Current spec: RSK-01a-account-consolidation
-> Phase: BUILD (T1–T3 complete, next: T4)
+> Phase: BUILD (T1–T4 complete, next: T5)
 
 ---
 
@@ -210,7 +210,7 @@ T1 → T2 → T3 → T4 → T5 (verification)
 
 ---
 
-### T4: CorrelationStack conditional + move to top + exchange tile grid restructure — `pending`
+### T4: CorrelationStack conditional + move to top + exchange tile grid restructure — `complete`
 
 **Scope:** CP-4 (FR-7, FR-8, FR-9). CorrelationStack renders only when `≥ 2` buckets; moves to top of Account above the exchange tile grid. Grid expands to 3-col on lg with "+ ADD EXCHANGE" filler logic. CoachBanner anchored at bottom.
 

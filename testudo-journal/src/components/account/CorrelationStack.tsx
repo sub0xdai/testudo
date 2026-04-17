@@ -25,6 +25,8 @@ function stripSign(s: string): string {
 }
 
 export function CorrelationStack(props: CorrelationStackProps) {
+  if (props.snapshot.correlation_stack.length < 2) return null
+
   const buckets = () => props.snapshot.correlation_stack
 
   const maxNotional = () =>
@@ -46,20 +48,11 @@ export function CorrelationStack(props: CorrelationStackProps) {
         <HelpTip text={HELP['risk.correlation']} />
       </div>
 
-      <Show
-        when={buckets().length > 0}
-        fallback={
-          <div class="px-4 py-6 text-center">
-            <span class="font-mono text-sm text-text-tertiary">No directional exposure</span>
-          </div>
-        }
-      >
-        <div class="py-3 px-4 flex flex-col gap-3">
-          <For each={buckets()}>
-            {(bucket) => <BucketRow bucket={bucket} widthPct={widthPct(bucket)} />}
-          </For>
-        </div>
-      </Show>
+      <div class="py-3 px-4 flex flex-col gap-3">
+        <For each={buckets()}>
+          {(bucket) => <BucketRow bucket={bucket} widthPct={widthPct(bucket)} />}
+        </For>
+      </div>
     </section>
   )
 }

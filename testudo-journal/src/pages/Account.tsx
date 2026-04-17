@@ -146,9 +146,18 @@ export default function Account() {
 
         {/* Normal account management */}
         <Show when={!isOnboarding()}>
-          {/* Exchange card grid — constrained width, glass cards */}
-          <div class="max-w-4xl mx-auto w-full px-8 py-10">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Correlation Stack — top of Account, conditional on ≥2 buckets */}
+          <Show when={snapshot()}>
+            {(snap) => (
+              <div class="max-w-6xl mx-auto w-full px-8 pt-8">
+                <CorrelationStack snapshot={snap()} />
+              </div>
+            )}
+          </Show>
+
+          {/* Exchange card grid — 3-col on lg, 2-col on md, 1-col on mobile, with filler slots */}
+          <div class="max-w-6xl mx-auto w-full px-8 py-10">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <For each={accounts()}>
               {(acc) => (
                 <ExchangeCard
@@ -169,6 +178,9 @@ export default function Account() {
               )}
             </For>
             <AddExchangeCard onClick={() => openForm()} />
+            <For each={Array.from({ length: Math.max(0, 2 - (accounts()?.length ?? 0)) })}>
+              {() => <AddExchangeCard onClick={() => openForm()} />}
+            </For>
           </div>
 
           {/* Add exchange form — centered overlay */}
@@ -224,14 +236,9 @@ export default function Account() {
           </Show>
           </div>
 
-          <Show when={snapshot()}>
-            {(snap) => (
-              <div class="px-8 pb-10 flex flex-col gap-8">
-                <CorrelationStack snapshot={snap()} />
-                <CoachBanner />
-              </div>
-            )}
-          </Show>
+          <div class="max-w-6xl mx-auto w-full px-8 pb-10">
+            <CoachBanner />
+          </div>
         </Show>
       </Show>
     </div>
