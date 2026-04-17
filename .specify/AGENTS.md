@@ -489,6 +489,13 @@
 - **`VITE_WS_URL` resolved via `import.meta.env` with inline default**: No `.env.example` touched (security policy: never read/create `.env*`). `vite-env.d.ts` doesn't exist in this project — Vite auto-types `VITE_`-prefixed vars as `string | undefined`. A cast `(import.meta.env.VITE_WS_URL as string | undefined) || 'ws://localhost:4000'` is sufficient.
 - **`connected` prop defaults true on PulseStrip**: Existing mock callers (and any future consumer passing only `snapshot`) keep the pulsing-green dot. Only Layout's real call-site threads through `wsClient.connected()` and flips to the polling (no-pulse) state. Zero breakage.
 
+### 2026-04-17 — RSK-01 T11 (Pulse Strip preference toggle)
+- **Module-scoped `createSignal` is the cross-component shared-state pattern here**: `createSignal` called at module top-level yields one persistent signal for every importer. No Context provider, no event bus, no `window.dispatchEvent(new StorageEvent(...))` hack — Layout reacts to Account's toggle automatically because both read the same accessor. Matches the codebase's existing `lib/` conventions (no `lib/` modules currently own reactive state, but the mechanism is the cleanest option and costs no extra plumbing).
+- **localStorage default is "on" via `!== 'off'` check**: Simpler than `value === null || value === 'on'` because it handles both the unset case and any legacy/typo-ed value by defaulting to enabled. FR-11 spec says "default on" — this is the minimal expression.
+- **Try/catch around `localStorage` is load-bearing**: Private mode / iframes can throw on read or write. Signal initializer and setter both wrap in try/catch so the UI never hard-crashes on first render; the preference is just best-effort persistence.
+- **Toggle lives in the existing subheader `justify-between`**: Account.tsx's `<div class="flex items-center justify-between ...">` already had `justify-between` with only the `<h1>`, so the toggle drops into the right-hand slot without layout churn. No new row added above/below.
+- **`aria-pressed={pulseStripEnabled()}` for A11y**: Toggle button semantics without a full switch role — simpler and sufficient for a binary ON/OFF. Screen readers announce pressed/unpressed state.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*

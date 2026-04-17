@@ -217,14 +217,15 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-journal && bun run build` ✅ (17.92s, no TS or Vite errors)
 **Acceptance:** Ready for live QA in T12. With WS connected, a place-order event triggers a single debounced refetch within 0.5s of the frame arrival; WS drops → the 30s polling path takes over; `as_of` older than 60s flips the strip to `● stale` (amber).
 
-#### T11: Pulse Strip preference toggle — `pending`
+#### T11: Pulse Strip preference toggle — `complete`
 **Scope:** CP-8 — FR-11 user control.
 **Files:**
-- `testudo-journal/src/components/Layout.tsx` — read `localStorage.getItem('testudo-pulse-strip')` (default `'on'`). Add `pulseStripEnabled` signal. When `'off'`, do not render `<PulseStrip>`.
-- `testudo-journal/src/pages/Account.tsx` — small toggle row near the top of the Account page ("Pulse strip: ON / OFF") that updates localStorage and dispatches a `storage`-like event (or use a shared signal/context) so the Layout reacts without page reload.
+- `testudo-journal/src/lib/pulse-strip-preference.ts` — NEW. Module-scoped `createSignal` initialized from `localStorage.getItem('testudo-pulse-strip')` (default `'on'`). Exports reader `pulseStripEnabled` (Accessor) and writer `setPulseStripEnabled(next)` which also persists to localStorage. Try/catch around localStorage keeps it safe in private mode.
+- `testudo-journal/src/components/Layout.tsx` — import `pulseStripEnabled`; guard `<PulseStrip>` render with `auth.isAuthenticated() && pulseStripEnabled()`.
+- `testudo-journal/src/pages/Account.tsx` — compact toggle button in the page subheader's right side: `PULSE STRIP: ON/OFF`. Uses the shared signal — Layout re-renders on toggle, no reload.
 
-**Validate:** `cd testudo-journal && bun run build`
-**Acceptance:** Toggling on Account page hides/shows PulseStrip across navigation; preference persists across browser refresh.
+**Validate:** `cd testudo-journal && bun run build` ✅
+**Acceptance:** Toggling on Account page hides/shows PulseStrip across navigation; preference persists across browser refresh (localStorage key `testudo-pulse-strip`).
 
 ---
 
@@ -278,4 +279,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T11 — Pulse Strip preference toggle. Read `testudo-pulse-strip` from localStorage (default `'on'`) in Layout and gate `<PulseStrip>` render on it. Add a compact ON/OFF toggle near the top of `Account.tsx` that writes the preference and updates a shared signal so Layout reacts without a reload.
+Next task: T12 — Verification. Run cross-viewport QA (320/375/768/1024/1440px), confirm Overview `<main>` is unchanged (PulseStrip lives outside it), exercise the empty state with a fresh user, and run `cd testudo-exchange && cargo clippy --all-targets && cargo test` + `cd testudo-journal && bun run build`.

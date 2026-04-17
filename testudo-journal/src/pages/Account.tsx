@@ -18,6 +18,7 @@ import { PositionsByVenue } from '../components/account/PositionsByVenue'
 import { MarginByVenue } from '../components/account/MarginByVenue'
 import { CorrelationStack } from '../components/account/CorrelationStack'
 import { CoachBanner } from '../components/account/CoachBanner'
+import { pulseStripEnabled, setPulseStripEnabled } from '../lib/pulse-strip-preference'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
@@ -133,6 +134,15 @@ export default function Account() {
             ACCOUNT
             <HelpTip text={HELP['page.account']} position="below" />
           </h1>
+          <button
+            type="button"
+            onClick={() => setPulseStripEnabled(!pulseStripEnabled())}
+            aria-pressed={pulseStripEnabled()}
+            title="Toggle the live pulse strip in the app header"
+            class="font-mono text-[10px] tracking-widest text-text-tertiary hover:text-text-primary transition-colors"
+          >
+            PULSE STRIP: <span class="text-text-primary">{pulseStripEnabled() ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
 
         <Show when={snapshot()}>

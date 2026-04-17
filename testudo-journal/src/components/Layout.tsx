@@ -6,6 +6,7 @@ import { pairExtension, fetchRiskSnapshot } from '../api/client'
 import { markExtensionPaired } from './onboarding/useOnboardingState'
 import { PulseStrip } from './PulseStrip'
 import { createRiskWsClient } from '../lib/ws'
+import { pulseStripEnabled } from '../lib/pulse-strip-preference'
 
 const STALE_THRESHOLD_MS = 60_000
 const POLL_FALLBACK_MS = 30_000
@@ -454,7 +455,7 @@ export function Layout(props: { children: JSX.Element }) {
         <div class="absolute inset-0 bg-overlay" />
       </div>
 
-      <Show when={auth.isAuthenticated()}>
+      <Show when={auth.isAuthenticated() && pulseStripEnabled()}>
         <div class="relative z-50 shrink-0">
           <PulseStrip
             snapshot={pulseSnapshot() ?? null}
