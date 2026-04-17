@@ -446,4 +446,13 @@
 - **Narrowed union types for `side` / `direction`**: Used `'long' | 'short'` and `'long' | 'short' | 'mixed'` literal unions. Backend returns these as plain `String`, but the constraints are enforced by the aggregator code (`build_correlation_stack` hard-codes the values). Typing them narrowly on the frontend enables exhaustive switches in T7/T8 widgets.
 - **`fetchWithCredentials` already handles 401 + refresh**: The existing helper (cookie-based) is reused — no new auth path. `fetchRiskSnapshot` is a one-liner that throws on non-2xx (matches `fetchOverview` etc.).
 
+### 2026-04-17 — RSK-01 T5 (LiveRiskStrip + PulseStrip components — mock data)
+- **`formatPercent` expects percent-scale input, not 0..1**: `formatPercent(num)` returns `${num.toFixed(1)}%`. The backend emits `long_pct` as a 0..1 fraction per the type contract, so callers must multiply by 100 before passing in. Failing to do so yields `"0.6%"` for a 60/40 split.
+- **`formatCurrency` always prefixes sign**: Returns `"+$1,000.00"` for positive, `"-$1,000.00"` for negative. For UI fields that are semantically absolute (NET EXPOSURE, FREE MARGIN), strip the leading `+` with `.replace(/^\+/, '')`. Never strip the `-` — we want negative values to show.
+- **Signal-green pulse indicator is the "live" convention**: `WalletChip` and `ExchangeCard` both use `inline-block w-2 h-2 rounded-full bg-signal-green animate-pulse`. PulseStrip uses a slightly smaller `w-1.5 h-1.5` variant to fit the ≤32px row. Amber without `animate-pulse` signals `stale` per spec risk #1.
+- **`useNavigate` from `@solidjs/router` inside a component**: Hook must be called at component top-level (not inside an event handler). Returns a function that accepts a path string (e.g., `/account`). The router is router-root-relative — BrowserRouter `/account` resolves to the `/desk/account` hash route without extra prefixing.
+- **Responsive collapse via Tailwind `md:` breakpoint (768px)**: `grid-cols-2 md:grid-cols-4` handles the 4-metric strip's mobile 2x2 layout. `hidden md:flex` + `flex md:hidden` toggle between compact (`$X / Yx`) and full (`$X · Yx · $Z free`) formats on PulseStrip.
+- **`divide-x` + `divide-container-border` for internal cell dividers**: Cleaner than `border-r` on each child — Tailwind's divide utilities handle the "last-child no border" edge case automatically. Combined with `divide-y md:divide-y-0 md:divide-x` for mode-switching between stacked-mobile and columnar-desktop.
+- **Solid `<For>` preferred over `.map()` even for fixed arrays**: Overview.tsx + StatSection.tsx both use `<For each={...}>`. While `.map()` works for static data, `<For>` is the idiomatic signal-reactive primitive and matches codebase style.
+
 *This file grows as Vox learns. Never delete entries.*

@@ -142,7 +142,7 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-journal && bun run build`
 **Acceptance:** TS compile clean; callable from a component with full autocomplete.
 
-#### T5: LiveRiskStrip + PulseStrip components (mock data) — `pending`
+#### T5: LiveRiskStrip + PulseStrip components (mock data) — `complete`
 **Scope:** CP-1 — render aesthetic-fidelity strip + pulse with stub data, verifying brutalist design language match before wiring real data.
 **Files:**
 - `testudo-journal/src/components/account/LiveRiskStrip.tsx` — NEW. 4-metric horizontal strip (NET EXPOSURE / LEVERAGE / FREE MARGIN / LONG/SHORT). Reuses `font-mono`, `border-container-border`, `bg-container-bg`, `pnlColor`, `formatCurrency`, `formatPercent`. Accepts `snapshot: RiskSnapshot` prop. Mobile (`md:` breakpoint): stacks to 2x2 grid.
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T5 — LiveRiskStrip + PulseStrip components (mock data). Build pure presentational SolidJS components in `testudo-journal/src/components/account/LiveRiskStrip.tsx` and `testudo-journal/src/components/PulseStrip.tsx`, each accepting a `RiskSnapshot` prop, matching brutalist aesthetic (mono font, signal palette, no glass/rounded). Verify responsive collapse at `md` breakpoint.
+Next task: T6 — Wire components to real endpoint + Layout mount + Account page composition. Add `createResource(fetchRiskSnapshot)` owned by Layout for PulseStrip and by Account for LiveRiskStrip. Mount PulseStrip above the existing Layout header (inside the existing `!isStandalonePage()` carve-out, gated on `auth.isAuthenticated()`). Mount LiveRiskStrip immediately after PageSubHeader on Account; remove redundant per-account `fetchBalances` + `balances` signal; derive per-venue balance from `snapshot.margin_by_venue`. Add help tip entries in `lib/help-content.ts`.
