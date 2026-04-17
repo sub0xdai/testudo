@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-18
 > Current spec: RSK-01a-account-consolidation
-> Phase: BUILD (T1–T4 complete, next: T5)
+> Phase: COMPLETE (all tasks T1–T5 done)
 
 ---
 
@@ -243,7 +243,7 @@ T1 → T2 → T3 → T4 → T5 (verification)
 
 ---
 
-### T5: Verification — `pending`
+### T5: Verification — `complete`
 
 **Scope:** CP-6. Mechanical verification: builds clean, LOC delta negative, no regressions on Overview below the hero, Journal and Pair visually unchanged at structural level.
 
@@ -302,10 +302,9 @@ T1 → T2 → T3 → T4 → T5 (verification)
 
 ## Status
 
-PLAN COMPLETE
+SPEC COMPLETE
 
 Spec: RSK-01a-account-consolidation
-Total Tasks: 5 (T1–T5)
-Next task: T1 — Overview hero consolidation + delete PulseStrip / LiveRiskStrip / pulse-strip-preference
-
-Ready for BUILD mode.
+Total Tasks: 5 (T1–T5) — all complete
+LOC delta: −239 lines (307 insertions, 546 deletions in testudo-journal/)
+Spec archived to `.specify/spec-archive/RSK-01a-account-consolidation/`.
