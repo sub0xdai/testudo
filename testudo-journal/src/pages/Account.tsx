@@ -13,12 +13,10 @@ import { AddExchangeCard } from '../components/account/AddExchangeCard'
 import { AddExchangeForm } from '../components/account/AddExchangeForm'
 import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
-import { LiveRiskStrip } from '../components/account/LiveRiskStrip'
 import { PositionsByVenue } from '../components/account/PositionsByVenue'
 import { MarginByVenue } from '../components/account/MarginByVenue'
 import { CorrelationStack } from '../components/account/CorrelationStack'
 import { CoachBanner } from '../components/account/CoachBanner'
-import { pulseStripEnabled, setPulseStripEnabled } from '../lib/pulse-strip-preference'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
@@ -29,7 +27,6 @@ export default function Account() {
     return exchangeApi.listExchanges()
   })
 
-  // RSK-01 T6: Snapshot drives LiveRiskStrip and per-card balance display
   const [snapshot] = createResource(fetchRiskSnapshot)
 
   const [testResults, setTestResults] = createSignal<Record<string, TestConnectionResult>>({})
@@ -134,24 +131,7 @@ export default function Account() {
             ACCOUNT
             <HelpTip text={HELP['page.account']} position="below" />
           </h1>
-          <button
-            type="button"
-            onClick={() => setPulseStripEnabled(!pulseStripEnabled())}
-            aria-pressed={pulseStripEnabled()}
-            title="Toggle the live pulse strip in the app header"
-            class="font-mono text-[10px] tracking-widest text-text-tertiary hover:text-text-primary transition-colors"
-          >
-            PULSE STRIP: <span class="text-text-primary">{pulseStripEnabled() ? 'ON' : 'OFF'}</span>
-          </button>
         </div>
-
-        <Show when={snapshot()}>
-          {(snap) => (
-            <div class="px-8 pt-6">
-              <LiveRiskStrip snapshot={snap()} />
-            </div>
-          )}
-        </Show>
       </Show>
 
       <Show when={error()}>

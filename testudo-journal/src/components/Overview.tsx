@@ -1,4 +1,4 @@
-import { createResource, createSignal, Show, For, onMount } from 'solid-js'
+import { createResource, createSignal, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
 import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { PnlCalendar } from './charts/PnlCalendar'
@@ -7,12 +7,34 @@ import { ChartSelector } from './ChartSelector'
 import { PageSubHeader } from './PageSubHeader'
 import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
-import { fetchOverview, fetchEquityCurve, exchangeApi } from '../api/client'
+import { useAuth } from '../context/AuthContext'
+import { fetchOverview, fetchEquityCurve, exchangeApi, fetchRiskSnapshot, type RiskSnapshot } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, rColor, streakSign } from '../lib/formatters'
 import { HELP } from '../lib/help-content'
+import { createRiskWsClient } from '../lib/ws'
+
+const STALE_THRESHOLD_MS = 60_000
+const POLL_FALLBACK_MS = 30_000
+const STALE_TICK_MS = 10_000
+const REFETCH_DEBOUNCE_MS = 500
+
+function stripSign(formatted: string): string {
+  return formatted.replace(/^\+/, '')
+}
+
+function relativeTime(snap: RiskSnapshot | null | undefined): string {
+  if (!snap) return ''
+  const ts = Date.parse(snap.as_of)
+  if (Number.isNaN(ts)) return ''
+  const diff = Date.now() - ts
+  if (diff < 10_000) return 'last updated: just now'
+  if (diff < 60_000) return `last updated: ${Math.floor(diff / 1000)}s ago`
+  return `last updated: ${Math.floor(diff / 60_000)}m ago`
+}
 
 export function Overview() {
   const { filters } = useFilters()
+  const auth = useAuth()
 
   const [stats, { refetch: refetchStats }] = createResource(filters, fetchOverview)
   // Equity resource kept for CumulativeProfit in ChartSelector
@@ -37,6 +59,83 @@ export function Overview() {
       setTotalBalance(sum)
     } catch { /* non-blocking */ }
   })
+
+  // RSK-01a T1: Overview owns the live risk snapshot (WS push + 30s polling fallback + stale indicator).
+  const [snapshot, { refetch: refetchSnapshot }] = createResource(
+    () => auth.isAuthenticated(),
+    async (authed) => (authed ? fetchRiskSnapshot() : null),
+  )
+
+  const [now, setNow] = createSignal(Date.now())
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let pollTimer: ReturnType<typeof setInterval> | null = null
+  let staleTicker: ReturnType<typeof setInterval> | null = null
+
+  function debouncedRefetch() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null
+      refetchSnapshot()
+    }, REFETCH_DEBOUNCE_MS)
+  }
+
+  const wsClient = createRiskWsClient(debouncedRefetch)
+
+  createEffect(() => {
+    const authed = auth.isAuthenticated()
+    const uid = auth.user()?.id
+    if (authed && uid) {
+      wsClient.connect(uid)
+    } else {
+      wsClient.disconnect()
+    }
+  })
+
+  createEffect(() => {
+    const authed = auth.isAuthenticated()
+    if (!authed) {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      return
+    }
+    if (wsClient.connected()) {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    } else if (!pollTimer) {
+      pollTimer = setInterval(() => refetchSnapshot(), POLL_FALLBACK_MS)
+    }
+  })
+
+  onMount(() => {
+    staleTicker = setInterval(() => setNow(Date.now()), STALE_TICK_MS)
+  })
+
+  onCleanup(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    if (pollTimer) clearInterval(pollTimer)
+    if (staleTicker) clearInterval(staleTicker)
+    wsClient.disconnect()
+  })
+
+  const isStale = () => {
+    const snap = snapshot()
+    if (!snap) return false
+    now() // reactive dependency on the tick signal
+    const ts = Date.parse(snap.as_of)
+    if (Number.isNaN(ts)) return false
+    return Date.now() - ts > STALE_THRESHOLD_MS
+  }
+
+  const heroExposure = () => {
+    const s = snapshot()
+    return s ? stripSign(formatCurrency(s.net_exposure_usd)) : null
+  }
+  const heroLeverage = () => {
+    const s = snapshot()
+    return s ? `${formatNumber(s.aggregate_leverage, 1)}x` : null
+  }
+  const heroFree = () => {
+    const s = snapshot()
+    return s ? stripSign(formatCurrency(s.free_margin_usd)) : null
+  }
 
   function accountItems(): StatItem[] {
     const d = stats()
@@ -139,15 +238,30 @@ export function Overview() {
       <Show when={stats() && !stats.loading}>
         {/* Mobile: condensed stats strip */}
         <div class="md:hidden px-6 py-4 bg-container-bg border-b border-container-border/50">
-          <div class="flex items-baseline gap-4 mb-2">
-            <span class={`font-mono text-4xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
+          <div class="flex items-baseline gap-3 mb-2 flex-wrap">
+            <span class={`font-mono text-3xl font-bold ${pnlColor(stats()!.account.net_pnl)}`}>
               {formatCurrency(stats()!.account.net_pnl)}
             </span>
             <Show when={totalBalance() !== null}>
-              <span class="font-mono text-2xl font-bold text-text-primary">
+              <span class="font-mono text-xl font-bold text-text-primary">
                 ${formatNumber(totalBalance()!)}
               </span>
             </Show>
+            <Show when={heroLeverage()}>
+              <span class="font-mono text-xl font-bold text-text-primary">
+                {heroLeverage()}
+              </span>
+            </Show>
+            <span
+              class="inline-block w-1.5 h-1.5 rounded-full self-center"
+              classList={{
+                'bg-signal-green animate-pulse': !isStale() && wsClient.connected(),
+                'bg-signal-green': !isStale() && !wsClient.connected(),
+                'bg-signal-amber': isStale(),
+              }}
+              title={relativeTime(snapshot())}
+              aria-label={isStale() ? 'stale' : 'live'}
+            />
           </div>
           <div class="flex gap-4 font-mono text-xs text-text-secondary">
             <span>Exp <span class="text-text-primary font-bold">{formatCurrency(stats()!.performance.expectancy)}</span></span>
@@ -175,7 +289,7 @@ export function Overview() {
             {/* Hero metrics — glass panel */}
             <div class="px-10 py-8 bg-container-bg border-b border-container-border">
               <div class="border-l-2 border-accent-primary pl-8">
-                <div class="flex items-baseline gap-10">
+                <div class="flex items-baseline gap-10 flex-wrap">
                   <div>
                     <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)} ${parseFloat(String(stats()!.account.net_pnl)) >= 0 ? 'hero-glow-green' : 'hero-glow-red'}`}>
                       {formatCurrency(stats()!.account.net_pnl)}
@@ -191,6 +305,59 @@ export function Overview() {
                       </span>
                       <span class="font-mono text-sm text-text-secondary ml-3">
                         balance
+                      </span>
+                    </div>
+                  </Show>
+                  <Show when={heroExposure()}>
+                    <div>
+                      <span class="font-mono text-2xl md:text-3xl font-bold text-text-primary">
+                        {heroExposure()}
+                      </span>
+                      <span class="font-mono text-sm text-text-secondary ml-2">
+                        exp
+                      </span>
+                    </div>
+                  </Show>
+                  <Show when={heroLeverage()}>
+                    <div>
+                      <span class="font-mono text-2xl md:text-3xl font-bold text-text-primary">
+                        {heroLeverage()}
+                      </span>
+                      <span class="font-mono text-sm text-text-secondary ml-2">
+                        leverage
+                      </span>
+                    </div>
+                  </Show>
+                  <Show when={heroFree()}>
+                    <div>
+                      <span class="font-mono text-2xl md:text-3xl font-bold text-text-primary">
+                        {heroFree()}
+                      </span>
+                      <span class="font-mono text-sm text-text-secondary ml-2">
+                        free
+                      </span>
+                    </div>
+                  </Show>
+                  <Show when={snapshot()}>
+                    <div class="flex items-center gap-2 self-center">
+                      <span
+                        class="inline-block w-2 h-2 rounded-full"
+                        classList={{
+                          'bg-signal-green animate-pulse': !isStale() && wsClient.connected(),
+                          'bg-signal-green': !isStale() && !wsClient.connected(),
+                          'bg-signal-amber': isStale(),
+                        }}
+                        title={relativeTime(snapshot())}
+                        aria-hidden="true"
+                      />
+                      <span
+                        class="font-mono text-[10px] tracking-wider uppercase"
+                        classList={{
+                          'text-signal-amber': isStale(),
+                          'text-text-tertiary': !isStale(),
+                        }}
+                      >
+                        {isStale() ? 'stale' : 'live'}
                       </span>
                     </div>
                   </Show>
