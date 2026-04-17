@@ -496,6 +496,13 @@
 - **Toggle lives in the existing subheader `justify-between`**: Account.tsx's `<div class="flex items-center justify-between ...">` already had `justify-between` with only the `<h1>`, so the toggle drops into the right-hand slot without layout churn. No new row added above/below.
 - **`aria-pressed={pulseStripEnabled()}` for A11y**: Toggle button semantics without a full switch role — simpler and sufficient for a binary ON/OFF. Screen readers announce pressed/unpressed state.
 
+### 2026-04-17 — RSK-01 T12 (Final verification)
+- **Mechanical verification is the autonomous scope; live QA is deferred**: Vox can assert on cargo test counts, clippy cleanliness, build success, git history (Overview untouched), and structural responsiveness (Tailwind breakpoint classes in the rendered JSX). It cannot exercise a real 2s-WS-push flow or sweep pixel-level viewport widths without a browser + live exchange state. The plan's T12 entry distinguishes "performed" from "deferred to live session" so future audits know what was actually checked.
+- **Full test suite: 1,098 passing, 0 failing** across common_utils (304), engine (108×2 for lib+bin counts), pg_queue (11), router (540), sqlx_postgres (17), ws_stream (10). Up from AUTH-02-era 1,013 — +85 tests across RSK-01 backend (risk_snapshot + downstream).
+- **Clippy warnings stable at 3 pre-existing**: `cex_client.rs:649` `useless_conversion`, `actor.rs:1814` `unused_variables`, `evaluator.rs:188` `manual_contains`. None introduced by RSK-01.
+- **Output file truncation with `| tail -N` on background tasks**: Background Bash output is captured as the literal stdout of the command — when the command pipes through `tail -15`, only 15 lines land in the output file. For full test output, omit the tail pipe or grep the raw output file. Important for autonomous verification tasks that need complete logs.
+- **Overview regression check via `git log -- path`**: Simpler than a DOM snapshot test. `git log --since="$SPEC_DATE" -- testudo-journal/src/components/Overview.tsx` returning zero commits, combined with a clean `git diff` working tree, is sufficient evidence that the Overview component tree is byte-identical at source level. The rendered DOM can still change via CSS tokens — but those are intentional theming-layer changes, not RSK-01 regressions.
+
 ---
 
 *This file grows as Vox learns. Never delete entries.*
