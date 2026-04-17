@@ -513,6 +513,12 @@
 - **Layout.tsx drops ~65 lines**: snapshot + WS + polling + stale ticker + pulse-strip-enabled block all gone. Remaining responsibility: nav header, theme cycling, lock/connecting/error screens, standalone-page carve-out.
 - **Stale comment cleanup**: `RSK-01 T6: Snapshot drives LiveRiskStrip and per-card balance display` referred to deleted consumers. Removed because both LiveRiskStrip (T1) and the synthesized balance path (T2 upcoming) are going away. Keeping stale comments on file boundaries creates "what does this even do" confusion later.
 
----
+### 2026-04-18 — RSK-01a T2 (ExchangeCard margin breakdown)
+- **`snapshot?: RiskSnapshot` prop beats pre-synthesized `balance?`**: Moving the `margin_by_venue.find(m => m.exchange_id === props.account.id)` lookup into the card eliminates the `venueMarginFor` / `balanceForCard` helpers on Account.tsx entirely. The card is the correct owner of venue-specific derivation — Account just hands over the raw snapshot and lets each tile self-serve. Net ~15-line deletion on Account.tsx, with the lookup cost identical (one `.find` per card either way).
+- **Free-ratio bar reuses CorrelationStack's grammar**: `h-1.5 bg-text-primary/5 w-full` track + inline `bg-signal-green` fill with `style={{ width: `${pct}%` }}`. Same two-div pattern as CorrelationStack:86–91. Keeps visual language coherent; no new primitive needed.
+- **`formatBalanceUsd(raw)` strips sign at the source**: Unlike `formatCurrency` which prefixes `+`/`-`, margin values are always semantically non-negative (total/free/used in USD-equivalent). Using `Math.abs()` inside a dedicated helper is simpler than `.replace(/^[+-]/, '')` post-hoc, and expresses intent clearly.
+- **`freeRatio` guards against `total <= 0` and non-finite values**: A venue with 0 total (pre-balance-sync or deleted) would produce `NaN`/`Infinity`. Clamp to `[0, 100]` with `Math.max(0, Math.min(100, pct))` and `isFinite` checks. Prevents a 0-width bar from silently showing a broken style attribute.
+- **`Show when={venueMargin()}` fallback = "Margin unavailable"**: Spec risk #1 calls for a defensive lookup-miss path. Rendering a small tertiary-colored inline message (not a crash, not "---") signals: "the card is healthy but snapshot hasn't provided data for this venue yet" — distinct from the reauth error state (which uses an amber banner + button).
+- **`mt-auto flex flex-col gap-2` preserves vertical stacking**: Previous card had `mt-auto` on the balance block alone. New version nests the margin breakdown (which uses internal `gap-1.5`) + optional test result inside a single flex column that still pushes to the card's bottom. Positions slot (T3) will land in this same container below test-result.
 
 *This file grows as Vox learns. Never delete entries.*

@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-18
 > Current spec: RSK-01a-account-consolidation
-> Phase: BUILD (T1 complete, next: T2)
+> Phase: BUILD (T1–T2 complete, next: T3)
 
 ---
 
@@ -140,7 +140,7 @@ T1 → T2 → T3 → T4 → T5 (verification)
 
 ---
 
-### T2: ExchangeCard grows margin breakdown section — `pending`
+### T2: ExchangeCard grows margin breakdown section — `complete`
 
 **Scope:** CP-2 (FR-4 margin half). Card expands vertically to include margin total, free-ratio bar, free + used labels. Positions list NOT added yet — `PositionsByVenue` stays mounted so the app is shippable at this checkpoint.
 

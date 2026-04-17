@@ -3,8 +3,6 @@ import {
   exchangeApi,
   fetchRiskSnapshot,
   type TestConnectionResult,
-  type ExchangeBalanceResponse,
-  type VenueMargin,
 } from '../api/client'
 import { HelpTip } from '../components/HelpTip'
 import { HELP } from '../lib/help-content'
@@ -40,18 +38,6 @@ export default function Account() {
 
   const [setupComplete, setSetupComplete] = createSignal(false)
   const [error, setError] = createSignal('')
-
-  function venueMarginFor(accountId: string): VenueMargin | undefined {
-    return snapshot()?.margin_by_venue.find((m) => m.exchange_id === accountId)
-  }
-
-  function balanceForCard(accountId: string): ExchangeBalanceResponse | undefined {
-    const m = venueMarginFor(accountId)
-    if (!m) return undefined
-    return {
-      balances: [{ asset: 'USDT', total: m.total_usd, available: m.free_usd, used: m.used_usd }],
-    }
-  }
 
   const isOnboarding = () => !accounts.loading && (accounts()?.length ?? 0) === 0 && !setupComplete()
 
@@ -170,7 +156,7 @@ export default function Account() {
                 <ExchangeCard
                   account={acc}
                   testResult={testResults()[acc.id]}
-                  balance={balanceForCard(acc.id)}
+                  snapshot={snapshot()}
                   isTesting={testingId() === acc.id}
                   isDeleting={deletingId() === acc.id}
                   isRevoking={revokingId() === acc.id}

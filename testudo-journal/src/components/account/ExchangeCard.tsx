@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onCleanup, Show } from 'solid-js'
-import type { ExchangeAccount, TestConnectionResult, ExchangeBalanceResponse } from '../../api/client'
+import type { ExchangeAccount, TestConnectionResult, RiskSnapshot, VenueMargin } from '../../api/client'
 
 interface KebabMenuProps {
   onTest: () => void
@@ -133,19 +133,25 @@ function KebabMenu(props: KebabMenuProps) {
   )
 }
 
-function formatBalance(balance?: ExchangeBalanceResponse): string | null {
-  if (!balance || balance.balances.length === 0) return null
-  const primary = balance.balances.find((b) => b.asset === 'USDT' || b.asset === 'USDC')
-    || balance.balances[0]
-  const total = parseFloat(primary.total)
-  if (isNaN(total)) return null
-  return `$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function formatBalanceUsd(raw: string): string {
+  const num = parseFloat(raw)
+  if (isNaN(num)) return '$0.00'
+  return `$${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function freeRatio(margin: VenueMargin): number {
+  const total = parseFloat(margin.total_usd)
+  const free = parseFloat(margin.free_usd)
+  if (!isFinite(total) || total <= 0) return 0
+  const pct = (free / total) * 100
+  if (!isFinite(pct)) return 0
+  return Math.max(0, Math.min(100, pct))
 }
 
 interface ExchangeCardProps {
   account: ExchangeAccount
   testResult?: TestConnectionResult
-  balance?: ExchangeBalanceResponse
+  snapshot?: RiskSnapshot
   isTesting: boolean
   isDeleting: boolean
   isRevoking: boolean
@@ -162,6 +168,8 @@ export function ExchangeCard(props: ExchangeCardProps) {
   const isAgentWallet = () => props.account.auth_mode === 'agent_wallet'
   const walletAddr = () => props.account.agent_wallet_address
   const needsReauth = () => props.account.requires_reauthorization === true
+  const venueMargin = (): VenueMargin | undefined =>
+    props.snapshot?.margin_by_venue.find((m) => m.exchange_id === props.account.id)
 
   return (
     <div class={`border ${
@@ -222,16 +230,41 @@ export function ExchangeCard(props: ExchangeCardProps) {
         </button>
       </Show>
 
-      {/* Balance / test result — or reauth button when degraded */}
-      <div class="mt-auto">
+      {/* Margin breakdown / test result — or reauth button when degraded */}
+      <div class="mt-auto flex flex-col gap-2">
         <Show when={needsReauth()} fallback={
           <>
-            <div class="font-mono text-xl text-text-primary">
-              {formatBalance(props.balance) || '---'}
-            </div>
+            <Show
+              when={venueMargin()}
+              fallback={
+                <div class="font-mono text-xs text-text-tertiary">Margin unavailable</div>
+              }
+            >
+              {(m) => (
+                <div class="flex flex-col gap-1.5">
+                  <div class="flex items-baseline gap-2">
+                    <span class="font-mono text-xl font-bold text-text-primary">
+                      {formatBalanceUsd(m().total_usd)}
+                    </span>
+                    <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
+                      total
+                    </span>
+                  </div>
+                  <div class="h-1.5 bg-text-primary/5 w-full">
+                    <div
+                      class="h-full bg-signal-green"
+                      style={{ width: `${freeRatio(m())}%` }}
+                    />
+                  </div>
+                  <div class="font-mono text-[10px] text-text-tertiary tracking-wider uppercase">
+                    {formatBalanceUsd(m().free_usd)} free · {formatBalanceUsd(m().used_usd)} used
+                  </div>
+                </div>
+              )}
+            </Show>
             <Show when={props.testResult}>
               {(result) => (
-                <div class="font-mono text-xs mt-1">
+                <div class="font-mono text-xs">
                   <Show
                     when={result().success}
                     fallback={<span class="text-signal-red">{result().error}</span>}
