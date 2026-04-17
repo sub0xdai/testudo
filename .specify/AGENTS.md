@@ -415,4 +415,11 @@
 - **Banner uses same Shadow DOM pattern as toasts**: Each banner gets its own shadow host (`testudo-sniper-banner`), reusing `TOAST_STYLES` (which includes `TOAST_CSS` + theme vars). Only one banner active at a time (tracked via `activeBanner` module var) — showing a new one removes the old.
 - **content.ts safely imports from utils.ts**: `DESK_URL` is a plain string constant. `utils.ts` imports only `type { Settings }` which tree-shakes. No Zod or webextension-polyfill pulled into content bundle. content.js grew 2.9kb (49.3→52.2kb).
 
+### 2026-04-17 — RSK-01 T1 (Backend types + route stub)
+- **`rust_decimal` serializes as string by default**: With `rust_decimal = "1.36"` and no explicit serde config, `Decimal` fields serialize as JSON strings (e.g., `"0"`, `"3.5"`). Matches the spec's "decimal as string (convention)" and the existing `ExchangeBalanceEntry` pattern. No `#[serde(with = "rust_decimal::serde::str")]` needed.
+- **Route-scope registration pattern**: New route scopes inside `/api/v1` follow the existing `/risk-config` shape — `web::scope("/foo").wrap(JwtMiddleware::new(token_service.clone())).route(...)`. The `token_service.clone()` is crucial; `JwtMiddleware` takes ownership.
+- **Service-layer types live in the service file**: `risk_config.rs` keeps `RiskConfigResponse` + `ErrorResponse` next to handlers rather than in `types/`. Followed that convention — `RiskSnapshot`, `VenuePositions`, `VenueMargin`, `CorrelationBucket`, `PositionEntry`, `RiskError` all live in `services/risk_snapshot.rs`.
+- **`AuthenticatedUser` post-AUTH-02**: The extractor now yields `{ user_id: Uuid, wallet_address: String }` (not `email`). Always use `user.user_id` for DB lookups.
+- **Stubbed service returns `Ok(zeroed)` for T1**: The spec's vertical slicing calls for a wire-contract task (T1) that the frontend can mock against before real aggregation (T2). `build_snapshot` is async from day one so T2's DB fan-out requires zero signature churn.
+
 *This file grows as Vox learns. Never delete entries.*

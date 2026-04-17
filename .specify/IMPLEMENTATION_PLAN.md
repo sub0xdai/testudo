@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-17
 > Current spec: RSK-01-unified-risk-hub
-> Phase: PLAN
+> Phase: BUILD
 
 ---
 
@@ -94,7 +94,7 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 
 ### Track A: Backend snapshot service
 
-#### T1: Backend types + route stub — `pending`
+#### T1: Backend types + route stub — `complete`
 **Scope:** CP-2 partial — define the wire contract, wire route plumbing, return empty payload.
 **Files:**
 - `testudo-exchange/crates/router/src/services/risk_snapshot.rs` — NEW. Define `RiskSnapshot`, `VenuePositions`, `VenueMargin`, `CorrelationBucket` structs (Decimal-typed per Constitution §3). Stub `build_snapshot(user_id, &AppState) -> Result<RiskSnapshot, RiskError>` returning a zeroed snapshot.
