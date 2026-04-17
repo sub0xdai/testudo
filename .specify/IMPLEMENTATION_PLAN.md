@@ -107,7 +107,7 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`
 **Acceptance:** `curl /api/v1/risk/snapshot` with valid JWT returns a well-formed but zero-valued JSON envelope.
 
-#### T2: Backend aggregation logic — `pending`
+#### T2: Backend aggregation logic — `complete`
 **Scope:** CP-2 — real fan-out, real math, asset-family bucketing, 5s server-side cache.
 **Files:**
 - `testudo-exchange/crates/router/src/services/risk_snapshot.rs` — implement:
