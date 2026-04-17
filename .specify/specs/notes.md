@@ -20,3 +20,26 @@
 - [ ] change pw in env on n0x 
 - [ ]  The P&L display on position cards — that's a real feature gap worth closing 
 - [ ] User is unsure about what to press after downloading the extension and clicking link. It should be more like a connection process from there like "connect wallet entry to desk OR read more" 
+
+
+
+
+● ENG-02 drafted. Full roadmap now:
+
+  ┌──────────────────────┬─────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────┐
+  │         Spec         │                     Summary                     │                            Gate                             │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ RSK-01               │ Unified Risk Hub (Account) + pulse strip        │ Ready                                                       │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ RSK-02               │ Optional setup tag at Alt+X                     │ Ready                                                       │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ RSK-03               │ Weekly AI Coach (in-app only)                   │ After RSK-01, RSK-02                                        │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ ENG-01               │ Dignitas living score + public profile + streak │ After RSK-03 (streak gates on RSK-03 data)                  │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ ENG-02               │ On-chain discipline attestations (EAS on Base)  │ After ENG-01 produces streak data                           │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ ENG-03 (placeholder) │ Dignitas-gated Morpho lending market            │ When ≥200 users have attestations + treasury can seed ~$25k │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ OBS-01               │ Obsidian plugin (one-way push)                  │ Any time (orthogonal)                                       │
+  └──────────────────────┴─────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────┘

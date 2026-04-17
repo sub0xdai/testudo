@@ -16,4 +16,10 @@
 |----|------|---|-------|------|
 | #5753 | 3:21 PM | ✅ | AUTH-02 spec completion committed to version control | ~337 |
 | #5752 | 3:20 PM | ✅ | AUTH-02-backend-auth implementation completed and documented | ~421 |
+
+### Apr 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #6525 | 1:16 PM | 🔵 | Testudo Project Uses Spec-Driven Development with br/bv Tools | ~525 |
 </claude-mem-context>
