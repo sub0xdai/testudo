@@ -192,14 +192,14 @@ Independent kickoff: T1 (backend types) and T4 (frontend types) can begin same i
 **Validate:** `cd testudo-journal && bun run build` ✅
 **Acceptance:** Both widgets render side-by-side at `lg` breakpoint, stack at `md` and below; correlation bars scaled to max bucket for visual comparability; help tips present on both section headers. Visual verification with populated data exercised in T12.
 
-#### T9: CoachBanner placeholder slot — `pending`
+#### T9: CoachBanner placeholder slot — `complete`
 **Scope:** CP-7 — empty slot reserved for RSK-03.
 **Files:**
-- `testudo-journal/src/components/account/CoachBanner.tsx` — NEW. Returns `null` (or empty `<div />`). Documented as "consumed by RSK-03 — do not delete on cleanup passes."
-- `testudo-journal/src/pages/Account.tsx` — mount `<CoachBanner />` after the 2-col grid in T8.
+- `testudo-journal/src/components/account/CoachBanner.tsx` — NEW. Returns `null`. Single-line comment reserves the slot for RSK-03.
+- `testudo-journal/src/pages/Account.tsx` — mounted `<CoachBanner />` after the 2-col grid inside the snapshot-gated block.
 
-**Validate:** `cd testudo-journal && bun run build`
-**Acceptance:** No visual artifact in DOM (browser inspector confirms either no element or zero-height div); component file present so RSK-03 can drop content in without touching Account.tsx.
+**Validate:** `cd testudo-journal && bun run build` ✅
+**Acceptance:** Build passes; component renders `null` (no DOM artifact); RSK-03 can drop content by editing `CoachBanner.tsx`, leaving `Account.tsx` untouched.
 
 ---
 
@@ -278,4 +278,4 @@ Total Tasks: 12 (T1–T12)
 Tracks: A (backend, T1–T3) ∥ B (frontend core, T4–T6) ∥ C (account widgets, T7–T9) ∥ D (live + polish, T10–T11) → T12 (verification)
 Ready for BUILD mode.
 
-Next task: T9 — `CoachBanner` placeholder slot. Create `testudo-journal/src/components/account/CoachBanner.tsx` that returns `null`, mount after the 2-col widget grid in Account.tsx. Slot must be present for RSK-03 consumption without re-layout.
+Next task: T10 — WebSocket live push + polling fallback + stale indicator. Build `testudo-journal/src/lib/ws.ts` subscribing to `order.{user_id}`, own the lifecycle in `Layout.tsx` (WS → 500ms-debounced snapshot refetch; disconnect → 30s polling), render stale + live indicators in `PulseStrip.tsx`.

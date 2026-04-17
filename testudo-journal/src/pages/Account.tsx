@@ -17,6 +17,7 @@ import { LiveRiskStrip } from '../components/account/LiveRiskStrip'
 import { PositionsByVenue } from '../components/account/PositionsByVenue'
 import { MarginByVenue } from '../components/account/MarginByVenue'
 import { CorrelationStack } from '../components/account/CorrelationStack'
+import { CoachBanner } from '../components/account/CoachBanner'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
@@ -257,6 +258,7 @@ export default function Account() {
                   <MarginByVenue snapshot={snap()} />
                   <CorrelationStack snapshot={snap()} />
                 </div>
+                <CoachBanner />
               </div>
             )}
           </Show>
