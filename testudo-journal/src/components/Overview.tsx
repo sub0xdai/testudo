@@ -314,7 +314,7 @@ export function Overview() {
                         {heroExposure()}
                       </span>
                       <span class="font-mono text-xs text-text-secondary uppercase tracking-wider ml-2">
-                        exp
+                        exposure
                       </span>
                     </div>
                   </Show>
@@ -324,7 +324,7 @@ export function Overview() {
                         {heroLeverage()}
                       </span>
                       <span class="font-mono text-xs text-text-secondary uppercase tracking-wider ml-2">
-                        lev
+                        leverage
                       </span>
                     </div>
                   </Show>
@@ -334,7 +334,7 @@ export function Overview() {
                         {heroFree()}
                       </span>
                       <span class="font-mono text-xs text-text-secondary uppercase tracking-wider ml-2">
-                        free
+                        free margin
                       </span>
                     </div>
                   </Show>
