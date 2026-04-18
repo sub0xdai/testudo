@@ -378,7 +378,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T6: Backend analytics endpoint `/analytics/setup-breakdown` — `pending`
+### T6: Backend analytics endpoint `/analytics/setup-breakdown` — `complete`
 
 **Scope:** Per-setup aggregated stats for the chart. Mirrors the existing `/analytics/symbol-breakdown` pattern.
 
