@@ -314,6 +314,7 @@ export function createHandlers(gateway: ExchangeGateway) {
         contracts: stringify(pos.contracts),
         entryPrice: stringify(pos.entryPrice),
         unrealizedPnl: stringify(pos.unrealizedPnl),
+        leverage: pos.leverage != null ? stringify(pos.leverage) : undefined,
       }));
 
       return res.json(result);

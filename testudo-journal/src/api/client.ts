@@ -574,6 +574,9 @@ export interface PositionEntry {
   quantity: string
   notional_usd: string
   unrealized_pnl_usd: string
+  /** Configured position leverage (e.g. "8" for 8x). Omitted when the adapter
+   *  did not report it — aggregate falls back to gross notional/margin ratio. */
+  leverage?: string
 }
 
 export interface VenuePositions {
