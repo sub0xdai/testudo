@@ -533,7 +533,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T10: Final verification + commit — `pending`
+### T10: Final verification + commit — `complete`
 
 **Scope:** Full-suite verification per the Completion Protocol. Commit under the spec's mandated message.
 
@@ -604,12 +604,19 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ## Status
 
-PLANNING COMPLETE
+BUILD COMPLETE
 
 Spec: RSK-02-setup-tag-at-entry
-Total Tasks: 10 (T1–T10)
-Ready for BUILD mode.
+Total Tasks: 10 (T1–T10) — all complete
+Ready for archive.
 
-Next task: T1 — Backend migration + DTO passthrough + persistence (adds `setup_tag` column to `journal_trades` + `managed_positions`, threads through `CreateTradeRequest` → `TradeCloseEvent` → INSERT)
+Verification summary (T10):
+- `cargo clippy --all-targets` — clean (3 pre-existing warnings unchanged: actor.rs:1842 unused-variable, cex_client.rs:653 useless_conversion, evaluator.rs:188 manual_contains)
+- `cargo test` — exit 0
+- `bun run build` in testudo-extension — Chrome + Firefox targets pass; content.js 56.2kb, background.js 334.4kb, popup.js 79.4kb
+- `bun run build` in testudo-journal — exit 0; Overview-*.js 29.91kb (+0.12kb from T9)
+- Integration grep: 17 backend files, 6 extension files, 3 journal files all reference setup_tag / SetupBreakdown consistently.
+
+Manual QA (live trade roundtrip) deferred — requires real exchange state. Spec Completion Signal #3 remains a live-session checkbox for the operator.
 
 ---
