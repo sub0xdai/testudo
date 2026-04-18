@@ -327,7 +327,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T5: Auto-tag creation on trade close (FR-7) — `pending`
+### T5: Auto-tag creation on trade close (FR-7) — `complete`
 
 **Scope:** CP-3. After `journal_trades` INSERT commits, upsert `journal_tags (user_id, LOWER(setup_tag))` and `journal_trade_tags (trade_id, tag_id)`. Fire-and-forget; failures log but don't block.
 
