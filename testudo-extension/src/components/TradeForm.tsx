@@ -226,21 +226,6 @@ export default function TradeForm(props: TradeFormProps) {
     document.removeEventListener("keydown", handleKeyDown, true);
   });
 
-  const mgmtRules = () => [
-    { label: "Risk", value: `${props.management.risk_percent}%`, active: true },
-    { label: "Break-even", value: props.management.break_even_enabled ? `at ${props.management.break_even_at}%` : "Off", active: props.management.break_even_enabled },
-    {
-      label: "Trailing",
-      value: props.management.trailing_stop.enabled ? `${props.management.trailing_stop.distance_percent}%` : "Off",
-      active: props.management.trailing_stop.enabled,
-    },
-    {
-      label: "Partial TP",
-      value: props.management.partial_tp.enabled ? `${props.management.partial_tp.close_percent}%` : "Off",
-      active: props.management.partial_tp.enabled,
-    },
-  ];
-
   return (
     <div class="panel live-mode">
       <div style={{ display: "flex", "align-items": "center", gap: "8px", "margin-bottom": "12px" }}>
@@ -362,7 +347,7 @@ export default function TradeForm(props: TradeFormProps) {
         </div>
       </div>
 
-      {/* Setup tag (optional) */}
+      {/* Setup tag — the pattern/thesis for this trade. Powers Setup Breakdown analytics. */}
       <div class="rows" style={{ "margin-bottom": "10px" }}>
         <div class="field-row">
           <label class="label" for="field-tf-setup">Setup</label>
@@ -370,7 +355,7 @@ export default function TradeForm(props: TradeFormProps) {
             <input
               class="field-input"
               type="text"
-              placeholder="Setup (optional)"
+              placeholder="head and shoulders, breakout, falling wedge…"
               value={setupTag()}
               maxLength={48}
               autocomplete="off"
@@ -412,6 +397,18 @@ export default function TradeForm(props: TradeFormProps) {
             </Show>
           </div>
         </div>
+        <div
+          style={{
+            "font-size": "10px",
+            "color": "var(--color-text-dim)",
+            "margin-top": "4px",
+            "line-height": "1.4",
+            "font-family": "'Space Mono', ui-monospace, monospace",
+            "letter-spacing": "0.2px",
+          }}
+        >
+          Your thesis for this trade. Keep categories consistent — it's how you'll see which patterns actually have edge.
+        </div>
       </div>
 
       {/* R:R display */}
@@ -422,18 +419,6 @@ export default function TradeForm(props: TradeFormProps) {
           <span class={`rr-value ${rrClass()}`}>1 : {rr().toFixed(2)}</span>
         </div>
       </Show>
-
-      {/* Management Rules */}
-      <div class="mgmt-section">
-        <div class="mgmt-title">Management Rules</div>
-        <For each={mgmtRules()}>
-          {(rule) => (
-            <div class="mgmt-rule">
-              <span class={rule.active ? "on" : "off"}>{rule.label}: {rule.value}</span>
-            </div>
-          )}
-        </For>
-      </div>
 
       {/* Balance Summary */}
       <div class="balance-section">
