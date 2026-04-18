@@ -54,6 +54,7 @@ export const TradePayloadSchema = z.object({
   target: z.number().positive(),
   timeframe: z.string().min(1),
   exchange_account_id: z.string().min(1).optional(),
+  setup_tag: z.string().trim().max(48).nullable().optional(),
   management: z.object({
     risk_percent: z.number().min(0.1).max(100),
     break_even_enabled: z.boolean().optional().default(true),

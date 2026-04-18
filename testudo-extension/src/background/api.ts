@@ -278,6 +278,8 @@ export async function executeTrade(payload: RuntimeTradePayload): Promise<Backen
       management: payload.management,
     };
     if (activeExchangeId) body.exchange_account_id = activeExchangeId;
+    const setupTagTrimmed = typeof payload.setup_tag === "string" ? payload.setup_tag.trim() : "";
+    if (setupTagTrimmed.length > 0) body.setup_tag = setupTagTrimmed;
 
     const result = await apiRequest("/api/v1/trades", {
       method: "POST", body, auth: "hard",

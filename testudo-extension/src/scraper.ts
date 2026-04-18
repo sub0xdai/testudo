@@ -14,6 +14,7 @@ export interface TradeSetup {
   stop: number;
   target: number;
   timeframe: string;
+  setup_tag?: string | null;
 }
 
 const SCRAPER_HEALTH_MAX = 20;

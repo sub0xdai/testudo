@@ -43,6 +43,7 @@ export interface TradePayload {
   target: number;
   timeframe: string;
   exchange_account_id?: string;
+  setup_tag?: string | null;
   management: {
     risk_percent: number;
     break_even_enabled: boolean;
