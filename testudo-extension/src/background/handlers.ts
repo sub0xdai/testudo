@@ -17,6 +17,7 @@ import {
   getLiveBalance,
   fetchExchangePositions,
   closeExchangePosition,
+  listSetupTags,
 } from "./api";
 import {
   connectWebSocket,
@@ -168,6 +169,10 @@ function handleAccountLinked(): Promise<unknown> {
   })();
 }
 
+function handleGetSetupTags(msg: ParsedMessage): Promise<unknown> {
+  return listSetupTags((msg as MsgOf<"GET_SETUP_TAGS">).limit);
+}
+
 // --- Dispatch Map ---
 
 export const messageHandlers: Record<string, MessageHandler> = {
@@ -196,4 +201,5 @@ export const messageHandlers: Record<string, MessageHandler> = {
   GET_EXCHANGE_MODE: handleGetExchangeMode,
   SET_EXCHANGE_MODE: handleSetExchangeMode,
   ACCOUNT_LINKED: handleAccountLinked,
+  GET_SETUP_TAGS: handleGetSetupTags,
 };

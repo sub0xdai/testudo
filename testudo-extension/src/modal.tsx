@@ -146,6 +146,34 @@ const MODAL_STYLES = `
   .rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
   .field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .field-wrapper { position: relative; flex: 1; }
+  .suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    z-index: 10;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+  }
+  .suggestion-item {
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: 'Space Mono', ui-monospace, monospace;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    user-select: none;
+  }
+  .suggestion-item.highlighted {
+    background: color-mix(in srgb, var(--color-accent-steel) 18%, transparent);
+    color: var(--color-text-primary);
+  }
   .label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; min-width: 50px; }
   .value { font-size: 14px; font-family: 'Space Mono', ui-monospace, monospace; color: var(--color-text-primary); font-weight: 500; }
   .divider { border: none; border-top: 1px solid var(--color-border); margin: 14px 0; }

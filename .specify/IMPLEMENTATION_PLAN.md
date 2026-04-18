@@ -232,7 +232,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T4: TradeForm.tsx Setup field + autocomplete — `pending`
+### T4: TradeForm.tsx Setup field + autocomplete — `complete`
 
 **Scope:** CP-2. Optional Setup text input below price fields. Autocomplete dropdown sourced from the T3 endpoint via a new `GET_SETUP_TAGS` message type. Double-Enter safety preserved.
 

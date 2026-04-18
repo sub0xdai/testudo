@@ -2,6 +2,14 @@ import { createSignal, createMemo, onMount, onCleanup, Show, For } from "solid-j
 import type { TradeSetup } from "../scraper";
 import type { ManagementPreset, BalanceResponse } from "../types";
 
+// MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
+const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
+
+// Module-scoped cache for setup tag suggestions. Survives modal open/close
+// within a content-script lifetime so we don't round-trip for every Alt+X.
+const SETUP_TAG_TTL_MS = 5 * 60 * 1000;
+let setupTagCache: { tags: string[]; fetchedAt: number } | null = null;
+
 export interface TradeFormProps {
   initialSetup?: TradeSetup | null;
   management: ManagementPreset;
@@ -37,6 +45,12 @@ export default function TradeForm(props: TradeFormProps) {
   const [autoFilledFields, setAutoFilledFields] = createSignal<Set<string>>(initialAutoFields());
 
   const [confirmStep, setConfirmStep] = createSignal(0);
+
+  // Setup tag (optional) + autocomplete state
+  const [setupTag, setSetupTag] = createSignal(props.initialSetup?.setup_tag ?? "");
+  const [suggestions, setSuggestions] = createSignal<string[]>(setupTagCache?.tags ?? []);
+  const [showSuggestions, setShowSuggestions] = createSignal(false);
+  const [highlightIdx, setHighlightIdx] = createSignal(0);
 
   const entry = createMemo(() => { const v = parseFloat(entryStr()); return isNaN(v) ? null : v; });
   const stop = createMemo(() => { const v = parseFloat(stopStr()); return isNaN(v) ? null : v; });
@@ -102,6 +116,7 @@ export default function TradeForm(props: TradeFormProps) {
   }
 
   function buildSetup(): TradeSetup {
+    const tag = setupTag().trim();
     return {
       symbol: symbol().trim(),
       side: side(),
@@ -109,6 +124,7 @@ export default function TradeForm(props: TradeFormProps) {
       stop: stop()!,
       target: target()!,
       timeframe: timeframe(),
+      setup_tag: tag.length > 0 ? tag : null,
     };
   }
 
@@ -121,7 +137,76 @@ export default function TradeForm(props: TradeFormProps) {
     props.onConfirm(buildSetup());
   }
 
+  // --- Setup tag autocomplete ---
+
+  const filteredTags = createMemo(() => {
+    const q = setupTag().trim().toLowerCase();
+    const all = suggestions();
+    const list = q ? all.filter((t) => t.toLowerCase().startsWith(q)) : all;
+    return list.slice(0, 10);
+  });
+
+  async function loadSetupTags() {
+    const now = Date.now();
+    if (setupTagCache && now - setupTagCache.fetchedAt < SETUP_TAG_TTL_MS) {
+      setSuggestions(setupTagCache.tags);
+      return;
+    }
+    try {
+      const res: any = await browser.runtime.sendMessage({ type: "GET_SETUP_TAGS", limit: 20 });
+      if (res?.success && Array.isArray(res.data)) {
+        setupTagCache = { tags: res.data, fetchedAt: now };
+        setSuggestions(res.data);
+      }
+    } catch {
+      // Silent fallback — field still usable as free-text input
+    }
+  }
+
+  function acceptHighlightedTag() {
+    const list = filteredTags();
+    const idx = highlightIdx();
+    if (list.length === 0 || idx < 0 || idx >= list.length) return;
+    setSetupTag(list[idx]);
+    setShowSuggestions(false);
+    setConfirmStep(0);
+  }
+
+  function handleSetupKeyDown(e: KeyboardEvent) {
+    if (e.key === "ArrowDown") {
+      if (!showSuggestions() || filteredTags().length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setHighlightIdx((i) => Math.min(i + 1, filteredTags().length - 1));
+    } else if (e.key === "ArrowUp") {
+      if (!showSuggestions() || filteredTags().length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setHighlightIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Tab" && showSuggestions() && filteredTags().length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      acceptHighlightedTag();
+    }
+  }
+
   function handleKeyDown(e: KeyboardEvent) {
+    // Route Enter/Escape to the autocomplete dropdown when visible.
+    if (showSuggestions() && filteredTags().length > 0) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        acceptHighlightedTag();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowSuggestions(false);
+        return;
+      }
+    }
+
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -272,6 +357,58 @@ export default function TradeForm(props: TradeFormProps) {
             />
             <Show when={autoFilledFields().has("target")}>
               <button type="button" class="auto-badge" onClick={() => { clearAutoFill("target"); setTargetStr(""); }} title="Auto-filled — click to clear">auto</button>
+            </Show>
+          </div>
+        </div>
+      </div>
+
+      {/* Setup tag (optional) */}
+      <div class="rows" style={{ "margin-bottom": "10px" }}>
+        <div class="field-row">
+          <label class="label" for="field-tf-setup">Setup</label>
+          <div class="field-wrapper">
+            <input
+              class="field-input"
+              type="text"
+              placeholder="Setup (optional)"
+              value={setupTag()}
+              maxLength={48}
+              autocomplete="off"
+              spellcheck={false}
+              onFocus={() => { loadSetupTags(); setShowSuggestions(true); setHighlightIdx(0); }}
+              onBlur={() => { setTimeout(() => setShowSuggestions(false), 150); }}
+              onInput={(e) => {
+                setSetupTag(e.currentTarget.value);
+                setHighlightIdx(0);
+                setShowSuggestions(true);
+                setConfirmStep(0);
+              }}
+              onKeyDown={handleSetupKeyDown}
+              id="field-tf-setup"
+              data-testid="field-setup"
+            />
+            <Show when={showSuggestions() && filteredTags().length > 0}>
+              <ul class="suggestions" role="listbox">
+                <For each={filteredTags()}>
+                  {(tag, i) => (
+                    <li
+                      class="suggestion-item"
+                      classList={{ highlighted: i() === highlightIdx() }}
+                      role="option"
+                      aria-selected={i() === highlightIdx()}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSetupTag(tag);
+                        setShowSuggestions(false);
+                        setConfirmStep(0);
+                      }}
+                      onMouseEnter={() => setHighlightIdx(i())}
+                    >
+                      {tag}
+                    </li>
+                  )}
+                </For>
+              </ul>
             </Show>
           </div>
         </div>

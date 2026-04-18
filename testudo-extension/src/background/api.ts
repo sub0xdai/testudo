@@ -21,6 +21,7 @@ import {
   ExchangePositionsApiResponseSchema,
   ListExchangesResponseSchema,
   PairResponseSchema,
+  SetupTagsResponseSchema,
   TestConnectionResultSchema,
   TradeGroupResponseSchema,
   TradeListResponseSchema,
@@ -327,6 +328,18 @@ export async function cleanupTrades(): Promise<BackendResponse> {
   });
   if (!result.ok) return { success: false, error: result.error };
   return { success: true };
+}
+
+// --- Setup Tags (autocomplete source for TradeForm) ---
+
+export async function listSetupTags(limit = 20): Promise<{ success: boolean; data?: string[]; error?: string }> {
+  const clamped = Math.max(1, Math.min(100, Math.floor(limit)));
+  const result = await apiRequest(`/api/v1/journal/setup-tags?limit=${clamped}`, { auth: "hard" });
+  if (!result.ok) return { success: false, error: result.error };
+
+  const parsed = SetupTagsResponseSchema.safeParse(result.raw);
+  if (!parsed.success) return { success: false, error: "Malformed setup tags response" };
+  return { success: true, data: parsed.data.map((t) => t.name) };
 }
 
 // --- Exchange Listing ---

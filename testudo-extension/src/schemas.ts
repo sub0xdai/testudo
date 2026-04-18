@@ -202,6 +202,14 @@ export const SidecarHealthResponseSchema = z.object({
   status: z.string().optional(),
 });
 
+export const SetupTagEntrySchema = z.object({
+  name: z.string(),
+  last_used: z.string(),
+  uses: z.number().int().nonnegative(),
+});
+
+export const SetupTagsResponseSchema = z.array(SetupTagEntrySchema);
+
 export const WebSocketMessageSchema = z.object({
   stream: z.string().optional(),
   data: z.unknown().optional(),
@@ -256,5 +264,9 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
       id: z.string().optional(),
       exchange_name: z.string().optional(),
     }).optional(),
+  }),
+  z.object({
+    type: z.literal("GET_SETUP_TAGS"),
+    limit: z.number().int().min(1).max(100).optional(),
   }),
 ]);
