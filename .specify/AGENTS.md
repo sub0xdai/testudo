@@ -561,4 +561,12 @@
 - **`body.setup_tag` only set when trimmed length > 0**: Empty string, whitespace-only, null, or undefined all collapse to "omit the field from the body." Backend's `Option<String>` treats absent JSON field and explicit `null` identically — both deserialize to `None`. Cleaner than sending `null` explicitly.
 - **Build deltas**: `dist/chrome/content.js` 53.2kb (unchanged from pre-T2), `dist/chrome/background.js` 333.9kb (+0.7kb for schema + trim logic), `dist/chrome/popup/popup.js` 79.4kb (unchanged — popup doesn't consume TradePayloadSchema). Firefox bundles identical sizes.
 
+### 2026-04-18 — RSK-02 T3 (Backend autocomplete endpoint)
+- **Path is `/api/v1/journal/setup-tags`, not `/api/user/setup-tags`**: Spec's draft path doesn't match codebase convention. No `user.rs` routes module exists, and this is journal-domain data. Placed the route inside the existing `/journal` scope next to `/tags`.
+- **`MAX(closed_at)` with `FromRow` works with `DateTime<Utc>` field**: sqlx maps `TIMESTAMPTZ` to `DateTime<Utc>` even when wrapped by `MAX()`. The aliased column (`AS last_used`) binds to the struct field by name. No `NULLIF`/fallback needed because `GROUP BY setup_tag` guarantees at least one row per group, so `MAX` is never NULL.
+- **`setup_tag <> ''` guard in addition to `IS NOT NULL`**: T1's `CreateTradeRequest` normalization filters empty/whitespace-only strings to `None`, but legacy data or external imports could still contain empty strings. Belt-and-braces filter at the read path ensures the autocomplete never suggests `""`.
+- **Clamp via `.unwrap_or(20).clamp(1, 100)`**: Two-line pattern — default-then-clamp. `Option<i64>::unwrap_or` + `i64::clamp` compose cleanly. Prevents clients from requesting `limit=999999` to enumerate the entire tag history.
+- **No new tests added**: `journal.rs` (1592+ lines, ~100 handlers) has zero `#[cfg(test)] mod tests` blocks — the codebase pattern is to test pure logic in dedicated service/model files, not HTTP handlers. The list_setup_tags handler's only non-trivial logic is the one-line clamp, which isn't worth extracting. Verification is full-suite regression (1,102 tests still passing).
+- **Route registration next to `/tags`**: Semantic sibling — both are tag CRUD endpoints. Placed after `delete_tag` in the scope chain.
+
 *This file grows as Vox learns. Never delete entries.*

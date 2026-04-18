@@ -178,7 +178,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T3: Backend autocomplete endpoint `GET /api/v1/journal/setup-tags` — `pending`
+### T3: Backend autocomplete endpoint `GET /api/v1/journal/setup-tags` — `complete`
 
 **Scope:** FR-11. Return up to `limit` distinct tags the user has previously used, ordered by recency then frequency. Reused by TradeForm autocomplete in T4.
 
