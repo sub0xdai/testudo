@@ -15,16 +15,18 @@ const DrawdownChart = lazy(() => import('./charts/DrawdownChart').then(m => ({ d
 const PnlTreemap = lazy(() => import('./charts/PnlTreemap').then(m => ({ default: m.PnlTreemap })))
 const ExpectancyBySymbol = lazy(() => import('./charts/ExpectancyBySymbol').then(m => ({ default: m.ExpectancyBySymbol })))
 const HoldingPeriodAnalysis = lazy(() => import('./charts/HoldingPeriodAnalysis').then(m => ({ default: m.HoldingPeriodAnalysis })))
+const SetupBreakdown = lazy(() => import('./charts/SetupBreakdown').then(m => ({ default: m.SetupBreakdown })))
 
 type ChartOption =
   | 'symbol' | 'market' | 'duration' | 'return' | 'heatmap'
   | 'daily-pnl' | 'cumulative'
-  | 'drawdown' | 'treemap' | 'expectancy' | 'holding'
+  | 'drawdown' | 'treemap' | 'expectancy' | 'holding' | 'setup'
 
 const CHART_OPTIONS: { value: ChartOption; label: string }[] = [
   { value: 'symbol', label: 'Symbol Distribution' },
   { value: 'treemap', label: 'P&L Treemap' },
   { value: 'expectancy', label: 'Expectancy by Symbol' },
+  { value: 'setup', label: 'Setup Breakdown' },
   { value: 'daily-pnl', label: 'Daily P&L History' },
   { value: 'cumulative', label: 'Cumulative Profit' },
   { value: 'drawdown', label: 'Drawdown' },
@@ -75,6 +77,7 @@ export function ChartSelector(props: ChartSelectorProps) {
           <Show when={selected() === 'symbol'}><SymbolBreakdown /></Show>
           <Show when={selected() === 'treemap'}><PnlTreemap /></Show>
           <Show when={selected() === 'expectancy'}><ExpectancyBySymbol /></Show>
+          <Show when={selected() === 'setup'}><SetupBreakdown /></Show>
           <Show when={selected() === 'daily-pnl'}><DailyPnl /></Show>
           <Show when={selected() === 'cumulative'}>
             <CumulativeProfit

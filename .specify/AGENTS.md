@@ -610,4 +610,10 @@
 - **Backend returns `win_rate` in percent-scale (0..100), not 0..1**: The RSK-02 T6 SQL multiplies by 100 at aggregation time. `formatPercent(s.win_rate)` works directly — no `* 100` needed. Contrast with `ExpectancyBySymbol.tsx:41` which uses `(item.winRate * 100).toFixed(1)` because `SymbolBreakdownItem.win_rate` is 0..1 (different endpoint, different convention). Easy trap.
 - **Bundle delta**: `Overview-*.js` now 29.63 kB (up from ~27 kB pre-T8) — SetupBreakdown + help-content addition. `vendor-echarts` unchanged (already bundled). Journal build passes in 16.28s.
 
+### 2026-04-18 — RSK-02 T9 (ChartSelector wiring)
+- **`HELP['chart.setup']` was already live from T8's help-content edit**: T8 added the tooltip entry alongside the component. T9's `HelpTip text={HELP[\`chart.${selected()}\`] ?? ''}` resolves naturally once `'setup'` joins the `ChartOption` union — no additional wiring needed in ChartSelector.tsx. Keeps the selector's help lookup signal-generic (no per-chart switch).
+- **CHART_OPTIONS order: `setup` placed after `expectancy`**: Both group trades by a categorical dimension (symbol-level vs setup-level expectancy). Keeping them adjacent in the dropdown makes the analytical pairing discoverable. The plan's "per-group charts grouped" note was load-bearing — breaking the grouping would bury the new chart deep in the time-series half of the list.
+- **Overview.tsx untouched**: The two ChartSelector instances at lines 374-377 render `<ChartSelector defaultChart="treemap" />` and `<ChartSelector defaultChart="expectancy" />`. Both auto-surface the new option via CHART_OPTIONS. No default-chart changes needed — users can switch manually via the dropdown; forcing one ChartSelector to default to `setup` would remove a currently-useful default.
+- **Bundle delta**: `Overview-*.js` 29.79 kB → 29.91 kB (+0.12 kB for the union member + option entry + render branch). New lazy chunk for SetupBreakdown created alongside the other lazy chart chunks.
+
 *This file grows as Vox learns. Never delete entries.*

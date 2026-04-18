@@ -509,7 +509,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T9: ChartSelector + help-content wiring — `pending`
+### T9: ChartSelector + help-content wiring — `complete`
 
 **Scope:** CP-4 mount. Four-edit pass on ChartSelector.tsx to surface the new chart option.
 
