@@ -56,8 +56,7 @@ testudo-web/
 ```
 
 #### Infrastructure
-- **PostgreSQL** (Port 5000): Trade history storage
-- **Redis** (Port 6380): Pub/sub messaging
+- **PostgreSQL** (Port 5000): Primary datastore, message queues (pg_queue), and high-performance caching.
 - **Docker Compose**: Development environment
 
 ### Current Strengths
@@ -162,10 +161,10 @@ testudo-web/
 |-----------|---------|-----------|----------|
 | **Router** | Refactor | Strong HTTP foundation | API Gateway for external requests |
 | **WebSocket Stream** | Enhance | Real-time infrastructure needed | Aggregate external market data |
-| **Database Layer** | Expand | PostgreSQL foundation solid | Store real accounts, API keys, positions |
-| **Redis Pub/Sub** | Keep | Excellent for service communication | Inter-service messaging |
+| **Database Layer** | Expand | PostgreSQL foundation solid | Store real accounts, API keys, positions, and queues |
+| **PostgreSQL Queues** | New | Replaced Redis for reliability | Inter-service messaging and job processing |
 | **Frontend UI** | Adapt | Professional trading interface | Add external exchange controls |
-| **Engine** | Replace | Internal matching not needed | Exchange adapter management |
+| **Engine** | Refactor | Internal matching evolved | Shadow Engine for paper trading & order groups |
 | **User System** | Rebuild | UUID system insufficient | Secure authentication required |
 | **Balance System** | Rebuild | Demo balances not suitable | Real balance synchronization |
 

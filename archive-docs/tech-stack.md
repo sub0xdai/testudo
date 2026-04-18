@@ -22,8 +22,8 @@ Testudo is a high-performance centralized cryptocurrency exchange (CEX) built wi
 - **Engine** (`engine`): Order Matching Engine
   - In-memory order books with price-time priority
   - Real-time order matching
-  - Demo balance management (1M USDC, 10K SOL per user)
-  - Communicates via Redis pub/sub
+  - Shadow balance management & position tracking
+  - Communicates via PostgreSQL (pg_queue)
 
 - **WebSocket Stream** (`ws-stream`): Real-time Data
   - WebSocket server for live market data
@@ -39,9 +39,9 @@ Testudo is a high-performance centralized cryptocurrency exchange (CEX) built wi
 ### Key Rust Dependencies
 - **tokio**: Async runtime
 - **sqlx**: PostgreSQL database operations
-- **redis**: Redis client for pub/sub
+- **pg_queue**: PostgreSQL-based high-performance messaging & caching
 - **serde**: JSON serialization/deserialization
-- **axum**: Web framework for HTTP APIs
+- **actix-web**: Web framework for HTTP APIs
 - **tokio-tungstenite**: WebSocket implementation
 - **uuid**: Unique identifier generation
 - **chrono**: Date/time handling
@@ -78,20 +78,17 @@ testudo-web/
 
 ## Data Layer
 
-### Database (PostgreSQL)
-- **Version**: Latest stable
+### PostgreSQL (Unified Storage & Messaging)
+- **Version**: 16-alpine
 - **Port**: 5000
-- **Purpose**: Persistent storage for trade history
-- **Schema**: Trade records, user data (not balances)
+- **Purpose**:
+  - **Persistent Storage**: Trade history, user accounts, exchange credentials
+  - **Message Queuing**: `pg_queue` with SKIP LOCKED for inter-service jobs
+  - **Pub/Sub**: `pg_notify` (LISTEN/NOTIFY) for real-time WebSocket updates
+  - **Caching**: UNLOGGED tables with TTL checks for market data
 - **Connection**: SQLx with connection pooling
 
-### Caching & Messaging (Redis)
-- **Version**: Latest stable
-- **Port**: 6380
-- **Purpose**:
-  - Pub/sub messaging between services
-  - Caching frequently accessed data
-  - Real-time communication backbone
+> **Note**: Redis was previously used but has been deprecated and replaced by PostgreSQL to consolidate the infrastructure stack.
 
 ## Infrastructure
 
@@ -171,11 +168,8 @@ PG__HOST=localhost
 PG__PORT=5000
 PG__DBNAME=exchange-db
 
-# Redis
-REDIS_URL=redis://localhost:6380
-
 # Services
-SERVER_ADDR=127.0.0.1:8080
+SERVER_ADDR=127.0.0.1:3001
 WS_STREAM_URL=127.0.0.1:4000
 ```
 
@@ -198,11 +192,12 @@ WS_STREAM_URL=127.0.0.1:4000
 - **Reliability**: Service isolation prevents cascade failures
 - **Development**: Teams can work on different services independently
 
-### Why Redis for Communication?
-- **Pub/Sub**: Efficient message broadcasting
-- **Performance**: In-memory operations with low latency
-- **Reliability**: Persistent message queues when needed
-- **Simplicity**: Well-established patterns for service communication
+### Why PostgreSQL for Messaging & Caching?
+- **Infrastructure Consolidation**: Reduces operational complexity by using a single, battle-tested database.
+- **Transactional Atomicity**: Enables atomic updates to both business state and queues (transactional outbox pattern).
+- **Latency**: `pg_notify` (LISTEN/NOTIFY) provides sub-millisecond wake-up times for queue consumers.
+- **Reliability**: Mature persistence and backup tools ensure zero message loss for non-ephemeral queues.
+- **Performance**: `UNLOGGED` tables for caching achieve high write throughput for volatile data.
 
 ## Performance Characteristics
 

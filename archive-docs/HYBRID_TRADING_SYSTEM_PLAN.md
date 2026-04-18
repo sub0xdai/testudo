@@ -71,7 +71,7 @@ Transform Testudo from an isolated demo exchange into a **hybrid trading system*
 |---|------|---------|
 | 1 | Binance Data Service | `crates/common_utils/src/services/binance_data.rs` (NEW) |
 | 2 | Market Data API Routes | `crates/router/src/routes/market_data.rs` (NEW) |
-| 3 | Redis Caching Layer | `crates/common_utils/src/services/cache.rs` (NEW) |
+| 3 | PostgreSQL Caching Layer | `testudo-exchange/crates/common_utils/src/services/pg_cache.rs` |
 | 4 | Frontend API Updates | `testudo-web/apps/web/src/utils/requests.ts` |
 | 5 | Market Selector Fix | `testudo-web/apps/web/src/components/MarketSelector.tsx` |
 | 6 | Disable Order Execution | `testudo-web/apps/web/src/components/ExecuteOrder.tsx` |
@@ -171,7 +171,7 @@ Transform Testudo from an isolated demo exchange into a **hybrid trading system*
 ```rust
 pub struct BinanceDataService {
     ccxt_adapter: MarketDataLoader,
-    cache: Arc<RedisCache>,
+    cache: Arc<PgCache>,
 }
 
 impl BinanceDataService {
@@ -193,7 +193,7 @@ GET /api/v1/market-data/markets
 
 **3. Cache Strategy**
 
-| Data Type | Redis Key Pattern | TTL |
+| Data Type | Cache Key Pattern | TTL |
 |-----------|-------------------|-----|
 | Ticker | `binance:ticker:{symbol}` | 5 seconds |
 | Orderbook | `binance:orderbook:{symbol}` | 1 second |
@@ -318,7 +318,7 @@ apps/web/src/
 |---|------|--------|---------|
 | 1 | Binance Data Service | ✅ Done | `crates/common_utils/src/services/binance_data.rs` |
 | 2 | Market Data API Routes | ✅ Done | `crates/router/src/routes/market_data.rs` |
-| 3 | Redis Caching Layer | ✅ Done | `crates/common_utils/src/services/cache.rs` |
+| 3 | PostgreSQL Caching Layer | ✅ Done | `testudo-exchange/crates/common_utils/src/services/pg_cache.rs` |
 
 **New API Endpoints:**
 - `GET /api/v1/market-data/ticker?symbol=BTC_USDC`

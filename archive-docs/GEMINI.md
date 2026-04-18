@@ -2,7 +2,7 @@
 
 This repository contains a high-performance centralized cryptocurrency exchange, built with Rust, and deployed on a production-grade Kubernetes cluster on Google Cloud Platform (GCP). The project is divided into three main parts:
 
-*   **`testudo-exchange`**: The core of the exchange, written in Rust for maximum performance and low-latency trading. It uses an in-memory order book, real-time WebSocket updates, and a backend powered by Redis and Postgres.
+*   **`testudo-exchange`**: The core of the exchange, written in Rust for maximum performance and low-latency trading. It uses an in-memory order book, real-time WebSocket updates, and a unified backend powered by PostgreSQL (using SKIP LOCKED queues and LISTEN/NOTIFY for high-performance messaging).
 *   **`testudo-ops`**: Contains the infrastructure-as-code for deploying the exchange to a Kubernetes cluster. It uses GKE, ArgoCD for GitOps, NGINX Ingress, Sealed Secrets for secret management, and cert-manager for automated TLS certificates.
 *   **`testudo-web`**: The web-based user interface for the exchange.
 
@@ -15,7 +15,7 @@ To build and run the exchange locally:
 ```sh
 cd testudo-exchange
 cp .env.example .env
-# Configure Postgres and Redis credentials in .env
+# Configure PostgreSQL credentials in .env
 docker-compose up -d
 cargo build
 cargo run

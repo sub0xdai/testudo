@@ -4,7 +4,7 @@
 Before any implementation: re-read the task plan and the relevant rule file below.
 
 ## Project Structure
-- **testudo-exchange/** — Rust backend (Actix-web, Tokio, PostgreSQL, 8 crates)
+- **testudo-exchange/** — Rust backend (Actix-web, Tokio, PostgreSQL, 7 crates)
 - **testudo-extension/** — Browser extension (Solid.js, Manifest V3, esbuild)
 - **testudo-ccxt/** — CCXT sidecar (Node.js, Express, port 3100)
 - **testudo-web/** — Landing site + auth (React 18, Vite, Tailwind)
