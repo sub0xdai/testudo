@@ -431,7 +431,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T7: Journal API client types + fetchers — `pending`
+### T7: Journal API client types + fetchers — `complete`
 
 **Scope:** Wire the frontend to the two new backend endpoints. Also extend `JournalTrade` type.
 

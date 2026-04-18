@@ -95,6 +95,21 @@ export interface SymbolBreakdownItem {
   win_rate: string
 }
 
+export interface SetupBreakdownItem {
+  setup_tag: string
+  trade_count: number
+  total_pnl: string
+  win_rate: string
+  avg_r_multiple: string | null
+  expectancy: string
+}
+
+export interface SetupTagEntry {
+  name: string
+  last_used: string
+  uses: number
+}
+
 export interface DurationProfitPoint {
   duration_secs: number
   pnl: string
@@ -156,6 +171,10 @@ export async function fetchSymbolBreakdown(filters: StatsFilter): Promise<{ data
   return fetchApi('symbol-breakdown', filters)
 }
 
+export async function fetchSetupBreakdown(filters: StatsFilter): Promise<{ data: SetupBreakdownItem[] }> {
+  return fetchApi('setup-breakdown', filters)
+}
+
 export async function fetchDurationProfit(filters: StatsFilter): Promise<{ data: DurationProfitPoint[] }> {
   return fetchApi('duration-profit', filters)
 }
@@ -193,6 +212,7 @@ export interface JournalTrade {
   duration_secs: number
   trade_group_id: string | null
   notes: string | null
+  setup_tag: string | null
   created_at: string
   updated_at: string
 }
@@ -295,6 +315,10 @@ export async function removeTradeTag(tradeId: string, tagId: string): Promise<vo
 
 export async function fetchTags(): Promise<JournalTag[]> {
   return fetchCrud<JournalTag[]>('tags')
+}
+
+export async function fetchUserSetupTags(limit = 20): Promise<SetupTagEntry[]> {
+  return fetchCrud<SetupTagEntry[]>(`setup-tags?limit=${limit}`)
 }
 
 export async function fetchEntries(params: { tradeId?: string; page?: number; limit?: number }): Promise<{ entries: JournalEntry[]; total: number }> {
