@@ -476,7 +476,7 @@ T2 (extension schema + types + payload passthrough) ──(depends on T1 shape o
 
 ---
 
-### T8: `SetupBreakdown.tsx` chart component — `pending`
+### T8: `SetupBreakdown.tsx` chart component — `complete`
 
 **Scope:** CP-4. Mirrors `SymbolBreakdown.tsx` but groups by setup_tag and displays all four metrics (trade_count, win_rate, avg_r_multiple, expectancy). Sortable by any column (acceptance criterion + FR-9).
 

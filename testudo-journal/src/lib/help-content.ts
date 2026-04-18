@@ -18,6 +18,7 @@ export const HELP: Record<string, string> = {
   'chart.symbol': 'Trade count by trading pair — shows where you trade most.',
   'chart.treemap': 'Rectangle area = P&L magnitude per symbol. Green = profit, red = loss.',
   'chart.expectancy': 'Average P&L per trade for each symbol. Identifies best and worst pairs.',
+  'chart.setup': 'Per-setup trade count, win rate, average R-multiple, and expectancy. Untagged trades grouped separately.',
   'chart.daily-pnl': 'Day-by-day profit and loss bars over time.',
   'chart.cumulative': 'Running total of P&L — a rising line means consistent profitability.',
   'chart.drawdown': 'How far your account dropped from its peak at each point. Shallower = better.',
