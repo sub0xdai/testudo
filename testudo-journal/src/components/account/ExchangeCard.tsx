@@ -232,7 +232,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
       needsReauth()
         ? 'border-signal-amber bg-signal-amber/5'
         : 'border-container-border bg-container-bg'
-    } p-8 flex flex-col gap-5 min-h-[200px]`}>
+    } p-10 flex flex-col gap-6 min-h-[280px]`}>
       {/* Header: heartbeat + name + badge + kebab */}
       <div class="flex justify-between items-start">
         <div class="flex items-center gap-3">
@@ -299,7 +299,7 @@ export function ExchangeCard(props: ExchangeCardProps) {
               {(m) => (
                 <div class="flex flex-col gap-1.5">
                   <div class="flex items-baseline gap-2">
-                    <span class="font-mono text-xl font-bold text-text-primary">
+                    <span class="font-mono text-2xl font-bold text-text-primary">
                       {formatBalanceUsd(m().total_usd)}
                     </span>
                     <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">

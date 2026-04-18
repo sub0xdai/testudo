@@ -286,9 +286,10 @@ export function Overview() {
 
           {/* Right main — transparent so Hadrian's Wall shows through */}
           <div class="flex-1 min-w-0 overflow-y-auto">
-            {/* Hero metrics — glass panel */}
+            {/* Hero metrics — glass panel (two-tier: headline P&L+balance, supplementary live state) */}
             <div class="px-10 py-8 bg-container-bg border-b border-container-border">
-              <div class="border-l-2 border-accent-primary pl-8">
+              <div class="border-l-2 border-accent-primary pl-8 flex flex-col gap-4">
+                {/* Tier 1 — headline */}
                 <div class="flex items-baseline gap-10 flex-wrap">
                   <div>
                     <span class={`font-mono text-4xl md:text-5xl font-bold ${pnlColor(stats()!.account.net_pnl)} ${parseFloat(String(stats()!.account.net_pnl)) >= 0 ? 'hero-glow-green' : 'hero-glow-red'}`}>
@@ -308,60 +309,53 @@ export function Overview() {
                       </span>
                     </div>
                   </Show>
-                  <Show when={heroExposure()}>
-                    <div>
-                      <span class="font-mono text-2xl md:text-3xl font-bold text-text-primary">
-                        {heroExposure()}
-                      </span>
-                      <span class="font-mono text-sm text-text-secondary ml-2">
-                        exp
-                      </span>
-                    </div>
-                  </Show>
-                  <Show when={heroLeverage()}>
-                    <div>
-                      <span class="font-mono text-2xl md:text-3xl font-bold text-text-primary">
-                        {heroLeverage()}
-                      </span>
-                      <span class="font-mono text-sm text-text-secondary ml-2">
-                        leverage
-                      </span>
-                    </div>
-                  </Show>
-                  <Show when={heroFree()}>
-                    <div>
-                      <span class="font-mono text-2xl md:text-3xl font-bold text-text-primary">
-                        {heroFree()}
-                      </span>
-                      <span class="font-mono text-sm text-text-secondary ml-2">
-                        free
-                      </span>
-                    </div>
-                  </Show>
-                  <Show when={snapshot()}>
-                    <div class="flex items-center gap-2 self-center">
-                      <span
-                        class="inline-block w-2 h-2 rounded-full"
-                        classList={{
-                          'bg-signal-green animate-pulse': !isStale() && wsClient.connected(),
-                          'bg-signal-green': !isStale() && !wsClient.connected(),
-                          'bg-signal-amber': isStale(),
-                        }}
-                        title={relativeTime(snapshot())}
-                        aria-hidden="true"
-                      />
-                      <span
-                        class="font-mono text-[10px] tracking-wider uppercase"
-                        classList={{
-                          'text-signal-amber': isStale(),
-                          'text-text-tertiary': !isStale(),
-                        }}
-                      >
-                        {isStale() ? 'stale' : 'live'}
-                      </span>
-                    </div>
-                  </Show>
                 </div>
+                {/* Tier 2 — supplementary live state */}
+                <Show when={heroExposure() || heroLeverage() || heroFree() || snapshot()}>
+                  <div class="flex items-baseline gap-6 flex-wrap text-text-tertiary">
+                    <Show when={heroExposure()}>
+                      <div>
+                        <span class="font-mono text-sm text-text-tertiary uppercase tracking-wider mr-1">exp</span>
+                        <span class="font-mono text-base text-text-secondary">{heroExposure()}</span>
+                      </div>
+                    </Show>
+                    <Show when={heroLeverage()}>
+                      <div>
+                        <span class="font-mono text-sm text-text-tertiary uppercase tracking-wider mr-1">lev</span>
+                        <span class="font-mono text-base text-text-secondary">{heroLeverage()}</span>
+                      </div>
+                    </Show>
+                    <Show when={heroFree()}>
+                      <div>
+                        <span class="font-mono text-sm text-text-tertiary uppercase tracking-wider mr-1">free</span>
+                        <span class="font-mono text-base text-text-secondary">{heroFree()}</span>
+                      </div>
+                    </Show>
+                    <Show when={snapshot()}>
+                      <div class="flex items-center gap-2 ml-auto">
+                        <span
+                          class="inline-block w-2 h-2 rounded-full"
+                          classList={{
+                            'bg-signal-green animate-pulse': !isStale() && wsClient.connected(),
+                            'bg-signal-green': !isStale() && !wsClient.connected(),
+                            'bg-signal-amber': isStale(),
+                          }}
+                          title={relativeTime(snapshot())}
+                          aria-hidden="true"
+                        />
+                        <span
+                          class="font-mono text-[10px] tracking-wider uppercase"
+                          classList={{
+                            'text-signal-amber': isStale(),
+                            'text-text-tertiary': !isStale(),
+                          }}
+                        >
+                          {isStale() ? 'stale' : 'live'}
+                        </span>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
               </div>
             </div>
 
