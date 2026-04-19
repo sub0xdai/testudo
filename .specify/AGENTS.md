@@ -661,4 +661,11 @@
 - **Severity trichotomy (Info/Notable/Concerning) maps cleanly to threshold bands**: strict `>` 1.5× → Notable, `≥` 2.5× → Concerning. Never returns `Info` — detector either flags a notable deviation or returns `None`. `Info` is reserved for future detectors that surface sub-notable observations.
 - **Test counts**: Router 550 → 555 (+5). Five unit tests: fires-on-2x, no-fire-within-baseline, escalates-at-large-multiplier, requires-3-post-loss-trades, none-when-baseline-zero. Plan asked for 2; added 3 edge cases (severity boundary, min-evidence guard, zero-baseline guard) to pin down the contract.
 
+### 2026-04-19 — RSK-03 T3b (frequency_spike detector)
+- **Rolling 6h window via `take_while` over time-sorted slice**: For each anchor `sorted[i]`, count trades in `sorted[i..]` whose `opened_at < anchor.opened_at + 6h`. Since the slice is sorted by `opened_at`, `take_while` short-circuits at the first out-of-window trade — no full pass needed. Best-window tracking via `sorted[i..i + count].to_vec()` after the count is known.
+- **`Decimal::from(i64)` avoids `.into()` casts**: `Decimal::from(best_window.len() as i64)` is clearer than `best_window.len().try_into()` and doesn't fight the `TryFrom<usize>` ambiguity that `Decimal` has.
+- **Severity boundary at 2.5× exactly is `Concerning`**: `multiplier >= CONCERNING_MULTIPLIER_THRESHOLD` uses `>=` not `>`. Matches sizing_drift's semantics (exact-2.5× → Concerning) — a user who spikes to exactly 2.5× baseline deserves the same triage as 2.51×.
+- **`multiplier <= SPIKE_MULTIPLIER_THRESHOLD` skip check**: Returns `None` when the multiplier is exactly 1.5× (not a "spike," within the baseline tolerance band). Consistent with sizing_drift's `multiplier <= DRIFT_MULTIPLIER_THRESHOLD`.
+- **Test count: 555 → 560 (+5)**: Four spec-required tests + one boundary test (`peak_window_respects_6h_boundary`) verifying the `<` exclusive-end semantic. All 10 coach::patterns tests green.
+
 *This file grows as Vox learns. Never delete entries.*
