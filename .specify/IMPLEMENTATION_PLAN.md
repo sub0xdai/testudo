@@ -365,7 +365,7 @@ Parallel opportunity after T2: T3/T4/T5/T6 are independent pure-logic modules. S
 
 ---
 
-### T4: CoachDigest composer — `pending`
+### T4: CoachDigest composer — `complete`
 
 **Scope:** CP-2. `build_digest(pool, analytics_pool, user_id, week_start, week_end, config) -> Result<Option<CoachDigest>>`. Returns `Ok(None)` if skip rules fire. Otherwise orchestrates baseline → week_stats → week_trades → detect_all → filters `flagged_trades` to only those referenced by a flag.
 
