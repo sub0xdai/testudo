@@ -222,7 +222,26 @@ export function AuthProvider(props: { children: JSX.Element }) {
   // Subscribe to account state — triggers SIWE/SIWS only after explicit user action.
   // On refresh, wallet auto-reconnects and fires this callback, but we must NOT
   // auto-trigger signing — session cookies from /me handle auth restoration silently.
-  const unsubAccount = appKit.subscribeAccount((state: { isConnected: boolean; address?: string }) => {
+  //
+  // Wallet-switch guard: if the wallet extension reports a different address than
+  // the currently authenticated user, the stale server session for the old wallet
+  // is revoked and client state cleared. The user explicitly changed which wallet
+  // is connected — treat that as intent to re-auth — so we re-enable
+  // userInitiatedConnect and fall through to the SIWE check below, which fires a
+  // fresh sign prompt for the new address.
+  const unsubAccount = appKit.subscribeAccount(async (state: { isConnected: boolean; address?: string }) => {
+    const current = user()
+    if (
+      current &&
+      state.isConnected &&
+      state.address &&
+      current.wallet_address.toLowerCase() !== state.address.toLowerCase()
+    ) {
+      await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
+      setUser(null)
+      userInitiatedConnect = true
+    }
+
     if (state.isConnected && state.address && !user() && !siweInFlight && userInitiatedConnect) {
       const chainNs = appKit.getCaipNetwork()?.chainNamespace
       if (chainNs === 'solana' && solanaProvider) {
@@ -252,7 +271,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
 
   const value: AuthContextValue = {
     user,
-    isAuthenticated: () => user() !== null,
+    isAuthenticated: () => user() != null,
     loading,
     siweError,
     connectWallet,
