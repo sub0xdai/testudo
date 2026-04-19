@@ -446,7 +446,7 @@ Parallel opportunity after T2: T3/T4/T5/T6 are independent pure-logic modules. S
 
 ---
 
-### T7: Weekly scheduler + CoachService orchestration — `pending`
+### T7: Weekly scheduler + CoachService orchestration — `complete`
 
 **Scope:** CP-6. `CoachService::generate_for` = digest → narrate → validate → persist. `schedule.rs` spawns tokio task firing once per Sunday 18:00 UTC.
 
@@ -682,4 +682,4 @@ Ready for BUILD mode.
 
 Note: T3 was split 2026-04-19 into T3 (baseline + orchestrator skeleton) + T3a-T3f (one detector each) to honour atomic-task discipline. The original T3 bundled 7 concerns (baseline + 6 detectors + 12 unit tests) which would cause retry-thrash if any single detector failed validation. Each T3x is now independently completable + committable. Recommended `--max-iterations 22` for build (18 tasks × 1.2 retry budget + 2 slack).
 
-Next task: T7 — Weekly scheduler + CoachService orchestration
+Next task: T8 — Routes + AppState wiring + config/env
