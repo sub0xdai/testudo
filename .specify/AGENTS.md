@@ -668,4 +668,11 @@
 - **`multiplier <= SPIKE_MULTIPLIER_THRESHOLD` skip check**: Returns `None` when the multiplier is exactly 1.5× (not a "spike," within the baseline tolerance band). Consistent with sizing_drift's `multiplier <= DRIFT_MULTIPLIER_THRESHOLD`.
 - **Test count: 555 → 560 (+5)**: Four spec-required tests + one boundary test (`peak_window_respects_6h_boundary`) verifying the `<` exclusive-end semantic. All 10 coach::patterns tests green.
 
+### 2026-04-19 — RSK-03 T3c (session_anomaly detector)
+- **`chrono::Timelike::hour()` returns `u32`, not `u8`**: `opened_at.hour() as u8` needed for HashSet lookup against `typical_session_hours_utc: Vec<u8>`. Safe cast — hours are 0..=23 regardless.
+- **Cold-start guard: empty `typical_session_hours_utc`**: If the baseline hasn't identified typical hours (e.g., <4 distinct hours in 30-day window), every trade would be "off-hours" by definition → false-positive flood. Return `None` when the set is empty. Same spirit as `baseline.p90_trades_per_6h <= 0` guard in frequency_spike.
+- **Severity trichotomy: Notable 2-3 off-hours trades, Concerning ≥ 4**: Spec only specified "≥2 trades off-hours" as the trigger. Escalation threshold chosen to match the "2-4 → 5+" feel of sizing_drift's multiplier thresholds — a handful of off-hours trades is notable, half a week's worth is concerning.
+- **`anomalous_hours_utc` metric deduplicated + sorted via `HashSet` → `Vec` → `sort_unstable`**: LLM reads this to narrate "you traded at 03:00 and 05:00 UTC" rather than raw trade counts. Sorting gives deterministic output for snapshot tests.
+- **Test count: 560 → 566 (+6)**: Five spec-required tests + one metric-shape test (`anomalous_hours_metric_deduplicates_and_sorts`) pinning the dedup behavior. All 16 coach::patterns tests green (sizing_drift 5 + frequency_spike 5 + session_anomaly 6).
+
 *This file grows as Vox learns. Never delete entries.*
