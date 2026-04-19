@@ -188,6 +188,51 @@ export function createHandlers(gateway: ExchangeGateway) {
 
       const orderIds: string[] = await exchange.placeOrder(orderOpts);
 
+      // Bracket IDs: WOO/Binance return [entry, sl, tp] — happy path below.
+      // Bybit attaches SL/TP as conditional fields on the entry order and
+      // returns only [entry]; the conditional orders appear in store.orders
+      // via the WS stream within a few hundred ms. Fall back to matching
+      // them by triggerPrice when the positional slots are empty.
+      let stopLossOrderId = stringify(orderIds[1]);
+      let takeProfitOrderId = stringify(orderIds[2]);
+
+      async function resolveConditionalId(
+        triggerPrice: number,
+        role: "SL" | "TP"
+      ): Promise<string | null> {
+        const trig = Number(triggerPrice);
+        if (!Number.isFinite(trig)) return null;
+        const tolerance = Math.max(1e-6, Math.abs(trig) * 1e-5);
+        // Poll the store briefly — WS sync is usually sub-second.
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const match = exchange.store.orders.find((o: any) => {
+            if (o.symbol !== exchSymbol) return false;
+            const t = Number(o.stopPrice ?? o.triggerPrice ?? o.price);
+            if (!Number.isFinite(t)) return false;
+            return Math.abs(t - trig) <= tolerance;
+          });
+          if (match?.id) return String(match.id);
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        console.warn(
+          `[bracket-fallback] ${role} triggerPrice=${trig} symbol=${exchSymbol} not found in store after 1.5s — fill detection degraded`
+        );
+        return null;
+      }
+
+      if (!stopLossOrderId && stopLoss?.triggerPrice != null) {
+        stopLossOrderId = await resolveConditionalId(
+          Number(stopLoss.triggerPrice),
+          "SL"
+        );
+      }
+      if (!takeProfitOrderId && takeProfit?.triggerPrice != null) {
+        takeProfitOrderId = await resolveConditionalId(
+          Number(takeProfit.triggerPrice),
+          "TP"
+        );
+      }
+
       // Map to SidecarOrderResponse shape (FR-10: all numerics as strings)
       return res.json({
         id: stringify(orderIds[0]),
@@ -201,8 +246,8 @@ export function createHandlers(gateway: ExchangeGateway) {
         remaining: stringify(amount),
         average: null,
         price: stringify(price),
-        stopLossOrderId: stringify(orderIds[1]) || null,
-        takeProfitOrderId: stringify(orderIds[2]) || null,
+        stopLossOrderId,
+        takeProfitOrderId,
       });
     } catch (err) {
       const mapped = mapError(err);
