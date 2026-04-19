@@ -14,4 +14,16 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #2982 | 2:23 PM | 🟣 | Trade form implements 366-line confirmation UI with auto-fill tracking, double-confirm, and real-time calculations | ~405 |
+
+### Apr 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #6576 | 2:18 PM | 🔵 | Extension UI Design Specifications Documented for Store Screenshot Creation | ~1349 |
+
+### Apr 18, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #7593 | 2:53 PM | 🔵 | End-to-end setup_tag integration confirmed across all three subsystems | ~487 |
 </claude-mem-context>
