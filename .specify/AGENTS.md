@@ -752,4 +752,12 @@
 - **`limit.clamp(1, 100)` + `offset.max(0)` for pagination**: two-line defensive clamp. Clients that send `limit=0` or `offset=-1` don't crash — they just get default-bounded pages. Same pattern as `list_setup_tags` clamp at journal.rs (RSK-02 T3).
 - **Test count unchanged**: 1,181 workspace tests, 0 failures. T8 adds 0 new tests — routes are thin HTTP adapters delegating to T7's service. Pre-existing 3 clippy warnings (actor.rs:1814 via 1842, cex_client.rs:653, evaluator.rs:188) unchanged.
 
+### 2026-04-19 — RSK-03 T9 (Frontend API client types + fetchers)
+- **PatternKind + Severity as string-literal unions**: Backend uses `#[serde(rename_all = "snake_case")]` so values arrive as `"sizing_drift"` / `"notable"` etc. Narrowed TS unions (`'sizing_drift' | 'frequency_spike' | ...`) enable exhaustive `switch` in T10/T11 pattern-rendering code without an `as` cast.
+- **`trades_by_hour_utc: number[]` (not `[number; 24]`)**: TypeScript fixed-length tuple syntax `[number, number, ...]` requires spelling out 24 slots and gains no type safety for consumers that just `.map()` over the array. Plain `number[]` matches the serialized JSON (array of 24 ints) and is idiomatic TS.
+- **`metrics: Record<string, unknown>`**: Backend ships `serde_json::Value` for pattern-specific numbers (e.g. `{"size_multiplier": "2.1"}`). The shape is pattern-dependent, so `unknown` values force consumers to narrow before render. `Record<string, any>` would silently swallow typos.
+- **Preference PATCH uses raw `fetchWithCredentials`, not `fetchCrud`**: `fetchCrud` hits `/api/v1/journal/*`. Coach is `/api/v1/coach/*` — different scope. Tried reusing `fetchExchange` (`/api/v1/exchanges*`); same mismatch. Going direct to `fetchWithCredentials` with manual URL + Content-Type header matches the pattern `fetchRiskSnapshot` already established for RSK-01 snapshots.
+- **204 No Content responses don't parse as JSON**: `setCoachPreference`, `markCoachViewed`, `dismissCoachBanner` all return `Promise<void>`. Throwing on `!res.ok` but never calling `res.json()` — the response body is empty by HTTP spec.
+- **Bundle impact negligible**: `index-Do3Ckp7P.js` grew from 658kb to 659.82kb (+~2kb for 6 interfaces + 6 fetchers). Gzip delta ~600 bytes.
+
 *This file grows as Vox learns. Never delete entries.*
