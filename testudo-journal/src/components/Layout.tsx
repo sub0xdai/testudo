@@ -8,6 +8,7 @@ import { markExtensionPaired } from './onboarding/useOnboardingState'
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
   { path: '/trades', label: 'JOURNAL' },
+  { path: '/coach', label: 'COACH' },
   { path: '/account', label: 'ACCOUNT' },
 ]
 
