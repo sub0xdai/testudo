@@ -109,8 +109,8 @@ export default function PairView(props: {
         <LoginPreview />
       </div>
 
-      {/* Foreground: glass pairing card */}
-      <div class="absolute inset-0 flex flex-col items-center justify-center p-5">
+      {/* Foreground: glass pairing card (scrolls when content exceeds popup height) */}
+      <div class="absolute inset-0 flex flex-col items-center p-5 overflow-y-auto pair-scroll">
         {/* Back button */}
         <div class="w-full max-w-[440px] flex items-center justify-between mb-2">
           <Show when={props.onBack} fallback={<div />}>
@@ -151,7 +151,7 @@ export default function PairView(props: {
           </button>
         </div>
 
-        <div class="login-glass-card w-full max-w-[440px] px-8 py-8">
+        <div class="login-glass-card w-full max-w-[440px] px-8 py-8 my-auto">
           <Show when={showSuccess()} fallback={
             <>
               {/* Logo */}
@@ -159,20 +159,8 @@ export default function PairView(props: {
                 <h1 class="text-3xl font-sans font-bold tracking-[0.25em] text-text-primary mb-1">
                   TESTUDO
                 </h1>
-                <p class="text-[11px] text-text-dim font-mono tracking-[0.35em] mb-6 uppercase">
+                <p class="text-[11px] text-text-dim font-mono tracking-[0.35em] mb-8 uppercase">
                   Trading Terminal
-                </p>
-              </div>
-
-              {/* What it does — pre-pair explainer */}
-              <div class="text-[11px] text-text-secondary font-mono leading-relaxed mb-6 space-y-2">
-                <p>
-                  Press <span class="text-text-primary">Alt+X</span> on a TradingView chart.
-                  Testudo sizes the trade from your stop, asks you to confirm,
-                  then routes the order to your exchange.
-                </p>
-                <p class="text-text-dim">
-                  No funds held. Exchange keys stay on the server, never in the extension.
                 </p>
               </div>
 
@@ -272,33 +260,85 @@ export default function PairView(props: {
                   {loading() ? "PAIRING..." : "PAIR"}
                 </button>
 
-                {/* Permissions explainer — collapsed by default */}
-                <details class="mt-6 text-[10px] text-text-dim font-mono">
-                  <summary class="cursor-pointer select-none hover:text-text-secondary transition-colors">
-                    Why these permissions?
-                  </summary>
-                  <div class="mt-3 space-y-3 leading-relaxed pl-2">
-                    <div>
-                      <div class="text-text-secondary mb-1">Chart hosts</div>
-                      <div>Reads the active chart context when you press Alt+X.</div>
-                      <div class="text-[9px] text-text-dim/80 mt-1 leading-snug">
-                        tradingview.com, dexscreener.com, gmx.io, hyperliquid.xyz,
-                        bybit, binance, okx, bitget, gate, phemex, blofin
+                {/* Disclosure fold-outs — each collapsed by default */}
+                <div class="mt-6 divide-y divide-border-subtle border-t border-border-subtle">
+                  <details class="fold-out">
+                    <summary>How it works</summary>
+                    <div class="fold-body">
+                      <p>
+                        Open a chart on TradingView. Drop a Long or Short
+                        position tool on the chart.
+                      </p>
+                      <p>
+                        Press <span class="text-text-primary">Alt+X</span>.
+                        Testudo sizes the trade from your stop and
+                        account risk %, asks you to confirm, then routes
+                        the order to your paired exchange.
+                      </p>
+                      <p>
+                        Once filled, the trade appears live on{" "}
+                        <span class="text-text-primary">desk.testudo.vip</span>
+                        {" "}and is journaled automatically on close.
+                      </p>
+                    </div>
+                  </details>
+
+                  <details class="fold-out">
+                    <summary>Why these permissions?</summary>
+                    <div class="fold-body">
+                      <div>
+                        <div class="text-text-secondary mb-1">Chart hosts</div>
+                        <div>Reads the active chart context when you press Alt+X.</div>
+                        <div class="fold-hosts">
+                          tradingview.com, dexscreener.com, gmx.io,
+                          hyperliquid.xyz, bybit, binance, okx, bitget,
+                          gate, phemex, blofin
+                        </div>
+                      </div>
+                      <div>
+                        <div class="text-text-secondary mb-1">Testudo API</div>
+                        <div>Syncs account state and streams live fill events.</div>
+                        <div class="fold-hosts">api.testudo.vip, ws.testudo.vip</div>
+                      </div>
+                      <div>
+                        <div class="text-text-secondary mb-1">Storage</div>
+                        <div>Caches your session token and paired-device state locally.</div>
                       </div>
                     </div>
-                    <div>
-                      <div class="text-text-secondary mb-1">Testudo API</div>
-                      <div>Syncs account state and streams live fill events.</div>
-                      <div class="text-[9px] text-text-dim/80 mt-1 leading-snug">
-                        api.testudo.vip, ws.testudo.vip
-                      </div>
+                  </details>
+
+                  <details class="fold-out">
+                    <summary>Privacy &amp; disclaimers</summary>
+                    <div class="fold-body">
+                      <p>
+                        <span class="text-text-secondary">No funds held.</span>{" "}
+                        Testudo never takes custody. Orders execute on
+                        your own exchange account.
+                      </p>
+                      <p>
+                        <span class="text-text-secondary">No API keys in the extension.</span>{" "}
+                        Exchange credentials live in your testudo.vip
+                        server account and are only used server-side to
+                        forward orders you confirm.
+                      </p>
+                      <p>
+                        <span class="text-text-secondary">Not financial advice.</span>{" "}
+                        Testudo is a tool for placing trades you decide;
+                        sizing math assumes the stop and risk % you
+                        enter. You own the outcome.
+                      </p>
+                      <p class="pt-1">
+                        Full privacy policy:{" "}
+                        <button
+                          class="btn-ghost text-text-primary hover:underline p-0 font-mono cursor-pointer"
+                          onClick={() => window.open(`${WEB_APP_URL}/privacy`, "_blank")}
+                        >
+                          testudo.vip/privacy
+                        </button>
+                      </p>
                     </div>
-                    <div>
-                      <div class="text-text-secondary mb-1">Storage</div>
-                      <div>Caches your session token and paired-device state locally.</div>
-                    </div>
-                  </div>
-                </details>
+                  </details>
+                </div>
               </div>
             </>
           }>

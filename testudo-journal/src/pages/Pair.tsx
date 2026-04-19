@@ -314,36 +314,28 @@ export default function Pair() {
                 <h2 class="font-mono text-sm tracking-wider text-text-primary mb-4">
                   ✓ EXTENSION LINKED
                 </h2>
-                <p class="font-mono text-xs text-text-secondary mb-8 leading-relaxed">
+                <p class="font-mono text-xs text-text-secondary leading-relaxed">
                   Your extension is now connected to your wallet.
                 </p>
-                <a
-                  href="/desk/"
-                  class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-                >
-                  OPEN TRADING DESK
-                </a>
               </div>
             </Show>
           </div>
 
-          {/* Bottom nav cards */}
+          {/* Bottom nav: two refs */}
           <div class="border-t border-container-border grid grid-cols-2">
             <a
               href="/desk/"
-              class="flex flex-col items-center gap-1 px-4 py-5 border-r border-container-border text-text-tertiary hover:text-text-primary hover:bg-elevated/50 transition-colors group"
+              class="flex items-center justify-center px-4 py-5 border-r border-container-border font-mono text-[11px] tracking-wider text-text-secondary hover:text-text-primary hover:bg-elevated/50 transition-colors"
             >
-              <div class="font-mono text-[10px] tracking-wider text-text-secondary group-hover:text-text-primary">TESTUDO DESK</div>
-              <div class="font-mono text-[9px] text-text-tertiary">Trading dashboard</div>
+              TRADING DESK
             </a>
             <a
               href="https://testudo.vip"
               target="_blank"
               rel="noopener noreferrer"
-              class="flex flex-col items-center gap-1 px-4 py-5 text-text-tertiary hover:text-text-primary hover:bg-elevated/50 transition-colors group"
+              class="flex items-center justify-center px-4 py-5 font-mono text-[11px] tracking-wider text-text-secondary hover:text-text-primary hover:bg-elevated/50 transition-colors"
             >
-              <div class="font-mono text-[10px] tracking-wider text-text-secondary group-hover:text-text-primary">TESTUDO.VIP</div>
-              <div class="font-mono text-[9px] text-text-tertiary">Learn more</div>
+              TESTUDO.VIP
             </a>
           </div>
         </div>
