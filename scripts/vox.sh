@@ -120,6 +120,19 @@ check_done_signal() {
     return 1
 }
 
+check_rate_limit_signal() {
+    local output="$1"
+    if echo "$output" | grep -qiE "you('ve| have) hit your limit|usage limit reached|rate limit"; then
+        return 0
+    fi
+    return 1
+}
+
+extract_rate_limit_reset() {
+    local output="$1"
+    echo "$output" | grep -oE "resets [^[:space:]]+ \([^)]+\)" | head -1
+}
+
 run_planning() {
     local spec="$1"
 
@@ -183,6 +196,21 @@ run_building() {
             echo "SPEC COMPLETE: $spec"
             echo -e "==========================================${NC}"
             return 0
+        fi
+
+        if check_rate_limit_signal "$output"; then
+            local reset
+            reset=$(extract_rate_limit_reset "$output")
+            echo ""
+            echo -e "${RED}=========================================="
+            echo "RATE LIMIT HIT — halting build loop"
+            if [[ -n "$reset" ]]; then
+                echo "Limit ${reset}"
+            fi
+            echo "Completed $((iteration - 1)) of $MAX_ITERATIONS iterations before stall."
+            echo "Resume after reset: $0 build $spec"
+            echo -e "==========================================${NC}"
+            return 2
         fi
 
         if [[ -n $(git status --porcelain 2>/dev/null || true) ]]; then
