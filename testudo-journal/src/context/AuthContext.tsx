@@ -229,6 +229,18 @@ export function AuthProvider(props: { children: JSX.Element }) {
   // is connected — treat that as intent to re-auth — so we re-enable
   // userInitiatedConnect and fall through to the SIWE check below, which fires a
   // fresh sign prompt for the new address.
+  // Notify the Testudo extension (if installed) of session changes via
+  // window.postMessage. The extension's content script on desk.testudo.vip
+  // listens and invalidates its paired JWT when the web's wallet diverges.
+  function notifyExtensionOfWalletChange(address: string | null) {
+    try {
+      window.postMessage(
+        { type: 'TESTUDO_WALLET_CHANGED', wallet_address: address },
+        window.location.origin,
+      )
+    } catch { /* noop — message bus not available */ }
+  }
+
   const unsubAccount = appKit.subscribeAccount(async (state: { isConnected: boolean; address?: string }) => {
     const current = user()
     if (
@@ -240,6 +252,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
       await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
       setUser(null)
       userInitiatedConnect = true
+      notifyExtensionOfWalletChange(state.address.toLowerCase())
     }
 
     if (state.isConnected && state.address && !user() && !siweInFlight && userInitiatedConnect) {
@@ -267,6 +280,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
     await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
     setUser(null)
     appKit.disconnect()
+    notifyExtensionOfWalletChange(null)
   }
 
   const value: AuthContextValue = {

@@ -173,6 +173,27 @@ function handleGetSetupTags(msg: ParsedMessage): Promise<unknown> {
   return listSetupTags((msg as MsgOf<"GET_SETUP_TAGS">).limit);
 }
 
+// Web reports its active wallet (or null on logout). If our paired JWT
+// belongs to a different wallet — or any wallet at all when web is logged
+// out — clear it so the popup drops to the pair screen and future trades
+// can't route to a stale account.
+async function handleWebWalletChanged(msg: ParsedMessage): Promise<unknown> {
+  const webWallet = (msg as MsgOf<"WEB_WALLET_CHANGED">).wallet_address;
+  const status = await getAuthStatus();
+  if (!status.authenticated) return { success: true, cleared: false };
+
+  const pairedAddr = status.walletAddress?.toLowerCase() ?? null;
+  const webAddr = webWallet?.toLowerCase() ?? null;
+  const shouldClear = webAddr === null || (pairedAddr !== null && pairedAddr !== webAddr);
+
+  if (shouldClear) {
+    clearRefreshTimer();
+    await clearTokens();
+    return { success: true, cleared: true };
+  }
+  return { success: true, cleared: false };
+}
+
 // --- Dispatch Map ---
 
 export const messageHandlers: Record<string, MessageHandler> = {
@@ -202,4 +223,5 @@ export const messageHandlers: Record<string, MessageHandler> = {
   SET_EXCHANGE_MODE: handleSetExchangeMode,
   ACCOUNT_LINKED: handleAccountLinked,
   GET_SETUP_TAGS: handleGetSetupTags,
+  WEB_WALLET_CHANGED: handleWebWalletChanged,
 };

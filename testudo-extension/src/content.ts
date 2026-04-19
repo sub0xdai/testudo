@@ -16,6 +16,23 @@ if (location.pathname === "/pair" || location.pathname === "/desk/pair") {
   window.postMessage({ type: "TESTUDO_INSTALLED" }, "*");
 }
 
+// Session-change bridge: desk.testudo.vip emits TESTUDO_WALLET_CHANGED
+// when the web session's wallet rotates (or null on logout). Relay to the
+// background worker, which clears the paired JWT if it no longer matches.
+// Origin-gated so TradingView / exchange pages can't spoof session events.
+if (location.hostname === "desk.testudo.vip" || location.hostname === "localhost") {
+  window.addEventListener("message", (event: MessageEvent) => {
+    if (event.source !== window) return;
+    if (event.origin !== location.origin) return;
+    if (event.data?.type !== "TESTUDO_WALLET_CHANGED") return;
+    const wallet_address =
+      typeof event.data.wallet_address === "string" ? event.data.wallet_address : null;
+    browser.runtime
+      .sendMessage({ type: "WEB_WALLET_CHANGED", wallet_address })
+      .catch(() => {});
+  });
+}
+
 // --- Platform Detection ---
 
 function isTradingView(): boolean {

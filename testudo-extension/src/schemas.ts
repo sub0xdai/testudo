@@ -269,4 +269,11 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("GET_SETUP_TAGS"),
     limit: z.number().int().min(1).max(100).optional(),
   }),
+  // Emitted by the desk.testudo.vip content script when the web app's
+  // active wallet changes (including logout → wallet_address: null).
+  // Extension clears its paired JWT if the new web wallet differs.
+  z.object({
+    type: z.literal("WEB_WALLET_CHANGED"),
+    wallet_address: z.string().nullable(),
+  }),
 ]);
