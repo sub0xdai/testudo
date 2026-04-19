@@ -601,7 +601,7 @@ Parallel opportunity after T2: T3/T4/T5/T6 are independent pure-logic modules. S
 
 ---
 
-### T12: Final verification + commit — `pending`
+### T12: Final verification + commit — `complete`
 
 **Scope:** Completion Protocol.
 
@@ -674,12 +674,15 @@ Parallel opportunity after T2: T3/T4/T5/T6 are independent pure-logic modules. S
 
 ## Status
 
-PLANNING COMPLETE
+BUILD COMPLETE
 
 Spec: RSK-03-ai-trade-coach
-Total Tasks: 18 (T1, T2, T3, T3a–T3f, T4–T12)
-Ready for BUILD mode.
+All 18 tasks complete. Spec archived to `.specify/spec-archive/`.
 
-Note: T3 was split 2026-04-19 into T3 (baseline + orchestrator skeleton) + T3a-T3f (one detector each) to honour atomic-task discipline. The original T3 bundled 7 concerns (baseline + 6 detectors + 12 unit tests) which would cause retry-thrash if any single detector failed validation. Each T3x is now independently completable + committable. Recommended `--max-iterations 22` for build (18 tasks × 1.2 retry budget + 2 slack).
+Verification on T12:
+- `cargo clippy --all-targets`: clean (3 pre-existing warnings unchanged).
+- `cargo test`: 1,181 passing / 0 failing across all crates (304 common_utils + 108×2 engine + 11 pg_queue + 623 router + 17 sqlx_postgres + 10 ws_stream).
+- `bun run build` (testudo-journal): exit 0 in 17.74s.
+- Integration grep: CoachService/coach_reports/CoachDigest/NarratedReport wired across 10 router files (63 hits); CoachBanner/CoachReport/NarrativeBlock/fetchLatestCoachReport wired across 7 journal files (31 hits).
 
-Next task: T12 — Final verification + commit
+Deferred to live session: production prompt-cache hit rate measurement (≥ 70% acceptance criterion), first-20-reports human review, end-to-end manual QA with seeded multi-pattern trader.
