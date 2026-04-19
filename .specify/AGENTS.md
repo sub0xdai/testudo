@@ -653,4 +653,12 @@
 - **Test counts**: Router 544 → 550 (+6). Pure-function tests for `top_hours` (3) + `build_hour_histogram` (2) + `untagged_label_matches_rsk02_convention` (1). DB-touching `compute_*` / `fetch_*` helpers verified by compile + clippy clean; full integration test lands in T4 as a golden snapshot. Workspace total: 1,098 passing, 0 failing.
 - **Patterns/mod.rs unchanged**: T2's stub orchestrator already had the exact `(&UserBaseline, &[TradeEvidence], &WeekStats) -> Vec<FlaggedPattern>` signature the plan specifies. T3a flips it from `Vec::new()` to pushing real detector output.
 
+### 2026-04-19 — RSK-03 T3a (sizing_drift detector)
+- **`dec!(1.5)` macro works for `const`**: `rust_decimal_macros::dec!` expands to a `Decimal::from_parts` call that `rustc` accepts in `const` position (verified by compile). No need for `lazy_static` or a runtime `once_cell`. Keeps threshold constants cheap + inspectable.
+- **`.windows(2)` over `.sort_by_key()`-ed refs for post-loss detection**: `sorted.windows(2).filter_map(|w| (w[0].pnl < Decimal::ZERO).then_some(w[1]))` is a 3-line pure-functional expression for "trades whose immediate predecessor lost." `.then_some(x)` (stable since 1.62) is idiomatic for `if bool { Some(x) } else { None }`.
+- **Defensive sort even though `fetch_week_trades` pre-sorts**: The detector accepts any `&[TradeEvidence]`; tests construct unsorted fixtures. Sorting by `opened_at` inside the detector is O(n log n) on a typically-small week slice — cheap insurance against caller assumptions drifting.
+- **`serde_json::Value` for metrics** accepts both owned strings (`multiplier.to_string()`) and numeric literals. For Decimal values I convert to string (matches the `Decimal serialize-as-string` convention used throughout the coach types); integer-valued like `POST_LOSS_WINDOW` stays as a JSON number.
+- **Severity trichotomy (Info/Notable/Concerning) maps cleanly to threshold bands**: strict `>` 1.5× → Notable, `≥` 2.5× → Concerning. Never returns `Info` — detector either flags a notable deviation or returns `None`. `Info` is reserved for future detectors that surface sub-notable observations.
+- **Test counts**: Router 550 → 555 (+5). Five unit tests: fires-on-2x, no-fire-within-baseline, escalates-at-large-multiplier, requires-3-post-loss-trades, none-when-baseline-zero. Plan asked for 2; added 3 edge cases (severity boundary, min-evidence guard, zero-baseline guard) to pin down the contract.
+
 *This file grows as Vox learns. Never delete entries.*
