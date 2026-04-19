@@ -8,17 +8,31 @@ Rule: every version bump adds an entry here *before* the build is zipped.
 
 ---
 
-## [Unreleased] — pending 1.1.4
+## 1.1.4 — 2026-04-19 — **built, pending submission**
 
-Changes on master, not yet built/submitted. Will ship as **1.1.4** after the 1.1.3 appeal resolves.
+Review-response UX patch. Addresses the Chrome Web Store reviewer's
+concerns about functional clarity surfaced during the 1.1.3 appeal by
+making the extension's value prop and permission scope legible without
+requiring a paired backend account.
 
-- `387f538` refactor(ext): declutter trade modal — delete dead Management Rules block (Break-even / Trailing / Partial TP never worked; now hidden until implemented). Sharpen Setup tag field: concrete placeholder examples (`head and shoulders, breakout, falling wedge…`) and persistent hint line explaining its analytical value.
+- **Manifest description rewritten.** From vague "risk management
+  overlay / circuit breakers" marketing copy to concrete "TradingView
+  companion. Press Alt+X on a chart to size a trade from your stop and
+  route the order to your exchange."
+- **Pre-pair explainer on the pair screen.** New paragraph above the
+  pairing instructions explaining the Alt+X flow and stating
+  explicitly that the extension holds no funds and never sees exchange
+  API keys. Reviewers (and first-time users) now see the value prop
+  before being asked to pair.
+- **Permissions justification UI.** New collapsed `<details>` block
+  below the PAIR button, grouped into Chart hosts / Testudo API /
+  Storage, explaining each permission's purpose. Satisfies store
+  review scrutiny on broad host-permission scope across financial
+  domains.
+- `387f538` (carry-over) refactor(ext): declutter trade modal — delete
+  dead Management Rules block, sharpen Setup tag field.
 
-Ship sequence once appeal clears:
-1. Bump `manifest.json` → `1.1.4`
-2. `bun run build` → zip outputs
-3. Move prior `testudo-*-1.1.3.zip` to `archive/`
-4. Upload new zip, add a VERSION.md entry below with submission date
+**Commits:** staged as `feat(ext): 1.1.4 — review-response UX patch`.
 
 ---
 

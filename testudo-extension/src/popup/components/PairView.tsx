@@ -159,8 +159,20 @@ export default function PairView(props: {
                 <h1 class="text-3xl font-sans font-bold tracking-[0.25em] text-text-primary mb-1">
                   TESTUDO
                 </h1>
-                <p class="text-[11px] text-text-dim font-mono tracking-[0.35em] mb-8 uppercase">
+                <p class="text-[11px] text-text-dim font-mono tracking-[0.35em] mb-6 uppercase">
                   Trading Terminal
+                </p>
+              </div>
+
+              {/* What it does — pre-pair explainer */}
+              <div class="text-[11px] text-text-secondary font-mono leading-relaxed mb-6 space-y-2">
+                <p>
+                  Press <span class="text-text-primary">Alt+X</span> on a TradingView chart.
+                  Testudo sizes the trade from your stop, asks you to confirm,
+                  then routes the order to your exchange.
+                </p>
+                <p class="text-text-dim">
+                  No funds held. Exchange keys stay on the server, never in the extension.
                 </p>
               </div>
 
@@ -259,6 +271,34 @@ export default function PairView(props: {
                   </Show>
                   {loading() ? "PAIRING..." : "PAIR"}
                 </button>
+
+                {/* Permissions explainer — collapsed by default */}
+                <details class="mt-6 text-[10px] text-text-dim font-mono">
+                  <summary class="cursor-pointer select-none hover:text-text-secondary transition-colors">
+                    Why these permissions?
+                  </summary>
+                  <div class="mt-3 space-y-3 leading-relaxed pl-2">
+                    <div>
+                      <div class="text-text-secondary mb-1">Chart hosts</div>
+                      <div>Reads the active chart context when you press Alt+X.</div>
+                      <div class="text-[9px] text-text-dim/80 mt-1 leading-snug">
+                        tradingview.com, dexscreener.com, gmx.io, hyperliquid.xyz,
+                        bybit, binance, okx, bitget, gate, phemex, blofin
+                      </div>
+                    </div>
+                    <div>
+                      <div class="text-text-secondary mb-1">Testudo API</div>
+                      <div>Syncs account state and streams live fill events.</div>
+                      <div class="text-[9px] text-text-dim/80 mt-1 leading-snug">
+                        api.testudo.vip, ws.testudo.vip
+                      </div>
+                    </div>
+                    <div>
+                      <div class="text-text-secondary mb-1">Storage</div>
+                      <div>Caches your session token and paired-device state locally.</div>
+                    </div>
+                  </div>
+                </details>
               </div>
             </>
           }>
