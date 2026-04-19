@@ -8,45 +8,19 @@ Rule: every version bump adds an entry here *before* the build is zipped.
 
 ---
 
-## 1.1.5 — 2026-04-19 — **built, pending submission**
-
-Phase 2-proper of the wallet/session-cookie audit (Phase 1 landed on
-testudo-journal + testudo-exchange the same day). When the web session's
-wallet changes — either via wallet switch in MetaMask or explicit
-logout — the extension's paired JWT was previously stranded on the old
-wallet, and Alt+X trades would silently route to the old wallet's
-exchange account until the user manually re-paired. ~10% of users
-maintain multiple wallets with distinct exchange accounts, so this was a
-real footgun.
-
-Fix delivered as a one-way web → extension session-change bridge:
-
-- **Web (AuthContext.tsx):** on wallet-switch in the existing Phase 1
-  guard, and on logout, dispatches
-  `window.postMessage({ type: 'TESTUDO_WALLET_CHANGED', wallet_address })`
-  with the new address (or `null` on logout).
-- **Extension (content.ts):** new listener gated to
-  `desk.testudo.vip` hostname only (TradingView / exchange content
-  scripts can't spoof it), relays the event to the background worker
-  via `chrome.runtime.sendMessage({ type: 'WEB_WALLET_CHANGED', ... })`.
-- **Extension (schemas.ts, background/handlers.ts):** new
-  `WEB_WALLET_CHANGED` message variant. Handler decodes the extension's
-  paired JWT, compares `wallet_address` to the incoming web wallet, and
-  clears tokens + refresh timer if web is logged out or bound to a
-  different wallet. Popup reactively drops to the pair screen.
-
-No modal / badge / banner — the session just invalidates silently, and
-the user re-pairs when they next open the popup. Uniform with how the
-rest of the auth flow works.
-
----
-
 ## 1.1.4 — 2026-04-19 — **built, pending submission**
 
-Review-response UX patch. Addresses the Chrome Web Store reviewer's
-concerns about functional clarity surfaced during the 1.1.3 appeal by
-making the extension's value prop and permission scope legible without
-requiring a paired backend account.
+Bundles review-response UX polish + auth safety patch. Not yet
+submitted to the stores; Phase 2-proper wallet-session bridge was
+originally cut as a 1.1.5 but rolled back into this pending 1.1.4 so a
+single zip addresses both.
+
+### Review-response UX patch
+
+Addresses the Chrome Web Store reviewer's concerns about functional
+clarity surfaced during the 1.1.3 appeal — the extension's value prop
+and permission scope are now legible without requiring a paired
+backend account.
 
 - **Manifest description rewritten.** From vague "risk management
   overlay / circuit breakers" marketing copy to concrete "TradingView
@@ -55,17 +29,37 @@ requiring a paired backend account.
 - **Pre-pair explainer on the pair screen.** New paragraph above the
   pairing instructions explaining the Alt+X flow and stating
   explicitly that the extension holds no funds and never sees exchange
-  API keys. Reviewers (and first-time users) now see the value prop
-  before being asked to pair.
-- **Permissions justification UI.** New collapsed `<details>` block
-  below the PAIR button, grouped into Chart hosts / Testudo API /
-  Storage, explaining each permission's purpose. Satisfies store
-  review scrutiny on broad host-permission scope across financial
-  domains.
+  API keys.
+- **Permissions justification UI.** Collapsed `<details>` block below
+  the PAIR button, grouped into Chart hosts / Testudo API / Storage,
+  explaining each permission's purpose.
 - `387f538` (carry-over) refactor(ext): declutter trade modal — delete
   dead Management Rules block, sharpen Setup tag field.
 
-**Commits:** staged as `feat(ext): 1.1.4 — review-response UX patch`.
+### Web → extension session bridge (Phase 2-proper)
+
+When the web session's wallet changes — via MetaMask switch or
+explicit logout — the extension's paired JWT was previously stranded on
+the old wallet, silently routing Alt+X trades to the prior wallet's
+exchange account until the user manually re-paired.
+
+Fix delivered as a one-way web → extension session-change bridge:
+
+- **Web (AuthContext.tsx):** on wallet-switch in the Phase 1 guard and
+  on logout, dispatches
+  `window.postMessage({ type: 'TESTUDO_WALLET_CHANGED', wallet_address })`
+  (with `null` on logout).
+- **Extension (content.ts):** listener gated to `desk.testudo.vip`
+  hostname only — TradingView / exchange pages cannot spoof the event.
+  Relays to the background worker via
+  `chrome.runtime.sendMessage({ type: 'WEB_WALLET_CHANGED', ... })`.
+- **Extension (schemas.ts, background/handlers.ts):** new
+  `WEB_WALLET_CHANGED` message variant. Handler compares the
+  extension JWT's `wallet_address` to the incoming web wallet; clears
+  tokens + refresh timer if web is logged out or bound to a different
+  wallet. Popup reactively drops to the pair screen.
+
+No modal / badge / banner — the session just invalidates silently.
 
 ---
 
