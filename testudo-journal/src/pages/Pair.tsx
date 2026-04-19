@@ -221,20 +221,28 @@ export default function Pair() {
                 <p class="font-mono text-xs text-text-secondary mb-8 leading-relaxed">
                   Connect your wallet to activate the extension.
                 </p>
-                <button
-                  onClick={handleConnect}
-                  class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-                >
-                  CONNECT WALLET
-                </button>
-                <div class="border-t border-container-border mt-8 pt-6">
-                  <p class="font-mono text-[10px] text-text-tertiary">
-                    Need the extension?{' '}
-                    <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" class="text-text-secondary hover:text-text-primary transition-colors underline">Chrome</a>
-                    {' \u00b7 '}
-                    <a href={FIREFOX_STORE_URL} target="_blank" rel="noopener noreferrer" class="text-text-secondary hover:text-text-primary transition-colors underline">Firefox</a>
-                  </p>
+                <div class="flex gap-3 justify-center flex-wrap">
+                  <button
+                    onClick={handleConnect}
+                    class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors cursor-pointer"
+                  >
+                    CONNECT WALLET
+                  </button>
+                  <a
+                    href="https://testudo.vip"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                  >
+                    TESTUDO.VIP
+                  </a>
                 </div>
+                <p class="font-mono text-[10px] text-text-tertiary mt-8">
+                  Need the extension?{' '}
+                  <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" class="text-text-secondary hover:text-text-primary transition-colors underline">Chrome</a>
+                  {' \u00b7 '}
+                  <a href={FIREFOX_STORE_URL} target="_blank" rel="noopener noreferrer" class="text-text-secondary hover:text-text-primary transition-colors underline">Firefox</a>
+                </p>
               </div>
             </Show>
 
@@ -285,23 +293,45 @@ export default function Pair() {
                   <p class="font-mono text-xs text-text-secondary mb-6 leading-relaxed">
                     Pairing code has expired.
                   </p>
-                  <button
-                    onClick={generateCode}
-                    disabled={generating()}
-                    class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-                  >
-                    GENERATE NEW CODE
-                  </button>
                 </Show>
 
-                <Show when={!code() && !expired() && !generating()}>
-                  <button
-                    onClick={generateCode}
-                    class="px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                {/* Uniform 2-button row — left button varies, right always TESTUDO.VIP */}
+                <div class="flex gap-3 justify-center flex-wrap">
+                  <Show when={expired()}>
+                    <button
+                      onClick={generateCode}
+                      disabled={generating()}
+                      class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors cursor-pointer"
+                    >
+                      GENERATE NEW CODE
+                    </button>
+                  </Show>
+                  <Show when={!code() && !expired() && !generating()}>
+                    <button
+                      onClick={generateCode}
+                      class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors cursor-pointer"
+                    >
+                      GENERATE CODE
+                    </button>
+                  </Show>
+                  <Show when={code() && !expired()}>
+                    <button
+                      onClick={generateCode}
+                      disabled={generating()}
+                      class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors cursor-pointer"
+                    >
+                      REGENERATE
+                    </button>
+                  </Show>
+                  <a
+                    href="https://testudo.vip"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
                   >
-                    GENERATE CODE
-                  </button>
-                </Show>
+                    TESTUDO.VIP
+                  </a>
+                </div>
               </div>
             </Show>
 
@@ -314,29 +344,27 @@ export default function Pair() {
                 <h2 class="font-mono text-sm tracking-wider text-text-primary mb-4">
                   ✓ EXTENSION LINKED
                 </h2>
-                <p class="font-mono text-xs text-text-secondary leading-relaxed">
+                <p class="font-mono text-xs text-text-secondary leading-relaxed mb-8">
                   Your extension is now connected to your wallet.
                 </p>
+                <div class="flex gap-3 justify-center flex-wrap">
+                  <a
+                    href="/desk/"
+                    class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                  >
+                    OPEN TRADING DESK
+                  </a>
+                  <a
+                    href="https://testudo.vip"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-block px-6 py-2.5 border border-container-border text-text-secondary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
+                  >
+                    TESTUDO.VIP
+                  </a>
+                </div>
               </div>
             </Show>
-          </div>
-
-          {/* Bottom nav: two refs */}
-          <div class="border-t border-container-border grid grid-cols-2">
-            <a
-              href="/desk/"
-              class="flex items-center justify-center px-4 py-5 border-r border-container-border font-mono text-[11px] tracking-wider text-text-secondary hover:text-text-primary hover:bg-elevated/50 transition-colors"
-            >
-              TRADING DESK
-            </a>
-            <a
-              href="https://testudo.vip"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center justify-center px-4 py-5 font-mono text-[11px] tracking-wider text-text-secondary hover:text-text-primary hover:bg-elevated/50 transition-colors"
-            >
-              TESTUDO.VIP
-            </a>
           </div>
         </div>
       </div>
