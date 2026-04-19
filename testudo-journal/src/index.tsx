@@ -14,6 +14,7 @@ const Trades = lazy(() => import('./pages/Trades').then(m => ({ default: m.Trade
 const Journal = lazy(() => import('./pages/Journal').then(m => ({ default: m.Journal })))
 const Account = lazy(() => import('./pages/Account'))
 const Pair = lazy(() => import('./pages/Pair'))
+const Coach = lazy(() => import('./pages/Coach'))
 
 // Redirect bare root to /desk/ — router base doesn't catch paths outside /desk/*
 if (window.location.pathname === '/' || window.location.pathname === '') {
@@ -32,6 +33,7 @@ render(
           <Route path="/trades" component={Trades} />
           <Route path="/journal" component={Journal} />
           <Route path="/account" component={Account} />
+          <Route path="/coach" component={Coach} />
           <Route path="/*" component={() => <Navigate href="/" />} />
         </Router>
       </FilterProvider>
