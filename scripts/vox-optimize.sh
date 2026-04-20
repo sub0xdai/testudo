@@ -19,6 +19,7 @@ PROMPT_OPTIMIZE=".specify/PROMPT_optimize.md"
 
 BATCH_SIZE=5
 AGENT_CMD="claude"
+SLEEP_INTERVAL=15
 
 # --- COLORS ---
 RED='\033[0;31m'
@@ -201,6 +202,14 @@ build_optimize_context() {
     echo "## Target: $target"
     echo ""
 
+    # 1. Stable Instructions first (best for caching)
+    echo "---"
+    echo "## Instructions"
+    echo ""
+    sed "s/{TARGET}/$target/g" "$PROMPT_OPTIMIZE"
+    echo ""
+
+    # 2. Constitution (stable per-project)
     if [[ -f "$CONSTITUTION" ]]; then
         echo "---"
         echo "## Constitution"
@@ -209,6 +218,7 @@ build_optimize_context() {
         echo ""
     fi
 
+    # 3. Optimization Program (stable per-target)
     if [[ -f "$target_dir/program.md" ]]; then
         echo "---"
         echo "## Optimization Program"
@@ -217,6 +227,7 @@ build_optimize_context() {
         echo ""
     fi
 
+    # 4. Operational Learnings (slowly growing, mostly stable)
     if [[ -f "$AGENTS_MD" ]]; then
         echo "---"
         echo "## Operational Learnings"
@@ -225,6 +236,7 @@ build_optimize_context() {
         echo ""
     fi
 
+    # 5. Experiment History (volatile, last)
     if [[ -f "$target_dir/results.tsv" ]]; then
         echo "---"
         echo "## Experiment History"
@@ -232,11 +244,6 @@ build_optimize_context() {
         cat "$target_dir/results.tsv"
         echo ""
     fi
-
-    echo "---"
-    echo "## Instructions"
-    echo ""
-    sed "s/{TARGET}/$target/g" "$PROMPT_OPTIMIZE"
 }
 
 # --- MAIN LOGIC ---
@@ -403,7 +410,7 @@ while true; do
 
         echo -e "${GREEN}Experiment $exp committed: $LATEST_COMMIT${NC}"
 
-        sleep 2
+        sleep "$SLEEP_INTERVAL"
     done
 
     # --- CHECKPOINT ---

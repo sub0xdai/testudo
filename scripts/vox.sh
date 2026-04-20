@@ -21,6 +21,7 @@ CONSTITUTION=".specify/memory/constitution.md"
 
 MAX_ITERATIONS=30
 AGENT_CMD="claude"
+SLEEP_INTERVAL=15
 
 # --- COLORS ---
 RED='\033[0;31m'
@@ -70,6 +71,18 @@ build_context() {
     echo "## Spec: $spec"
     echo ""
 
+    # 1. Stable Instructions first (best for caching)
+    echo "---"
+    echo "## Instructions"
+    echo ""
+    if [[ "$mode" == "plan" ]]; then
+        cat "$PROMPT_PLAN"
+    else
+        cat "$PROMPT_BUILD"
+    fi
+    echo ""
+
+    # 2. Constitution (stable per-project)
     if [[ -f "$CONSTITUTION" ]]; then
         echo "---"
         echo "## Constitution"
@@ -78,6 +91,7 @@ build_context() {
         echo ""
     fi
 
+    # 3. Specification (stable per-spec)
     if [[ -f "$SPECS_DIR/$spec/spec.md" ]]; then
         echo "---"
         echo "## Specification: $spec"
@@ -86,6 +100,7 @@ build_context() {
         echo ""
     fi
 
+    # 4. Operational Learnings (slowly growing, mostly stable)
     if [[ -f "$AGENTS_MD" ]]; then
         echo "---"
         echo "## Operational Learnings"
@@ -94,21 +109,13 @@ build_context() {
         echo ""
     fi
 
+    # 5. Implementation Plan (most volatile, last)
     if [[ -f "$IMPLEMENTATION_PLAN" ]]; then
         echo "---"
         echo "## Implementation Plan"
         echo ""
         cat "$IMPLEMENTATION_PLAN"
         echo ""
-    fi
-
-    echo "---"
-    echo "## Instructions"
-    echo ""
-    if [[ "$mode" == "plan" ]]; then
-        cat "$PROMPT_PLAN"
-    else
-        cat "$PROMPT_BUILD"
     fi
 }
 
@@ -222,7 +229,7 @@ run_building() {
         echo ""
         echo -e "${BLUE}Iteration $iteration complete. Continuing...${NC}"
 
-        sleep 2
+        sleep "$SLEEP_INTERVAL"
 
     done
 
