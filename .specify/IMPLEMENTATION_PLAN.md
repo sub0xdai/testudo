@@ -442,7 +442,7 @@ Built in T6 at trade submission time; only `computed_at` uses `Utc::now()`, rest
 
 ---
 
-### T8: Decision-loop untagged fallback + info log — `pending`
+### T8: Decision-loop untagged fallback + info log — `complete`
 
 **Scope:** CP-3 FR-8 completion.
 
