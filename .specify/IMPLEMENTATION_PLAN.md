@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-20
 > Current spec: HIST-03-import-dedup
-> Phase: BUILD in progress — T1 complete
+> Phase: BUILD in progress — T1, T2, T3, T5 complete (bundled commit)
 
 ---
 
@@ -185,7 +185,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T2: `RecordOutcome` enum + `ON CONFLICT DO NOTHING` in `JournalService::record_trade_close` — `pending`
+### T2: `RecordOutcome` enum + `ON CONFLICT DO NOTHING` in `JournalService::record_trade_close` — `complete`
 
 **Scope:** CP-1a FR-1 + FR-2. The core fix. Every import INSERT becomes structurally idempotent.
 
@@ -241,7 +241,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T3: Defensive `ON CONFLICT` mirror in `TradeEventWriter::insert_journal_trade` — `pending`
+### T3: Defensive `ON CONFLICT` mirror in `TradeEventWriter::insert_journal_trade` — `complete`
 
 **Scope:** CP-1b. Belt-and-braces. Live path already dedupes via `trade_group_id` SELECT; this ensures the partial-index contract is uniform across all journal writers.
 
@@ -309,7 +309,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T5: `ImportResult.trades_skipped_duplicate` + consume `RecordOutcome` in all callers — `pending`
+### T5: `ImportResult.trades_skipped_duplicate` + consume `RecordOutcome` in all callers — `complete`
 
 **Scope:** CP-2b FR-3. Wire the new return type through the 4 call sites; split counters.
 
@@ -498,10 +498,11 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ## Status
 
-PLANNING COMPLETE
+BUILD IN PROGRESS
 
 Spec: HIST-03-import-dedup
 Total Tasks: 8 (T1, T2, T3, T4, T5, T6, T7, T8)
-Ready for BUILD mode.
+Complete: T1, T2, T3, T5 (bundled commit per plan recommendation)
+Pending: T4, T6, T7, T8
 
-Next task: T1 — CP-0 static-analysis diagnostic (documentation folded into T2 commit body)
+Next task: T4 — canonical_exchange_name() helper + apply at INSERT sites
