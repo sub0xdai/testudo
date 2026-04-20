@@ -169,7 +169,7 @@ T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Sing
 
 ---
 
-### T2: `user_settings` routes + unlock gate + AppState wiring — `pending`
+### T2: `user_settings` routes + unlock gate + AppState wiring — `complete`
 
 **Scope:** CP-1 backend API surface. Server-side unlock check on enable.
 
