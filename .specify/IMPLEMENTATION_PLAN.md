@@ -463,7 +463,7 @@ Built in T6 at trade submission time; only `computed_at` uses `Utc::now()`, rest
 
 ---
 
-### T9: Final verification + commit — `pending`
+### T9: Final verification + commit — `complete`
 
 **Scope:** Completion Protocol per constitution.
 
@@ -535,10 +535,17 @@ Built in T6 at trade submission time; only `computed_at` uses `Utc::now()`, rest
 
 ## Status
 
-PLANNING COMPLETE
+COMPLETE
 
 Spec: QNT-01a-kelly-engine
-Total Tasks: 9 (T1–T3 CP-1 plumbing; T4–T5 CP-2 pure math; T6–T8 CP-3 integration; T9 verification)
-Ready for BUILD mode.
+Total Tasks: 9 (T1–T3 CP-1 plumbing; T4–T5 CP-2 pure math; T6–T8 CP-3 integration; T9 verification) — all `complete`.
 
-Next task: T1 — Migration creating `user_settings` table and `journal_trades.kelly_inputs` column.
+**T9 Verification Results (2026-04-20):**
+- Rust clippy: 3 pre-existing warnings unchanged (actor.rs:1858, cex_client.rs:653, evaluator.rs:188). Zero new.
+- Rust tests: common_utils 315 / engine 108×2 / pg_queue 11 / router 639 passing / 1 pre-existing failure (`test_me_returns_user_info`, AUTH regression unrelated to QNT-01a, documented in T2 discovery) / 9 ignored / sqlx_postgres 17 / ws_stream 10. No QNT-01a regressions.
+- Extension typecheck: 18 pre-existing errors unchanged (matches T3 baseline). Zero new.
+- Integration grep: 16 Rust files + 4 TS files + 2 migration files. Wire contract consistent end-to-end.
+
+**Deferred (requires live session):**
+- Manual QA: new user 409 on unlock, threshold-crossing PATCH success, live dynamic-mode trade sizing, negative-edge 400, `kelly_inputs` JSONB populated at close.
+- Migration up+down on fresh DB (local verification only; runs automatically on first-boot in prod).
