@@ -239,7 +239,7 @@ T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Sing
 
 ---
 
-### T4: `kelly.rs` pure math module + unit tests — `pending`
+### T4: `kelly.rs` pure math module + unit tests — `complete`
 
 **Scope:** CP-2 pure math. No I/O. Can run in parallel with T5.
 
