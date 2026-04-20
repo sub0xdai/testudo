@@ -1,688 +1,544 @@
 # Implementation Plan
 
-> Last updated: 2026-04-19
-> Current spec: RSK-03-ai-trade-coach
+> Last updated: 2026-04-20
+> Current spec: QNT-01a-kelly-engine
 > Phase: PLANNING COMPLETE — ready for BUILD
 
 ---
 
-## Active Spec: RSK-03-ai-trade-coach
+## Active Spec: QNT-01a-kelly-engine
 
 ### Gap Analysis
 
 **Backend (`testudo-exchange/crates/`):**
-- `crates/db-processor/` is a minimal tokio queue worker binary (78-line `main.rs`, 235-line `query.rs`). It does not own trade ingestion — `JournalService` (router/services/journal_service.rs), `TradeEventWriter` (router/services/trade_event_writer.rs) and `FillDetector` do. The spec's "natural home in db-processor" comes from an outdated memory. **Planning deviation (see Discoveries #1):** coach module will live at `crates/router/src/services/coach/`, alongside `journal_service.rs`, `journal_stats.rs`, `journal_timeseries.rs`, `risk_snapshot.rs`. That's where pool handles, `analytics_pool`, `AppState`, and `JwtMiddleware` already live.
-- **No LLM dep exists.** `grep -r "async-openai\|anthropic\|openai" Cargo.toml` → zero hits. RSK-03 adds `async-openai = "0.27"` to `crates/router/Cargo.toml`.
-- **No pg_cron / cron scheduler.** Established pattern: `tokio::time::interval` tasks spawned in `router/main.rs` with `CancellationToken` graceful-shutdown plumbing (see ShadowEngine sweep @~560, TradeEventWriter flush @267, sidecar health @276). Coach scheduler follows the same shape.
-- **AppState** (`crates/router/src/types/app.rs:14-41`): 15 fields, constructed in `main.rs:380-396`. `pool`, `analytics_pool`, `token_service`, `config`, `engine_handle` all present. Adding `pub coach_service: Arc<CoachService>` is mechanical.
-- **RouterConfig** (`crates/router/src/config.rs`): uses `confik` crate + `EnvSource` + explicit `std::env::var` for secrets. Add `llm_base_url`, `llm_model`, `coach_enabled_global`, `coach_min_lifetime_trades`, `coach_min_week_trades`; pull `OPENAI_API_KEY` via `std::env::var` like `JWT_ACCESS_SECRET`.
-- **Latest migration**: `20260418000000_add_setup_tag_to_trades` (RSK-02). Next slot: `20260419000000_coach_schema`. Convention: `YYYYMMDDHHMMSS_description.{up,down}.sql`.
-- **Journal tables already carry coach inputs**: `journal_trades` has `setup_tag` (RSK-02), `r_multiple`, `net_pnl`, `realized_pnl`, `closed_at`, `opened_at`, `symbol`, `side`, `user_id`, `id`. Baselines computable as straight SQL aggregations on `analytics_pool`.
-- **RSK-01 `bucket_for()` / `extract_base_asset()`** in `services/risk_snapshot.rs:111-138` are private `fn`. Plan changes them to `pub(crate)` so `coach/patterns/correlation_stack.rs` can reuse without duplicating `BUCKET_MAP`.
-- **JWT extractor**: `AuthenticatedUser { user_id: Uuid, wallet_address: String }` from `middleware/auth.rs`. Same pattern as RSK-01 / RSK-02 routes.
-- **`users` table**: `AUTH-02` migration (wallet-primary). No per-user preferences column yet. RSK-03 adds `coach_enabled BOOLEAN NOT NULL DEFAULT TRUE` + `coach_banner_last_viewed_at TIMESTAMPTZ NULL` columns — cheaper than a separate `user_preferences` table for two fields.
-- **Analytics endpoint pattern**: `routes/journal.rs::setup_breakdown` (RSK-02 T6) shows the `AuthenticatedUser` + `fetch_all` + `{ data: [...] }` envelope style for new coach routes.
 
-**Frontend (`testudo-journal/src/`):**
-- **CoachBanner placeholder confirmed alive** at `components/account/CoachBanner.tsx`: `export function CoachBanner() { return null }`. Already imported + mounted at `Account.tsx:239-241` inside `max-w-6xl mx-auto w-full px-8 pb-10`. RSK-01 reservation honoured; T11 replaces the `null` return with a real banner.
-- **Routing**: `index.tsx` uses `@solidjs/router` with `base="/desk"` + `root={Layout}`. Routes: `/`, `/trades`, `/journal`, `/account`, `/pair`. Pattern: `<Route path="/coach" component={lazy(() => import('./pages/Coach'))} />` drops in alongside. Lazy imports already in use.
-- **Nav**: `Layout.tsx:8-12` `NAV_ITEMS = [{ path, label }]` array iterated via `<For>` in both desktop + mobile nav. Add `{ path: '/coach', label: 'COACH' }`.
-- **Markdown rendering**: `components/journal/MarkdownPreview.tsx` uses `marked` + `DOMPurify` (already on dep tree). Can reuse as-is, or a thin `NarrativeBlock` wrapper that pre-processes `[T-xxx]` citation tokens into `<a href="/desk/trades?trade={uuid}">` links before handing content to `marked.parse`.
-- **Trade deep-link**: Currently only modal-based (`Trades.tsx` signal-toggles `TradeDetail`). Plan: add `useSearchParams()` read inside `Trades.tsx` — if `?trade={uuid}` present, pre-open modal. Avoids a new route.
-- **API client split**: `fetchApi()` for `/analytics/*` with `StatsFilter`; `fetchCrud()` for everything else. Coach endpoints are user-scoped but not StatsFilter-scoped → `fetchCrud`.
-- **HELP tooltip**: `lib/help-content.ts` flat keys (`risk.*`, `chart.*`, `page.*`). Add `coach.*` namespace for narrative/pattern/provider tooltips.
-- **Preferences storage**: localStorage (e.g. `testudo-theme`, `testudo-extension-paired`). Coach opt-out is server-authoritative (the cron decides whether to generate a report), so it lives on the `users` row, not localStorage. Frontend fetches via `/api/v1/coach/preference` and PATCHes on toggle.
-- **`createResource` + `<Show>`**: Standard data-fetch pattern in `pages/Overview.tsx`, `pages/Account.tsx`. CoachBanner + /desk/coach follow same style.
+1. **`SizingMethod` enum** — `common_utils/src/risk/types.rs:8-20`. Four variants: `FixedFractional`, `KellyCriterion`, `VolatilityAdjusted`, `MaxRiskCap`. `#[serde(rename_all = "snake_case")]`. **Action:** add new `CalibratedKelly` variant alongside the existing `KellyCriterion` (spec FR-1). Keep `KellyCriterion` untouched — it's reachable via existing code paths and renaming would break wire compatibility.
+
+2. **`RiskConfig`** — `common_utils/src/risk/config.rs:11-43`. 10 fields, builder pattern. **No per-user persistence** today — constructed via `new()`/`conservative()`/`aggressive()` presets. Spec asks to add `pub dynamic_risk_enabled: bool` and load from `user_settings` JSONB. Discovery #4.
+
+3. **`PositionSizer::calculate_position_size()`** — `common_utils/src/risk/position_sizer.rs:81-158`. Does `risk_from_percent = balance * account_risk_percent / 100` at line ~95, then `size = risk_from_percent / stop_distance`, then takes MIN across four arms. **Action:** need an override path so Kelly-computed `effective_risk_percent` replaces `account_risk_percent` only for this trade, without disturbing the MIN composition. Cleanest: compute Kelly in the caller (`create_trade`), build an ad-hoc `RiskConfig` with `account_risk_percent = effective_risk_percent`, pass to sizer.
+
+4. **`CreateTradeRequest`** — `router/routes/trade_management.rs:282-304`. `setup_tag: Option<String>` **already present** (RSK-02, shipped 2026-04-18). `management: Option<ManagementBlock>` carries `risk_percent` (baseline). No Kelly fields needed on the request — dynamic mode is read from `user_settings`, not per-trade.
+
+5. **`DecisionLoop::execute()`** — `router/src/decision_loop.rs:185-225`. Line 207 passes `None` for `trading_stats` to `risk_service.validate()`. This is the current extension point: when dynamic mode is on, we need to either (a) pre-compute Kelly before DecisionLoop and inject an overridden `RiskConfig`, or (b) pass real trading stats into RiskService. **Decision (Discovery #5):** route (a) — Kelly calibration happens in `create_trade` BEFORE DecisionLoop; `effective_risk_percent` overrides baseline on the `RiskConfig` instance passed through. Keeps DecisionLoop untouched.
+
+6. **`JournalService::record_trade_close`** — `router/src/services/journal_service.rs:148`. Accepts `TradeCloseEvent` (with `setup_tag: Option<String>` already wired). **No `kelly_inputs` field on TradeCloseEvent yet.** **Action:** add `kelly_inputs: Option<serde_json::Value>` to the event + thread into INSERT column list. Mirrors RSK-02 T1's `setup_tag` path.
+
+7. **`TradeEventWriter`** — also persists to `journal_trades` (discovered during RSK-02 T5). Secondary write path. **Action:** check if it also writes `journal_trades` rows and whether Kelly path needs mirror there. Low-risk — the dynamic-mode path flows through `record_trade_close`.
+
+8. **`journal_trades` table** — `sqlx_postgres/migrations/20260318000000_create_journal_tables.up.sql` with column additions in `20260418000000_add_setup_tag.up.sql`. **Has:** `setup_tag`, `r_multiple`, `net_pnl`, `realized_pnl`, `risk_amount`, `closed_at`, `opened_at`, `notes`. **Missing:** `kelly_inputs JSONB NULL` — new column added by this spec.
+
+9. **`idx_journal_trades_user_setup`** — confirmed in `20260418000000_add_setup_tag.up.sql`: `CREATE INDEX ... ON journal_trades(user_id, setup_tag) WHERE setup_tag IS NOT NULL;`. Serves BOTH the per-setup aggregate query AND the ≥30-trade unlock-count query. No new index needed.
+
+10. **Settings storage pattern divergence** — RSK-03 added `coach_enabled`/`coach_banner_last_viewed_at` directly on `users`. Spec for QNT-01a explicitly asks for a NEW `user_settings` JSONB table. **Following spec.** Rationale: Kelly config is future-extensible (QNT-01b transparency overlay may add opt-in metrics; QNT-02/03 may add drift thresholds). JSONB gives room to grow. Discovery #2.
+
+11. **`AppState`** — `router/src/types/app.rs:15-44`. 16 fields. No `calibration_engine` yet. **Action:** add `pub calibration_engine: Arc<CalibrationEngine>`, construct in `main.rs:434-451`.
+
+12. **`AuthenticatedUser` extractor** — post-AUTH-02 yields `{ user_id: Uuid, wallet_address: String }`. Same pattern used by `/coach`, `/risk-config`, `/journal`. New `/user/settings` scope wraps with `JwtMiddleware::new(token_service.clone())`.
+
+13. **Routes mod** — `router/src/routes/mod.rs` lists 18 modules. **Action:** add `pub mod user_settings;`.
+
+14. **`CalibrationEngine` placement — spec vs. convention tension** — Spec says `common_utils/src/risk/calibration.rs`. But common_utils's existing `risk/` is pure-math (no sqlx imports; `RiskConfig` is hardcoded). Adding `sqlx::PgPool` and async queries to common_utils would introduce a dependency direction that peer services (coach, risk_snapshot, journal_timeseries) explicitly avoid by living in `router/services/`. **Decision (Discovery #3):** keep pure functions (`shrink()`, weight formulas) in `common_utils/src/risk/kelly.rs` per spec. Place the I/O-bearing `CalibrationEngine` in **`router/src/services/calibration.rs`** instead. This matches the RSK-03 coach-service pattern and avoids forcing sqlx onto common_utils. Spec path deviation documented below.
+
+15. **`journal_trades.net_pnl` vs. `realized_pnl`** — schema has BOTH (legacy + current). Spec's p_win definition uses `net_pnl > 0`. Confirm at build time which is the authoritative "P&L after fees" column; production queries in `journal_timeseries.rs` use `net_pnl`. Use `net_pnl` for Kelly inputs.
+
+**Extension (`testudo-extension/src/`):**
+
+16. **`TradePayloadSchema`** — `schemas.ts:49-72`. Has `setup_tag: z.string().trim().max(48).nullable().optional()`. Has `management.risk_percent`. **No Kelly fields needed** on the payload — dynamic mode is a server-side setting keyed off `user_id`, not per-trade.
+
+17. **`RuntimeMessageSchema`** — `schemas.ts:222-279`. Discriminated union, 28 variants. **Action:** add `GET_USER_SETTINGS` and `PATCH_USER_SETTINGS` variants.
+
+18. **API fetch helpers** — `background/api.ts:40-88`. `ApiOpts`/`ApiResult` typed pattern; named wrappers like `executeTrade()`, `listSetupTags()` (RSK-02 T2). **Action:** add `getUserSettings()` and `patchUserSettings()` wrappers following the same shape.
+
+19. **Handlers** — `background/handlers.ts:33-80`. Typed `handleX()` functions + dispatch table. **Action:** add `handleGetUserSettings`/`handlePatchUserSettings`; register in dispatch.
+
+20. **Popup SettingsPanel** — **does not exist.** Components dir has 11 entries (`ActiveOrders`, `AuthSection`, `ExchangeSelector`, `HeaderBar`, `LoginPreview`, `MainView`, `PairView`, `PositionCard`, `StatusBar`, `TabBar`, `TradeManagement`). **Action:** create `popup/components/SettingsPanel.tsx` with a single Dynamic Risk toggle. Mount in an existing popup surface (likely `MainView` or a new settings tab). For 01a the disabled state (when server reports `unlocked = false`) is a plain greyed-out switch — progress copy is QNT-01b's job.
+
+21. **Production URL defaults rule** — from MEMORY (feedback_prod_defaults.md): **MUST use `bun run typecheck`, NOT `bun run build`, during extension verification.** The extension's prod URL defaults break during dev build. Spec already codifies this.
 
 ---
 
 ### Design Decisions (captured before tasking)
 
-1. **Coach module lives in `router/src/services/coach/`, not `db-processor/src/coach/`.** The spec cites db-processor as the "natural home for scheduled background work," but db-processor is a thin queue worker (not a library) with no analytics, baselines, or stats logic. Router already owns the pool, analytics_pool, JWT middleware, existing journal/stats services, and the established tokio scheduler pattern. Co-locating avoids re-exporting half of router's private types to a new lib crate, and matches RSK-01/RSK-02 precedent (`risk_snapshot.rs`, `journal_service.rs` both live in router/services).
+1. **`user_settings` is a new JSONB table, not columns on `users`.** Spec explicit. JSONB gives forward-compat headroom for QNT-01b/c additions without more ALTER TABLEs. Trade-off: one extra row in the hot `/user/settings` read path vs. ~5 scattered NULLable columns on `users`. Given <10 reads per session, trivial.
 
-2. **`coach_reports` table, not event-sourced JSONB in `trade_events`.** Reports are write-once per user-per-week, read-many (archive view). A dedicated table with `UNIQUE(user_id, week_start)` gives simple idempotency on cron re-run and fast archive pagination.
+2. **`CalibrationEngine` lives in `router/src/services/calibration.rs`, not `common_utils/src/risk/calibration.rs`.** Spec deviation. Rationale in Gap Analysis #14. Pure math (`shrink()`, `quarter_kelly()`, `edge_multiplier()`, `effective_risk_percent()`) stays in `common_utils/src/risk/kelly.rs` per spec — those functions have no I/O. This keeps common_utils dep-clean and mirrors the coach-service placement.
 
-3. **Two-column `users` extension instead of new `user_preferences` table.** Only two fields are needed: `coach_enabled BOOLEAN NOT NULL DEFAULT TRUE` + `coach_banner_last_viewed_at TIMESTAMPTZ NULL`. A separate table would add a join for every auth-gated read with no real benefit at this spec's scope. Future preferences can either land here column-by-column or migrate to a dedicated table when the count justifies it.
+3. **Kelly calibration runs in `create_trade` handler BEFORE DecisionLoop, not inside it.** DecisionLoop stays untouched. When dynamic mode is on: handler loads per-setup stats → global prior → shrinks → Kelly → clamps → overrides `RiskConfig.account_risk_percent` with `effective_risk_percent` → passes to DecisionLoop. Byte-for-byte preserves the MIN composition downstream (FR-10).
 
-4. **Skip rules enforced at scheduler level; no row persisted on skip.** FR-5 + acceptance criterion "on weeks I didn't trade, generate no new report, coach doesn't feel like a form letter." The scheduler checks: (a) `coach_enabled=FALSE` → skip; (b) lifetime trades < `coach_min_lifetime_trades` (30) → skip; (c) this-week trades < `coach_min_week_trades` (3) → skip. Skip reason logged via `tracing::info!` with `skip_reason` field. Previous week's report stays as "latest" in the banner until a new meaningful week overwrites it.
+4. **Negative-edge rejection is a hard 4xx response from `create_trade`, not a DecisionLoop rejection.** Cleaner separation: Kelly is a pre-sizing gate, not a sizing outcome. Response: `400 Bad Request` with `{ "error": "negative_edge", "message": "Calibration shows negative edge for this setup — size = 0." }`. No `journal_trades` row created (FR-5). Discovery #6.
 
-5. **`Narrator` trait for DI + testability.** `trait Narrator { async fn narrate(&self, digest: &CoachDigest) -> Result<NarratedReport, NarratorError> }`. Prod impl: `OpenAiNarrator` (async-openai pointed at `OPENAI_BASE_URL`). Test impl: `MockNarrator { response: Result<NarratedReport, NarratorError> }` for unit tests in validator + schedule. Keeps HTTP dependency out of the pure-logic test paths.
+5. **Untagged + dynamic-on → silent fallback.** Spec FR-8. `tracing::info!(user_id = %user_id, "dynamic_risk: setup_tag missing, falling back to baseline")`. No client-facing warning in 01a — QNT-01b will add the inline nudge. `kelly_inputs` remains NULL at close.
 
-6. **Citation validator is a hard gate.** Every `NarrativeSection.citations` entry must be in `digest.flagged_trades.*.id`. Invalid → reject the whole `NarratedReport`. Log which IDs failed. Scheduler then persists stats-only fallback (narrative_sections_json=NULL) instead of discarding the work. FR-12 is satisfied by the same path.
+6. **`kelly_inputs` populated only when dynamic mode produced a Kelly-derived size.** Fixed-mode trades AND untagged-fallback trades → `kelly_inputs = NULL`. This is the per-trade mode audit trail (Risk #5 in spec).
 
-7. **Citation token format: `[T-{first_8_of_uuid}]`.** Short enough to read inline, long enough to be unique within a single digest's flagged_trades slice (typical size 3-15 trades). Backend includes `short_id: first 8 chars of id` on each `TradeEvidence`; frontend matches tokens against `flagged_trades.*.short_id` to resolve full UUID for deep-links. Full uuid ships on `TradeEvidence.id`.
+7. **`UserSettings` struct shape** — tiny for 01a:
+   ```rust
+   pub struct UserSettings {
+       pub dynamic_risk_enabled: bool,
+       // Future: drift_warnings, per-setup overrides, ...
+   }
+   ```
+   Persisted as JSONB. Stored even when `dynamic_risk_enabled = false` (to preserve future preferences on upgrade). Unlock state (`dynamic_risk_unlocked_at: Option<DateTime>`) set at first successful enable → remains set even if user later toggles off.
 
-8. **Trade deep-link via query param, not a new route.** Coach narrative's `[T-xxx]` → `<a href="/desk/trades?trade={uuid}">T-xxx</a>`. `Trades.tsx` gains a one-liner `useSearchParams()` read that pre-opens the `TradeDetail` modal if present. No new route, no URL reorganization, no breakage of bookmarks.
+8. **Unlock gate SQL uses the existing RSK-02 index.** `SELECT COUNT(*) FROM journal_trades WHERE user_id = $1 AND setup_tag IS NOT NULL`. Partial index `idx_journal_trades_user_setup` serves this query directly — O(log n) + small constant.
 
-9. **Prompt structure: two-message cache-optimized layout.**
-   - **Message 1 (system role, cached prefix ~8k tokens):** role intro, 6-pattern taxonomy with definitions, JSON output schema, citation rule ("every claim MUST cite [T-xxx]"), 2-3 few-shot examples, tone directives ("direct, non-judgmental, data-first, no moralizing").
-   - **Message 2 (user role, per-request ~1-2k):** `CoachDigest` as JSON + instruction to generate a `NarratedReport` JSON response.
+9. **`dynamic_risk_unlocked_at` is informational, not enforcement.** Enforcement is the COUNT check on every PATCH-to-enable. Once unlocked, the flag lets UI show "unlocked on 2026-05-04" copy. If count drops below 30 (only possible via trade deletion), existing `dynamic_risk_enabled = true` stays valid — no re-gating after initial unlock. Discovery #9.
 
-   `async-openai` response parsing: `ChatCompletion.choices[0].message.content` → parse as `NarratedReport`. Cache-hit metrics from provider response (`usage.prompt_cache_hit_tokens` on DeepSeek) logged for the ≥70% acceptance criterion.
+10. **`reference_kelly` constant** — `Quarter-Kelly(p=0.52, b=1.5) ≈ 0.0133`. Computed once as a module-level `lazy_static` or `OnceLock<Decimal>` in `kelly.rs`. Pure Decimal math, no runtime variance. Discovery #7.
 
-10. **Stats-only fallback persists a valid row.** On narrator timeout, rate-limit, parse failure, or citation-validation failure: persist `coach_reports` row with `narrative_sections_json=NULL`, `digest_json=...`, `model_used="unavailable"`. Frontend renders "● coach unavailable this week" in the narrative slot. Acceptance criterion verified by pointing a test at a 404 base URL.
+11. **Pseudocount `K = 10` is a module-level `const`**, not a config knob. Tuning requires code change + redeploy. Spec says "hardcoded constant" — follow spec. If QNT-02 adds drift detection, K may become per-user tunable.
 
-11. **No email / push / webhook.** Deliberate per spec FR-6 — the banner + `● new` indicator on Account is the only discovery surface. Lower engagement, higher signal-to-noise; no infra.
+12. **Extension SettingsPanel for 01a is minimal.** Single toggle. When `unlocked = false` from server: greyed-out + tooltip "Unlocks after 30 tagged closes." When `unlocked = true`: functional switch. No progress indicator, no preview UI — that's QNT-01b (Transparency overlay). Mount location TBD at build time; likely inside `MainView.tsx` or a new collapsible "Settings" section on it. Discovery #8.
 
-12. **`coach_banner_last_viewed_at` drives `● new`.** On `GET /api/v1/coach/latest`, compare `report.generated_at` vs `user.coach_banner_last_viewed_at`: if generated > last-viewed (or last-viewed is NULL), response has `has_new_indicator=true`. Visiting `/desk/coach` triggers `POST /api/v1/coach/mark-viewed` which sets `coach_banner_last_viewed_at = NOW()`. Separate from `banner_dismissed_at` on the report row (per-week dismiss, FR-7).
+13. **`authServer` unlock check happens on every PATCH, not just on toggle-on.** Cheap query; idempotent behavior. User flipping on/off/on in rapid succession gets consistent server validation.
 
-13. **RSK-01 bucket logic reused, not copied.** Mark `bucket_for` + `extract_base_asset` as `pub(crate)` in `risk_snapshot.rs`. Single source of truth for asset-family taxonomy. `correlation_stack.rs` pattern detector imports them.
+---
 
-14. **Scheduler timing.** Default cron: Sunday 18:00 UTC. Implementation: `tokio::time::interval(Duration::from_secs(3600))` hourly wakeup, with an `is_trigger_moment(now) -> bool` check computing "is it 18:00 UTC on a Sunday" + a `already_fired_this_week(pool)` SQL guard. Cheaper than a full cron-expr parser, and the precision (within 1h) is fine for a weekly report. `COACH_CRON` env var reserved for future upgrade to a real cron-expr if needed — MVP ignores it and logs a warning if set to anything non-default.
+### Vertical Checkpoint Structure (from spec §Technical Implementation)
 
-15. **Pattern thresholds from `coach_config` table — deferred.** Spec mentions a `coach_config` table for tunable thresholds. MVP uses hardcoded constants in each detector with `const` Decimals. Adding the table is a straight follow-up migration once a threshold actually needs tuning in production. Flagged as Discoveries #5 so it doesn't bleed into MVP scope.
-
-16. **No manual trigger endpoint.** Spec risk #6 mentions "per-user rate limit on manual coach trigger if we add one." MVP does not add a manual trigger endpoint — the only way to generate a report is the weekly cron. Cost-cap concern moot.
-
-17. **Chart dep: none.** Coach page renders deterministic stats in a small table + narrative as markdown. No ECharts usage. Reuses existing tokens, `HelpTip`, `PageSubHeader`, `MarkdownPreview` patterns.
+| CP | Goal | Tasks |
+|----|------|-------|
+| CP-1 | Plumbing end-to-end: migration + server endpoints + unlock gate + extension toggle. Frontend can mock against live contract; no math yet. | T1, T2, T3 |
+| CP-2 | Pure-math modules unit-tested against fixtures. No trade-path integration. | T4, T5 |
+| CP-3 | Math wired into create_trade. Kelly sizing flows through existing MIN pipeline; `kelly_inputs` persisted at close. | T6, T7, T8 |
+| Final | Verification + commit. | T9 |
 
 ---
 
 ### Parallel Track Detection
 
 ```
-T1 (migration — coach_reports + users columns)
+T1 (migration — user_settings table + kelly_inputs column)
   │
-  ├── T2 (types + module scaffolding)
-  │     │
-  │     ├── T3 (baseline + detect_all skeleton) ────┐
-  │     │     │                                      │
-  │     │     ├── T3a sizing_drift                   │
-  │     │     ├── T3b frequency_spike                │
-  │     │     ├── T3c session_anomaly                │ (T3a-T3f parallelizable)
-  │     │     ├── T3d setup_fatigue                  │
-  │     │     ├── T3e correlation_stack              │
-  │     │     └── T3f streak_risk                    │
-  │     ├── T4 (digest composer)                     │
-  │     ├── T5 (narrator trait + OpenAI impl)        │
-  │     └── T6 (citation validator)                  │
-  │                                                  │
-  │                                                  └── T7 (weekly scheduler + CoachService orchestration) ── T8 (routes + AppState + config)
-  │                                                                                                              │
-  └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-                                                                                                                 │
-                                                                                                                 ↓
-                                                                                            T9 (frontend API types + fetchers)
-                                                                                                                 │
-                                                                                                                 ↓
-                                                                                            T10 (/desk/coach page + components)
-                                                                                                                 │
-                                                                                                                 ↓
-                                                                                            T11 (CoachBanner live + nav + help)
-                                                                                                                 │
-                                                                                                                 ↓
-                                                                                            T12 (final verification + commit)
+  ├── T2 (user_settings routes + unlock gate + AppState wiring) ──┐
+  │                                                                │
+  └── T3 (extension — schemas + messages + handlers + toggle UI) ──┤   [parallel with T2]
+                                                                   │
+                                                                   ↓
+                                              T4 (kelly.rs pure math + tests)
+                                                   │
+                                                   └── T5 (calibration.rs engine + shrink + tests)  [parallel with T4]
+                                                              │
+                                                              ↓
+                                       T6 (create_trade: Kelly pre-sizing + CalibratedKelly variant + negative-edge reject)
+                                                              │
+                                                              ↓
+                                       T7 (record_trade_close: kelly_inputs JSONB at close)
+                                                              │
+                                                              ↓
+                                       T8 (untagged fallback path + info log)
+                                                              │
+                                                              ↓
+                                                          T9 (verification + commit)
 ```
 
-Parallel opportunity after T2: T3/T4/T5/T6 are independent pure-logic modules. Sequential execution picked for single-agent BUILD mode; flagged in Discoveries #4 for fast-follow parallelization if needed.
+T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Single-agent BUILD stays sequential.
 
 ---
 
 ## Tasks
 
-### T1: Migration — coach_reports table + users coach preference columns — `complete`
+### T1: Migration — `user_settings` table + `journal_trades.kelly_inputs` column — `pending`
 
-**Scope:** CP-6 persistence layer. New `coach_reports` table; `users` gains `coach_enabled` + `coach_banner_last_viewed_at` columns.
+**Scope:** CP-1 persistence layer.
 
 **Files:**
-- `testudo-exchange/crates/sqlx_postgres/migrations/20260419000000_coach_schema.up.sql` — NEW:
+- `testudo-exchange/crates/sqlx_postgres/migrations/{ts}_add_qnt_columns.up.sql` — NEW:
   ```sql
-  ALTER TABLE users ADD COLUMN coach_enabled BOOLEAN NOT NULL DEFAULT TRUE;
-  ALTER TABLE users ADD COLUMN coach_banner_last_viewed_at TIMESTAMPTZ NULL;
-
-  CREATE TABLE coach_reports (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      week_start TIMESTAMPTZ NOT NULL,
-      week_end TIMESTAMPTZ NOT NULL,
-      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      model_used TEXT NOT NULL,
-      headline TEXT NULL,
-      narrative_sections_json JSONB NULL,   -- NULL when narrator failed (stats-only fallback)
-      digest_json JSONB NOT NULL,           -- full CoachDigest for transparency + debugging
-      cache_hit_ratio NUMERIC(4, 3) NULL,   -- 0..1 from provider response
-      banner_dismissed_at TIMESTAMPTZ NULL,
-      UNIQUE (user_id, week_start)
+  CREATE TABLE IF NOT EXISTS user_settings (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      settings JSONB NOT NULL DEFAULT '{"dynamic_risk_enabled": false, "dynamic_risk_unlocked_at": null}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
-  CREATE INDEX idx_coach_reports_user_generated ON coach_reports(user_id, generated_at DESC);
+  ALTER TABLE journal_trades
+      ADD COLUMN kelly_inputs JSONB NULL;
   ```
-- `testudo-exchange/crates/sqlx_postgres/migrations/20260419000000_coach_schema.down.sql` — NEW:
-  ```sql
-  DROP INDEX IF EXISTS idx_coach_reports_user_generated;
-  DROP TABLE IF EXISTS coach_reports;
-  ALTER TABLE users DROP COLUMN coach_banner_last_viewed_at;
-  ALTER TABLE users DROP COLUMN coach_enabled;
-  ```
-- `testudo-exchange/crates/router/src/models/user.rs` — MODIFIED: add `coach_enabled: bool` + `coach_banner_last_viewed_at: Option<DateTime<Utc>>` fields to `User`; update any `FromRow` / `SELECT *` call-sites that bind to the struct.
+- `testudo-exchange/crates/sqlx_postgres/migrations/{ts}_add_qnt_columns.down.sql` — NEW: reverse (DROP COLUMN + DROP TABLE).
 
-**Validate:** `cd testudo-exchange && cargo check --all-targets` (migrations run at router startup; verify no compile regressions from added columns).
+**Timestamp:** Use `20260420000100_add_qnt_columns` (later than the ENG-01 dignitas migration reserved at `20260420000000`, if that lands first; otherwise `20260420000000`). Resolved at build time by greping existing migrations.
+
+**Validate:** `cd testudo-exchange && cargo check --all-targets` (migrations compile into sqlx offline cache only if `SQLX_OFFLINE=true`; runtime validation in T2).
 
 **Acceptance:**
-- Migration applies cleanly up + down on a fresh DB.
-- `users.coach_enabled` defaults TRUE for all rows (existing + new).
-- `coach_reports` UNIQUE(user_id, week_start) blocks duplicate insert on cron re-run.
-- `User` model struct matches new columns; `cargo check` passes.
+- Up+down apply cleanly on a fresh DB.
+- `user_settings.settings` defaults to `{"dynamic_risk_enabled": false, "dynamic_risk_unlocked_at": null}`.
+- `journal_trades.kelly_inputs` nullable, default NULL.
+- `ON DELETE CASCADE` from users.
 
 ---
 
-### T2: Coach module scaffolding + types — `complete`
+### T2: `user_settings` routes + unlock gate + AppState wiring — `pending`
 
-**Scope:** CP-1/CP-2/CP-3 type surface. All structs/enums defined, no logic yet. Establishes the wire contract for T3-T6 to fill in.
+**Scope:** CP-1 backend API surface. Server-side unlock check on enable.
 
 **Files:**
-- `testudo-exchange/crates/router/src/services/coach/mod.rs` — NEW:
+- `testudo-exchange/crates/router/src/routes/user_settings.rs` — NEW:
+  - `#[derive(Serialize, Deserialize)] pub struct UserSettings { dynamic_risk_enabled: bool, dynamic_risk_unlocked_at: Option<DateTime<Utc>> }`.
+  - `#[derive(Serialize)] pub struct UserSettingsResponse { settings: UserSettings, unlocked: bool, tagged_trade_count: i64 }`.
+  - `#[derive(Deserialize)] pub struct PatchUserSettingsRequest { dynamic_risk_enabled: bool }`.
+  - `GET /api/v1/user/settings` → `UserSettingsResponse`. Fetches settings row (creates default if missing via `INSERT ... ON CONFLICT DO NOTHING`), counts tagged closes, sets `unlocked = count >= 30`.
+  - `PATCH /api/v1/user/settings` → `UserSettingsResponse` on 200 OR `409 Conflict` with `{ "error": "unlock_gate", "message": "Dynamic Risk requires ≥ 30 tagged closed trades (you have N).", "tagged_trade_count": N, "required": 30 }` when enabling without threshold.
+  - Unlock SQL: `SELECT COUNT(*)::bigint FROM journal_trades WHERE user_id = $1 AND setup_tag IS NOT NULL`.
+  - First-time enable sets `dynamic_risk_unlocked_at = NOW()`.
+- `testudo-exchange/crates/router/src/routes/mod.rs` — MODIFIED: `pub mod user_settings;`.
+- `testudo-exchange/crates/router/src/main.rs` — MODIFIED: register `/api/v1/user` scope with `JwtMiddleware::new(token_service.clone())`, mount `/settings` handlers.
+- `testudo-exchange/crates/common_utils/src/risk/config.rs` — MODIFIED: add `pub dynamic_risk_enabled: bool` to `RiskConfig` (default `false`). Add builder method `with_dynamic_risk(bool)`. Document that the field is populated by the `create_trade` handler from `user_settings`, not from the defaults — presets leave it `false`.
+
+**Inline tests (cfg test):**
+- `enables_when_threshold_met` — user with ≥ 30 tagged closes can PATCH to true.
+- `rejects_enable_below_threshold` — user with 29 tagged closes gets 409 with count.
+- `disable_always_allowed` — PATCH to `false` works regardless of count.
+- `unlocked_at_set_on_first_enable_only` — re-enabling after disable does not update `unlocked_at`.
+
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test user_settings`.
+
+**Acceptance:**
+- GET returns default settings for first-time user.
+- PATCH enforces unlock gate server-side.
+- 409 response shape matches spec's error contract.
+- RiskConfig has `dynamic_risk_enabled` field.
+
+---
+
+### T3: Extension — schemas, messages, API helpers, SettingsPanel toggle — `pending`
+
+**Scope:** CP-1 extension surface. Wire the minimal Dynamic Risk toggle to the new endpoints. Can run in parallel with T2 once T1's wire contract is known.
+
+**Files:**
+- `testudo-extension/src/schemas.ts` — MODIFIED:
+  - Add `UserSettingsSchema = z.object({ dynamic_risk_enabled: z.boolean(), dynamic_risk_unlocked_at: z.string().datetime().nullable() })`.
+  - Add `UserSettingsResponseSchema = z.object({ settings: UserSettingsSchema, unlocked: z.boolean(), tagged_trade_count: z.number().int().nonnegative() })`.
+  - Add two variants to `RuntimeMessageSchema`: `{ type: 'GET_USER_SETTINGS' }` and `{ type: 'PATCH_USER_SETTINGS', dynamic_risk_enabled: z.boolean() }`.
+- `testudo-extension/src/background/api.ts` — MODIFIED:
+  - `export async function getUserSettings(): Promise<ApiResult>` — GET `/api/v1/user/settings`, parse with `UserSettingsResponseSchema`.
+  - `export async function patchUserSettings(enabled: boolean): Promise<ApiResult>` — PATCH with `{ dynamic_risk_enabled: enabled }`. Map 409 → `{ ok: false, error_code: 'unlock_gate', error: <server message> }`.
+- `testudo-extension/src/background/handlers.ts` — MODIFIED:
+  - `handleGetUserSettings()` → `getUserSettings()`.
+  - `handlePatchUserSettings(msg)` → `patchUserSettings(msg.dynamic_risk_enabled)`.
+  - Register both in dispatch table.
+- `testudo-extension/src/popup/components/SettingsPanel.tsx` — NEW:
+  - Solid component. `createResource(fetchUserSettings)`.
+  - Renders a labeled toggle "Dynamic Risk (Calibrated Kelly)".
+  - When `settings.loading`: skeleton.
+  - When `!unlocked`: disabled toggle + subtext "Unlocks after 30 tagged closes (currently N)".
+  - When `unlocked`: live toggle, calls `PATCH_USER_SETTINGS` on change, optimistically updates + rolls back on error.
+  - On 409 response: surfaces the server message inline.
+- Mount point — `testudo-extension/src/popup/components/MainView.tsx` OR a new tab in `TabBar.tsx`. **Decision at build time** — simplest is a collapsible "Settings" section at the bottom of MainView. Document choice in T3's completion commit.
+
+**Validate:**
+- `cd testudo-extension && bun run typecheck` (NOT `bun run build` per prod URL defaults feedback).
+- `bun run test` — add vitest cases for the two new messages if handler tests are the convention (check existing `handlers.test.ts`).
+
+**Acceptance:**
+- Popup toggle disabled state visible when `unlocked = false`.
+- Toggle round-trips to server on change.
+- 409 response surfaces inline.
+- No new pre-existing test regressions (baseline: ~28 pre-existing failures per RSK-02 T2 — don't add more).
+
+---
+
+### T4: `kelly.rs` pure math module + unit tests — `pending`
+
+**Scope:** CP-2 pure math. No I/O. Can run in parallel with T5.
+
+**Files:**
+- `testudo-exchange/crates/common_utils/src/risk/kelly.rs` — NEW:
   ```rust
-  pub mod types;
-  pub mod digest;
-  pub mod patterns;
-  pub mod narrator;
-  pub mod validator;
-  pub mod schedule;
-  pub mod service;
+  use rust_decimal::Decimal;
+  use rust_decimal_macros::dec;
+  use std::sync::OnceLock;
 
-  pub use service::CoachService;
-  pub use types::*;
+  pub const PSEUDOCOUNT_K: u32 = 10;
+  pub const CLAMP_MIN: Decimal = dec!(0.25);
+  pub const CLAMP_MAX: Decimal = dec!(2.00);
+
+  /// Quarter-Kelly for p=0.52, b=1.5 — the reference point for the ±2× clamp.
+  pub fn reference_kelly() -> Decimal {
+      static CACHE: OnceLock<Decimal> = OnceLock::new();
+      *CACHE.get_or_init(|| quarter_kelly(dec!(0.52), dec!(1.5), dec!(1.0)))
+  }
+
+  /// Full Kelly = (b·p − q) / b. Returns raw value (may be negative).
+  pub fn full_kelly(p_eff: Decimal, avg_r_win: Decimal, avg_r_loss: Decimal) -> Decimal;
+
+  /// Quarter-Kelly = full_kelly / 4.
+  pub fn quarter_kelly(p_eff: Decimal, avg_r_win: Decimal, avg_r_loss: Decimal) -> Decimal;
+
+  /// clamp(quarter_kelly / reference_kelly, 0.25, 2.0)
+  pub fn edge_multiplier(quarter_kelly: Decimal) -> Decimal;
+
+  /// baseline_risk_percent * edge_multiplier
+  pub fn effective_risk_percent(baseline: Decimal, multiplier: Decimal) -> Decimal;
   ```
-- `testudo-exchange/crates/router/src/services/coach/types.rs` — NEW:
-  - `CoachDigest { user_id, week_start, week_end, baseline: UserBaseline, week_stats: WeekStats, flagged_patterns: Vec<FlaggedPattern>, flagged_trades: Vec<TradeEvidence> }`
-  - `UserBaseline { avg_trades_per_day: Decimal, avg_position_size_usd: Decimal, typical_session_hours_utc: Vec<u8>, win_rate: Decimal, avg_r_multiple: Decimal, setup_baselines: HashMap<String, SetupBaseline> }`
-  - `SetupBaseline { trade_count: i64, avg_r_multiple: Decimal, win_rate: Decimal }`
-  - `WeekStats { trade_count: i64, win_rate: Decimal, total_pnl: Decimal, total_r: Decimal, trades_by_hour_utc: [i64; 24], by_setup: HashMap<String, SetupBaseline> }`
-  - `TradeEvidence { id: Uuid, short_id: String, symbol: String, side: String, opened_at: DateTime<Utc>, closed_at: DateTime<Utc>, pnl: Decimal, r_multiple: Option<Decimal>, setup_tag: Option<String>, position_size_usd: Decimal }`
-  - `FlaggedPattern { pattern: PatternKind, severity: Severity, evidence: Vec<Uuid>, metrics: serde_json::Value }`
-  - `enum PatternKind { SizingDrift, FrequencySpike, SessionAnomaly, SetupFatigue, CorrelationStack, StreakRisk }` (Serialize with `#[serde(rename_all = "snake_case")]`)
-  - `enum Severity { Info, Notable, Concerning }`
-  - `NarratedReport { headline: String, sections: Vec<NarrativeSection>, model_used: String, cache_hit_ratio: Option<Decimal>, generated_at: DateTime<Utc> }`
-  - `NarrativeSection { pattern: PatternKind, body: String, citations: Vec<Uuid> }`
-  - `StoredCoachReport { id: Uuid, user_id: Uuid, week_start: DateTime<Utc>, week_end: DateTime<Utc>, generated_at: DateTime<Utc>, model_used: String, headline: Option<String>, narrative_sections: Option<Vec<NarrativeSection>>, digest: CoachDigest, cache_hit_ratio: Option<Decimal>, banner_dismissed_at: Option<DateTime<Utc>> }`
-  - `CoachConfig { min_lifetime_trades: i64, min_week_trades: i64, enabled_global: bool }`
-  - `NarratorError` enum: `Timeout`, `RateLimit`, `Parse(String)`, `Provider(String)`.
-  - `ValidationError` enum: `UnknownCitation { section_index: usize, trade_id: Uuid }`, `UnknownToken { section_index: Option<usize>, token: String }`.
-- `testudo-exchange/crates/router/src/services/coach/service.rs` — NEW (stub):
-  - `pub struct CoachService { pool: PgPool, analytics_pool: PgPool, narrator: Arc<dyn Narrator + Send + Sync>, config: CoachConfig }`
-  - Stub public methods: `latest_for`, `archive_for`, `set_preference`, `get_preference`, `mark_viewed`, `dismiss_banner`, `generate_for`. All return unimplemented `todo!()` for now — filled in T7.
-- `testudo-exchange/crates/router/src/services/mod.rs` — MODIFIED: `pub mod coach;`
-- `testudo-exchange/crates/router/src/services/coach/digest.rs` — NEW stub.
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — NEW stub listing all 6 detectors as modules.
-- `testudo-exchange/crates/router/src/services/coach/narrator.rs` — NEW stub trait + OpenAi impl skeleton.
-- `testudo-exchange/crates/router/src/services/coach/validator.rs` — NEW stub.
-- `testudo-exchange/crates/router/src/services/coach/schedule.rs` — NEW stub.
+- `testudo-exchange/crates/common_utils/src/risk/mod.rs` — MODIFIED: `pub mod kelly;`.
 
-**Validate:** `cargo check --all-targets` — whole tree compiles with stubs.
+**Inline tests:**
+- `reference_kelly_matches_013` — within `dec!(0.0001)` of `0.0133`.
+- `full_kelly_positive_on_positive_edge` — p=0.6, b=2.0 → positive.
+- `full_kelly_negative_on_negative_edge` — p=0.4, b=1.0 → `≤ 0`.
+- `edge_multiplier_clamped_at_low` — tiny Kelly → 0.25.
+- `edge_multiplier_clamped_at_high` — huge Kelly → 2.0.
+- `effective_risk_percent_matches_baseline_at_reference` — multiplier 1.0 → baseline unchanged.
+- `effective_risk_percent_doubles_at_clamp_max` — multiplier 2.0 → 2× baseline.
+
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test -p common_utils kelly`.
 
 **Acceptance:**
-- All types defined, derive `Serialize`, `Deserialize`, `Debug`, `Clone` where appropriate.
-- `cargo check` passes.
-- No runtime behavior yet.
+- All 7 tests green.
+- No `f64` anywhere.
+- `reference_kelly()` value matches spec's annotation "≈ 0.0133".
 
 ---
 
-### T3: Baseline computation + detector orchestrator skeleton — `complete`
+### T5: `calibration.rs` CalibrationEngine + `shrink()` + unit tests — `pending`
 
-**Scope:** CP-1 foundation. Baseline + week-stats + week-trades SQL aggregations on `analytics_pool`. Empty `detect_all` orchestrator + empty `patterns/mod.rs` exports. Bump RSK-01 bucket helpers to `pub(crate)`. No detectors yet — each lands in its own task (T3a-T3f) so atomic-task discipline holds and a single broken detector doesn't retry-thrash the whole bundle.
+**Scope:** CP-2 I/O-bearing layer. Lives in `router/src/services/` per Design Decision #2 (deviation from spec's common_utils placement — Discovery #3).
 
 **Files:**
-- `testudo-exchange/crates/router/src/services/coach/digest.rs` — MODIFIED:
-  - `pub async fn compute_user_baseline(analytics_pool: &PgPool, user_id: Uuid, as_of: DateTime<Utc>) -> Result<UserBaseline>`:
-    - SQL aggregates on `journal_trades WHERE user_id = $1 AND closed_at BETWEEN $2 - INTERVAL '30 days' AND $2`.
-    - `typical_session_hours_utc`: top-4 hours by trade count.
-    - `setup_baselines`: grouped by `LOWER(COALESCE(setup_tag, '(untagged)'))`.
-  - `pub async fn compute_week_stats(analytics_pool, user_id, week_start, week_end) -> Result<WeekStats>`.
-  - `pub async fn fetch_week_trades(analytics_pool, user_id, week_start, week_end) -> Result<Vec<TradeEvidence>>`.
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — NEW:
-  - `pub fn detect_all(baseline: &UserBaseline, trades: &[TradeEvidence], stats: &WeekStats) -> Vec<FlaggedPattern>` returning `Vec::new()` for now; detector calls wired as each T3x lands.
-  - Empty `pub use` block — populated by T3a-T3f.
-- `testudo-exchange/crates/router/src/services/risk_snapshot.rs` — MODIFIED:
-  - `fn bucket_for` → `pub(crate) fn bucket_for`
-  - `fn extract_base_asset` → `pub(crate) fn extract_base_asset`
+- `testudo-exchange/crates/router/src/services/calibration.rs` — NEW:
+  ```rust
+  use common_utils::risk::kelly::PSEUDOCOUNT_K;
+  use rust_decimal::Decimal;
+  use sqlx::PgPool;
+  use uuid::Uuid;
 
-**Validate:** `cargo clippy --all-targets && cargo test coach::digest` — baseline + week_stats return stable shapes on seeded fixtures.
+  #[derive(Debug, Clone)]
+  pub struct SetupStats { pub n: u32, pub p_win: Decimal, pub avg_r_win: Decimal, pub avg_r_loss: Decimal }
+
+  #[derive(Debug, Clone)]
+  pub struct ShrunkStats { pub p_eff: Decimal, pub avg_r_win: Decimal, pub avg_r_loss: Decimal, pub n_setup: u32, pub n_global: u32 }
+
+  pub struct CalibrationEngine { pool: PgPool }
+
+  impl CalibrationEngine {
+      pub fn new(pool: PgPool) -> Self;
+      pub async fn load_prior(&self, user_id: Uuid) -> Result<SetupStats, sqlx::Error>;
+      pub async fn load_setup(&self, user_id: Uuid, setup_tag: &str) -> Result<SetupStats, sqlx::Error>;
+  }
+
+  /// Pure Bayesian shrinkage. Pseudocount K from kelly::PSEUDOCOUNT_K.
+  pub fn shrink(setup: &SetupStats, prior: &SetupStats, k: u32) -> ShrunkStats;
+  ```
+- `testudo-exchange/crates/router/src/services/mod.rs` — MODIFIED: `pub mod calibration;`.
+
+**SQL — `load_setup`:**
+```sql
+SELECT
+    COUNT(*)::integer AS n,
+    COALESCE(AVG(CASE WHEN net_pnl > 0 THEN 1.0 ELSE 0.0 END)::numeric, 0.0) AS p_win,
+    COALESCE(AVG(CASE WHEN net_pnl > 0 AND r_multiple IS NOT NULL THEN r_multiple END)::numeric, 0.0) AS avg_r_win,
+    COALESCE(AVG(CASE WHEN net_pnl <= 0 AND r_multiple IS NOT NULL THEN ABS(r_multiple) END)::numeric, 0.0) AS avg_r_loss
+FROM journal_trades
+WHERE user_id = $1 AND LOWER(setup_tag) = LOWER($2) AND closed_at IS NOT NULL
+```
+
+**SQL — `load_prior`:** same shape, drops `setup_tag` clause.
+
+**Inline tests:**
+- `shrink_at_zero_setup_trades_returns_prior` — `n_setup=0` → `p_eff == p_prior`, `avg_r_win == prior.avg_r_win`, etc.
+- `shrink_at_K_equals_50_50_blend` — `n_setup=10, K=10` → half-and-half.
+- `shrink_at_10K_dominates_by_setup` — `n_setup=100, K=10` → `p_eff ≈ p_setup ± small prior drag`.
+- `anti_gaming_small_n_cannot_spike_p_eff` — small n, high p_setup, neutral prior → p_eff still near prior.
+
+(Integration tests against real DB deferred — SQL verified by compile + T9's full-suite.)
+
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test -p router calibration`.
 
 **Acceptance:**
-- Baseline SQL returns stable `UserBaseline` on a seeded fixture (deterministic, `rust_decimal` throughout, no `f64`).
-- `compute_week_stats` + `fetch_week_trades` round-trip a fixture week correctly.
-- `detect_all` compiles, returns empty `Vec`, callable from T4's digest composer.
-- `bucket_for` / `extract_base_asset` are `pub(crate)`; `risk_snapshot.rs` internal callers still compile.
+- 4 inline tests green.
+- `shrink()` uses `PSEUDOCOUNT_K` from kelly.rs (single source of truth).
+- SQL uses case-insensitive setup_tag match (`LOWER`) per RSK-02 convention.
 
 ---
 
-### T3a: Pattern detector — `sizing_drift` — `complete`
+### T6: `create_trade` integration — Kelly pre-sizing + `CalibratedKelly` variant + negative-edge rejection — `pending`
 
-**Scope:** CP-1 detector #1. Pure-logic function + 2 unit tests. Wire into `detect_all`.
+**Scope:** CP-3 trade-path integration. The load-bearing task.
+
+**Additive-only contract (ENFORCED — do not break current functionality):**
+- Every new code path is gated behind `dynamic_risk_enabled == true`. Default is `false`. A user with NO `user_settings` row behaves as `{ dynamic_risk_enabled: false }` — handler must treat `NotFound` as fixed-mode, NOT error. Explicit `.unwrap_or_default()` or equivalent match arm.
+- `SizingMethod` enum gains `CalibratedKelly`; existing `FixedFractional`, `KellyCriterion`, `VolatilityAdjusted`, `MaxRiskCap` untouched. No renames. No default-variant changes.
+- `RiskConfig` gains `dynamic_risk_enabled: bool` with `#[serde(default)]`; preset constructors (`new()`, `conservative()`, `aggressive()`) explicitly set it to `false`.
+- Calibration query failure (DB error, not "no data") = `tracing::warn!` + fall back to baseline fixed-mode sizing. A transient DB hiccup must NEVER fail a trade that today would succeed.
+- Existing `CreateTradeRequest` wire format gains no required fields. Existing clients (pre-spec extension builds) keep working unchanged.
 
 **Files:**
-- `testudo-exchange/crates/router/src/services/coach/patterns/sizing_drift.rs` — NEW:
-  - `pub fn detect_sizing_drift(baseline: &UserBaseline, trades: &[TradeEvidence], _stats: &WeekStats) -> Option<FlaggedPattern>`.
-  - Rule: last 3 post-loss trades' avg position size > 1.5 × `baseline.avg_position_size_usd` → `FlaggedPattern { pattern: PatternKind::SizingDrift, severity: Notable|Concerning based on multiplier, evidence: [trade_ids], metrics: { size_multiplier } }`.
-  - All math in `rust_decimal::Decimal`.
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — MODIFIED:
-  - `pub use sizing_drift::detect_sizing_drift;`
-  - Call from `detect_all`, push result if `Some`.
+- `testudo-exchange/crates/common_utils/src/risk/types.rs` — MODIFIED: add `CalibratedKelly` variant to `SizingMethod` enum (appended; existing variants untouched).
+- `testudo-exchange/crates/router/src/types/app.rs` — MODIFIED: add `pub calibration_engine: Arc<CalibrationEngine>`.
+- `testudo-exchange/crates/router/src/main.rs` — MODIFIED: construct `Arc::new(CalibrationEngine::new(pool.clone()))` and slot into AppState literal at lines 434-451.
+- `testudo-exchange/crates/router/src/routes/trade_management.rs` — MODIFIED in `create_trade` handler:
+  1. Load `UserSettings` for the user (query `user_settings`). **`NotFound` → treat as `dynamic_risk_enabled = false`, continue.** DB error → `warn!` + treat as false, continue.
+  2. If `dynamic_risk_enabled == false` → no change. Proceeds with fixed-mode baseline (FR-10 byte-for-byte).
+  3. If `dynamic_risk_enabled == true` AND `setup_tag.is_some()`:
+     - `let prior = calibration_engine.load_prior(user_id).await?;`
+     - `let setup = calibration_engine.load_setup(user_id, &tag).await?;`
+     - `let shrunk = shrink(&setup, &prior, PSEUDOCOUNT_K);`
+     - `let fk = full_kelly(shrunk.p_eff, shrunk.avg_r_win, shrunk.avg_r_loss);`
+     - If `fk <= Decimal::ZERO` → **return 400 with `{ "error": "negative_edge", "message": "Calibration shows negative edge for this setup — size = 0." }`**. Do NOT create a trade row.
+     - `let qk = fk / dec!(4);`
+     - `let mult = edge_multiplier(qk);`
+     - `let baseline = management.risk_percent;`
+     - `let eff = effective_risk_percent(baseline, mult);`
+     - Build ad-hoc `RiskConfig` with `account_risk_percent = eff` and `sizing_method = SizingMethod::CalibratedKelly`.
+     - Pass to DecisionLoop/RiskService. Existing MIN composition preserved.
+     - **Stash the `kelly_inputs` JSONB in-memory** (on the OrderGroup or a parallel map keyed by trade_group_id) so T7's `record_trade_close` path can retrieve it.
+  4. If `dynamic_risk_enabled == true` AND `setup_tag.is_none()`: T8 handles — here, fall through to baseline.
 
-**Validate:** `cargo clippy --all-targets && cargo test coach::patterns::sizing_drift`.
+**`kelly_inputs` in-memory stash strategy — Design Decision:** the cleanest is to add `pub kelly_inputs: Option<serde_json::Value>` to `OrderGroup` (in `engine/src/shadow/order_group.rs`) and propagate via `EngineCommand::ConfigureGroup` (same mechanism RSK-02 used for `setup_tag`). Written at trade entry, read at trade close. **The field MUST carry `#[serde(default)]` and `Option<_>` type** so any existing serialized OrderGroup state in pg_queue, WS buffers, or rehydration snapshots deserializes with `kelly_inputs = None` without error. Document in T6's commit.
+
+**Error path:** Negative-edge rejection is a hard 4xx. Client (extension modal) surfaces the message via existing toast pipeline (RSK-03 T7 toast).
+
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test` — full suite.
 
 **Acceptance:**
-- Trigger fixture (3 post-loss trades sized 2× baseline) fires → returns `Some(FlaggedPattern)` with evidence = 3 trade IDs.
-- Non-trigger fixture (post-loss sizing within baseline) returns `None`.
+- Fixed-mode trades size identically to pre-spec (regression check — compare sizing math output on same inputs).
+- Dynamic-mode tagged trade: `effective_risk_percent ∈ [0.25 × baseline, 2.0 × baseline]`.
+- Negative-edge trade: 400 response, no `journal_trades` row created.
+- `SizingMethod::CalibratedKelly` serialized in RiskResult when path active.
 
 ---
 
-### T3b: Pattern detector — `frequency_spike` — `complete`
+### T7: `record_trade_close` — persist `kelly_inputs` JSONB at close — `pending`
 
-**Scope:** CP-1 detector #2. Pure-logic + 2 unit tests. Wire into `detect_all`.
+**Scope:** CP-3 write side.
 
 **Files:**
-- `testudo-exchange/crates/router/src/services/coach/patterns/frequency_spike.rs` — NEW:
-  - `pub fn detect_frequency_spike(baseline: &UserBaseline, trades: &[TradeEvidence], _stats: &WeekStats) -> Option<FlaggedPattern>`.
-  - Rule: any 6h rolling window this week has trade count > p90 of rolling 6h windows over `baseline` 30-day period.
-  - `baseline` grows a field `p90_trades_per_6h: Decimal` (add to `UserBaseline` in T3's baseline SQL — revisit if missing).
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — MODIFIED: add `pub use` + `detect_all` wire.
+- `testudo-exchange/crates/router/src/services/journal_service.rs` — MODIFIED:
+  - Extend `TradeCloseEvent` with `pub kelly_inputs: Option<serde_json::Value>`.
+  - Thread into the `INSERT INTO journal_trades (..., setup_tag, kelly_inputs) VALUES (..., $N, $N+1)` column list + bindings (mirror the RSK-02 T1 setup_tag addition).
+- `testudo-exchange/crates/router/src/services/fill_detector.rs` (or wherever `emit_trade_closed` is called) — MODIFIED: read `OrderGroup.kelly_inputs` and pass through to `TradeCloseEvent`.
+- `testudo-exchange/crates/engine/src/shadow/order_group.rs` — MODIFIED: add `pub kelly_inputs: Option<serde_json::Value>`. Default `None`. Populated by `EngineCommand::ConfigureGroup` from T6.
+- `testudo-exchange/crates/router/src/services/trade_event_writer.rs` — **T7 FIRST STEP, NOT "verify at build time"**: grep the file for `INSERT INTO journal_trades` or `UPDATE journal_trades`. If it writes rows, mirror the column addition (pass `None` when not in dynamic mode → column stays NULL, identical to today). If it does not write to `journal_trades`, note the finding in the commit and move on. This must resolve BEFORE committing T7; leaving it as "verify later" risks a production row shape mismatch.
 
-**Validate:** `cargo clippy --all-targets && cargo test coach::patterns::frequency_spike`.
+**kelly_inputs JSON shape (from spec):**
+```json
+{
+  "mode": "calibrated_kelly",
+  "baseline_risk_pct": 1.0,
+  "effective_risk_pct": 1.4,
+  "edge_multiplier": 1.4,
+  "p_eff": 0.582,
+  "avg_r_win": 1.92,
+  "avg_r_loss": 0.95,
+  "quarter_kelly": 0.019,
+  "n_setup": 43,
+  "n_global": 312,
+  "pseudocount_k": 10,
+  "p_setup_raw": 0.61,
+  "p_global_raw": 0.54,
+  "computed_at": "2026-04-18T14:22:31Z"
+}
+```
+Built in T6 at trade submission time; only `computed_at` uses `Utc::now()`, rest are snapshot values at entry. Document in T7 commit that this is intentionally "entry-time snapshot" not "close-time recompute" — preserves audit integrity.
+
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
 
 **Acceptance:**
-- Trigger fixture (6 trades in one afternoon vs baseline p90=3) fires → `Some(FlaggedPattern)` with evidence = trades in the spike window.
-- Non-trigger (evenly-spaced week) → `None`.
+- Dynamic-mode trade close → `journal_trades.kelly_inputs` populated with the 13-field JSON.
+- Fixed-mode trade close → `kelly_inputs` NULL.
+- Router restart between entry and close: `kelly_inputs` survives via OrderGroup rehydration (mirror RSK-02 T1's `setup_tag` rehydration path in `rehydration.rs`).
 
 ---
 
-### T3c: Pattern detector — `session_anomaly` — `complete`
+### T8: Decision-loop untagged fallback + info log — `pending`
 
-**Scope:** CP-1 detector #3. Pure-logic + 2 unit tests. Wire into `detect_all`.
+**Scope:** CP-3 FR-8 completion.
 
 **Files:**
-- `testudo-exchange/crates/router/src/services/coach/patterns/session_anomaly.rs` — NEW:
-  - `pub fn detect_session_anomaly(baseline: &UserBaseline, trades: &[TradeEvidence], _stats: &WeekStats) -> Option<FlaggedPattern>`.
-  - Rule: ≥ 2 trades this week in UTC hours NOT in `baseline.typical_session_hours_utc` (top-4).
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — MODIFIED: `pub use` + wire.
+- `testudo-exchange/crates/router/src/routes/trade_management.rs` — MODIFIED: in the dynamic-mode branch added by T6, the untagged case (`dynamic_risk_enabled && setup_tag.is_none()`) now emits `tracing::info!(user_id = %user_id, "dynamic_risk: setup_tag missing, falling back to baseline")` and falls through to the fixed-mode path. No Kelly computation. No `kelly_inputs` on the resulting trade.
 
-**Validate:** `cargo clippy --all-targets && cargo test coach::patterns::session_anomaly`.
+**This may already be a no-op** if T6's branch structure naturally falls through on `setup_tag.is_none()`. In that case, T8 is purely the `tracing::info!` line + inline-test verification.
+
+**Inline test (in trade_management.rs or a helper):**
+- `dynamic_on_untagged_falls_back` — mock dynamic_enabled=true, setup_tag=None → sizing uses baseline (unchanged), no Kelly query fired.
+
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
 
 **Acceptance:**
-- Trigger (2+ trades at 03:00 UTC vs baseline=[13,14,15,16]) → `Some`.
-- Non-trigger (all trades in baseline hours) → `None`.
+- Untagged dynamic-mode trade sizes identically to fixed-mode.
+- Info log emitted at trace level `info`.
+- No `journal_trades.kelly_inputs` on these trades.
 
 ---
 
-### T3d: Pattern detector — `setup_fatigue` — `complete`
+### T9: Final verification + commit — `pending`
 
-**Scope:** CP-1 detector #4. Pure-logic + 2 unit tests. Wire into `detect_all`.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/coach/patterns/setup_fatigue.rs` — NEW:
-  - `pub fn detect_setup_fatigue(baseline: &UserBaseline, trades: &[TradeEvidence], _stats: &WeekStats) -> Option<FlaggedPattern>`.
-  - Rule: for any setup in `baseline.setup_baselines` with ≥ 5 baseline trades, compare its trailing-10 avg R (across baseline+week) to its all-time baseline avg R. If trailing-10 < 0.5 × baseline avg R → flag.
-  - Uses RSK-02 `setup_tag` already on `TradeEvidence`.
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — MODIFIED: `pub use` + wire.
-
-**Validate:** `cargo clippy --all-targets && cargo test coach::patterns::setup_fatigue`.
-
-**Acceptance:**
-- Trigger (setup "breakout" baseline R=1.2, last 10 avg R=0.4) → `Some` with evidence = trailing-10 trade IDs for that setup.
-- Non-trigger (setup still performing at baseline) → `None`.
-- Setup with < 5 baseline trades never triggers (insufficient data).
-
----
-
-### T3e: Pattern detector — `correlation_stack` — `complete`
-
-**Scope:** CP-1 detector #5. Pure-logic + 2 unit tests. Wire into `detect_all`. Reuses RSK-01 `bucket_for`/`extract_base_asset` bumped to `pub(crate)` in T3.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/coach/patterns/correlation_stack.rs` — NEW:
-  - `pub fn detect_correlation_stack(_baseline: &UserBaseline, trades: &[TradeEvidence], _stats: &WeekStats) -> Option<FlaggedPattern>`.
-  - Rule: group week trades by `(bucket_for(extract_base_asset(symbol)), side)`. If any group has ≥ 3 trades whose open→close windows overlap concurrently for > 4h → flag.
-  - Imports `crate::services::risk_snapshot::{bucket_for, extract_base_asset}`.
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — MODIFIED: `pub use` + wire.
-
-**Validate:** `cargo clippy --all-targets && cargo test coach::patterns::correlation_stack`.
-
-**Acceptance:**
-- Trigger (3 concurrent longs in ETH + ARB + OP = `L1` bucket, overlap 6h) → `Some` with evidence = 3 trade IDs.
-- Non-trigger (concurrent positions in different buckets, or sequential not concurrent) → `None`.
-- `pub(crate)` import of `bucket_for` compiles cleanly.
-
----
-
-### T3f: Pattern detector — `streak_risk` — `complete`
-
-**Scope:** CP-1 detector #6. Pure-logic + 2 unit tests. Wire into `detect_all`.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/coach/patterns/streak_risk.rs` — NEW:
-  - `pub fn detect_streak_risk(_baseline: &UserBaseline, trades: &[TradeEvidence], _stats: &WeekStats) -> Option<FlaggedPattern>`.
-  - Rule: sort week trades chronologically. Flag if (a) 3+ consecutive losses, OR (b) 5+ consecutive wins with position size monotonically non-decreasing.
-- `testudo-exchange/crates/router/src/services/coach/patterns/mod.rs` — MODIFIED: `pub use` + wire. This is the last detector — `detect_all` now calls all six.
-
-**Validate:** `cargo clippy --all-targets && cargo test coach::patterns`.
-
-**Acceptance:**
-- Trigger-loss (3 consecutive losses) → `Some` severity Notable.
-- Trigger-win (5 wins, sizes 1,1.2,1.5,1.8,2.0) → `Some` severity Concerning.
-- Non-trigger (mixed W/L pattern) → `None`.
-- Full `cargo test coach::patterns` passes — all 6 detectors × 2 tests + baseline tests = 14+ green.
-
----
-
-### T4: CoachDigest composer — `complete`
-
-**Scope:** CP-2. `build_digest(pool, analytics_pool, user_id, week_start, week_end, config) -> Result<Option<CoachDigest>>`. Returns `Ok(None)` if skip rules fire. Otherwise orchestrates baseline → week_stats → week_trades → detect_all → filters `flagged_trades` to only those referenced by a flag.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/coach/digest.rs` — MODIFIED:
-  - `pub async fn build_digest(pool: &PgPool, analytics_pool: &PgPool, user_id: Uuid, week_start, week_end, config: &CoachConfig) -> Result<Option<(CoachDigest, /* skip_reason */ ())>, BuildDigestError>`:
-    1. Read `users.coach_enabled` — if FALSE, return `Ok(None)` with `skip_reason="opt_out"` logged.
-    2. Lifetime trade count check (`SELECT COUNT(*) FROM journal_trades WHERE user_id = $1`) — if < `config.min_lifetime_trades`, `Ok(None)` with `skip_reason="lifetime_below_threshold"`.
-    3. Week trade count — if < `config.min_week_trades`, `Ok(None)` with `skip_reason="week_below_threshold"`.
-    4. Build baseline + week_stats + week_trades in parallel (`tokio::join!`).
-    5. `detect_all(...)` → flagged_patterns. If empty → `Ok(None)` with `skip_reason="no_flags"`.
-    6. `flagged_trades` = `week_trades` filtered to IDs referenced by any flag's `evidence`.
-    7. Return `Ok(Some(CoachDigest { ... }))`.
-- `testudo-exchange/crates/router/tests/coach_digest_snapshot_test.rs` — NEW:
-  - Golden-snapshot test: seed a fixture week → assert `CoachDigest` JSON matches committed snapshot.
-
-**Validate:** `cargo test coach::digest` — all tests pass; snapshot committed.
-
-**Acceptance:**
-- Skip rules return `Ok(None)`, never errors.
-- Non-skipped digest has `flagged_patterns.len() > 0 ==> flagged_trades.len() > 0`.
-- `flagged_trades` only contains trades referenced by ≥1 flag's `evidence`.
-
----
-
-### T5: Narrator trait + OpenAI-compatible implementation — `complete`
-
-**Scope:** CP-3 half-one. `Narrator` trait + `OpenAiNarrator` impl using `async-openai` against `OPENAI_BASE_URL`. Mock impl for tests.
-
-**Files:**
-- `testudo-exchange/crates/router/Cargo.toml` — MODIFIED: add `async-openai = "0.27"` (confirm latest at build time).
-- `testudo-exchange/crates/router/src/services/coach/narrator.rs` — MODIFIED:
-  - `#[async_trait] pub trait Narrator: Send + Sync { async fn narrate(&self, digest: &CoachDigest) -> Result<NarratedReport, NarratorError>; }`.
-  - `pub struct OpenAiNarrator { client: async_openai::Client<OpenAIConfig>, model: String }`.
-  - `impl Narrator for OpenAiNarrator`:
-    - System message from `const SYSTEM_PROMPT: &str = include_str!("prompts/system.md")`.
-    - User message: `serde_json::to_string(digest)?`.
-    - Chat completion call; parse `choices[0].message.content` as `NarratedReport`.
-    - Extract `usage.prompt_cache_hit_tokens` / `usage.prompt_tokens` for `cache_hit_ratio`.
-    - Map errors to `NarratorError`.
-  - `pub struct MockNarrator { pub response: std::sync::Mutex<Option<Result<NarratedReport, NarratorError>>> }`.
-  - `impl Narrator for MockNarrator`.
-- `testudo-exchange/crates/router/src/services/coach/prompts/system.md` — NEW: static system-role prompt (~8k tokens: role, taxonomy, JSON schema, citation rule, few-shot, tone).
-- `testudo-exchange/crates/router/tests/coach_narrator_test.rs` — NEW:
-  - MockNarrator returns configured response.
-  - Parse-error mapping on malformed content.
-
-**Validate:** `cargo clippy --all-targets && cargo test coach::narrator`.
-
-**Acceptance:**
-- Trait compiles object-safe (`Arc<dyn Narrator + Send + Sync>` used in CoachService).
-- OpenAiNarrator constructs from `(base_url, api_key, model)`.
-- MockNarrator drives success + all failure modes.
-- `prompts/system.md` ≥ 4 kB (real content, not stub).
-
----
-
-### T6: Citation validator — `complete`
-
-**Scope:** CP-3 half-two. Hard grounding gate.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/coach/validator.rs` — MODIFIED:
-  - `pub fn validate(report: &NarratedReport, digest: &CoachDigest) -> Result<(), ValidationError>`:
-    - `HashSet<Uuid>` from `digest.flagged_trades.iter().map(|t| t.id)`.
-    - `HashSet<&str>` from `digest.flagged_trades.iter().map(|t| t.short_id.as_str())`.
-    - Each section's `citations` uuid must be in the set.
-    - Regex `\[T-([0-9a-f]{8})\]` applied to every section body + headline; each capture must match a `short_id`.
-- `testudo-exchange/crates/router/tests/coach_validator_test.rs` — NEW:
-  - Positive: valid report passes.
-  - Negative 1: uuid not in digest → `UnknownCitation`.
-  - Negative 2: unknown token in body → `UnknownToken`.
-  - Negative 3: token in headline only → `UnknownToken`.
-
-**Validate:** `cargo test coach::validator`.
-
-**Acceptance:** All four tests green; regex compiled once via `once_cell::sync::Lazy` or `lazy_static`.
-
----
-
-### T7: Weekly scheduler + CoachService orchestration — `complete`
-
-**Scope:** CP-6. `CoachService::generate_for` = digest → narrate → validate → persist. `schedule.rs` spawns tokio task firing once per Sunday 18:00 UTC.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/coach/service.rs` — MODIFIED:
-  - `generate_for(user_id, week_start, week_end) -> Result<Option<StoredCoachReport>>`:
-    1. `let digest = build_digest(...)?`; `None` → log + `Ok(None)`.
-    2. Call `self.narrator.narrate(&digest).await`. On `Err`: log warn, set `narrated = None`.
-    3. On `Ok(report)`: call `validate(&report, &digest)`. On `Err`: log warn + rejection details, set `narrated = None`.
-    4. `persist(...)`: `INSERT INTO coach_reports (...) VALUES (...) ON CONFLICT (user_id, week_start) DO NOTHING RETURNING *`.
-    5. Return `Ok(Some(stored))`.
-  - `latest_for(user_id) -> Result<Option<(StoredCoachReport, bool /* has_new */)>>`: SELECT ordered by `generated_at DESC LIMIT 1`; `has_new` = `generated_at > COALESCE(coach_banner_last_viewed_at, '-infinity')`.
-  - `archive_for(user_id, limit, offset)`: paginated SELECT.
-  - `set_preference(user_id, enabled)`: UPDATE users.
-  - `get_preference(user_id)`: SELECT coach_enabled.
-  - `mark_viewed(user_id)`: UPDATE users SET coach_banner_last_viewed_at = NOW().
-  - `dismiss_banner(user_id, report_id)`: UPDATE coach_reports SET banner_dismissed_at = NOW() WHERE id = $1 AND user_id = $2.
-- `testudo-exchange/crates/router/src/services/coach/schedule.rs` — MODIFIED:
-  - `pub fn spawn_weekly_task(coach_service: Arc<CoachService>, pool: PgPool, cancel: CancellationToken)`:
-    - `tokio::spawn` with `loop { tokio::select! { _ = cancel.cancelled() => break, _ = tokio::time::sleep(Duration::from_secs(3600)) => { if is_trigger_moment(Utc::now()) && !already_fired_this_week(&pool, week_start).await.unwrap_or(true) { run_batch(&coach_service, &pool, week_start, week_end).await; } } } }`.
-    - `is_trigger_moment(now)`: `now.weekday() == Weekday::Sun && now.hour() == 18`.
-    - `already_fired_this_week(pool, week_start)`: `SELECT EXISTS (SELECT 1 FROM coach_reports WHERE week_start = $1)`.
-    - `run_batch`: `SELECT id FROM users WHERE coach_enabled = TRUE` → bounded-concurrency (`buffer_unordered(10)`) `generate_for`.
-- `testudo-exchange/crates/router/tests/coach_service_test.rs` — NEW:
-  - Happy path with MockNarrator(Ok) → persists narrative row.
-  - MockNarrator(Err) → persists stats-only row (`narrative_sections_json IS NULL`).
-  - Validation-fail → persists stats-only row.
-  - Idempotent: double `generate_for` → single row.
-
-**Validate:** `cargo clippy --all-targets && cargo test coach::service`.
-
-**Acceptance:** All four tests green; scheduler compiles with cancellation plumbing.
-
----
-
-### T8: Routes + AppState wiring + config/env — `complete`
-
-**Scope:** CP-4/CP-7/CP-8 backend surface.
-
-**Files:**
-- `testudo-exchange/crates/router/src/config.rs` — MODIFIED:
-  - Add: `llm_base_url: String`, `llm_model: String`, `coach_enabled_global: bool` (default `true`), `coach_min_lifetime_trades: i64` (default 30), `coach_min_week_trades: i64` (default 3).
-- `testudo-exchange/crates/router/src/types/app.rs` — MODIFIED:
-  - Add `pub coach_service: Arc<CoachService>`.
-- `testudo-exchange/crates/router/src/main.rs` — MODIFIED:
-  - Pull `OPENAI_API_KEY` via `std::env::var`.
-  - Build `OpenAiNarrator::new(base_url, api_key, model)`.
-  - `let coach_service = Arc::new(CoachService::new(pool.clone(), analytics_pool.clone(), narrator, coach_config));`.
-  - Add to AppState literal.
-  - Spawn scheduler: `coach::schedule::spawn_weekly_task(app_state.coach_service.clone(), pool.clone(), shutdown_token.clone());`.
-  - Register routes under `/api/v1/coach` nested scope wrapped with `JwtMiddleware`.
-- `testudo-exchange/crates/router/src/routes/coach.rs` — NEW:
-  - `GET /latest` → `{ data: Option<StoredCoachReport>, has_new_indicator: bool }`.
-  - `GET /archive?limit=20&offset=0` → `{ data: Vec<StoredCoachReport> }`.
-  - `GET /preference` → `{ coach_enabled: bool }`.
-  - `PATCH /preference` body `{ enabled: bool }` → 204.
-  - `POST /mark-viewed` → 204.
-  - `PATCH /{report_id}/dismiss-banner` → 204.
-- `testudo-exchange/crates/router/src/routes/mod.rs` — MODIFIED: `pub mod coach;`.
-
-**Validate:** `cargo clippy --all-targets && cargo test` — full suite green.
-
-**Acceptance:**
-- All six endpoints return correct status codes + bodies.
-- Unauthenticated → 401.
-- Missing `OPENAI_API_KEY` → startup panic with descriptive message.
-
----
-
-### T9: Frontend API client types + fetchers — `complete`
-
-**Scope:** CP-4/CP-7 wire layer.
-
-**Files:**
-- `testudo-journal/src/api/client.ts` — MODIFIED:
-  - Add interfaces: `UserBaseline`, `SetupBaseline`, `WeekStats`, `FlaggedPattern`, `TradeEvidence`, `NarrativeSection`, `CoachDigest`, `StoredCoachReport`, `CoachLatestResponse { data: StoredCoachReport | null; has_new_indicator: boolean }`, `CoachPreferenceResponse { coach_enabled: boolean }`.
-  - Fetchers:
-    - `fetchLatestCoachReport(): Promise<CoachLatestResponse>` — `fetchCrud('coach/latest')`.
-    - `fetchCoachArchive(limit = 20, offset = 0): Promise<{ data: StoredCoachReport[] }>`.
-    - `fetchCoachPreference(): Promise<CoachPreferenceResponse>`.
-    - `setCoachPreference(enabled: boolean): Promise<void>` — PATCH.
-    - `markCoachViewed(): Promise<void>` — POST.
-    - `dismissCoachBanner(reportId: string): Promise<void>` — PATCH.
-  - Decimal fields typed as `string`, uuid as `string`, dates as ISO `string`.
-
-**Validate:** `cd testudo-journal && bun run build`.
-
-**Acceptance:** `bun run build` exit 0; all six fetchers exported.
-
----
-
-### T10: /desk/coach page + CoachReport + CoachArchive + NarrativeBlock — `complete`
-
-**Scope:** CP-4/CP-5 read surface.
-
-**Files:**
-- `testudo-journal/src/pages/Coach.tsx` — NEW:
-  - `createResource(fetchLatestCoachReport)` + `createResource(() => offset(), fetchCoachArchive)`.
-  - `createResource(fetchCoachPreference)`.
-  - `onMount` (if latest exists): `markCoachViewed()` fire-and-forget.
-  - Pre-threshold UI: "N/30 trades to unlock the coach" (requires lifetime-trade count — piggyback on existing Overview stats or add tiny backend helper `GET /api/v1/coach/progress` returning `{ lifetime_trades, required }`; **decision at T10 build time**).
-  - Opt-out toggle → `setCoachPreference`.
-  - Privacy disclosure inline section stating LLM provider (sourced from `latest.data.model_used` or a config-echo).
-  - Renders `<CoachReport report={latest()} />` + `<CoachArchive items={archive()?.data ?? []} />`.
-- `testudo-journal/src/components/coach/CoachReport.tsx` — NEW:
-  - Top: deterministic stats block (week dates, trade count, win rate, total PnL, flagged patterns list as badges).
-  - Middle: `<NarrativeBlock sections={report.narrative_sections} flagged={report.digest.flagged_trades} />` OR "● coach unavailable this week" fallback.
-  - Bottom: metadata (model_used, generated_at, cache_hit_ratio).
-- `testudo-journal/src/components/coach/NarrativeBlock.tsx` — NEW:
-  - Pre-process: regex `/\[T-([0-9a-f]{8})\]/g` → `<a href="/desk/trades?trade={uuid}">T-xxxxxxxx</a>` using `flagged.find(t => t.short_id === match[1])`.
-  - Hand resulting markdown string to existing `MarkdownPreview`.
-- `testudo-journal/src/components/coach/CoachArchive.tsx` — NEW:
-  - Paginated list: `week_start` date + headline + pattern badges.
-  - MVP: expand inline on click (no modal).
-- `testudo-journal/src/pages/Trades.tsx` — MODIFIED:
-  - `useSearchParams()`: on mount, if `trade` present, pre-open `TradeDetail` modal.
-- `testudo-journal/src/index.tsx` — MODIFIED:
-  - Add `<Route path="/coach" component={lazy(() => import('./pages/Coach'))} />`.
-
-**Validate:** `bun run build`; manual smoke across all four states (no report / last-week-only / narrative / stats-only fallback).
-
-**Acceptance:**
-- All four states render without errors.
-- `[T-xxx]` links navigate to `/desk/trades?trade={uuid}` and open modal.
-- Opt-out round-trips.
-- Privacy disclosure names provider.
-
----
-
-### T11: CoachBanner live + nav entry + HELP entries — `complete`
-
-**Scope:** CP-7/CP-8 discovery.
-
-**Files:**
-- `testudo-journal/src/components/account/CoachBanner.tsx` — MODIFIED:
-  - Replace `return null` with `createResource(fetchLatestCoachReport)`.
-  - `null` data OR `banner_dismissed_at` set → `return null`.
-  - Else render border-bounded row: left (● new indicator pulsing green when `has_new_indicator`, headline, "view coach report →" link), right (dismiss button).
-  - Dismiss → `dismissCoachBanner(report.id)` + `mutate` resource to hide.
-  - Body click → `useNavigate()('/coach')`.
-- `testudo-journal/src/components/Layout.tsx` — MODIFIED: `NAV_ITEMS` gets `{ path: '/coach', label: 'COACH' }`.
-- `testudo-journal/src/lib/help-content.ts` — MODIFIED:
-  - `page.coach`, `coach.narrative`, `coach.citations`, `coach.provider`, `coach.patterns.sizing_drift`, `coach.patterns.frequency_spike`, `coach.patterns.session_anomaly`, `coach.patterns.setup_fatigue`, `coach.patterns.correlation_stack`, `coach.patterns.streak_risk`.
-
-**Validate:** `bun run build`; manual: banner appears on Account when a report exists; dismiss + nav + HELP entries all surface.
-
-**Acceptance:**
-- Banner renders only when non-dismissed report exists.
-- `● new` green-pulse → green-static after /desk/coach visit (next `has_new_indicator` refresh).
-- Body-click navigates; dismiss button does not navigate.
-- Nav "COACH" link present on desktop + mobile.
-
----
-
-### T12: Final verification + commit — `complete`
-
-**Scope:** Completion Protocol.
+**Scope:** Completion Protocol per constitution.
 
 **Verifications:**
-- `cd testudo-exchange && cargo clippy --all-targets && cargo test` — all green, 0 new warnings beyond the pre-existing 3 (actor.rs:1842, cex_client.rs:653, evaluator.rs:188).
-- `cd testudo-journal && bun run build` — exit 0.
+- `cd testudo-exchange && cargo clippy --all-targets && cargo test` — all green, zero new warnings beyond the pre-existing 3 (actor.rs:1849, cex_client.rs:653, evaluator.rs:188).
+- `cd testudo-extension && bun run typecheck` — exit 0 (do NOT run `bun run build` per `feedback_prod_defaults.md`).
 - Migration up+down clean on a fresh DB.
-- Integration grep: `coach_reports`, `CoachService`, `CoachDigest`, `NarratedReport` wired consistently across router; `CoachReport`, `fetchLatestCoachReport`, `CoachBanner` wired consistently across journal.
+- Integration grep across repo: `SizingMethod::CalibratedKelly | CalibrationEngine | kelly_inputs | user_settings | dynamic_risk_enabled | PATCH_USER_SETTINGS` wired consistently across router + extension. Expected hit count: ~20 Rust files, ~4 TS files.
+- **Anti-gaming assertion** (spec FR-2/Risk #1): construct a hypothetical fixture — 45% win-rate setup → verify effective_risk_pct strictly below baseline; 65% win-rate setup → strictly above baseline but capped at `2 × baseline`. Verifiable via unit test against `kelly.rs` helpers + fixture `ShrunkStats`.
+- **FR-10 byte-for-byte fixed-mode regression**: dispatch a unit test that submits an identical trade in fixed mode pre-spec vs. post-spec and asserts the computed `PositionSizeResult.size` matches. Guard against regressions in `position_sizer.rs` during SizingMethod enum expansion.
+- **Default-off safety test**: a user with no `user_settings` row submitting a trade must route through the fixed-mode path with zero calls to `CalibrationEngine`. Verify via a test that injects a mock engine and asserts zero invocations.
+- **Rehydration compatibility**: existing in-flight OrderGroups serialized before the migration must deserialize after deploy with `kelly_inputs = None`. Verify via a JSON fixture captured from production shape (or a minimal hand-written pre-spec OrderGroup JSON) deserialized against the new struct.
+- **Existing test suite**: the pre-existing 972 Rust tests must all still pass with zero behavior changes. Any new failure in a pre-existing test is a regression, not a Kelly interaction — stop and investigate before proceeding.
 
-**Manual QA:**
-- Seed a test user with 30+ lifetime trades + 4 trades this week engineered to trigger ≥2 patterns. Invoke `generate_for` manually (direct DB + restart, or tests harness). Confirm `/desk/coach` narrative with citations; banner `● new`; dismiss flow; opt-out flow; stats-only fallback via unreachable base URL.
+**Manual QA (deferred to live session):**
+- New user (0 tagged closes) → PATCH returns 409 with accurate count.
+- Trader with 30+ tagged closes → PATCH succeeds, `dynamic_risk_unlocked_at` recorded.
+- Live trade submitted with dynamic mode ON + setup_tag → sizes via Kelly path; close writes `kelly_inputs` JSONB.
+- Live trade with dynamic mode ON + negative-edge setup → 400 response, no trade created.
 
-**Deferred to live session:**
-- Production prompt-cache hit rate measurement (≥ 70% criterion).
-- First-20-reports human review.
+**Commit plan (one per task):**
+- T1: `feat(qnt-01a): migration — user_settings table + journal_trades.kelly_inputs column`
+- T2: `feat(qnt-01a): user_settings routes + server-side unlock gate`
+- T3: `feat(qnt-01a): extension — Dynamic Risk toggle + user_settings API`
+- T4: `feat(qnt-01a): kelly.rs — Quarter-Kelly pure math + reference constant`
+- T5: `feat(qnt-01a): calibration engine — Bayesian shrinkage + aggregate queries`
+- T6: `feat(qnt-01a): create_trade — Kelly pre-sizing + negative-edge rejection`
+- T7: `feat(qnt-01a): record_trade_close — kelly_inputs JSONB at close`
+- T8: `feat(qnt-01a): dynamic-risk untagged fallback + info log`
+- T9: umbrella: `feat(qnt-01a): calibrated Kelly sizing engine + Bayesian shrinkage`
 
-**Commit plan:**
-- T1: `feat(rsk-03): migration — coach_reports + users coach prefs`
-- T2: `feat(rsk-03): coach module scaffolding + types`
-- T3: `feat(rsk-03): baseline + 6 pattern detectors`
-- T4: `feat(rsk-03): CoachDigest composer + skip rules`
-- T5: `feat(rsk-03): Narrator trait + OpenAI-compatible impl`
-- T6: `feat(rsk-03): citation validator`
-- T7: `feat(rsk-03): weekly scheduler + CoachService orchestration`
-- T8: `feat(rsk-03): coach HTTP routes + AppState + config`
-- T9: `feat(rsk-03): journal api client — coach types + fetchers`
-- T10: `feat(rsk-03): /desk/coach page + CoachReport + NarrativeBlock`
-- T11: `feat(rsk-03): CoachBanner live + nav + HELP`
-- T12: umbrella: `feat(rsk-03): weekly AI trade coach — pattern detection + narrated report (in-app only)`
-
-**Archive:** Move `.specify/specs/RSK-03-ai-trade-coach/` → `.specify/spec-archive/` after T12.
+**Archive:** Move `.specify/specs/QNT-01a-kelly-engine/` → `.specify/spec-archive/QNT-01a-kelly-engine/` after T9.
 
 ---
 
 ## Discoveries
 
-### 2026-04-19 — RSK-03 planning
+### 2026-04-20 — QNT-01a planning
 
-1. **Coach module in router/services/, not db-processor/.** db-processor is a 78-line queue worker with no library surface, no analytics helpers, no baseline code — the spec's citation of it as "natural home per memory" is inaccurate. Router/services/ is where every mature async service lives (`journal_service`, `journal_stats`, `journal_timeseries`, `risk_snapshot`, `fill_detector`, `rehydration`, `reconciliation`, `trade_event_writer`, `import_worker`, `ws_subscription_manager`), and it already owns `pool`, `analytics_pool`, `JwtMiddleware`, and the existing `tokio::time::interval` scheduler pattern. Placing coach there avoids a new library-crate boundary.
+1. **`setup_tag` infrastructure already shipped (RSK-02, 2026-04-18).** `CreateTradeRequest.setup_tag`, `TradeCloseEvent.setup_tag`, `journal_trades.setup_tag`, `OrderGroup.setup_tag` (via `EngineCommand::ConfigureGroup`), `idx_journal_trades_user_setup` partial index — all present. QNT-01a layers on top of this foundation; no setup-tag plumbing needed.
 
-2. **Users table extension preferred over user_preferences table.** Only two per-user fields needed (`coach_enabled` + `coach_banner_last_viewed_at`). A separate table would add a JOIN per auth-gated read with no benefit at MVP scope.
+2. **`user_settings` is a new JSONB table, not columns on `users`.** Spec explicit. Diverges from RSK-03's direct-column approach. JSONB is chosen for forward-compat with QNT-01b (transparency preferences) and QNT-02/03 (drift thresholds) without more ALTER TABLEs. One extra row read per session — trivial cost.
 
-3. **`users` model struct must be updated alongside the T1 migration.** Any `SELECT * FROM users` or `FromRow` usage in `PostgresUserRepository` must add both new columns, else compile breaks.
+3. **`CalibrationEngine` placement deviates from spec: `router/src/services/calibration.rs`, not `common_utils/src/risk/calibration.rs`.** Spec says common_utils; but common_utils's existing `risk/` module is I/O-free and peer services (coach, risk_snapshot, journal_timeseries) all live in `router/services/`. Adding sqlx to common_utils would introduce an inversion. Pure math (`shrink()`, Kelly helpers) stays in `common_utils/src/risk/kelly.rs` per spec. I/O lives in router/services. Zero behavioral difference; cleaner dep graph.
 
-4. **Parallel opportunity after T2: T3/T4/T5/T6.** Four pure-logic modules depend only on types. Single-agent BUILD stays sequential; fast-follow could dispatch 4 agents into worktrees.
+4. **`RiskConfig` has no per-user persistence today.** Constructed via hardcoded presets. Spec asks to add `dynamic_risk_enabled: bool` AND load from `user_settings`. The loading is a per-trade concern (done in `create_trade` handler using `user_settings` query), not a boot-time concern. The `dynamic_risk_enabled` field on `RiskConfig` is set by the handler before passing to DecisionLoop/PositionSizer.
 
-5. **`coach_config` thresholds table deferred.** MVP uses hardcoded `const Decimal` thresholds in detectors. Follow-up migration adds the table only when tuning is actually needed.
+5. **Kelly pre-sizing happens in the handler, NOT inside DecisionLoop.** DecisionLoop.execute() signature + body untouched. Handler computes `effective_risk_percent`, constructs a per-trade `RiskConfig` override with `account_risk_percent = effective_risk_percent`, passes to DecisionLoop. Existing MIN composition preserved byte-for-byte (FR-10). Cleaner than passing `trading_stats` into `risk_service.validate()`.
 
-6. **`include_str!("prompts/system.md")` for cached prefix.** Byte-stable string compiled into binary = reliable prompt-cache hits, no runtime file read, no deploy-time coupling.
+6. **Negative-edge rejection is a 400 from the HTTP handler, not a DecisionLoop rejection.** Kelly is a pre-sizing gate. Response body: `{ "error": "negative_edge", "message": "Calibration shows negative edge for this setup — size = 0." }`. No `journal_trades` row ever created. Client (extension modal) surfaces via existing toast pipeline.
 
-7. **Reuse RSK-01 bucketing via `pub(crate)`.** `bucket_for` + `extract_base_asset` in `risk_snapshot.rs` are single source of truth for asset-family taxonomy. Mark `pub(crate)`, import from `correlation_stack.rs`.
+7. **`reference_kelly` is a `OnceLock<Decimal>`.** Single computation at first use; cached. Value ≈ 0.0133 (Quarter-Kelly for p=0.52, b=1.5). Unit test verifies within 0.0001 tolerance.
 
-8. **Trade deep-link via `?trade={uuid}` on Trades page, not a new route.** One-liner `useSearchParams()` on mount pre-opens the modal. Preserves existing Trades UX; avoids new route boilerplate.
+8. **Extension SettingsPanel is minimal for 01a.** Single toggle, disabled when server reports unlocked=false. No progress UI, no preview — that's QNT-01b. Mount location (MainView section vs. new TabBar tab) decided at build time.
 
-9. **`async-openai` is the first LLM dep in repo.** Added to `crates/router/Cargo.toml`. Pointed at `OPENAI_BASE_URL` for DeepSeek/GLM/OpenRouter compatibility.
+9. **`dynamic_risk_unlocked_at` is informational, not enforcement.** Set on first successful enable. Never re-checked after. Once a user has 30 tagged closes, their unlock status persists even if trades are later deleted.
 
-10. **Scheduler: hourly tick + weekly SQL gate, not a cron-expr lib.** MVP: `is_trigger_moment(now)` (Sun 18:00 UTC) + `already_fired_this_week(pool, week_start)` idempotent guard. 20 lines, zero new deps, restart-safe. Future upgrade to cron-expr possible; `COACH_CRON` env reserved as placeholder.
+10. **Production URL defaults rule is load-bearing.** Extension verification uses `bun run typecheck`, NOT `bun run build`. Encoded in the spec's Acceptance Criteria and in MEMORY (`feedback_prod_defaults.md`). T3 and T9 both specify this.
 
-11. **MockNarrator DI enables pure unit tests for CoachService.** `Arc<dyn Narrator + Send + Sync>` lets happy path, narrator-failure, and validation-failure all test without HTTP mocking.
+11. **Kelly inputs JSONB is entry-time snapshot, not close-time recompute.** The 13-field blob is built at trade submission in T6 (from `shrunk`, `fk`, `qk`, `mult`, `eff`, baseline). `computed_at = Utc::now()` at entry. Persisted via `OrderGroup.kelly_inputs` → `TradeCloseEvent.kelly_inputs` → INSERT. This preserves audit integrity: `kelly_inputs` reflects the calibration state at the moment the trade was sized, not a hypothetical recompute at close.
 
-12. **Citation token `[T-{first_8_hex}]`.** Frontend regex `/\[T-([0-9a-f]{8})\]/g`; backend includes `short_id` on each `TradeEvidence`. Validator enforces both forms (uuid in `citations`, token in `body`/`headline`).
+12. **`net_pnl` is the authoritative P&L column for Kelly inputs.** Both `net_pnl` and `realized_pnl` exist; production analytics use `net_pnl` (journal_timeseries.rs, setup_breakdown). T5's aggregate queries use `net_pnl > 0` for win-rate and `r_multiple` for avg_R.
 
-13. **`digest_json` persisted alongside narrative.** Transparency + debugging — user can audit why a flag fired; enables future re-narration over older digests if a prompt changes.
+13. **TradeEventWriter may need mirror updates.** Journal-writing has two paths: `JournalService::record_trade_close` (primary) and `TradeEventWriter::flush_transaction` (secondary, RSK-02 T5 discovery). If `TradeEventWriter` INSERTs into `journal_trades`, T7 must mirror the `kelly_inputs` column addition there too. Verified at build time.
 
-14. **Stats-only fallback sentinel: `model_used = "unavailable"`.** Distinct from the real provider name so the frontend can render "coach unavailable this week" without guessing.
-
-15. **No Overview changes.** Coach discovery surface = Account banner + nav + /desk/coach. Overview stays pure data-dashboard.
+14. **Extension test baseline is ~28 pre-existing failures** (per RSK-02 T2 discovery: `browser.commands` mock gap from EXT-46). T3 must NOT add new failures — verifiable by comparing pre/post test counts.
 
 ---
 
 ## Status
 
-BUILD COMPLETE
+PLANNING COMPLETE
 
-Spec: RSK-03-ai-trade-coach
-All 18 tasks complete. Spec archived to `.specify/spec-archive/`.
+Spec: QNT-01a-kelly-engine
+Total Tasks: 9 (T1–T3 CP-1 plumbing; T4–T5 CP-2 pure math; T6–T8 CP-3 integration; T9 verification)
+Ready for BUILD mode.
 
-Verification on T12:
-- `cargo clippy --all-targets`: clean (3 pre-existing warnings unchanged).
-- `cargo test`: 1,181 passing / 0 failing across all crates (304 common_utils + 108×2 engine + 11 pg_queue + 623 router + 17 sqlx_postgres + 10 ws_stream).
-- `bun run build` (testudo-journal): exit 0 in 17.74s.
-- Integration grep: CoachService/coach_reports/CoachDigest/NarratedReport wired across 10 router files (63 hits); CoachBanner/CoachReport/NarrativeBlock/fetchLatestCoachReport wired across 7 journal files (31 hits).
-
-Deferred to live session: production prompt-cache hit rate measurement (≥ 70% acceptance criterion), first-20-reports human review, end-to-end manual QA with seeded multi-pattern trader.
+Next task: T1 — Migration creating `user_settings` table and `journal_trades.kelly_inputs` column.
