@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-20
 > Current spec: HIST-03-import-dedup
-> Phase: BUILD in progress — T1, T2, T3, T4, T5 complete
+> Phase: BUILD in progress — T1, T2, T3, T4, T5, T6 complete
 
 ---
 
@@ -372,7 +372,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T6: Remove timestamp fallback on `exchange_fill_id` in CEX import paths — `pending`
+### T6: Remove timestamp fallback on `exchange_fill_id` in CEX import paths — `complete`
 
 **Scope:** CP-3 FR-5. Structural fix for spec hypothesis #2.
 
@@ -502,7 +502,7 @@ BUILD IN PROGRESS
 
 Spec: HIST-03-import-dedup
 Total Tasks: 8 (T1, T2, T3, T4, T5, T6, T7, T8)
-Complete: T1, T2, T3, T4, T5
-Pending: T6, T7, T8
+Complete: T1, T2, T3, T4, T5, T6
+Pending: T7, T8
 
-Next task: T6 — remove timestamp fallback on exchange_fill_id in CEX import paths
+Next task: T7 — integration test for idempotent re-import
