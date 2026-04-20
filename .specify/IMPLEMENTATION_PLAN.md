@@ -186,7 +186,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T2: Extract `compute_sizing_preview()` — reusable calibration pipeline — `pending`
+### T2: Extract `compute_sizing_preview()` — reusable calibration pipeline — `complete`
 
 **Scope:** CP-2 load-bearing refactor. Pulls QNT-01a T6's inline Kelly block out of `create_trade` into a shared helper. Byte-for-byte preserves existing sizing semantics (FR-10 regression boundary).
 
@@ -500,9 +500,9 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ## Status
 
-READY FOR BUILD
+BUILD IN PROGRESS
 
 Spec: QNT-01b-kelly-transparency
-Total Tasks: 8 (T1 CP-1 polish; T2–T5 CP-2 preview + happy path; T6–T7 CP-3 edge cases; T8 verification) — all `pending`.
+Progress: T1 + T2 complete; T3 onwards pending.
 
-Next task: T2 — extract compute_sizing_preview for preview/trade parity.
+Next task: T3 — POST /api/v1/trades/preview route.
