@@ -292,7 +292,7 @@ T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Sing
 
 ---
 
-### T5: `calibration.rs` CalibrationEngine + `shrink()` + unit tests — `pending`
+### T5: `calibration.rs` CalibrationEngine + `shrink()` + unit tests — `complete`
 
 **Scope:** CP-2 I/O-bearing layer. Lives in `router/src/services/` per Design Decision #2 (deviation from spec's common_utils placement — Discovery #3).
 
