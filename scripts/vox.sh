@@ -19,8 +19,13 @@ IMPLEMENTATION_PLAN=".specify/IMPLEMENTATION_PLAN.md"
 AGENTS_MD=".specify/AGENTS.md"
 CONSTITUTION=".specify/memory/constitution.md"
 
-MAX_ITERATIONS=30
-AGENT_CMD="claude"
+MAX_ITERATIONS="${MAX_ITERATIONS:-15}"
+# Default the vox inner agent to Sonnet — task execution is mechanical against
+# a fully-specified plan, which fits Sonnet's wheelhouse at ~3x lower input /
+# ~5x lower output cost vs Opus. Override for a run that genuinely needs Opus:
+#   AGENT_MODEL=claude-opus-4-7 ./scripts/vox.sh build <spec>
+AGENT_MODEL="${AGENT_MODEL:-claude-sonnet-4-6}"
+AGENT_CMD="claude --model ${AGENT_MODEL}"
 SLEEP_INTERVAL=15
 
 # --- COLORS ---
@@ -45,7 +50,11 @@ print_help() {
     echo "  $0 build 001-first-feature"
     echo ""
     echo "Options:"
-    echo "  --max-iterations N      Set max iterations (default: 30)"
+    echo "  --max-iterations N      Set max iterations (default: 15; env MAX_ITERATIONS overrides)"
+    echo ""
+    echo "Env:"
+    echo "  AGENT_MODEL=<id>        Override inner agent model (default: claude-sonnet-4-6)"
+    echo "  MAX_ITERATIONS=N        Same as --max-iterations"
     echo ""
     echo "Available specs:"
     list_specs

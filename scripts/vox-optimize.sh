@@ -18,7 +18,10 @@ AGENTS_MD=".specify/AGENTS.md"
 PROMPT_OPTIMIZE=".specify/PROMPT_optimize.md"
 
 BATCH_SIZE=5
-AGENT_CMD="claude"
+# Default the optimize agent to Sonnet — experiment iteration is mechanical.
+# Override for runs that need Opus: AGENT_MODEL=claude-opus-4-7 ./scripts/vox-optimize.sh ...
+AGENT_MODEL="${AGENT_MODEL:-claude-sonnet-4-6}"
+AGENT_CMD="claude --model ${AGENT_MODEL}"
 SLEEP_INTERVAL=15
 
 # --- COLORS ---
