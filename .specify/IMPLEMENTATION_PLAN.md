@@ -436,7 +436,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T8: Final verification + spec archival — `pending`
+### T8: Final verification + spec archival — `complete`
 
 **Scope:** Completion Protocol per constitution.
 
@@ -500,9 +500,21 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ## Status
 
-BUILD IN PROGRESS
+SPEC COMPLETE
 
 Spec: QNT-01b-kelly-transparency
-Progress: T1 + T2 + T3 + T4 + T5 + T6 + T7 complete; T8 onwards pending.
+Progress: T1–T8 all complete. Spec archived to `.specify/spec-archive/QNT-01b-kelly-transparency/`.
 
-Next task: T8 — final verification + spec archival.
+Verification snapshot (T8):
+- `cargo clippy --all-targets`: 3 pre-existing warnings unchanged (actor.rs unused-variable, cex_client.rs useless_conversion, evaluator.rs manual_contains). Zero new warnings from QNT-01b.
+- `cargo test`: 655 passing / 1 pre-existing failure (`test_me_returns_user_info` AUTH-02 regression) / 9 ignored.
+- `bun run typecheck`: 18 pre-existing errors preserved. Zero new errors from QNT-01b.
+- Integration grep: 3 backend files + 4 extension files reference the new types consistently.
+
+Manual QA deferred to live session (per `feedback_prod_defaults.md`):
+- Popup unlock-date + N/30 progress visuals.
+- Dynamic-mode calibrated/untagged/negative-edge preview row copy + color variants.
+- Preview-unavailable fallback on network disconnect.
+- End-to-end `kelly_inputs` parity between preview and executed trade.
+
+Next task: awaiting next spec activation.
