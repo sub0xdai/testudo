@@ -790,4 +790,11 @@
 - **Deferred verifications documented in plan Status section**: production prompt-cache hit rate (≥ 70% from provider logs) + first-20-reports human review + end-to-end manual QA (seeded multi-pattern trader) all require live state Vox cannot exercise autonomously. Same pattern as RSK-01/RSK-02 final verification tasks.
 - **RSK-03 complete**: 18 tasks across T1 migration + T2 scaffolding + T3 baseline + T3a-T3f six detectors + T4 digest composer + T5 narrator + T6 validator + T7 scheduler + T8 routes + T9 frontend API + T10 page + T11 banner + T12 verification. Spec archived to `.specify/spec-archive/RSK-03-ai-trade-coach/`.
 
+### 2026-04-20 — QNT-01a T1 (Migration: user_settings table + kelly_inputs column)
+- **Timestamp `20260420000100_add_qnt_columns`**: Picked above the round-thousand `20260420000000` slot to leave room for ENG-01 dignitas migration (planned but not yet shipped). Lexicographic ordering ensures QNT migration runs after ENG when both land. No conflict with any existing migration at planning time.
+- **JSONB DEFAULT shape baked into column DDL**: `DEFAULT '{"dynamic_risk_enabled": false, "dynamic_risk_unlocked_at": null}'::jsonb` means new rows from `INSERT ... ON CONFLICT DO NOTHING` (T2's GET-or-create path) automatically get the correct shape without an application-side initializer. Cleaner than a trigger or app-side default.
+- **`CREATE TABLE IF NOT EXISTS` + plain `ADD COLUMN`**: Table uses defensive `IF NOT EXISTS`; column add is plain `ADD COLUMN` because a column-already-exists state would indicate a serious upstream problem worth surfacing rather than silencing.
+- **`ON DELETE CASCADE` on user_settings.user_id FK**: Matches `coach_reports` and `user_sessions` precedent — privacy posture is "user controls what stays on the server."
+- **No new index needed**: T1 adds zero indexes. The unlock-gate COUNT query in T2 reuses RSK-02's `idx_journal_trades_user_setup` partial index. user_settings has only one access pattern (lookup by user_id), and the PK already serves it.
+
 *This file grows as Vox learns. Never delete entries.*

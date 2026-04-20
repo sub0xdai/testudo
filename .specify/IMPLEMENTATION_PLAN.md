@@ -139,7 +139,7 @@ T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Sing
 
 ## Tasks
 
-### T1: Migration — `user_settings` table + `journal_trades.kelly_inputs` column — `pending`
+### T1: Migration — `user_settings` table + `journal_trades.kelly_inputs` column — `complete`
 
 **Scope:** CP-1 persistence layer.
 
