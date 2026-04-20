@@ -1,6 +1,18 @@
-# Operational Learnings
+# Cross-Cutting Operational Rules
 
-> Vox's accumulated knowledge. Loaded each iteration.
+> **Scope (changed 2026-04-20):** this file holds ONLY cross-cutting rules
+> that apply to every spec — tech-stack conventions, shared anti-patterns,
+> protocol decisions that transcend individual specs.
+>
+> **Per-spec discoveries live in `.specify/specs/<spec>/LEARNINGS.md`**
+> (append-only by vox build iterations). Vox reads both files on every
+> iteration, but writes only to the per-spec file. Keeping this file
+> curated prevents the cross-spec context pollution that bloated it
+> to 1000+ lines before the split.
+>
+> Rule of thumb: if a learning would apply to an unrelated future spec,
+> lift it here by hand. If it's specific to one spec's architecture or
+> decisions, leave it in the per-spec file.
 
 ---
 
