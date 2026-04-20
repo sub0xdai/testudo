@@ -22,6 +22,7 @@ import {
   ListExchangesResponseSchema,
   PairResponseSchema,
   SetupTagsResponseSchema,
+  SizingPreviewSchema,
   TestConnectionResultSchema,
   TradeGroupResponseSchema,
   TradeListResponseSchema,
@@ -30,6 +31,7 @@ import {
 import type { z } from "zod";
 
 type UserSettingsResponse = z.infer<typeof UserSettingsResponseSchema>;
+type SizingPreview = z.infer<typeof SizingPreviewSchema>;
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./storage";
 import { getTokens, storeTokens, refreshAccessToken, scheduleTokenRefresh } from "./auth";
 
@@ -471,6 +473,36 @@ export async function patchUserSettings(
 
   const parsed = UserSettingsResponseSchema.safeParse(result.raw);
   if (!parsed.success) return { success: false, error: "Malformed user settings response" };
+  return { success: true, data: parsed.data };
+}
+
+// --- QNT-01b: Trade Sizing Preview (pre-submit Kelly transparency) ---
+
+export async function previewTradeSizing(
+  payload: RuntimeTradePayload,
+): Promise<{ success: true; data: SizingPreview } | { success: false; error: string; error_code?: string }> {
+  const activeExchangeId = payload.exchange_account_id || await getActiveExchangeId();
+  const body: Record<string, unknown> = {
+    symbol: normalizeSymbol(payload.symbol),
+    side: mapSide(payload.side),
+    entry_price: payload.entry.toString(),
+    stop_loss_price: payload.stop.toString(),
+    take_profit_price: payload.target.toString(),
+    management: payload.management,
+  };
+  if (activeExchangeId) body.exchange_account_id = activeExchangeId;
+  const setupTagTrimmed = typeof payload.setup_tag === "string" ? payload.setup_tag.trim() : "";
+  if (setupTagTrimmed.length > 0) body.setup_tag = setupTagTrimmed;
+
+  const result = await apiRequest("/api/v1/trades/preview", {
+    method: "POST", body, auth: "hard",
+    authError: "Authentication required for sizing preview",
+    timeout: 5000,
+  });
+  if (!result.ok) return { success: false, error: result.error, error_code: result.error_code };
+
+  const parsed = SizingPreviewSchema.safeParse(result.raw);
+  if (!parsed.success) return { success: false, error: "Malformed sizing preview response" };
   return { success: true, data: parsed.data };
 }
 

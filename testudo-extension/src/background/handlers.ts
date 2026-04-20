@@ -20,6 +20,7 @@ import {
   listSetupTags,
   getUserSettings,
   patchUserSettings,
+  previewTradeSizing,
 } from "./api";
 import {
   connectWebSocket,
@@ -183,6 +184,10 @@ function handlePatchUserSettings(msg: ParsedMessage): Promise<unknown> {
   return patchUserSettings((msg as MsgOf<"PATCH_USER_SETTINGS">).dynamic_risk_enabled);
 }
 
+function handlePreviewTradeSizing(msg: ParsedMessage): Promise<unknown> {
+  return previewTradeSizing((msg as MsgOf<"PREVIEW_TRADE_SIZING">).payload);
+}
+
 // Web reports its active wallet (or null on logout). If our paired JWT
 // belongs to a different wallet — or any wallet at all when web is logged
 // out — clear it so the popup drops to the pair screen and future trades
@@ -235,5 +240,6 @@ export const messageHandlers: Record<string, MessageHandler> = {
   GET_SETUP_TAGS: handleGetSetupTags,
   GET_USER_SETTINGS: handleGetUserSettings,
   PATCH_USER_SETTINGS: handlePatchUserSettings,
+  PREVIEW_TRADE_SIZING: handlePreviewTradeSizing,
   WEB_WALLET_CHANGED: handleWebWalletChanged,
 };

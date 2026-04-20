@@ -221,6 +221,43 @@ export const UserSettingsResponseSchema = z.object({
   tagged_trade_count: z.number().int().nonnegative(),
 });
 
+// QNT-01b: SizingPreview (POST /api/v1/trades/preview response)
+// Backend serializes Decimal as string; coerce to number for frontend math.
+const DecimalNumberSchema = z.union([z.string(), z.number()]).transform((v) => Number(v));
+
+const CalibratedReasoningSchema = z.object({
+  kind: z.literal("calibrated"),
+  n_setup: z.number().int().nonnegative(),
+  p_eff: DecimalNumberSchema,
+  avg_r_win: DecimalNumberSchema,
+  avg_r_loss: DecimalNumberSchema,
+});
+
+const UntaggedReasoningSchema = z.object({
+  kind: z.literal("untagged"),
+});
+
+const NegativeEdgeReasoningSchema = z.object({
+  kind: z.literal("negative_edge"),
+  quarter_kelly: DecimalNumberSchema,
+});
+
+const FixedModeReasoningSchema = z.object({
+  kind: z.literal("fixed_mode"),
+});
+
+export const SizingPreviewSchema = z.object({
+  baseline_risk_pct: DecimalNumberSchema,
+  effective_risk_pct: DecimalNumberSchema,
+  edge_multiplier: DecimalNumberSchema,
+  reasoning: z.discriminatedUnion("kind", [
+    CalibratedReasoningSchema,
+    UntaggedReasoningSchema,
+    NegativeEdgeReasoningSchema,
+    FixedModeReasoningSchema,
+  ]),
+});
+
 export const WebSocketMessageSchema = z.object({
   stream: z.string().optional(),
   data: z.unknown().optional(),
@@ -284,6 +321,10 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("PATCH_USER_SETTINGS"),
     dynamic_risk_enabled: z.boolean(),
+  }),
+  z.object({
+    type: z.literal("PREVIEW_TRADE_SIZING"),
+    payload: TradePayloadSchema,
   }),
   // Emitted by the desk.testudo.vip content script when the web app's
   // active wallet changes (including logout → wallet_address: null).

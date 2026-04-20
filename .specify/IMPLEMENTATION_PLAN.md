@@ -282,7 +282,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T4: Extension — SizingPreview schema + message + API helper + handler — `pending`
+### T4: Extension — SizingPreview schema + message + API helper + handler — `complete`
 
 **Scope:** CP-2 extension wire contract.
 
@@ -503,6 +503,6 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 BUILD IN PROGRESS
 
 Spec: QNT-01b-kelly-transparency
-Progress: T1 + T2 + T3 complete; T4 onwards pending.
+Progress: T1 + T2 + T3 + T4 complete; T5 onwards pending.
 
-Next task: T4 — Extension SizingPreview schema + message + API helper + handler.
+Next task: T5 — TradeForm preview row (calibrated happy path).
