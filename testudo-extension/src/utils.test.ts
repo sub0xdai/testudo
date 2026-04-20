@@ -1,10 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   normalizeSymbol,
   calculateQuantity,
   mapSide,
   calculateRefreshDelay,
   nextReconnectDelay,
+  debounce,
   DEFAULT_SETTINGS,
   QUOTE_CURRENCIES,
   WS_MAX_RECONNECT_DELAY,
@@ -196,3 +197,48 @@ describe("constants", () => {
     expect(WS_MAX_RECONNECT_DELAY).toBeGreaterThan(WS_BASE_RECONNECT_DELAY);
   });
 });
+
+// --- debounce ---
+
+describe("debounce", () => {
+  it("delays fn invocation until after the quiet period", () => {
+    vi.useFakeTimers();
+    const fn = vi.fn();
+    const d = debounce(fn, 150);
+    d();
+    expect(fn).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(149);
+    expect(fn).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(fn).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("coalesces rapid calls into a single fire with the last args", () => {
+    vi.useFakeTimers();
+    const fn = vi.fn();
+    const d = debounce(fn, 150);
+    d("a");
+    vi.advanceTimersByTime(100);
+    d("b");
+    vi.advanceTimersByTime(100);
+    d("c");
+    expect(fn).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(150);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith("c");
+    vi.useRealTimers();
+  });
+
+  it("cancel() prevents pending invocation", () => {
+    vi.useFakeTimers();
+    const fn = vi.fn();
+    const d = debounce(fn, 150);
+    d();
+    d.cancel();
+    vi.advanceTimersByTime(500);
+    expect(fn).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});
+

@@ -376,7 +376,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T6: Debounce utility + untagged + negative-edge variants — `pending`
+### T6: Debounce utility + untagged + negative-edge variants — `complete`
 
 **Scope:** CP-3. Adds the 150ms debounce plus the remaining copy variants plus the confirm-disable gate for negative-edge.
 
@@ -503,6 +503,6 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 BUILD IN PROGRESS
 
 Spec: QNT-01b-kelly-transparency
-Progress: T1 + T2 + T3 + T4 + T5 complete; T6 onwards pending.
+Progress: T1 + T2 + T3 + T4 + T5 + T6 complete; T7 onwards pending.
 
-Next task: T6 — debounce utility + untagged + negative-edge variants.
+Next task: T7 — preview failure path + "Preview unavailable" fallback.

@@ -1,8 +1,9 @@
-import { createSignal, createMemo, onMount, onCleanup, Show, For } from "solid-js";
+import { createSignal, createMemo, createEffect, onMount, onCleanup, Show, For } from "solid-js";
 import type { TradeSetup } from "../scraper";
 import type { ManagementPreset, BalanceResponse } from "../types";
 import type { SizingPreviewSchema } from "../schemas";
 import type { z } from "zod";
+import { debounce } from "../utils";
 
 type SizingPreview = z.infer<typeof SizingPreviewSchema>;
 
@@ -80,6 +81,12 @@ export default function TradeForm(props: TradeFormProps) {
 
   const isValid = createMemo(() => isValidEntry() && isValidStop() && isValidTarget() && isValidSymbol());
 
+  // QNT-01b T6: confirm-button gate for negative-edge previews (FR-8).
+  const previewNegativeEdge = createMemo(
+    () => dynamicRiskEnabled() && preview()?.reasoning.kind === "negative_edge",
+  );
+  const canSubmit = createMemo(() => isValid() && !previewNegativeEdge());
+
   const rr = createMemo(() => {
     const e = entry(), s = stop(), t = target();
     if (e === null || s === null || t === null) return 0;
@@ -146,7 +153,7 @@ export default function TradeForm(props: TradeFormProps) {
   }
 
   function handleConfirm() {
-    if (!isValid()) return;
+    if (!canSubmit()) return;
     if (confirmStep() < 1) {
       setConfirmStep(1);
       return;
@@ -220,22 +227,31 @@ export default function TradeForm(props: TradeFormProps) {
     };
   }
 
+  // Sequence counter: drops stale preview responses when a newer fetch has already fired.
+  let previewSeq = 0;
+
   async function fetchPreview() {
     if (!dynamicRiskEnabled() || !isValid()) return;
+    const mySeq = ++previewSeq;
     try {
       const res: any = await browser.runtime.sendMessage({
         type: "PREVIEW_TRADE_SIZING",
         payload: buildPreviewPayload(),
       });
+      // A newer fetch already claimed the slot — drop this response.
+      if (mySeq !== previewSeq) return;
       if (res?.success && res.data) {
         setPreview(res.data as SizingPreview);
       } else {
         setPreview(null);
       }
     } catch {
+      if (mySeq !== previewSeq) return;
       setPreview(null);
     }
   }
+
+  const debouncedFetchPreview = debounce(fetchPreview, 150);
 
   function acceptHighlightedTag() {
     const list = filteredTags();
@@ -300,8 +316,26 @@ export default function TradeForm(props: TradeFormProps) {
       if (enabled) fetchPreview();
     });
   });
+
+  // QNT-01b T6: re-fetch preview on any payload change (debounced 150ms).
+  // Tracks entry, stop, target, setup_tag, risk_percent, and side — superseding in-flight
+  // requests via the sequence counter inside fetchPreview.
+  createEffect(() => {
+    entryStr();
+    stopStr();
+    targetStr();
+    setupTag();
+    side();
+    // Reading these keeps the effect subscribed to management-preset drifts too.
+    const _ = props.management.risk_percent;
+    void _;
+    if (!dynamicRiskEnabled() || !isValid()) return;
+    debouncedFetchPreview();
+  });
+
   onCleanup(() => {
     document.removeEventListener("keydown", handleKeyDown, true);
+    debouncedFetchPreview.cancel();
   });
 
   return (
@@ -531,20 +565,41 @@ export default function TradeForm(props: TradeFormProps) {
         </Show>
       </div>
 
-      {/* QNT-01b: Kelly sizing preview row (calibrated happy-path only in T5) */}
-      <Show when={dynamicRiskEnabled() && preview()?.reasoning.kind === "calibrated"}>
+      {/* QNT-01b: Kelly sizing preview row — calibrated, untagged, negative-edge variants */}
+      <Show when={dynamicRiskEnabled() && preview()}>
         {(() => {
           const p = preview()!;
-          const r = p.reasoning as Extract<SizingPreview["reasoning"], { kind: "calibrated" }>;
-          return (
-            <div class="kelly-preview-row" data-testid="kelly-preview-row">
-              <span class="kelly-preview-badge">⚡</span>
-              <span>
-                Risk: {p.baseline_risk_pct.toFixed(1)}% → {p.effective_risk_pct.toFixed(1)}%
-                {" "}({r.n_setup} trades, {Math.round(r.p_eff * 100)}% WR, {r.avg_r_win.toFixed(1)}R avg)
-              </span>
-            </div>
-          );
+          const kind = p.reasoning.kind;
+          if (kind === "calibrated") {
+            const r = p.reasoning as Extract<SizingPreview["reasoning"], { kind: "calibrated" }>;
+            return (
+              <div class="kelly-preview-row" data-testid="kelly-preview-row">
+                <span class="kelly-preview-badge">⚡</span>
+                <span>
+                  Risk: {p.baseline_risk_pct.toFixed(1)}% → {p.effective_risk_pct.toFixed(1)}%
+                  {" "}({r.n_setup} trades, {Math.round(r.p_eff * 100)}% WR, {r.avg_r_win.toFixed(1)}R avg)
+                </span>
+              </div>
+            );
+          }
+          if (kind === "untagged") {
+            return (
+              <div class="kelly-preview-row muted" data-testid="kelly-preview-row">
+                <span class="kelly-preview-badge">💤</span>
+                <span>Tag this setup to unlock calibrated sizing for it.</span>
+              </div>
+            );
+          }
+          if (kind === "negative_edge") {
+            return (
+              <div class="kelly-preview-row negative" data-testid="kelly-preview-row">
+                <span class="kelly-preview-badge">⛔</span>
+                <span>Calibration shows negative edge for this setup — size = 0.</span>
+              </div>
+            );
+          }
+          // fixed_mode — shouldn't occur when dynamic_risk is on; silently skip.
+          return null;
         })()}
       </Show>
 
@@ -574,19 +629,20 @@ export default function TradeForm(props: TradeFormProps) {
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={!isValid()}
+            disabled={!canSubmit()}
+            title={previewNegativeEdge() ? "Disabled — calibration shows negative edge" : ""}
             style={{
               "font-size": "11px",
               "font-weight": "700",
               "letter-spacing": "0.6px",
               "text-transform": "uppercase",
               padding: "7px 12px",
-              border: !isValid() ? "1px solid var(--color-border)" : (confirmStep() > 0 ? "1px solid color-mix(in srgb, var(--color-signal-green) 50%, transparent)" : "1px solid color-mix(in srgb, var(--color-signal-red) 45%, transparent)"),
+              border: !canSubmit() ? "1px solid var(--color-border)" : (confirmStep() > 0 ? "1px solid color-mix(in srgb, var(--color-signal-green) 50%, transparent)" : "1px solid color-mix(in srgb, var(--color-signal-red) 45%, transparent)"),
               "border-radius": "0",
-              background: !isValid() ? "transparent" : (confirmStep() > 0 ? "color-mix(in srgb, var(--color-signal-green) 20%, transparent)" : "color-mix(in srgb, var(--color-signal-red) 20%, transparent)"),
-              color: !isValid() ? "var(--color-text-dim)" : (confirmStep() > 0 ? "var(--color-signal-green)" : "var(--color-signal-red)"),
-              cursor: !isValid() ? "default" : "pointer",
-              opacity: !isValid() ? "0.5" : "1",
+              background: !canSubmit() ? "transparent" : (confirmStep() > 0 ? "color-mix(in srgb, var(--color-signal-green) 20%, transparent)" : "color-mix(in srgb, var(--color-signal-red) 20%, transparent)"),
+              color: !canSubmit() ? "var(--color-text-dim)" : (confirmStep() > 0 ? "var(--color-signal-green)" : "var(--color-signal-red)"),
+              cursor: !canSubmit() ? "default" : "pointer",
+              opacity: !canSubmit() ? "0.5" : "1",
               "font-family": "'Space Mono', ui-monospace, monospace",
             }}
           >{confirmStep() > 0 ? "Confirm Now" : "Arm Confirm"}</button>

@@ -73,3 +73,26 @@ export function calculateRefreshDelay(expiresIn: number): number {
 export function nextReconnectDelay(current: number): number {
   return Math.min(current * 2, WS_MAX_RECONNECT_DELAY);
 }
+
+// --- Debounce ---
+
+export function debounce<T extends (...args: any[]) => void>(
+  fn: T,
+  ms: number,
+): T & { cancel: () => void } {
+  let handle: ReturnType<typeof setTimeout> | null = null;
+  const wrapped = ((...args: any[]) => {
+    if (handle) clearTimeout(handle);
+    handle = setTimeout(() => {
+      handle = null;
+      fn(...args);
+    }, ms);
+  }) as T & { cancel: () => void };
+  wrapped.cancel = () => {
+    if (handle) {
+      clearTimeout(handle);
+      handle = null;
+    }
+  };
+  return wrapped;
+}
