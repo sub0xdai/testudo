@@ -69,6 +69,7 @@ export default function TradeForm(props: TradeFormProps) {
       : false,
   );
   const [preview, setPreview] = createSignal<SizingPreview | null>(null);
+  const [previewError, setPreviewError] = createSignal(false);
 
   const entry = createMemo(() => { const v = parseFloat(entryStr()); return isNaN(v) ? null : v; });
   const stop = createMemo(() => { const v = parseFloat(stopStr()); return isNaN(v) ? null : v; });
@@ -242,12 +243,16 @@ export default function TradeForm(props: TradeFormProps) {
       if (mySeq !== previewSeq) return;
       if (res?.success && res.data) {
         setPreview(res.data as SizingPreview);
+        setPreviewError(false);
       } else {
+        // Backend returned non-success (4xx/5xx) — FR-10 fallback copy, confirm stays enabled.
         setPreview(null);
+        setPreviewError(true);
       }
     } catch {
       if (mySeq !== previewSeq) return;
       setPreview(null);
+      setPreviewError(true);
     }
   }
 
@@ -601,6 +606,14 @@ export default function TradeForm(props: TradeFormProps) {
           // fixed_mode — shouldn't occur when dynamic_risk is on; silently skip.
           return null;
         })()}
+      </Show>
+
+      {/* QNT-01b T7: preview-unavailable fallback (FR-10). Confirm stays enabled. */}
+      <Show when={dynamicRiskEnabled() && previewError() && !preview()}>
+        <div class="kelly-preview-row muted" data-testid="kelly-preview-unavailable">
+          <span class="kelly-preview-badge">⚠</span>
+          <span>Preview unavailable</span>
+        </div>
       </Show>
 
       {/* Footer */}

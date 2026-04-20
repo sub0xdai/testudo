@@ -414,7 +414,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T7: Preview failure path + verification polish — `pending`
+### T7: Preview failure path + verification polish — `complete`
 
 **Scope:** CP-3. Implement FR-10 "Preview unavailable" + any lingering polish items.
 
@@ -503,6 +503,6 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 BUILD IN PROGRESS
 
 Spec: QNT-01b-kelly-transparency
-Progress: T1 + T2 + T3 + T4 + T5 + T6 complete; T7 onwards pending.
+Progress: T1 + T2 + T3 + T4 + T5 + T6 + T7 complete; T8 onwards pending.
 
-Next task: T7 — preview failure path + "Preview unavailable" fallback.
+Next task: T8 — final verification + spec archival.
