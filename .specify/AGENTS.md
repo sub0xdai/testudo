@@ -990,3 +990,13 @@
   DATABASE_URL=postgres://... cargo test -p router hist03_idempotency -- --ignored
   ```
 - **`cleanup_user()` fire-and-forget `let _ = ...`**: intentional. If a prior run crashed mid-test and left rows, the first cleanup still runs harmlessly on already-clean state. Using `.expect()` here would fail the test on benign empty-delete no-ops (PG accepts these; but if FK ordering shifts, it could crash cleanup). Best-effort cleanup is safer for a shared test DB.
+
+### 2026-04-20 — HIST-03 T8 (Final verification + spec archival)
+- **Final test snapshot: router 655 passing / 1 pre-existing fail / 13 ignored**, plus common_utils 316 (+1 from T4 canonical_exchange_name test), engine 108×2 lib+bin, pg_queue 11. Same sole AUTH-02 `test_me_returns_user_info` regression documented since QNT-01a T2. Zero HIST-03-introduced regressions across T1–T7.
+- **Clippy warning count stable across entire HIST-03 series**: actor.rs:1858 unused-variable, cex_client.rs:653 useless_conversion, evaluator.rs:188 manual_contains. Three pre-existing warnings held from QNT-01b T8 through HIST-03 T8. Zero new warnings from `RecordOutcome` enum, `ON CONFLICT DO NOTHING` SQL, `canonical_exchange_name` helper, `ProcessOutcome` three-way split, or integration test additions.
+- **Extension typecheck baseline 18 errors preserved**: Same pre-existing set documented across QNT-01a T3/T9, QNT-01b T1/T4/T5/T7. HIST-03 is pure backend — no extension wire-contract changes (the `trades_skipped_duplicate` WS field was added to the pg_notify payload but the extension doesn't currently consume it, so no schema update needed).
+- **Grep evidence of completion**:
+  - `grep -rn "idx_unique_import_fill\|duplicate key" crates/router/src/services/` returns 2 hits, both in doc comments (journal_service.rs:43, 168) — zero remaining in control flow.
+  - `grep -n "timestamp as i64" crates/router/src/services/import_worker.rs` returns 1 hit at line 360, an explanatory comment describing the removed fallback. Zero remaining uses as synthetic keys.
+- **Spec T8 is housekeeping-only, no source changes**: Plan status update + AGENTS.md append + spec-directory move from `.specify/specs/` to `.specify/spec-archive/`. Per-task commits at T1-T7 already landed individual messages. Matches the T8/T9/T12-style archival pattern from QNT-01a, QNT-01b, RSK-02, RSK-03.
+- **Manual QA deferred**: twice-run importer counter invariant, live Bybit round-trip regression check, and post-deploy cleanup SQL execution all require a live DB + exchange state. Vox cannot exercise these autonomously. Same deferral pattern as QNT-01a T9, QNT-01b T8, RSK-02 T10, RSK-03 T12.

@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-20
 > Current spec: HIST-03-import-dedup
-> Phase: BUILD in progress — T1, T2, T3, T4, T5, T6, T7 complete
+> Phase: BUILD complete — all 8 tasks landed, spec archived
 
 ---
 
@@ -431,7 +431,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T8: Final verification + spec archival — `pending`
+### T8: Final verification + spec archival — `complete`
 
 **Scope:** Completion Protocol.
 
@@ -498,11 +498,22 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ## Status
 
-BUILD IN PROGRESS
+BUILD COMPLETE — spec archived to `.specify/spec-archive/HIST-03-import-dedup/`
 
 Spec: HIST-03-import-dedup
 Total Tasks: 8 (T1, T2, T3, T4, T5, T6, T7, T8)
-Complete: T1, T2, T3, T4, T5, T6, T7
-Pending: T8
+Complete: T1, T2, T3, T4, T5, T6, T7, T8
 
-Next task: T8 — final verification + spec archival
+### Final Verification (T8, 2026-04-20)
+
+- `cargo clippy --all-targets`: clean. 3 pre-existing warnings (actor.rs:1858, cex_client.rs:653, evaluator.rs:188) unchanged across all 8 HIST-03 tasks. Zero new warnings.
+- `cargo test`: 316 common_utils (+1 from T4 `canonical_exchange_name` test) + 108 engine ×2 (lib+bin) + 11 pg_queue + 655 passing router / 1 pre-existing fail (`routes::auth::tests::test_me_returns_user_info`, AUTH-02 regression documented since QNT-01a T2) / 13 ignored (4 new HIST-03 integration tests from T7 + 9 pre-existing). Zero HIST-03-introduced regressions.
+- `bun run typecheck` (testudo-extension): 18 pre-existing errors preserved. Zero new errors — HIST-03 didn't touch extension wire contracts (the `trades_skipped_duplicate` WS field isn't consumed by the extension per grep).
+- Error-string dedup grep: `idx_unique_import_fill|duplicate key` in `crates/router/src/services/` returns only doc-comment hits (journal_service.rs:43, 168). Zero remaining error-string matching in control flow.
+- Timestamp fallback grep: `timestamp as i64` in `import_worker.rs` returns one explanatory comment at line 360. Zero remaining uses as a synthetic key fallback.
+
+### Manual QA (deferred to live session)
+
+- User runs `POST /api/v1/imports/cex/bybit` twice on same time window; first run reports `trades_imported = N`, second reports `trades_imported = 0, trades_skipped_duplicate = N`; `COUNT(*) FROM journal_trades WHERE source = 'import_ccxt'` unchanged between runs.
+- Live Bybit round-trip (Alt+X → fill → TP/SL close → journal row) still populates `source = 'testudo'`, `exchange_fill_id = NULL`.
+- Post-deploy cleanup SQL (shipped in T2 commit body) run once against prod DB to purge pre-existing duplicates.
