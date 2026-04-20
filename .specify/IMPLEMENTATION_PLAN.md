@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-20
 > Current spec: HIST-03-import-dedup
-> Phase: BUILD in progress — T1, T2, T3, T4, T5, T6 complete
+> Phase: BUILD in progress — T1, T2, T3, T4, T5, T6, T7 complete
 
 ---
 
@@ -407,7 +407,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T7: Integration test — idempotent re-import — `pending`
+### T7: Integration test — idempotent re-import — `complete`
 
 **Scope:** CP-4 FR-6. Structural guarantee of idempotency.
 
@@ -502,7 +502,7 @@ BUILD IN PROGRESS
 
 Spec: HIST-03-import-dedup
 Total Tasks: 8 (T1, T2, T3, T4, T5, T6, T7, T8)
-Complete: T1, T2, T3, T4, T5, T6
-Pending: T7, T8
+Complete: T1, T2, T3, T4, T5, T6, T7
+Pending: T8
 
-Next task: T7 — integration test for idempotent re-import
+Next task: T8 — final verification + spec archival
