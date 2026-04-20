@@ -1,97 +1,127 @@
 # Implementation Plan
 
 > Last updated: 2026-04-20
-> Current spec: QNT-01a-kelly-engine
+> Current spec: QNT-01b-kelly-transparency
 > Phase: PLANNING COMPLETE — ready for BUILD
 
 ---
 
-## Active Spec: QNT-01a-kelly-engine
+## Active Spec: QNT-01b-kelly-transparency
 
 ### Gap Analysis
 
-**Backend (`testudo-exchange/crates/`):**
+**Backend (`testudo-exchange/crates/router/`):**
 
-1. **`SizingMethod` enum** — `common_utils/src/risk/types.rs:8-20`. Four variants: `FixedFractional`, `KellyCriterion`, `VolatilityAdjusted`, `MaxRiskCap`. `#[serde(rename_all = "snake_case")]`. **Action:** add new `CalibratedKelly` variant alongside the existing `KellyCriterion` (spec FR-1). Keep `KellyCriterion` untouched — it's reachable via existing code paths and renaming would break wire compatibility.
+1. **`GET /api/v1/user/settings`** — `routes/user_settings.rs:127-147`, shipped in QNT-01a T2. Already returns:
+   ```rust
+   pub struct UserSettingsResponse {
+       pub settings: UserSettings,          // { dynamic_risk_enabled, dynamic_risk_unlocked_at }
+       pub unlocked: bool,                  // is_unlocked(count >= 30)
+       pub tagged_trade_count: i64,
+   }
+   ```
+   **Spec FR-1** asks for a NEW `/api/v1/user/qnt-readiness` returning `{ tagged_closed, unlock_at: 30, unlocked: bool }`. That is a **strict subset** of what `/user/settings` already exposes. Discovery #1.
 
-2. **`RiskConfig`** — `common_utils/src/risk/config.rs:11-43`. 10 fields, builder pattern. **No per-user persistence** today — constructed via `new()`/`conservative()`/`aggressive()` presets. Spec asks to add `pub dynamic_risk_enabled: bool` and load from `user_settings` JSONB. Discovery #4.
+2. **Kelly pre-sizing in `create_trade`** — `routes/trade_management.rs:699-841`. QNT-01a T6 integrated this inline. Structure:
+   - L709-735: load `user_settings.dynamic_risk_enabled`
+   - L741-768: `CalibrationEngine::load_prior()` + `load_setup()`
+   - L770-784: `shrink()` + `full_kelly()` + `edge_multiplier()` + `effective_risk_percent()`
+   - L786-797: negative-edge 400 rejection (error_code `"negative_edge"`)
+   - L817-832: `kelly_inputs_json` construction (13-field blob)
+   - L834-840: untagged-fallback branch (silent, `info!` log)
+   Spec FR-4 demands that `/trades/preview` and `/trades` produce **byte-identical** sizing output (spec Risk #1). The only way to guarantee this is to extract this block into a single async helper that both handlers call. Discovery #2.
 
-3. **`PositionSizer::calculate_position_size()`** — `common_utils/src/risk/position_sizer.rs:81-158`. Does `risk_from_percent = balance * account_risk_percent / 100` at line ~95, then `size = risk_from_percent / stop_distance`, then takes MIN across four arms. **Action:** need an override path so Kelly-computed `effective_risk_percent` replaces `account_risk_percent` only for this trade, without disturbing the MIN composition. Cleanest: compute Kelly in the caller (`create_trade`), build an ad-hoc `RiskConfig` with `account_risk_percent = effective_risk_percent`, pass to sizer.
+3. **`SizingPreview` type** — grep confirms no existing type. New domain struct needed. Discovery #3.
 
-4. **`CreateTradeRequest`** — `router/routes/trade_management.rs:282-304`. `setup_tag: Option<String>` **already present** (RSK-02, shipped 2026-04-18). `management: Option<ManagementBlock>` carries `risk_percent` (baseline). No Kelly fields needed on the request — dynamic mode is read from `user_settings`, not per-trade.
+4. **`AppState.calibration_engine: Arc<CalibrationEngine>`** — `types/app.rs:48`. Already wired (QNT-01a T6).
 
-5. **`DecisionLoop::execute()`** — `router/src/decision_loop.rs:185-225`. Line 207 passes `None` for `trading_stats` to `risk_service.validate()`. This is the current extension point: when dynamic mode is on, we need to either (a) pre-compute Kelly before DecisionLoop and inject an overridden `RiskConfig`, or (b) pass real trading stats into RiskService. **Decision (Discovery #5):** route (a) — Kelly calibration happens in `create_trade` BEFORE DecisionLoop; `effective_risk_percent` overrides baseline on the `RiskConfig` instance passed through. Keeps DecisionLoop untouched.
+5. **`CreateTradeRequest`** — `routes/trade_management.rs:294-316`. Carries all fields the preview needs (`setup_tag`, `management.risk_percent`, `entry_price`, `stop_loss_price`, `symbol`, `side`, `quantity`). For preview, only `setup_tag` + `management.risk_percent` are actually consumed — the rest is payload noise that the preview endpoint will ignore. Reuse the type verbatim (avoid a `CreateTradePreviewRequest` DTO duplicate) — simpler contract, identical body shape.
 
-6. **`JournalService::record_trade_close`** — `router/src/services/journal_service.rs:148`. Accepts `TradeCloseEvent` (with `setup_tag: Option<String>` already wired). **No `kelly_inputs` field on TradeCloseEvent yet.** **Action:** add `kelly_inputs: Option<serde_json::Value>` to the event + thread into INSERT column list. Mirrors RSK-02 T1's `setup_tag` path.
-
-7. **`TradeEventWriter`** — also persists to `journal_trades` (discovered during RSK-02 T5). Secondary write path. **Action:** check if it also writes `journal_trades` rows and whether Kelly path needs mirror there. Low-risk — the dynamic-mode path flows through `record_trade_close`.
-
-8. **`journal_trades` table** — `sqlx_postgres/migrations/20260318000000_create_journal_tables.up.sql` with column additions in `20260418000000_add_setup_tag.up.sql`. **Has:** `setup_tag`, `r_multiple`, `net_pnl`, `realized_pnl`, `risk_amount`, `closed_at`, `opened_at`, `notes`. **Missing:** `kelly_inputs JSONB NULL` — new column added by this spec.
-
-9. **`idx_journal_trades_user_setup`** — confirmed in `20260418000000_add_setup_tag.up.sql`: `CREATE INDEX ... ON journal_trades(user_id, setup_tag) WHERE setup_tag IS NOT NULL;`. Serves BOTH the per-setup aggregate query AND the ≥30-trade unlock-count query. No new index needed.
-
-10. **Settings storage pattern divergence** — RSK-03 added `coach_enabled`/`coach_banner_last_viewed_at` directly on `users`. Spec for QNT-01a explicitly asks for a NEW `user_settings` JSONB table. **Following spec.** Rationale: Kelly config is future-extensible (QNT-01b transparency overlay may add opt-in metrics; QNT-02/03 may add drift thresholds). JSONB gives room to grow. Discovery #2.
-
-11. **`AppState`** — `router/src/types/app.rs:15-44`. 16 fields. No `calibration_engine` yet. **Action:** add `pub calibration_engine: Arc<CalibrationEngine>`, construct in `main.rs:434-451`.
-
-12. **`AuthenticatedUser` extractor** — post-AUTH-02 yields `{ user_id: Uuid, wallet_address: String }`. Same pattern used by `/coach`, `/risk-config`, `/journal`. New `/user/settings` scope wraps with `JwtMiddleware::new(token_service.clone())`.
-
-13. **Routes mod** — `router/src/routes/mod.rs` lists 18 modules. **Action:** add `pub mod user_settings;`.
-
-14. **`CalibrationEngine` placement — spec vs. convention tension** — Spec says `common_utils/src/risk/calibration.rs`. But common_utils's existing `risk/` is pure-math (no sqlx imports; `RiskConfig` is hardcoded). Adding `sqlx::PgPool` and async queries to common_utils would introduce a dependency direction that peer services (coach, risk_snapshot, journal_timeseries) explicitly avoid by living in `router/services/`. **Decision (Discovery #3):** keep pure functions (`shrink()`, weight formulas) in `common_utils/src/risk/kelly.rs` per spec. Place the I/O-bearing `CalibrationEngine` in **`router/src/services/calibration.rs`** instead. This matches the RSK-03 coach-service pattern and avoids forcing sqlx onto common_utils. Spec path deviation documented below.
-
-15. **`journal_trades.net_pnl` vs. `realized_pnl`** — schema has BOTH (legacy + current). Spec's p_win definition uses `net_pnl > 0`. Confirm at build time which is the authoritative "P&L after fees" column; production queries in `journal_timeseries.rs` use `net_pnl`. Use `net_pnl` for Kelly inputs.
+6. **Route registration** — `routes/mod.rs` + `main.rs`. `/user` and `/trades` scopes already exist. Only need `.route("/preview", web::post().to(preview_trade_sizing))` inside `/trades` scope.
 
 **Extension (`testudo-extension/src/`):**
 
-16. **`TradePayloadSchema`** — `schemas.ts:49-72`. Has `setup_tag: z.string().trim().max(48).nullable().optional()`. Has `management.risk_percent`. **No Kelly fields needed** on the payload — dynamic mode is a server-side setting keyed off `user_id`, not per-trade.
+7. **`SettingsPanel.tsx:88-95`** (QNT-01a T3) — current locked-state copy:
+   ```jsx
+   <Show when={unlocked() || enabled()}
+     fallback={<>Unlocks after 30 tagged closes (currently {taggedCount()}).</>}>
+     Scales sizing by your calibrated per-setup edge (Quarter-Kelly, ±2× clamp).
+   </Show>
+   ```
+   **Spec FR-2** wants *"Dynamic Risk unlocks after 30 tagged closes (N/30)"* — just a copy tweak. **Spec FR-3** wants the `dynamic_risk_unlocked_at` date rendered in a caption when unlocked. `settings.dynamic_risk_unlocked_at` flows through from the backend already (QNT-01a T2) but SettingsPanel doesn't display it. Discovery #4.
 
-17. **`RuntimeMessageSchema`** — `schemas.ts:222-279`. Discriminated union, 28 variants. **Action:** add `GET_USER_SETTINGS` and `PATCH_USER_SETTINGS` variants.
+8. **`TradeForm.tsx`** — `components/TradeForm.tsx:1-503`:
+   - `createMemo` for sizing math at L55-77
+   - two-step confirm state machine at L479-497 (Arm → Confirm)
+   - `buildSetup()` + `handleConfirm()` at L118-138 construct the payload
+   **No preview fetching logic exists.** FR-5/6/7/8 preview row needs to live above the confirm button.
+   
+   The confirm button's existing disabled logic is a derived memo; adding a `previewNegativeEdge()` gate is a 2-line addition. Discovery #5.
 
-18. **API fetch helpers** — `background/api.ts:40-88`. `ApiOpts`/`ApiResult` typed pattern; named wrappers like `executeTrade()`, `listSetupTags()` (RSK-02 T2). **Action:** add `getUserSettings()` and `patchUserSettings()` wrappers following the same shape.
+9. **`modal.tsx:39-206`** — Shadow DOM CSS. Theme variables `--color-signal-red`, `--color-text-dim`, `--color-text-secondary`, `--color-signal-green` all present. Existing `.balance-row` / `.balance-label` / `.balance-value` classes usable. Need new `.kelly-preview-row` class (single line, badge-style `⚡` leading, color variants).
 
-19. **Handlers** — `background/handlers.ts:33-80`. Typed `handleX()` functions + dispatch table. **Action:** add `handleGetUserSettings`/`handlePatchUserSettings`; register in dispatch.
+10. **`schemas.ts`** — has `TradePayloadSchema` (L49-72), `UserSettingsResponseSchema` (L218-222 — QNT-01a T3). Need new `SizingPreviewSchema` discriminated union per spec §Response Shape. Runtime message schema L233-295 needs `PREVIEW_TRADE_SIZING` variant.
 
-20. **Popup SettingsPanel** — **does not exist.** Components dir has 11 entries (`ActiveOrders`, `AuthSection`, `ExchangeSelector`, `HeaderBar`, `LoginPreview`, `MainView`, `PairView`, `PositionCard`, `StatusBar`, `TabBar`, `TradeManagement`). **Action:** create `popup/components/SettingsPanel.tsx` with a single Dynamic Risk toggle. Mount in an existing popup surface (likely `MainView` or a new settings tab). For 01a the disabled state (when server reports `unlocked = false`) is a plain greyed-out switch — progress copy is QNT-01b's job.
+11. **`background/api.ts:157-200`** — has `apiRequest()`, `executeTrade()`, `listSetupTags()`, `getUserSettings()`, `patchUserSettings()` (QNT-01a). Need `previewTradeSizing(payload)` wrapper.
 
-21. **Production URL defaults rule** — from MEMORY (feedback_prod_defaults.md): **MUST use `bun run typecheck`, NOT `bun run build`, during extension verification.** The extension's prod URL defaults break during dev build. Spec already codifies this.
+12. **`background/handlers.ts`** — 28+ message handlers + dispatch table. Need `handlePreviewTradeSizing(msg)`.
+
+13. **Debounce utility — MISSING.** Spec §Paved Roads claims "the 250 ms balance-refresh debounce [is] exported" from `utils.ts`. Grep confirms **no debounce utility exists** in the extension. `calculateRefreshDelay()` in utils.ts is for JWT refresh timing, not debouncing. Discovery #6. Either (a) reach for lodash-debounce (new dep, rejected), (b) write a 10-line debounce helper in `utils.ts`, or (c) inline a `setTimeout` + cleanup pattern inside `TradeForm.tsx`. **Choosing (b)** — it's 10 lines and likely to be reused (FIX series may want it for rate-limit handling).
+
+14. **Production URL defaults rule** (MEMORY `feedback_prod_defaults.md`) — extension verification MUST use `bun run typecheck`, NOT `bun run build`. Spec Acceptance Criteria codifies this. Preserved in T9.
 
 ---
 
-### Design Decisions (captured before tasking)
+### Design Decisions
 
-1. **`user_settings` is a new JSONB table, not columns on `users`.** Spec explicit. JSONB gives forward-compat headroom for QNT-01b/c additions without more ALTER TABLEs. Trade-off: one extra row in the hot `/user/settings` read path vs. ~5 scattered NULLable columns on `users`. Given <10 reads per session, trivial.
+1. **Skip `/user/qnt-readiness`; reuse `/user/settings`.** Spec FR-1 is redundant — the existing endpoint exposes the full superset. A thin alias endpoint would duplicate logic for zero benefit; worse, it introduces a 2nd source of truth for unlock state that can drift. **Extension calls `/user/settings` for popup unlock state (already does via `getUserSettings()`).** Document as a spec deviation in T1. If future QNT work ever needs a truly slimmer readiness endpoint (e.g., pre-auth smoke check), revisit then.
 
-2. **`CalibrationEngine` lives in `router/src/services/calibration.rs`, not `common_utils/src/risk/calibration.rs`.** Spec deviation. Rationale in Gap Analysis #14. Pure math (`shrink()`, `quarter_kelly()`, `edge_multiplier()`, `effective_risk_percent()`) stays in `common_utils/src/risk/kelly.rs` per spec — those functions have no I/O. This keeps common_utils dep-clean and mirrors the coach-service placement.
+2. **Shared compute: extract `compute_sizing_preview(user_id, setup_tag, baseline_risk_pct, dynamic_enabled, pool, calibration_engine) -> Result<SizingPreview, Error>`.** Lives in a new `router/src/services/sizing_preview.rs` (or extension of `calibration.rs`). `create_trade` calls it; `preview_trade_sizing` calls it. **Byte-parity guaranteed by construction.** Result is the discriminated union; both handlers interpret it — `create_trade` maps `NegativeEdge` to 400 + `Calibrated.effective_risk_pct` to `RiskConfig` override; preview endpoint returns it verbatim.
 
-3. **Kelly calibration runs in `create_trade` handler BEFORE DecisionLoop, not inside it.** DecisionLoop stays untouched. When dynamic mode is on: handler loads per-setup stats → global prior → shrinks → Kelly → clamps → overrides `RiskConfig.account_risk_percent` with `effective_risk_percent` → passes to DecisionLoop. Byte-for-byte preserves the MIN composition downstream (FR-10).
-
-4. **Negative-edge rejection is a hard 4xx response from `create_trade`, not a DecisionLoop rejection.** Cleaner separation: Kelly is a pre-sizing gate, not a sizing outcome. Response: `400 Bad Request` with `{ "error": "negative_edge", "message": "Calibration shows negative edge for this setup — size = 0." }`. No `journal_trades` row created (FR-5). Discovery #6.
-
-5. **Untagged + dynamic-on → silent fallback.** Spec FR-8. `tracing::info!(user_id = %user_id, "dynamic_risk: setup_tag missing, falling back to baseline")`. No client-facing warning in 01a — QNT-01b will add the inline nudge. `kelly_inputs` remains NULL at close.
-
-6. **`kelly_inputs` populated only when dynamic mode produced a Kelly-derived size.** Fixed-mode trades AND untagged-fallback trades → `kelly_inputs = NULL`. This is the per-trade mode audit trail (Risk #5 in spec).
-
-7. **`UserSettings` struct shape** — tiny for 01a:
+3. **`SizingPreview` discriminated union — exact shape per spec:**
    ```rust
-   pub struct UserSettings {
-       pub dynamic_risk_enabled: bool,
-       // Future: drift_warnings, per-setup overrides, ...
+   #[derive(Serialize)]
+   #[serde(tag = "kind", rename_all = "snake_case")]
+   pub enum SizingReasoning {
+       Calibrated { n_setup: u32, p_eff: Decimal, avg_r_win: Decimal, avg_r_loss: Decimal },
+       Untagged,
+       NegativeEdge { quarter_kelly: Decimal },
+       FixedMode,  // dynamic_risk_enabled == false
+   }
+
+   #[derive(Serialize)]
+   pub struct SizingPreview {
+       pub baseline_risk_pct: Decimal,
+       pub effective_risk_pct: Decimal,
+       pub edge_multiplier: Decimal,
+       pub reasoning: SizingReasoning,
    }
    ```
-   Persisted as JSONB. Stored even when `dynamic_risk_enabled = false` (to preserve future preferences on upgrade). Unlock state (`dynamic_risk_unlocked_at: Option<DateTime>`) set at first successful enable → remains set even if user later toggles off.
+   For `NegativeEdge`: `effective_risk_pct = 0`, `edge_multiplier = 0`. For `Untagged`/`FixedMode`: `effective_risk_pct = baseline`, `edge_multiplier = 1.0`. The frontend renders copy based solely on `reasoning.kind` — no re-derivation needed.
 
-8. **Unlock gate SQL uses the existing RSK-02 index.** `SELECT COUNT(*) FROM journal_trades WHERE user_id = $1 AND setup_tag IS NOT NULL`. Partial index `idx_journal_trades_user_setup` serves this query directly — O(log n) + small constant.
+4. **Preview endpoint has NO side effects.** No DB writes. No CCXT calls. No shadow engine. Only: user_settings read + up to 2 aggregate queries + pure math. Latency budget < 50ms p99 per spec §Preview Endpoint Contract.
 
-9. **`dynamic_risk_unlocked_at` is informational, not enforcement.** Enforcement is the COUNT check on every PATCH-to-enable. Once unlocked, the flag lets UI show "unlocked on 2026-05-04" copy. If count drops below 30 (only possible via trade deletion), existing `dynamic_risk_enabled = true` stays valid — no re-gating after initial unlock. Discovery #9.
+5. **Preview endpoint auth = same JWT middleware as `/trades`.** `AuthenticatedUser` extractor. No new surface.
 
-10. **`reference_kelly` constant** — `Quarter-Kelly(p=0.52, b=1.5) ≈ 0.0133`. Computed once as a module-level `lazy_static` or `OnceLock<Decimal>` in `kelly.rs`. Pure Decimal math, no runtime variance. Discovery #7.
+6. **Preview request body shape = `CreateTradeRequest`** (reuse the same struct). Accepts extra fields silently; only consumes `setup_tag` + `management`. Keeps the extension's `executeTrade` and `previewTradeSizing` wire contracts identical — trivial for `TradeForm` to call both with the same payload.
 
-11. **Pseudocount `K = 10` is a module-level `const`**, not a config knob. Tuning requires code change + redeploy. Spec says "hardcoded constant" — follow spec. If QNT-02 adds drift detection, K may become per-user tunable.
+7. **Debounce lives in `utils.ts`, not inside `TradeForm.tsx`.** Module-level function `debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T`. Reusable. Tested inline.
 
-12. **Extension SettingsPanel for 01a is minimal.** Single toggle. When `unlocked = false` from server: greyed-out + tooltip "Unlocks after 30 tagged closes." When `unlocked = true`: functional switch. No progress indicator, no preview UI — that's QNT-01b (Transparency overlay). Mount location TBD at build time; likely inside `MainView.tsx` or a new collapsible "Settings" section on it. Discovery #8.
+8. **Preview failure is non-fatal — FR-10 "confirm remains enabled (falls through to baseline)".** Preview fetch is purely for UX guidance. The trade execution path is unchanged; if the preview fails for any reason, the user's Alt+X confirm still fires and the backend does its own calibration authoritatively (so any server-side calibration drift surfaces as a backend-side 400, not as a silent sizing divergence).
 
-13. **`authServer` unlock check happens on every PATCH, not just on toggle-on.** Cheap query; idempotent behavior. User flipping on/off/on in rapid succession gets consistent server validation.
+9. **Preview row does NOT render when dynamic_risk is off.** Spec FR-5 is explicit: "when Dynamic Risk is on and the backend returned a sizing_preview". The extension reads `settings.dynamic_risk_enabled` from the cached user settings (already fetched by popup). If off → skip preview fetch entirely, don't render the row. Avoids unnecessary API traffic for fixed-mode users.
+
+10. **`ArmConfirm` disabled-on-negative-edge is a separate gate from the existing disable logic.** The current two-step confirm button already has multiple disabled states (no stop loss, no target, etc.). Add `previewNegativeEdge()` to the derived disabled memo. On `reasoning.kind === "negative_edge"`, confirm stays disabled even if the user taps through the Arm step.
+
+11. **Copy variants match spec verbatim.** No paraphrasing:
+    - Calibrated: `Risk: {baseline}% → {effective}% ({n_setup} trades, {round(p_eff*100)}% WR, {avg_r_win}R avg)`
+    - Untagged: `Tag this setup to unlock calibrated sizing for it.`
+    - NegativeEdge: `Calibration shows negative edge for this setup — size = 0.`
+    - FixedMode: not rendered (falls through to FR-5 "Dynamic Risk on" gate).
+    - Failure: `Preview unavailable`
+    Frontend pattern-matches on `reasoning.kind`, no i18n layer.
+
+12. **150ms debounce per FR-9** (not the spec's paved-roads 250ms — 150 is the FR, it takes precedence over the paved-roads note).
 
 ---
 
@@ -99,453 +129,380 @@
 
 | CP | Goal | Tasks |
 |----|------|-------|
-| CP-1 | Plumbing end-to-end: migration + server endpoints + unlock gate + extension toggle. Frontend can mock against live contract; no math yet. | T1, T2, T3 |
-| CP-2 | Pure-math modules unit-tested against fixtures. No trade-path integration. | T4, T5 |
-| CP-3 | Math wired into create_trade. Kelly sizing flows through existing MIN pipeline; `kelly_inputs` persisted at close. | T6, T7, T8 |
-| Final | Verification + commit. | T9 |
+| CP-1 | Locked-state polish on existing `/user/settings` data. Popup shows N/30 progress + unlock date. | T1 |
+| CP-2 | Preview endpoint live + happy path inline row. Tagged + positive edge → `"Risk: 1.0% → 1.4% (…)"` | T2, T3, T4, T5 |
+| CP-3 | Edge cases: untagged, negative-edge, preview-failure, debounce. | T6, T7 |
+| Final | Verification + archival. | T8 |
 
 ---
 
 ### Parallel Track Detection
 
 ```
-T1 (migration — user_settings table + kelly_inputs column)
-  │
-  ├── T2 (user_settings routes + unlock gate + AppState wiring) ──┐
-  │                                                                │
-  └── T3 (extension — schemas + messages + handlers + toggle UI) ──┤   [parallel with T2]
-                                                                   │
-                                                                   ↓
-                                              T4 (kelly.rs pure math + tests)
-                                                   │
-                                                   └── T5 (calibration.rs engine + shrink + tests)  [parallel with T4]
-                                                              │
-                                                              ↓
-                                       T6 (create_trade: Kelly pre-sizing + CalibratedKelly variant + negative-edge reject)
-                                                              │
-                                                              ↓
-                                       T7 (record_trade_close: kelly_inputs JSONB at close)
-                                                              │
-                                                              ↓
-                                       T8 (untagged fallback path + info log)
-                                                              │
-                                                              ↓
-                                                          T9 (verification + commit)
+T1 (SettingsPanel unlock-date + N/30 copy)                    [CP-1, standalone]
+    │
+T2 (extract compute_sizing_preview + refactor create_trade)   [CP-2]
+    │
+T3 (POST /trades/preview route)                               [CP-2, depends on T2]
+    │
+    ├── T4 (extension schemas + message + api + handler)      ─┐ [CP-2, parallel with T5]
+    │                                                          │
+    └── T5 (TradeForm preview row — calibrated happy path)    ─┤
+                                                               │
+                                                               ↓
+                             T6 (debounce util + edge variants: untagged + negative-edge)  [CP-3]
+                                                               │
+                                                               ↓
+                                               T7 (failure path + "Preview unavailable")  [CP-3]
+                                                               │
+                                                               ↓
+                                                          T8 (verification + commit)
 ```
 
-T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Single-agent BUILD stays sequential.
+T1 independent of everything; can land first. T4 and T5 independent after T3 lands. Single-agent BUILD stays sequential.
 
 ---
 
 ## Tasks
 
-### T1: Migration — `user_settings` table + `journal_trades.kelly_inputs` column — `complete`
+### T1: SettingsPanel — N/30 progress copy + unlock date caption — `complete`
 
-**Scope:** CP-1 persistence layer.
+**Scope:** CP-1. Pure frontend polish. No backend changes.
 
 **Files:**
-- `testudo-exchange/crates/sqlx_postgres/migrations/{ts}_add_qnt_columns.up.sql` — NEW:
-  ```sql
-  CREATE TABLE IF NOT EXISTS user_settings (
-      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-      settings JSONB NOT NULL DEFAULT '{"dynamic_risk_enabled": false, "dynamic_risk_unlocked_at": null}'::jsonb,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
+- `testudo-extension/src/popup/components/SettingsPanel.tsx` — MODIFIED at L88-95:
+  - Locked state copy → `"Dynamic Risk unlocks after 30 tagged closes ({taggedCount()}/30)"` per FR-2.
+  - Unlocked state adds a small caption line: if `settings.dynamic_risk_unlocked_at` is present, render a muted `text-text-dim text-xs` line `"Unlocked {date}"` (localized, e.g., `"Unlocked 2026-05-04"`). FR-3.
+  - Existing toggle state machine (enabled/unlocked gating, optimistic PATCH, 409 error handling) untouched.
 
-  ALTER TABLE journal_trades
-      ADD COLUMN kelly_inputs JSONB NULL;
+**Validate:**
+- `cd testudo-extension && bun run typecheck` exit 0.
+- Manual visual check deferred to T8.
+
+**Acceptance:**
+- User at 0–29 tagged closes sees `"Dynamic Risk unlocks after 30 tagged closes (N/30)"`, toggle disabled.
+- User at 30+ tagged closes sees toggle enabled + caption `"Unlocked <date>"` (if `dynamic_risk_unlocked_at` is non-null).
+- No new typecheck errors beyond the 18-error baseline.
+
+---
+
+### T2: Extract `compute_sizing_preview()` — reusable calibration pipeline — `pending`
+
+**Scope:** CP-2 load-bearing refactor. Pulls QNT-01a T6's inline Kelly block out of `create_trade` into a shared helper. Byte-for-byte preserves existing sizing semantics (FR-10 regression boundary).
+
+**Files:**
+- `testudo-exchange/crates/router/src/services/sizing_preview.rs` — NEW:
+  ```rust
+  pub struct SizingPreview {
+      pub baseline_risk_pct: Decimal,
+      pub effective_risk_pct: Decimal,
+      pub edge_multiplier: Decimal,
+      pub reasoning: SizingReasoning,
+      // Internal: the kelly_inputs JSON blob for DB persistence. Only populated on Calibrated.
+      pub kelly_inputs: Option<serde_json::Value>,
+  }
+
+  #[serde(tag = "kind", rename_all = "snake_case")]
+  pub enum SizingReasoning {
+      Calibrated { n_setup: u32, p_eff: Decimal, avg_r_win: Decimal, avg_r_loss: Decimal },
+      Untagged,
+      NegativeEdge { quarter_kelly: Decimal },
+      FixedMode,
+  }
+
+  pub async fn compute_sizing_preview(
+      user_id: Uuid,
+      setup_tag: Option<&str>,
+      baseline_risk_pct: Decimal,
+      dynamic_enabled: bool,
+      calibration_engine: &CalibrationEngine,
+  ) -> Result<SizingPreview, sqlx::Error>;
   ```
-- `testudo-exchange/crates/sqlx_postgres/migrations/{ts}_add_qnt_columns.down.sql` — NEW: reverse (DROP COLUMN + DROP TABLE).
+  Branch structure inside the fn (mirrors current `create_trade` L709-841 exactly):
+  - `!dynamic_enabled` → `FixedMode`, effective = baseline, mult = 1.0.
+  - `dynamic_enabled && setup_tag.is_none()` → `Untagged`, effective = baseline, mult = 1.0. Emit existing `info!` log.
+  - `dynamic_enabled && setup_tag.is_some()`:
+    - Load prior + setup.
+    - Shrink → `shrunk`.
+    - Compute `full_kelly`.
+    - If `full_kelly <= 0` → `NegativeEdge { quarter_kelly }`, effective = 0, mult = 0, kelly_inputs = None.
+    - Else: compute `quarter_kelly`, `edge_multiplier`, `effective_risk_percent`. Build `kelly_inputs` JSON. Return `Calibrated { … }`.
 
-**Timestamp:** Use `20260420000100_add_qnt_columns` (later than the ENG-01 dignitas migration reserved at `20260420000000`, if that lands first; otherwise `20260420000000`). Resolved at build time by greping existing migrations.
+- `testudo-exchange/crates/router/src/services/mod.rs` — MODIFIED: `pub mod sizing_preview;`.
 
-**Validate:** `cd testudo-exchange && cargo check --all-targets` (migrations compile into sqlx offline cache only if `SQLX_OFFLINE=true`; runtime validation in T2).
+- `testudo-exchange/crates/router/src/routes/trade_management.rs` — MODIFIED in `create_trade`:
+  - Replace L709-841 with a single call: `let preview = compute_sizing_preview(user_id, setup_tag.as_deref(), baseline, dynamic_enabled, &state.calibration_engine).await?;`
+  - Match on `preview.reasoning`:
+    - `NegativeEdge { .. }` → return 400 with `{ error: "negative_edge", message: "…" }` (same copy as today).
+    - `Calibrated { .. }` → use `preview.effective_risk_pct` for RiskConfig override + `preview.kelly_inputs` for DB.
+    - `Untagged` / `FixedMode` → proceed with baseline, `kelly_inputs = None`.
+  - All other logic below L841 unchanged.
+
+**Inline tests (in sizing_preview.rs):**
+- `fixed_mode_returns_baseline_unchanged` — dynamic_enabled=false → mult=1, effective=baseline, reasoning=FixedMode.
+- `untagged_returns_baseline_unchanged` — dynamic_enabled=true, setup_tag=None → mult=1, effective=baseline, reasoning=Untagged.
+- `negative_edge_returns_zero` — fixture with p=0.3, b=1.0 (negative full_kelly) → effective=0, mult=0, reasoning=NegativeEdge.
+- `calibrated_within_clamp_bounds` — fixture with high edge → effective ∈ [0.25×baseline, 2×baseline].
+- (Keep it pure by fixturing `CalibrationEngine` via a test helper OR by extracting the decision logic further into a pure `classify()` fn taking `ShrunkStats` + baseline + dynamic_enabled. Prefer the latter for testability.)
+
+**Validate:**
+- `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
+- **Critical regression check:** all 639 existing router bin tests must still pass (pre-existing AUTH failure `test_me_returns_user_info` aside). Fixed-mode and dynamic-mode trades must size identically to pre-T2 output on matching inputs.
 
 **Acceptance:**
-- Up+down apply cleanly on a fresh DB.
-- `user_settings.settings` defaults to `{"dynamic_risk_enabled": false, "dynamic_risk_unlocked_at": null}`.
-- `journal_trades.kelly_inputs` nullable, default NULL.
-- `ON DELETE CASCADE` from users.
+- `compute_sizing_preview` is the single source of Kelly decisions.
+- `create_trade` shrinks from ~130 lines to ~15 lines for the Kelly section.
+- Test suite baseline preserved.
+- No new clippy warnings beyond the 3 pre-existing.
 
 ---
 
-### T2: `user_settings` routes + unlock gate + AppState wiring — `complete`
+### T3: `POST /api/v1/trades/preview` route — `pending`
 
-**Scope:** CP-1 backend API surface. Server-side unlock check on enable.
+**Scope:** CP-2 new endpoint. Thin HTTP adapter around `compute_sizing_preview`.
 
 **Files:**
-- `testudo-exchange/crates/router/src/routes/user_settings.rs` — NEW:
-  - `#[derive(Serialize, Deserialize)] pub struct UserSettings { dynamic_risk_enabled: bool, dynamic_risk_unlocked_at: Option<DateTime<Utc>> }`.
-  - `#[derive(Serialize)] pub struct UserSettingsResponse { settings: UserSettings, unlocked: bool, tagged_trade_count: i64 }`.
-  - `#[derive(Deserialize)] pub struct PatchUserSettingsRequest { dynamic_risk_enabled: bool }`.
-  - `GET /api/v1/user/settings` → `UserSettingsResponse`. Fetches settings row (creates default if missing via `INSERT ... ON CONFLICT DO NOTHING`), counts tagged closes, sets `unlocked = count >= 30`.
-  - `PATCH /api/v1/user/settings` → `UserSettingsResponse` on 200 OR `409 Conflict` with `{ "error": "unlock_gate", "message": "Dynamic Risk requires ≥ 30 tagged closed trades (you have N).", "tagged_trade_count": N, "required": 30 }` when enabling without threshold.
-  - Unlock SQL: `SELECT COUNT(*)::bigint FROM journal_trades WHERE user_id = $1 AND setup_tag IS NOT NULL`.
-  - First-time enable sets `dynamic_risk_unlocked_at = NOW()`.
-- `testudo-exchange/crates/router/src/routes/mod.rs` — MODIFIED: `pub mod user_settings;`.
-- `testudo-exchange/crates/router/src/main.rs` — MODIFIED: register `/api/v1/user` scope with `JwtMiddleware::new(token_service.clone())`, mount `/settings` handlers.
-- `testudo-exchange/crates/common_utils/src/risk/config.rs` — MODIFIED: add `pub dynamic_risk_enabled: bool` to `RiskConfig` (default `false`). Add builder method `with_dynamic_risk(bool)`. Document that the field is populated by the `create_trade` handler from `user_settings`, not from the defaults — presets leave it `false`.
+- `testudo-exchange/crates/router/src/routes/trade_management.rs` — MODIFIED:
+  - New handler `preview_trade_sizing(user: AuthenticatedUser, req: web::Json<CreateTradeRequest>, state: web::Data<AppState>) -> HttpResponse`.
+  - Read `user_settings.dynamic_risk_enabled` (same query as `create_trade`).
+  - Call `compute_sizing_preview`.
+  - Return 200 with `SizingPreview` (strip `kelly_inputs` from the serialized response — that's internal-only for DB persistence; the preview response has only `baseline_risk_pct`, `effective_risk_pct`, `edge_multiplier`, `reasoning`). Use a `SizingPreviewResponse` DTO that omits `kelly_inputs`, or mark the field `#[serde(skip_serializing)]` on `SizingPreview`.
+- `testudo-exchange/crates/router/src/main.rs` (or wherever `/trades` scope is registered) — MODIFIED: `.route("/preview", web::post().to(preview_trade_sizing))`.
 
-**Inline tests (cfg test):**
-- `enables_when_threshold_met` — user with ≥ 30 tagged closes can PATCH to true.
-- `rejects_enable_below_threshold` — user with 29 tagged closes gets 409 with count.
-- `disable_always_allowed` — PATCH to `false` works regardless of count.
-- `unlocked_at_set_on_first_enable_only` — re-enabling after disable does not update `unlocked_at`.
+**Inline test (in trade_management.rs):**
+- `preview_matches_create_trade_byte_parity` — construct a fixture payload; call `compute_sizing_preview` twice through the two code paths (create_trade and preview) and assert identical `(baseline_risk_pct, effective_risk_pct, edge_multiplier, reasoning)` tuples. Satisfies spec Risk #1.
 
-**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test user_settings`.
+**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
 
 **Acceptance:**
-- GET returns default settings for first-time user.
-- PATCH enforces unlock gate server-side.
-- 409 response shape matches spec's error contract.
-- RiskConfig has `dynamic_risk_enabled` field.
+- `POST /api/v1/trades/preview` returns 200 + `SizingPreview` JSON.
+- No DB writes (verify by side-effect absence).
+- Byte parity with `create_trade` computed values.
+- Latency p99 < 50ms on a seeded fixture (best-effort — measured live in T8).
 
 ---
 
-### T3: Extension — schemas, messages, API helpers, SettingsPanel toggle — `complete`
+### T4: Extension — SizingPreview schema + message + API helper + handler — `pending`
 
-**Scope:** CP-1 extension surface. Wire the minimal Dynamic Risk toggle to the new endpoints. Can run in parallel with T2 once T1's wire contract is known.
+**Scope:** CP-2 extension wire contract.
 
 **Files:**
 - `testudo-extension/src/schemas.ts` — MODIFIED:
-  - Add `UserSettingsSchema = z.object({ dynamic_risk_enabled: z.boolean(), dynamic_risk_unlocked_at: z.string().datetime().nullable() })`.
-  - Add `UserSettingsResponseSchema = z.object({ settings: UserSettingsSchema, unlocked: z.boolean(), tagged_trade_count: z.number().int().nonnegative() })`.
-  - Add two variants to `RuntimeMessageSchema`: `{ type: 'GET_USER_SETTINGS' }` and `{ type: 'PATCH_USER_SETTINGS', dynamic_risk_enabled: z.boolean() }`.
+  ```typescript
+  const CalibratedReasoning = z.object({
+      kind: z.literal("calibrated"),
+      n_setup: z.number().int(),
+      p_eff: z.number(),
+      avg_r_win: z.number(),
+      avg_r_loss: z.number(),
+  });
+  const UntaggedReasoning = z.object({ kind: z.literal("untagged") });
+  const NegativeEdgeReasoning = z.object({
+      kind: z.literal("negative_edge"),
+      quarter_kelly: z.number(),
+  });
+  const FixedModeReasoning = z.object({ kind: z.literal("fixed_mode") });
+
+  export const SizingPreviewSchema = z.object({
+      baseline_risk_pct: z.number(),
+      effective_risk_pct: z.number(),
+      edge_multiplier: z.number(),
+      reasoning: z.discriminatedUnion("kind", [
+          CalibratedReasoning, UntaggedReasoning, NegativeEdgeReasoning, FixedModeReasoning,
+      ]),
+  });
+  export type SizingPreview = z.infer<typeof SizingPreviewSchema>;
+  ```
+  Add `RuntimeMessageSchema` variant:
+  ```typescript
+  z.object({
+      type: z.literal("PREVIEW_TRADE_SIZING"),
+      payload: TradePayloadSchema,  // reuse existing schema — same shape as executeTrade
+  }),
+  ```
+
 - `testudo-extension/src/background/api.ts` — MODIFIED:
-  - `export async function getUserSettings(): Promise<ApiResult>` — GET `/api/v1/user/settings`, parse with `UserSettingsResponseSchema`.
-  - `export async function patchUserSettings(enabled: boolean): Promise<ApiResult>` — PATCH with `{ dynamic_risk_enabled: enabled }`. Map 409 → `{ ok: false, error_code: 'unlock_gate', error: <server message> }`.
+  - `export async function previewTradeSizing(payload: TradePayload): Promise<ApiResult> { … }` — POST `/api/v1/trades/preview`, parse response with `SizingPreviewSchema`. On network error or non-2xx, return `{ ok: false, error: string }` (don't throw — FR-10 preview failure is non-fatal).
+
 - `testudo-extension/src/background/handlers.ts` — MODIFIED:
-  - `handleGetUserSettings()` → `getUserSettings()`.
-  - `handlePatchUserSettings(msg)` → `patchUserSettings(msg.dynamic_risk_enabled)`.
-  - Register both in dispatch table.
-- `testudo-extension/src/popup/components/SettingsPanel.tsx` — NEW:
-  - Solid component. `createResource(fetchUserSettings)`.
-  - Renders a labeled toggle "Dynamic Risk (Calibrated Kelly)".
-  - When `settings.loading`: skeleton.
-  - When `!unlocked`: disabled toggle + subtext "Unlocks after 30 tagged closes (currently N)".
-  - When `unlocked`: live toggle, calls `PATCH_USER_SETTINGS` on change, optimistically updates + rolls back on error.
-  - On 409 response: surfaces the server message inline.
-- Mount point — `testudo-extension/src/popup/components/MainView.tsx` OR a new tab in `TabBar.tsx`. **Decision at build time** — simplest is a collapsible "Settings" section at the bottom of MainView. Document choice in T3's completion commit.
+  - `handlePreviewTradeSizing(msg)` → `previewTradeSizing(msg.payload)`.
+  - Register in dispatch table.
 
 **Validate:**
-- `cd testudo-extension && bun run typecheck` (NOT `bun run build` per prod URL defaults feedback).
-- `bun run test` — add vitest cases for the two new messages if handler tests are the convention (check existing `handlers.test.ts`).
+- `cd testudo-extension && bun run typecheck`.
+- Pre-existing test baseline preserved (~28 failures from `browser.commands` mock gap — no new failures).
 
 **Acceptance:**
-- Popup toggle disabled state visible when `unlocked = false`.
-- Toggle round-trips to server on change.
-- 409 response surfaces inline.
-- No new pre-existing test regressions (baseline: ~28 pre-existing failures per RSK-02 T2 — don't add more).
+- SizingPreviewSchema round-trips all 4 variants against fixture JSON.
+- Message dispatch wired.
+- No new typecheck errors.
 
 ---
 
-### T4: `kelly.rs` pure math module + unit tests — `complete`
+### T5: TradeForm — preview row (calibrated happy path) — `pending`
 
-**Scope:** CP-2 pure math. No I/O. Can run in parallel with T5.
+**Scope:** CP-2 UX surface. Render the preview row for the happy-path `calibrated` variant only. Edge cases land in T6.
 
 **Files:**
-- `testudo-exchange/crates/common_utils/src/risk/kelly.rs` — NEW:
-  ```rust
-  use rust_decimal::Decimal;
-  use rust_decimal_macros::dec;
-  use std::sync::OnceLock;
+- `testudo-extension/src/components/TradeForm.tsx` — MODIFIED:
+  - Add signal `const [preview, setPreview] = createSignal<SizingPreview | null>(null);`.
+  - Add `createEffect` that fetches preview via `browser.runtime.sendMessage({ type: "PREVIEW_TRADE_SIZING", payload: buildSetup() })` when the relevant payload fields change.
+    - For T5, trigger on mount only (no debounce yet — T6 adds debounce).
+    - Guard: only fetch if `settings.dynamic_risk_enabled === true` (pull from popup-cached settings OR fetch `getUserSettings()` once on form mount). If off → never render, never fetch.
+  - Render preview row above confirm button (new JSX block). For T5, render only when `preview()?.reasoning.kind === "calibrated"`:
+    - Copy: ``Risk: {baseline.toFixed(1)}% → {effective.toFixed(1)}% ({n_setup} trades, {Math.round(p_eff * 100)}% WR, {avg_r_win.toFixed(1)}R avg)``
+    - Style: muted text (`color: var(--color-text-secondary)`), single line, leading `⚡` badge.
 
-  pub const PSEUDOCOUNT_K: u32 = 10;
-  pub const CLAMP_MIN: Decimal = dec!(0.25);
-  pub const CLAMP_MAX: Decimal = dec!(2.00);
-
-  /// Quarter-Kelly for p=0.52, b=1.5 — the reference point for the ±2× clamp.
-  pub fn reference_kelly() -> Decimal {
-      static CACHE: OnceLock<Decimal> = OnceLock::new();
-      *CACHE.get_or_init(|| quarter_kelly(dec!(0.52), dec!(1.5), dec!(1.0)))
+- `testudo-extension/src/modal.tsx` — MODIFIED: add `.kelly-preview-row` CSS block to the Shadow DOM `<style>`:
+  ```css
+  .kelly-preview-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; margin: 8px 0;
+      font-size: 12px; color: var(--color-text-secondary);
+      border-left: 2px solid var(--color-accent-steel);
   }
-
-  /// Full Kelly = (b·p − q) / b. Returns raw value (may be negative).
-  pub fn full_kelly(p_eff: Decimal, avg_r_win: Decimal, avg_r_loss: Decimal) -> Decimal;
-
-  /// Quarter-Kelly = full_kelly / 4.
-  pub fn quarter_kelly(p_eff: Decimal, avg_r_win: Decimal, avg_r_loss: Decimal) -> Decimal;
-
-  /// clamp(quarter_kelly / reference_kelly, 0.25, 2.0)
-  pub fn edge_multiplier(quarter_kelly: Decimal) -> Decimal;
-
-  /// baseline_risk_percent * edge_multiplier
-  pub fn effective_risk_percent(baseline: Decimal, multiplier: Decimal) -> Decimal;
+  .kelly-preview-row.negative { color: var(--color-signal-red); border-left-color: var(--color-signal-red); }
+  .kelly-preview-row.muted { font-style: italic; color: var(--color-text-dim); }
   ```
-- `testudo-exchange/crates/common_utils/src/risk/mod.rs` — MODIFIED: `pub mod kelly;`.
 
-**Inline tests:**
-- `reference_kelly_matches_013` — within `dec!(0.0001)` of `0.0133`.
-- `full_kelly_positive_on_positive_edge` — p=0.6, b=2.0 → positive.
-- `full_kelly_negative_on_negative_edge` — p=0.4, b=1.0 → `≤ 0`.
-- `edge_multiplier_clamped_at_low` — tiny Kelly → 0.25.
-- `edge_multiplier_clamped_at_high` — huge Kelly → 2.0.
-- `effective_risk_percent_matches_baseline_at_reference` — multiplier 1.0 → baseline unchanged.
-- `effective_risk_percent_doubles_at_clamp_max` — multiplier 2.0 → 2× baseline.
-
-**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test -p common_utils kelly`.
+**Validate:**
+- `cd testudo-extension && bun run typecheck`.
 
 **Acceptance:**
-- All 7 tests green.
-- No `f64` anywhere.
-- `reference_kelly()` value matches spec's annotation "≈ 0.0133".
+- Dynamic-mode user on a tagged setup with positive edge sees the calibrated row within 300ms of modal open.
+- Dynamic-mode OFF users see no preview row (no API call made either).
+- Non-calibrated variants still return null in this task (edge cases coming in T6).
+- Confirm button behavior unchanged (still fires on Enter-Enter).
 
 ---
 
-### T5: `calibration.rs` CalibrationEngine + `shrink()` + unit tests — `complete`
+### T6: Debounce utility + untagged + negative-edge variants — `pending`
 
-**Scope:** CP-2 I/O-bearing layer. Lives in `router/src/services/` per Design Decision #2 (deviation from spec's common_utils placement — Discovery #3).
+**Scope:** CP-3. Adds the 150ms debounce plus the remaining copy variants plus the confirm-disable gate for negative-edge.
 
 **Files:**
-- `testudo-exchange/crates/router/src/services/calibration.rs` — NEW:
-  ```rust
-  use common_utils::risk::kelly::PSEUDOCOUNT_K;
-  use rust_decimal::Decimal;
-  use sqlx::PgPool;
-  use uuid::Uuid;
-
-  #[derive(Debug, Clone)]
-  pub struct SetupStats { pub n: u32, pub p_win: Decimal, pub avg_r_win: Decimal, pub avg_r_loss: Decimal }
-
-  #[derive(Debug, Clone)]
-  pub struct ShrunkStats { pub p_eff: Decimal, pub avg_r_win: Decimal, pub avg_r_loss: Decimal, pub n_setup: u32, pub n_global: u32 }
-
-  pub struct CalibrationEngine { pool: PgPool }
-
-  impl CalibrationEngine {
-      pub fn new(pool: PgPool) -> Self;
-      pub async fn load_prior(&self, user_id: Uuid) -> Result<SetupStats, sqlx::Error>;
-      pub async fn load_setup(&self, user_id: Uuid, setup_tag: &str) -> Result<SetupStats, sqlx::Error>;
+- `testudo-extension/src/utils.ts` — MODIFIED:
+  ```typescript
+  export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T & { cancel: () => void } {
+      let handle: ReturnType<typeof setTimeout> | null = null;
+      const wrapped = ((...args: any[]) => {
+          if (handle) clearTimeout(handle);
+          handle = setTimeout(() => { handle = null; fn(...args); }, ms);
+      }) as T & { cancel: () => void };
+      wrapped.cancel = () => { if (handle) { clearTimeout(handle); handle = null; } };
+      return wrapped;
   }
-
-  /// Pure Bayesian shrinkage. Pseudocount K from kelly::PSEUDOCOUNT_K.
-  pub fn shrink(setup: &SetupStats, prior: &SetupStats, k: u32) -> ShrunkStats;
   ```
-- `testudo-exchange/crates/router/src/services/mod.rs` — MODIFIED: `pub mod calibration;`.
+- `testudo-extension/src/components/TradeForm.tsx` — MODIFIED:
+  - Wrap preview fetch in `debounce(…, 150)`. Trigger debounced fetch on changes to: `entry_price`, `stop_loss_price`, `target_price`, `setup_tag`, `management.risk_percent`. Cancel on unmount via `onCleanup`.
+  - Drop in-flight preview if a new one supersedes it (use an async sequence counter: increment on each call, only set preview if the response's counter is still current).
+  - Extend preview rendering:
+    - `reasoning.kind === "untagged"` → row with copy `"Tag this setup to unlock calibrated sizing for it."`, class `muted` (italic, dim).
+    - `reasoning.kind === "negative_edge"` → row with copy `"Calibration shows negative edge for this setup — size = 0."`, class `negative` (red).
+    - `reasoning.kind === "fixed_mode"` → don't render (shouldn't happen when dynamic_risk is on, but harmless fallthrough).
+  - Confirm button disabled memo gains one more gate: `preview()?.reasoning.kind === "negative_edge"`. Applied to both Arm and Confirm states.
 
-**SQL — `load_setup`:**
-```sql
-SELECT
-    COUNT(*)::integer AS n,
-    COALESCE(AVG(CASE WHEN net_pnl > 0 THEN 1.0 ELSE 0.0 END)::numeric, 0.0) AS p_win,
-    COALESCE(AVG(CASE WHEN net_pnl > 0 AND r_multiple IS NOT NULL THEN r_multiple END)::numeric, 0.0) AS avg_r_win,
-    COALESCE(AVG(CASE WHEN net_pnl <= 0 AND r_multiple IS NOT NULL THEN ABS(r_multiple) END)::numeric, 0.0) AS avg_r_loss
-FROM journal_trades
-WHERE user_id = $1 AND LOWER(setup_tag) = LOWER($2) AND closed_at IS NOT NULL
-```
-
-**SQL — `load_prior`:** same shape, drops `setup_tag` clause.
-
-**Inline tests:**
-- `shrink_at_zero_setup_trades_returns_prior` — `n_setup=0` → `p_eff == p_prior`, `avg_r_win == prior.avg_r_win`, etc.
-- `shrink_at_K_equals_50_50_blend` — `n_setup=10, K=10` → half-and-half.
-- `shrink_at_10K_dominates_by_setup` — `n_setup=100, K=10` → `p_eff ≈ p_setup ± small prior drag`.
-- `anti_gaming_small_n_cannot_spike_p_eff` — small n, high p_setup, neutral prior → p_eff still near prior.
-
-(Integration tests against real DB deferred — SQL verified by compile + T9's full-suite.)
-
-**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test -p router calibration`.
+**Validate:**
+- `cd testudo-extension && bun run typecheck`.
+- Add a unit test for `debounce` in `utils.test.ts` (if the file exists in the project — check at build time; if not, inline the test next to the function using vitest's tree convention).
 
 **Acceptance:**
-- 4 inline tests green.
-- `shrink()` uses `PSEUDOCOUNT_K` from kelly.rs (single source of truth).
-- SQL uses case-insensitive setup_tag match (`LOWER`) per RSK-02 convention.
+- Rapid slider drag triggers at most 1 preview per 150ms.
+- In-flight preview superseded by a newer request does not clobber the state.
+- Untagged setup → italic muted row.
+- Negative-edge setup → red row + confirm button disabled even past the Arm step.
 
 ---
 
-### T6: `create_trade` integration — Kelly pre-sizing + `CalibratedKelly` variant + negative-edge rejection — `complete`
+### T7: Preview failure path + verification polish — `pending`
 
-**Scope:** CP-3 trade-path integration. The load-bearing task.
-
-**Additive-only contract (ENFORCED — do not break current functionality):**
-- Every new code path is gated behind `dynamic_risk_enabled == true`. Default is `false`. A user with NO `user_settings` row behaves as `{ dynamic_risk_enabled: false }` — handler must treat `NotFound` as fixed-mode, NOT error. Explicit `.unwrap_or_default()` or equivalent match arm.
-- `SizingMethod` enum gains `CalibratedKelly`; existing `FixedFractional`, `KellyCriterion`, `VolatilityAdjusted`, `MaxRiskCap` untouched. No renames. No default-variant changes.
-- `RiskConfig` gains `dynamic_risk_enabled: bool` with `#[serde(default)]`; preset constructors (`new()`, `conservative()`, `aggressive()`) explicitly set it to `false`.
-- Calibration query failure (DB error, not "no data") = `tracing::warn!` + fall back to baseline fixed-mode sizing. A transient DB hiccup must NEVER fail a trade that today would succeed.
-- Existing `CreateTradeRequest` wire format gains no required fields. Existing clients (pre-spec extension builds) keep working unchanged.
+**Scope:** CP-3. Implement FR-10 "Preview unavailable" + any lingering polish items.
 
 **Files:**
-- `testudo-exchange/crates/common_utils/src/risk/types.rs` — MODIFIED: add `CalibratedKelly` variant to `SizingMethod` enum (appended; existing variants untouched).
-- `testudo-exchange/crates/router/src/types/app.rs` — MODIFIED: add `pub calibration_engine: Arc<CalibrationEngine>`.
-- `testudo-exchange/crates/router/src/main.rs` — MODIFIED: construct `Arc::new(CalibrationEngine::new(pool.clone()))` and slot into AppState literal at lines 434-451.
-- `testudo-exchange/crates/router/src/routes/trade_management.rs` — MODIFIED in `create_trade` handler:
-  1. Load `UserSettings` for the user (query `user_settings`). **`NotFound` → treat as `dynamic_risk_enabled = false`, continue.** DB error → `warn!` + treat as false, continue.
-  2. If `dynamic_risk_enabled == false` → no change. Proceeds with fixed-mode baseline (FR-10 byte-for-byte).
-  3. If `dynamic_risk_enabled == true` AND `setup_tag.is_some()`:
-     - `let prior = calibration_engine.load_prior(user_id).await?;`
-     - `let setup = calibration_engine.load_setup(user_id, &tag).await?;`
-     - `let shrunk = shrink(&setup, &prior, PSEUDOCOUNT_K);`
-     - `let fk = full_kelly(shrunk.p_eff, shrunk.avg_r_win, shrunk.avg_r_loss);`
-     - If `fk <= Decimal::ZERO` → **return 400 with `{ "error": "negative_edge", "message": "Calibration shows negative edge for this setup — size = 0." }`**. Do NOT create a trade row.
-     - `let qk = fk / dec!(4);`
-     - `let mult = edge_multiplier(qk);`
-     - `let baseline = management.risk_percent;`
-     - `let eff = effective_risk_percent(baseline, mult);`
-     - Build ad-hoc `RiskConfig` with `account_risk_percent = eff` and `sizing_method = SizingMethod::CalibratedKelly`.
-     - Pass to DecisionLoop/RiskService. Existing MIN composition preserved.
-     - **Stash the `kelly_inputs` JSONB in-memory** (on the OrderGroup or a parallel map keyed by trade_group_id) so T7's `record_trade_close` path can retrieve it.
-  4. If `dynamic_risk_enabled == true` AND `setup_tag.is_none()`: T8 handles — here, fall through to baseline.
+- `testudo-extension/src/components/TradeForm.tsx` — MODIFIED:
+  - Add `const [previewError, setPreviewError] = createSignal<boolean>(false);`
+  - On failed preview response (non-2xx, network error, schema parse error), set `previewError(true)` and set `preview(null)`.
+  - Render a separate row when `previewError() === true`: copy `"Preview unavailable"`, class `muted`, grey.
+  - Confirm button remains ENABLED on preview error (FR-10).
+  - On next successful preview, clear the error flag.
 
-**`kelly_inputs` in-memory stash strategy — Design Decision:** the cleanest is to add `pub kelly_inputs: Option<serde_json::Value>` to `OrderGroup` (in `engine/src/shadow/order_group.rs`) and propagate via `EngineCommand::ConfigureGroup` (same mechanism RSK-02 used for `setup_tag`). Written at trade entry, read at trade close. **The field MUST carry `#[serde(default)]` and `Option<_>` type** so any existing serialized OrderGroup state in pg_queue, WS buffers, or rehydration snapshots deserializes with `kelly_inputs = None` without error. Document in T6's commit.
-
-**Error path:** Negative-edge rejection is a hard 4xx. Client (extension modal) surfaces the message via existing toast pipeline (RSK-03 T7 toast).
-
-**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test` — full suite.
+**Validate:**
+- `cd testudo-extension && bun run typecheck`.
 
 **Acceptance:**
-- Fixed-mode trades size identically to pre-spec (regression check — compare sizing math output on same inputs).
-- Dynamic-mode tagged trade: `effective_risk_percent ∈ [0.25 × baseline, 2.0 × baseline]`.
-- Negative-edge trade: 400 response, no `journal_trades` row created.
-- `SizingMethod::CalibratedKelly` serialized in RiskResult when path active.
+- Network disconnect → `"Preview unavailable"` shown, confirm still works.
+- Server returns 500 → same.
+- Next successful fetch clears the error.
 
 ---
 
-### T7: `record_trade_close` — persist `kelly_inputs` JSONB at close — `complete`
-
-**Scope:** CP-3 write side.
-
-**Files:**
-- `testudo-exchange/crates/router/src/services/journal_service.rs` — MODIFIED:
-  - Extend `TradeCloseEvent` with `pub kelly_inputs: Option<serde_json::Value>`.
-  - Thread into the `INSERT INTO journal_trades (..., setup_tag, kelly_inputs) VALUES (..., $N, $N+1)` column list + bindings (mirror the RSK-02 T1 setup_tag addition).
-- `testudo-exchange/crates/router/src/services/fill_detector.rs` (or wherever `emit_trade_closed` is called) — MODIFIED: read `OrderGroup.kelly_inputs` and pass through to `TradeCloseEvent`.
-- `testudo-exchange/crates/engine/src/shadow/order_group.rs` — MODIFIED: add `pub kelly_inputs: Option<serde_json::Value>`. Default `None`. Populated by `EngineCommand::ConfigureGroup` from T6.
-- `testudo-exchange/crates/router/src/services/trade_event_writer.rs` — **T7 FIRST STEP, NOT "verify at build time"**: grep the file for `INSERT INTO journal_trades` or `UPDATE journal_trades`. If it writes rows, mirror the column addition (pass `None` when not in dynamic mode → column stays NULL, identical to today). If it does not write to `journal_trades`, note the finding in the commit and move on. This must resolve BEFORE committing T7; leaving it as "verify later" risks a production row shape mismatch.
-
-**kelly_inputs JSON shape (from spec):**
-```json
-{
-  "mode": "calibrated_kelly",
-  "baseline_risk_pct": 1.0,
-  "effective_risk_pct": 1.4,
-  "edge_multiplier": 1.4,
-  "p_eff": 0.582,
-  "avg_r_win": 1.92,
-  "avg_r_loss": 0.95,
-  "quarter_kelly": 0.019,
-  "n_setup": 43,
-  "n_global": 312,
-  "pseudocount_k": 10,
-  "p_setup_raw": 0.61,
-  "p_global_raw": 0.54,
-  "computed_at": "2026-04-18T14:22:31Z"
-}
-```
-Built in T6 at trade submission time; only `computed_at` uses `Utc::now()`, rest are snapshot values at entry. Document in T7 commit that this is intentionally "entry-time snapshot" not "close-time recompute" — preserves audit integrity.
-
-**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
-
-**Acceptance:**
-- Dynamic-mode trade close → `journal_trades.kelly_inputs` populated with the 13-field JSON.
-- Fixed-mode trade close → `kelly_inputs` NULL.
-- Router restart between entry and close: `kelly_inputs` survives via OrderGroup rehydration (mirror RSK-02 T1's `setup_tag` rehydration path in `rehydration.rs`).
-
----
-
-### T8: Decision-loop untagged fallback + info log — `complete`
-
-**Scope:** CP-3 FR-8 completion.
-
-**Files:**
-- `testudo-exchange/crates/router/src/routes/trade_management.rs` — MODIFIED: in the dynamic-mode branch added by T6, the untagged case (`dynamic_risk_enabled && setup_tag.is_none()`) now emits `tracing::info!(user_id = %user_id, "dynamic_risk: setup_tag missing, falling back to baseline")` and falls through to the fixed-mode path. No Kelly computation. No `kelly_inputs` on the resulting trade.
-
-**This may already be a no-op** if T6's branch structure naturally falls through on `setup_tag.is_none()`. In that case, T8 is purely the `tracing::info!` line + inline-test verification.
-
-**Inline test (in trade_management.rs or a helper):**
-- `dynamic_on_untagged_falls_back` — mock dynamic_enabled=true, setup_tag=None → sizing uses baseline (unchanged), no Kelly query fired.
-
-**Validate:** `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
-
-**Acceptance:**
-- Untagged dynamic-mode trade sizes identically to fixed-mode.
-- Info log emitted at trace level `info`.
-- No `journal_trades.kelly_inputs` on these trades.
-
----
-
-### T9: Final verification + commit — `complete`
+### T8: Final verification + spec archival — `pending`
 
 **Scope:** Completion Protocol per constitution.
 
 **Verifications:**
-- `cd testudo-exchange && cargo clippy --all-targets && cargo test` — all green, zero new warnings beyond the pre-existing 3 (actor.rs:1849, cex_client.rs:653, evaluator.rs:188).
-- `cd testudo-extension && bun run typecheck` — exit 0 (do NOT run `bun run build` per `feedback_prod_defaults.md`).
-- Migration up+down clean on a fresh DB.
-- Integration grep across repo: `SizingMethod::CalibratedKelly | CalibrationEngine | kelly_inputs | user_settings | dynamic_risk_enabled | PATCH_USER_SETTINGS` wired consistently across router + extension. Expected hit count: ~20 Rust files, ~4 TS files.
-- **Anti-gaming assertion** (spec FR-2/Risk #1): construct a hypothetical fixture — 45% win-rate setup → verify effective_risk_pct strictly below baseline; 65% win-rate setup → strictly above baseline but capped at `2 × baseline`. Verifiable via unit test against `kelly.rs` helpers + fixture `ShrunkStats`.
-- **FR-10 byte-for-byte fixed-mode regression**: dispatch a unit test that submits an identical trade in fixed mode pre-spec vs. post-spec and asserts the computed `PositionSizeResult.size` matches. Guard against regressions in `position_sizer.rs` during SizingMethod enum expansion.
-- **Default-off safety test**: a user with no `user_settings` row submitting a trade must route through the fixed-mode path with zero calls to `CalibrationEngine`. Verify via a test that injects a mock engine and asserts zero invocations.
-- **Rehydration compatibility**: existing in-flight OrderGroups serialized before the migration must deserialize after deploy with `kelly_inputs = None`. Verify via a JSON fixture captured from production shape (or a minimal hand-written pre-spec OrderGroup JSON) deserialized against the new struct.
-- **Existing test suite**: the pre-existing 972 Rust tests must all still pass with zero behavior changes. Any new failure in a pre-existing test is a regression, not a Kelly interaction — stop and investigate before proceeding.
+- `cd testudo-exchange && cargo clippy --all-targets && cargo test` — green, zero new warnings beyond pre-existing 3.
+- `cd testudo-extension && bun run typecheck` — exit 0, pre-existing 18-error baseline preserved. (Do NOT `bun run build` per `feedback_prod_defaults.md`.)
+- Integration grep across repo: `compute_sizing_preview | SizingPreview | PREVIEW_TRADE_SIZING | previewTradeSizing | SizingReasoning` wired consistently. Expected: ~8 Rust files, ~5 TS files.
+- **Parity assertion** (spec Risk #1): integration test in T3 already covers this. Confirm green.
+- **Default-off safety**: dynamic_risk=false user submitting `/trades/preview` returns `{ reasoning: { kind: "fixed_mode" }, effective_risk_pct = baseline }` without any calibration DB queries. Verify via unit test with a spy CalibrationEngine (if testability permits) OR by inspecting SQL logs in T8 manual QA.
+- **Latency budget**: best-effort measurement on a seeded fixture user (≥ 100 tagged closes) via `time curl …`. p99 < 50ms target.
 
 **Manual QA (deferred to live session):**
-- New user (0 tagged closes) → PATCH returns 409 with accurate count.
-- Trader with 30+ tagged closes → PATCH succeeds, `dynamic_risk_unlocked_at` recorded.
-- Live trade submitted with dynamic mode ON + setup_tag → sizes via Kelly path; close writes `kelly_inputs` JSONB.
-- Live trade with dynamic mode ON + negative-edge setup → 400 response, no trade created.
+- User at 0–29 tagged closes → popup toggle disabled + `"Dynamic Risk unlocks after 30 tagged closes (N/30)"`.
+- User at 30+ → popup toggle enabled + `"Unlocked <date>"` caption.
+- Dynamic-mode on + tagged setup + positive edge → inline row `"Risk: 1.0% → 1.4% (43 trades, 58% WR, 1.9R avg)"` within 300ms.
+- Dynamic-mode on + untagged setup → `"Tag this setup to unlock calibrated sizing for it."`, confirm still works.
+- Dynamic-mode on + negative-edge setup → `"Calibration shows negative edge for this setup — size = 0."` red, confirm disabled.
+- Dynamic-mode OFF → no preview row rendered, no API call made.
+- Network disconnect during modal → `"Preview unavailable"`, confirm works.
+- Executed trade's `journal_trades.kelly_inputs` matches the preview's displayed numbers (end-to-end parity).
 
 **Commit plan (one per task):**
-- T1: `feat(qnt-01a): migration — user_settings table + journal_trades.kelly_inputs column`
-- T2: `feat(qnt-01a): user_settings routes + server-side unlock gate`
-- T3: `feat(qnt-01a): extension — Dynamic Risk toggle + user_settings API`
-- T4: `feat(qnt-01a): kelly.rs — Quarter-Kelly pure math + reference constant`
-- T5: `feat(qnt-01a): calibration engine — Bayesian shrinkage + aggregate queries`
-- T6: `feat(qnt-01a): create_trade — Kelly pre-sizing + negative-edge rejection`
-- T7: `feat(qnt-01a): record_trade_close — kelly_inputs JSONB at close`
-- T8: `feat(qnt-01a): dynamic-risk untagged fallback + info log`
-- T9: umbrella: `feat(qnt-01a): calibrated Kelly sizing engine + Bayesian shrinkage`
+- T1: `feat(qnt-01b): SettingsPanel — N/30 progress + unlock date caption`
+- T2: `refactor(qnt-01b): extract compute_sizing_preview for preview/trade parity`
+- T3: `feat(qnt-01b): POST /api/v1/trades/preview endpoint`
+- T4: `feat(qnt-01b): extension — SizingPreview schema + message + API helper`
+- T5: `feat(qnt-01b): TradeForm — calibrated preview row (happy path)`
+- T6: `feat(qnt-01b): TradeForm — debounce + untagged + negative-edge variants`
+- T7: `feat(qnt-01b): TradeForm — preview-unavailable fallback`
+- T8: umbrella (no source): `feat(qnt-01b): pre-submit Kelly transparency + unlock UX`
 
-**Archive:** Move `.specify/specs/QNT-01a-kelly-engine/` → `.specify/spec-archive/QNT-01a-kelly-engine/` after T9.
+**Archive:** Move `.specify/specs/QNT-01b-kelly-transparency/` → `.specify/spec-archive/QNT-01b-kelly-transparency/` after T8.
 
 ---
 
 ## Discoveries
 
-### 2026-04-20 — QNT-01a planning
+### 2026-04-20 — QNT-01b planning
 
-1. **`setup_tag` infrastructure already shipped (RSK-02, 2026-04-18).** `CreateTradeRequest.setup_tag`, `TradeCloseEvent.setup_tag`, `journal_trades.setup_tag`, `OrderGroup.setup_tag` (via `EngineCommand::ConfigureGroup`), `idx_journal_trades_user_setup` partial index — all present. QNT-01a layers on top of this foundation; no setup-tag plumbing needed.
+1. **Spec's `GET /api/v1/user/qnt-readiness` endpoint is redundant.** QNT-01a T2 already shipped `GET /api/v1/user/settings` returning `{ settings, unlocked, tagged_trade_count }` — a strict superset of `/qnt-readiness`'s proposed `{ tagged_closed, unlock_at: 30, unlocked }`. Planning deviates: skip the new endpoint, reuse `/user/settings` in the popup. Documented as a spec deviation in T1. `unlock_at: 30` is a client-side constant if needed (it's already hardcoded as `30` in the server's `is_unlocked(count) -> bool` check).
 
-2. **`user_settings` is a new JSONB table, not columns on `users`.** Spec explicit. Diverges from RSK-03's direct-column approach. JSONB is chosen for forward-compat with QNT-01b (transparency preferences) and QNT-02/03 (drift thresholds) without more ALTER TABLEs. One extra row read per session — trivial cost.
+2. **`compute_sizing_preview()` extraction is non-negotiable for FR-10 byte-parity.** QNT-01a T6 left Kelly pre-sizing inline in `create_trade` (L709-841). Spec Risk #1 demands preview/execution identical output. The only mechanism that enforces this is shared code — both handlers call the same async fn. T2 is therefore a pure refactor: create_trade behavior must be byte-identical pre/post-refactor, verified by the full 639-test router suite.
 
-3. **`CalibrationEngine` placement deviates from spec: `router/src/services/calibration.rs`, not `common_utils/src/risk/calibration.rs`.** Spec says common_utils; but common_utils's existing `risk/` module is I/O-free and peer services (coach, risk_snapshot, journal_timeseries) all live in `router/services/`. Adding sqlx to common_utils would introduce an inversion. Pure math (`shrink()`, Kelly helpers) stays in `common_utils/src/risk/kelly.rs` per spec. I/O lives in router/services. Zero behavioral difference; cleaner dep graph.
+3. **No `SizingPreview` type exists.** Clean-slate type design. Discriminated union with 4 variants. `kelly_inputs` JSON blob (DB persistence) is internal-only — NOT serialized in the preview endpoint response (use `#[serde(skip_serializing)]` or a wrapper DTO).
 
-4. **`RiskConfig` has no per-user persistence today.** Constructed via hardcoded presets. Spec asks to add `dynamic_risk_enabled: bool` AND load from `user_settings`. The loading is a per-trade concern (done in `create_trade` handler using `user_settings` query), not a boot-time concern. The `dynamic_risk_enabled` field on `RiskConfig` is set by the handler before passing to DecisionLoop/PositionSizer.
+4. **SettingsPanel has basic locked copy but no unlock date.** QNT-01a T3 shipped `"Unlocks after 30 tagged closes (currently N)"`. Spec FR-2 asks for a slight rewording (`"(N/30)"` format) and FR-3 adds the `dynamic_risk_unlocked_at` caption. `dynamic_risk_unlocked_at` already flows through from the backend via `UserSettingsSchema` — frontend just needs to render it. Trivial.
 
-5. **Kelly pre-sizing happens in the handler, NOT inside DecisionLoop.** DecisionLoop.execute() signature + body untouched. Handler computes `effective_risk_percent`, constructs a per-trade `RiskConfig` override with `account_risk_percent = effective_risk_percent`, passes to DecisionLoop. Existing MIN composition preserved byte-for-byte (FR-10). Cleaner than passing `trading_stats` into `risk_service.validate()`.
+5. **TradeForm has no preview logic at all.** Needs a new signal + createEffect + debounced fetch + preview row JSX + CSS. Single-file change (+modal.tsx for CSS), no architectural shifts. Confirm button's disabled memo is already a derived memo; adding `previewNegativeEdge()` to it is a 2-line addition.
 
-6. **Negative-edge rejection is a 400 from the HTTP handler, not a DecisionLoop rejection.** Kelly is a pre-sizing gate. Response body: `{ "error": "negative_edge", "message": "Calibration shows negative edge for this setup — size = 0." }`. No `journal_trades` row ever created. Client (extension modal) surfaces via existing toast pipeline.
+6. **Debounce utility MISSING in extension.** Spec §Paved Roads claim about a `250ms balance-refresh debounce` is **incorrect** — grep confirms no such helper. T6 adds a 10-line `debounce()` to `utils.ts`. Spec FR-9 is the authoritative 150ms (not the paved-roads 250ms).
 
-7. **`reference_kelly` is a `OnceLock<Decimal>`.** Single computation at first use; cached. Value ≈ 0.0133 (Quarter-Kelly for p=0.52, b=1.5). Unit test verifies within 0.0001 tolerance.
+7. **Preview request body = `CreateTradeRequest` (reused).** Same shape as execute. Extra fields the preview doesn't need (quantity, symbol, side) are silently ignored by the handler. Keeps extension's `buildSetup()` reusable for both execute and preview with zero duplication.
 
-8. **Extension SettingsPanel is minimal for 01a.** Single toggle, disabled when server reports unlocked=false. No progress UI, no preview — that's QNT-01b. Mount location (MainView section vs. new TabBar tab) decided at build time.
+8. **In-flight preview supersession via sequence counter.** Spec Risk #3 (preview spam). `let seq = 0;` at module scope inside TradeForm; each fetch increments it; response callback only sets state if the incoming seq matches the current value. Cheaper than cancellation tokens and idiomatic Solid.
 
-9. **`dynamic_risk_unlocked_at` is informational, not enforcement.** Set on first successful enable. Never re-checked after. Once a user has 30 tagged closes, their unlock status persists even if trades are later deleted.
+9. **Dynamic-off users never hit the preview endpoint.** Spec FR-5 gate: preview only when `settings.dynamic_risk_enabled === true`. Avoids unnecessary /trades/preview calls for ~100% of pre-unlock users. Popup-cached settings (already fetched by SettingsPanel) flow into TradeForm via a message or shared storage read.
 
-10. **Production URL defaults rule is load-bearing.** Extension verification uses `bun run typecheck`, NOT `bun run build`. Encoded in the spec's Acceptance Criteria and in MEMORY (`feedback_prod_defaults.md`). T3 and T9 both specify this.
-
-11. **Kelly inputs JSONB is entry-time snapshot, not close-time recompute.** The 13-field blob is built at trade submission in T6 (from `shrunk`, `fk`, `qk`, `mult`, `eff`, baseline). `computed_at = Utc::now()` at entry. Persisted via `OrderGroup.kelly_inputs` → `TradeCloseEvent.kelly_inputs` → INSERT. This preserves audit integrity: `kelly_inputs` reflects the calibration state at the moment the trade was sized, not a hypothetical recompute at close.
-
-12. **`net_pnl` is the authoritative P&L column for Kelly inputs.** Both `net_pnl` and `realized_pnl` exist; production analytics use `net_pnl` (journal_timeseries.rs, setup_breakdown). T5's aggregate queries use `net_pnl > 0` for win-rate and `r_multiple` for avg_R.
-
-13. **TradeEventWriter may need mirror updates.** Journal-writing has two paths: `JournalService::record_trade_close` (primary) and `TradeEventWriter::flush_transaction` (secondary, RSK-02 T5 discovery). If `TradeEventWriter` INSERTs into `journal_trades`, T7 must mirror the `kelly_inputs` column addition there too. Verified at build time.
-
-14. **Extension test baseline is ~28 pre-existing failures** (per RSK-02 T2 discovery: `browser.commands` mock gap from EXT-46). T3 must NOT add new failures — verifiable by comparing pre/post test counts.
+10. **Copy strings must match spec verbatim.** All four copy variants are in the spec §FR-6/7/8. Frontend should pattern-match on `reasoning.kind` and emit exact strings — no templating beyond numeric interpolation. Prevents "advice-sounding" drift (spec Risk #4).
 
 ---
 
 ## Status
 
-COMPLETE
+READY FOR BUILD
 
-Spec: QNT-01a-kelly-engine
-Total Tasks: 9 (T1–T3 CP-1 plumbing; T4–T5 CP-2 pure math; T6–T8 CP-3 integration; T9 verification) — all `complete`.
+Spec: QNT-01b-kelly-transparency
+Total Tasks: 8 (T1 CP-1 polish; T2–T5 CP-2 preview + happy path; T6–T7 CP-3 edge cases; T8 verification) — all `pending`.
 
-**T9 Verification Results (2026-04-20):**
-- Rust clippy: 3 pre-existing warnings unchanged (actor.rs:1858, cex_client.rs:653, evaluator.rs:188). Zero new.
-- Rust tests: common_utils 315 / engine 108×2 / pg_queue 11 / router 639 passing / 1 pre-existing failure (`test_me_returns_user_info`, AUTH regression unrelated to QNT-01a, documented in T2 discovery) / 9 ignored / sqlx_postgres 17 / ws_stream 10. No QNT-01a regressions.
-- Extension typecheck: 18 pre-existing errors unchanged (matches T3 baseline). Zero new.
-- Integration grep: 16 Rust files + 4 TS files + 2 migration files. Wire contract consistent end-to-end.
-
-**Deferred (requires live session):**
-- Manual QA: new user 409 on unlock, threshold-crossing PATCH success, live dynamic-mode trade sizing, negative-edge 400, `kelly_inputs` JSONB populated at close.
-- Migration up+down on fresh DB (local verification only; runs automatically on first-boot in prod).
+Next task: T2 — extract compute_sizing_preview for preview/trade parity.

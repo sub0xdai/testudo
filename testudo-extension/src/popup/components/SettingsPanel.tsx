@@ -72,6 +72,12 @@ export default function SettingsPanel() {
   const unlocked = () => state()?.unlocked ?? false;
   const taggedCount = () => state()?.tagged_trade_count ?? 0;
   const canInteract = () => !loading() && !saving() && (unlocked() || enabled());
+  const unlockedAt = () => {
+    const raw = state()?.settings.dynamic_risk_unlocked_at;
+    if (!raw) return null;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  };
 
   return (
     <div data-testid="settings-panel">
@@ -88,11 +94,21 @@ export default function SettingsPanel() {
             <p class="text-[11px] text-text-dim font-sans mt-1 leading-snug">
               <Show
                 when={unlocked() || enabled()}
-                fallback={<>Unlocks after 30 tagged closes (currently {taggedCount()}).</>}
+                fallback={
+                  <>Dynamic Risk unlocks after 30 tagged closes ({taggedCount()}/30)</>
+                }
               >
                 Scales sizing by your calibrated per-setup edge (Quarter-Kelly, ±2× clamp).
               </Show>
             </p>
+            <Show when={(unlocked() || enabled()) && unlockedAt()}>
+              <p
+                class="text-[10px] text-text-dim font-sans mt-1"
+                data-testid="settings-unlocked-at"
+              >
+                Unlocked {unlockedAt()}
+              </p>
+            </Show>
           </div>
           <button
             type="button"
