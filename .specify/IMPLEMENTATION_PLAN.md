@@ -400,7 +400,7 @@ WHERE user_id = $1 AND LOWER(setup_tag) = LOWER($2) AND closed_at IS NOT NULL
 
 ---
 
-### T7: `record_trade_close` — persist `kelly_inputs` JSONB at close — `pending`
+### T7: `record_trade_close` — persist `kelly_inputs` JSONB at close — `complete`
 
 **Scope:** CP-3 write side.
 
