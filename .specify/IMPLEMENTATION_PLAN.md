@@ -257,7 +257,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T3: `POST /api/v1/trades/preview` route — `pending`
+### T3: `POST /api/v1/trades/preview` route — `complete`
 
 **Scope:** CP-2 new endpoint. Thin HTTP adapter around `compute_sizing_preview`.
 
@@ -503,6 +503,6 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 BUILD IN PROGRESS
 
 Spec: QNT-01b-kelly-transparency
-Progress: T1 + T2 complete; T3 onwards pending.
+Progress: T1 + T2 + T3 complete; T4 onwards pending.
 
-Next task: T3 — POST /api/v1/trades/preview route.
+Next task: T4 — Extension SizingPreview schema + message + API helper + handler.
