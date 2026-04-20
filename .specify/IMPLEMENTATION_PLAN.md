@@ -202,7 +202,7 @@ T2 and T3 independent after T1 lands. T4 and T5 independent after T2 lands. Sing
 
 ---
 
-### T3: Extension — schemas, messages, API helpers, SettingsPanel toggle — `pending`
+### T3: Extension — schemas, messages, API helpers, SettingsPanel toggle — `complete`
 
 **Scope:** CP-1 extension surface. Wire the minimal Dynamic Risk toggle to the new endpoints. Can run in parallel with T2 once T1's wire contract is known.
 

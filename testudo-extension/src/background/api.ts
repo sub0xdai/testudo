@@ -25,7 +25,11 @@ import {
   TestConnectionResultSchema,
   TradeGroupResponseSchema,
   TradeListResponseSchema,
+  UserSettingsResponseSchema,
 } from "../schemas";
+import type { z } from "zod";
+
+type UserSettingsResponse = z.infer<typeof UserSettingsResponseSchema>;
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./storage";
 import { getTokens, storeTokens, refreshAccessToken, scheduleTokenRefresh } from "./auth";
 
@@ -438,6 +442,36 @@ export async function fetchExchangePositions(): Promise<{ success: boolean; data
   const json = ExchangePositionsApiResponseSchema.safeParse(result.raw);
   if (!json.success) return { success: false, error: "Malformed positions response" };
   return { success: true, data: json.data };
+}
+
+// --- QNT-01a: User Settings (Dynamic Risk toggle) ---
+
+export async function getUserSettings(): Promise<
+  { success: true; data: UserSettingsResponse } | { success: false; error: string; error_code?: string }
+> {
+  const result = await apiRequest("/api/v1/user/settings", { auth: "hard" });
+  if (!result.ok) return { success: false, error: result.error, error_code: result.error_code };
+
+  const parsed = UserSettingsResponseSchema.safeParse(result.raw);
+  if (!parsed.success) return { success: false, error: "Malformed user settings response" };
+  return { success: true, data: parsed.data };
+}
+
+export async function patchUserSettings(
+  enabled: boolean,
+): Promise<
+  { success: true; data: UserSettingsResponse } | { success: false; error: string; error_code?: string }
+> {
+  const result = await apiRequest("/api/v1/user/settings", {
+    method: "PATCH",
+    body: { dynamic_risk_enabled: enabled },
+    auth: "hard",
+  });
+  if (!result.ok) return { success: false, error: result.error, error_code: result.error_code };
+
+  const parsed = UserSettingsResponseSchema.safeParse(result.raw);
+  if (!parsed.success) return { success: false, error: "Malformed user settings response" };
+  return { success: true, data: parsed.data };
 }
 
 // --- EXT-34: Close Exchange Position ---

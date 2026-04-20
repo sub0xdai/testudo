@@ -210,6 +210,17 @@ export const SetupTagEntrySchema = z.object({
 
 export const SetupTagsResponseSchema = z.array(SetupTagEntrySchema);
 
+export const UserSettingsSchema = z.object({
+  dynamic_risk_enabled: z.boolean(),
+  dynamic_risk_unlocked_at: z.string().nullable(),
+});
+
+export const UserSettingsResponseSchema = z.object({
+  settings: UserSettingsSchema,
+  unlocked: z.boolean(),
+  tagged_trade_count: z.number().int().nonnegative(),
+});
+
 export const WebSocketMessageSchema = z.object({
   stream: z.string().optional(),
   data: z.unknown().optional(),
@@ -268,6 +279,11 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("GET_SETUP_TAGS"),
     limit: z.number().int().min(1).max(100).optional(),
+  }),
+  z.object({ type: z.literal("GET_USER_SETTINGS") }),
+  z.object({
+    type: z.literal("PATCH_USER_SETTINGS"),
+    dynamic_risk_enabled: z.boolean(),
   }),
   // Emitted by the desk.testudo.vip content script when the web app's
   // active wallet changes (including logout → wallet_address: null).
