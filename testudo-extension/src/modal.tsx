@@ -202,6 +202,30 @@ const MODAL_STYLES = `
   .balance-value.margin { color: var(--color-signal-orange); }
   .balance-value.risk { color: var(--color-signal-red); }
   .balance-value.muted { color: var(--color-text-dim); font-style: italic; font-size: 12px; }
+  .kelly-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    margin: 10px 0 0;
+    font-size: 12px;
+    font-family: 'Space Mono', ui-monospace, monospace;
+    color: var(--color-text-secondary);
+    border-left: 2px solid var(--color-accent-steel);
+    background: color-mix(in srgb, var(--color-accent-steel) 6%, transparent);
+  }
+  .kelly-preview-row.negative {
+    color: var(--color-signal-red);
+    border-left-color: var(--color-signal-red);
+    background: color-mix(in srgb, var(--color-signal-red) 8%, transparent);
+  }
+  .kelly-preview-row.muted {
+    color: var(--color-text-dim);
+    font-style: italic;
+    border-left-color: var(--color-text-dim);
+    background: transparent;
+  }
+  .kelly-preview-badge { font-size: 11px; flex-shrink: 0; }
   ${TOAST_CSS}
 `;
 

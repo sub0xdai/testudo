@@ -339,7 +339,7 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 
 ---
 
-### T5: TradeForm — preview row (calibrated happy path) — `pending`
+### T5: TradeForm — preview row (calibrated happy path) — `complete`
 
 **Scope:** CP-2 UX surface. Render the preview row for the happy-path `calibrated` variant only. Edge cases land in T6.
 
@@ -503,6 +503,6 @@ T1 independent of everything; can land first. T4 and T5 independent after T3 lan
 BUILD IN PROGRESS
 
 Spec: QNT-01b-kelly-transparency
-Progress: T1 + T2 + T3 + T4 complete; T5 onwards pending.
+Progress: T1 + T2 + T3 + T4 + T5 complete; T6 onwards pending.
 
-Next task: T5 — TradeForm preview row (calibrated happy path).
+Next task: T6 — debounce utility + untagged + negative-edge variants.

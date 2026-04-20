@@ -1,6 +1,10 @@
 import { createSignal, createMemo, onMount, onCleanup, Show, For } from "solid-js";
 import type { TradeSetup } from "../scraper";
 import type { ManagementPreset, BalanceResponse } from "../types";
+import type { SizingPreviewSchema } from "../schemas";
+import type { z } from "zod";
+
+type SizingPreview = z.infer<typeof SizingPreviewSchema>;
 
 // MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
 const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
@@ -9,6 +13,11 @@ const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
 // within a content-script lifetime so we don't round-trip for every Alt+X.
 const SETUP_TAG_TTL_MS = 5 * 60 * 1000;
 let setupTagCache: { tags: string[]; fetchedAt: number } | null = null;
+
+// Module-scoped cache for QNT-01b dynamic-risk flag. Saves a round-trip per Alt+X
+// for the ~100% of pre-unlock users who will never see the preview.
+const DYNAMIC_RISK_TTL_MS = 5 * 60 * 1000;
+let dynamicRiskCache: { enabled: boolean; fetchedAt: number } | null = null;
 
 export interface TradeFormProps {
   initialSetup?: TradeSetup | null;
@@ -51,6 +60,14 @@ export default function TradeForm(props: TradeFormProps) {
   const [suggestions, setSuggestions] = createSignal<string[]>(setupTagCache?.tags ?? []);
   const [showSuggestions, setShowSuggestions] = createSignal(false);
   const [highlightIdx, setHighlightIdx] = createSignal(0);
+
+  // QNT-01b: Kelly sizing preview. Only rendered when dynamic_risk_enabled is on.
+  const [dynamicRiskEnabled, setDynamicRiskEnabled] = createSignal(
+    dynamicRiskCache && Date.now() - dynamicRiskCache.fetchedAt < DYNAMIC_RISK_TTL_MS
+      ? dynamicRiskCache.enabled
+      : false,
+  );
+  const [preview, setPreview] = createSignal<SizingPreview | null>(null);
 
   const entry = createMemo(() => { const v = parseFloat(entryStr()); return isNaN(v) ? null : v; });
   const stop = createMemo(() => { const v = parseFloat(stopStr()); return isNaN(v) ? null : v; });
@@ -163,6 +180,63 @@ export default function TradeForm(props: TradeFormProps) {
     }
   }
 
+  // --- QNT-01b: dynamic-risk detection + sizing preview ---
+
+  async function loadDynamicRiskFlag() {
+    const now = Date.now();
+    if (dynamicRiskCache && now - dynamicRiskCache.fetchedAt < DYNAMIC_RISK_TTL_MS) {
+      setDynamicRiskEnabled(dynamicRiskCache.enabled);
+      return dynamicRiskCache.enabled;
+    }
+    try {
+      const res: any = await browser.runtime.sendMessage({ type: "GET_USER_SETTINGS" });
+      const enabled = !!(res?.success && res.data?.settings?.dynamic_risk_enabled);
+      dynamicRiskCache = { enabled, fetchedAt: now };
+      setDynamicRiskEnabled(enabled);
+      return enabled;
+    } catch {
+      return false;
+    }
+  }
+
+  function buildPreviewPayload() {
+    const tag = setupTag().trim();
+    return {
+      symbol: symbol().trim(),
+      side: side(),
+      entry: entry()!,
+      stop: stop()!,
+      target: target()!,
+      timeframe: timeframe(),
+      setup_tag: tag.length > 0 ? tag : null,
+      management: {
+        risk_percent: props.management.risk_percent,
+        break_even_enabled: props.management.break_even_enabled,
+        break_even_at: props.management.break_even_at,
+        leverage: props.management.leverage,
+        trailing_stop: props.management.trailing_stop,
+        partial_tp: props.management.partial_tp,
+      },
+    };
+  }
+
+  async function fetchPreview() {
+    if (!dynamicRiskEnabled() || !isValid()) return;
+    try {
+      const res: any = await browser.runtime.sendMessage({
+        type: "PREVIEW_TRADE_SIZING",
+        payload: buildPreviewPayload(),
+      });
+      if (res?.success && res.data) {
+        setPreview(res.data as SizingPreview);
+      } else {
+        setPreview(null);
+      }
+    } catch {
+      setPreview(null);
+    }
+  }
+
   function acceptHighlightedTag() {
     const list = filteredTags();
     const idx = highlightIdx();
@@ -221,6 +295,10 @@ export default function TradeForm(props: TradeFormProps) {
   // Keyboard handler
   onMount(() => {
     document.addEventListener("keydown", handleKeyDown, true);
+    // QNT-01b: probe dynamic-risk once on mount; if on, fetch preview on a valid setup.
+    loadDynamicRiskFlag().then((enabled) => {
+      if (enabled) fetchPreview();
+    });
   });
   onCleanup(() => {
     document.removeEventListener("keydown", handleKeyDown, true);
@@ -452,6 +530,23 @@ export default function TradeForm(props: TradeFormProps) {
           </div>
         </Show>
       </div>
+
+      {/* QNT-01b: Kelly sizing preview row (calibrated happy-path only in T5) */}
+      <Show when={dynamicRiskEnabled() && preview()?.reasoning.kind === "calibrated"}>
+        {(() => {
+          const p = preview()!;
+          const r = p.reasoning as Extract<SizingPreview["reasoning"], { kind: "calibrated" }>;
+          return (
+            <div class="kelly-preview-row" data-testid="kelly-preview-row">
+              <span class="kelly-preview-badge">⚡</span>
+              <span>
+                Risk: {p.baseline_risk_pct.toFixed(1)}% → {p.effective_risk_pct.toFixed(1)}%
+                {" "}({r.n_setup} trades, {Math.round(r.p_eff * 100)}% WR, {r.avg_r_win.toFixed(1)}R avg)
+              </span>
+            </div>
+          );
+        })()}
+      </Show>
 
       {/* Footer */}
       <div class="footer">
