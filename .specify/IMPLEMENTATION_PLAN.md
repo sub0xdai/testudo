@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-20
 > Current spec: HIST-03-import-dedup
-> Phase: BUILD in progress — T1, T2, T3, T5 complete (bundled commit)
+> Phase: BUILD in progress — T1, T2, T3, T4, T5 complete
 
 ---
 
@@ -267,7 +267,7 @@ Strictly sequential — each task either adds or depends on the preceding type/f
 
 ---
 
-### T4: `canonical_exchange_name()` helper + apply at INSERT sites — `pending`
+### T4: `canonical_exchange_name()` helper + apply at INSERT sites — `complete`
 
 **Scope:** CP-2a FR-4. One-line helper, two application sites.
 
@@ -502,7 +502,7 @@ BUILD IN PROGRESS
 
 Spec: HIST-03-import-dedup
 Total Tasks: 8 (T1, T2, T3, T4, T5, T6, T7, T8)
-Complete: T1, T2, T3, T5 (bundled commit per plan recommendation)
-Pending: T4, T6, T7, T8
+Complete: T1, T2, T3, T4, T5
+Pending: T6, T7, T8
 
-Next task: T4 — canonical_exchange_name() helper + apply at INSERT sites
+Next task: T6 — remove timestamp fallback on exchange_fill_id in CEX import paths
