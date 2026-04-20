@@ -353,7 +353,7 @@ WHERE user_id = $1 AND LOWER(setup_tag) = LOWER($2) AND closed_at IS NOT NULL
 
 ---
 
-### T6: `create_trade` integration — Kelly pre-sizing + `CalibratedKelly` variant + negative-edge rejection — `pending`
+### T6: `create_trade` integration — Kelly pre-sizing + `CalibratedKelly` variant + negative-edge rejection — `complete`
 
 **Scope:** CP-3 trade-path integration. The load-bearing task.
 
