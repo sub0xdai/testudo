@@ -27,3 +27,8 @@ Two-layer FR-9 noindex: (1) `public/_headers` with `X-Robots-Tag` covers non-JS 
 `fetchPublicProfile()` uses bare `fetch` (no credentials) unlike all other client functions that use `fetchWithCredentials`. Returns `null` on 404 rather than throwing — callers render a 404 state instead of catching.
 
 Error objects thrown by `claimHandle()` and `releaseHandle()` carry `.code`, `.status`, and `.data` fields so callers (IdentitySettings) can inspect the specific backend error code (e.g. `"rate_limited"`, `"handle_taken"`) without string-matching error messages.
+
+## T15 (2026-04-21)
+DB-backed rate-limit integration test lives in `routes::handle_rate_limit_integration` (`#[tokio::test] #[ignore]`). Uses the same `make_user` / `cleanup` pattern as `hist03_idempotency` in journal_service.rs (wallet_address insert, FK-ordered cleanup). The per-IP rate-limit unit tests were already added in T6 (`public_profile.rs`); T15 only adds the 30-day handle-change window test.
+
+Manual QA deferred to live session: "one user with claimed handle + score opted-in, verified via incognito browser" requires a live DB with real data and cannot be automated. Mark this criterion in the spec as deferred and verify during next live deploy.
