@@ -1,112 +1,273 @@
-# Implementation Plan
+# Implementation Plan — ENG-01b Dignitas Public Profile
 
-> Last updated: 2026-04-21
-> Current spec: ENG-01a-dignitas-score-living
-> Phase: COMPLETE — all tasks shipped, spec archived
-
----
-
-## Active Spec: ENG-01a-dignitas-score-living
-
-Dignitas Score as a living artifact: daily snapshot persistence, top-nav pill with 7-day delta, 90-day sparkline panel, transparency page. Ungameable by design (no frequency / P&L / win-rate inputs).
-
-### Tasks
-
-| Task | Description | Status |
-|------|-------------|--------|
-| T1 | Migrations: `dignitas_history`, `dignitas_config` (seeded w/ formula weights), `users.dignitas_pill_hidden` column | complete |
-| T2 | Core types: `services/dignitas/{mod,types}.rs` — `DignitasSnapshot`, `InputContributions`, `DignitasWeights` | complete |
-| T3 | **RED**: `tests/dignitas_snapshot_test.rs` — 1000 undisciplined high-freq high-P&L trades must score LOWER than 100 disciplined trades (FR-9 gate). | complete |
-| T4 | `services/dignitas/inputs.rs` — 5 pure functions mapping DB rows → `[0..1]` contributions. Unit-tested per input. | complete |
-| T5 | `services/dignitas/{snapshot,config}.rs` — orchestrator: load weights, assemble inputs, apply formula, handle cold-start, upsert into `dignitas_history`. T3 turns **GREEN**. | complete |
-| T6 | `services/dignitas/schedule.rs` — daily scheduler; UTC 00:30 trigger; batch 500 users + `tokio::yield_now()`; idempotency via `UNIQUE(user_id,date)`. Wire spawn in `main.rs`. | complete |
-| T7 | `routes/dignitas.rs` — `GET /api/dignitas/me`, `GET /api/dignitas/history?days=90`, `PATCH /api/dignitas/preferences`. Wire under auth middleware. | complete |
-| T8 | `testudo-journal/src/api/client.ts` — `DignitasCurrent`, `DignitasHistory` types + fetch helpers. | complete |
-| T9 | `components/DignitasPill.tsx` + mount in `Layout.tsx` top nav; score + signed delta + color; respect `pill_hidden`; cold-start label (`50 —`). | complete |
-| T9b | Rewrite `PerformanceRadar.tsx` → 5-axis `InputContributions` radar per D1. Reads `InputContributions` from `/api/dignitas/me`. Coach Alignment dim for cold-start. | complete |
-| T10 | `components/DignitasPanel.tsx` + `DignitasSparkline.tsx` — popover: current score, 90-day sparkline, hide-pill shortcut, "View breakdown →" link to `/desk/dignitas`. | complete |
-| T11 | `pages/Dignitas.tsx` at `/desk/dignitas` — transparency table (input × user-value × weight × explanation) + formula; register route; add `help-content.ts` entries. | complete |
-| T12 | Final verification: `cargo clippy --all-targets && cargo test` + `cd testudo-journal && bun run build`; archive spec. | complete |
-
-**Task ordering is dependency-correct:** T1→T2→T3→T4→T5 (Red→Green), T5→T6, T5→T7, T7→T8→(T9‖T9b‖T10‖T11)→T12.
+**Spec:** `.specify/specs/ENG-01b-dignitas-public-profile/spec.md`
+**Depends on:** ENG-01a (complete; `dignitas_history` + `users.dignitas_pill_hidden` shipped)
+**Strategy:** Four vertical checkpoints from the spec (CP-1..CP-4). Backend lands
+first so the frontend has real endpoints to call; each CP is committable.
 
 ---
 
 ## Discoveries
 
-### D1 — RESOLVED (2026-04-21): Option B′ — Replace radar with InputContributions, collapse popover breakdown
-
-**Decision:** `PerformanceRadar` is replaced by a 5-axis radar rendering the new `InputContributions` from `dignitas_history`. Popover (T10) simplifies to score + sparkline + link (no input breakdown inside popover — eliminates DRY violation against the new radar + transparency page).
-
-**5 axes (from D2):**
-1. Drawdown Adherence
-2. Risk-per-Trade Consistency
-3. Setup Adherence
-4. Coach Alignment (= `1 − coach_severity_penalty`; displayed as a positive axis)
-5. Journal Consistency
-
-**Zoom-in hierarchy across all Dignitas surfaces:**
-- Pill (T9) — ambient status (score + 7d delta)
-- Popover (T10) — quick glance (score + 90-day sparkline + "View breakdown →")
-- **Overview radar (this decision)** — the daily visual of where the score comes from
-- Transparency page (T11) — full formula + per-input table
-
-**Rationale:** The current 6-axis radar is labeled "Dignitas" but measures P&L outcomes — a brand lie. Four of the six axes are mathematically correlated (WR / PF / W/L / avgR), so the shape carries little information. The new 5 axes are independent behavioural levers, each directly actionable, stable on 30-day aggregates, and decoupled from luck. Outcome metrics migrate to journal tables/charts where "what happened" belongs; the radar visualizes "who you are."
-
-**Implementation impact:**
-- `PerformanceRadar.tsx` is rewritten: new 5 axes, reads from `GET /api/dignitas/me` (which already returns `InputContributions`), all client-side normalization (PF × 20 etc.) deleted. The `PerformanceStats` / `RiskStats` props become unused.
-- Overview must no longer pass outcome stats to the radar — may require small Overview layout tweak (slot is freed). Existing outcome stats remain visible in journal pages / charts; not erased from product.
-- Added to T12 verification: manual QA — observe a disciplined-but-losing user scoring high, and an undisciplined-but-winning user scoring low. The RED test at T3 codifies this invariant.
-- The rename from "Performance radar" to "Dignitas inputs radar" is cosmetic — file can stay `PerformanceRadar.tsx` or be renamed; decide at implementation.
-
-**Plan update:**
-- T10 scope reduced: popover no longer renders input breakdown.
-- T11 unchanged (transparency page carries the full table).
-- Add a micro-task to the radar rewrite: document as part of T9 or a new T9b. **Proposed: extend T9 scope to include the radar rewrite** ("DignitasPill + mount + PerformanceRadar rewrite to 5-axis InputContributions"). Rationale: T9 already touches Overview-proximate frontend surfaces; bundling keeps the Overview layout change atomic.
-
-### D2 — Input semantics (proposed definitions, grounded in schema)
-
-All five inputs have verified sources. Proposed `[0..1]` mappings:
-
-| Input | Source | Proposed computation |
-|------|--------|----------------------|
-| `drawdown_adherence` | `journal_daily_stats.drawdown_pct` + `RiskConfig.daily_max_drawdown_percent` | fraction of days in trailing 30 where `drawdown_pct ≤ daily_max_drawdown_percent`; `1.0` if limit never breached |
-| `risk_per_trade_consistency` | `journal_trades.risk_amount` + account balance at entry + `RiskConfig.account_risk_percent` | `1 − mean(min(|actual_pct − configured_pct| / configured_pct, 1.0))` over trailing 30d. **Per-trade deviation capped at 1.0 before averaging** — one outlier (e.g. 2× sized trade) cannot drag the 30d mean toward 0. |
-| `setup_adherence` | `journal_trades.setup_tag` | `count(setup_tag IS NOT NULL) / count(*)` over trailing 30d (RSK-02 shipped column; no whitelist, any non-null tag adherent) |
-| `coach_severity_penalty` | `coach_reports.digest_json → flagged_patterns[].severity` | weighted count of `Notable` (×0.5) + `Concerning` (×1.0) patterns across last 4 weekly reports, normalized by max-expected. **When no coach reports exist yet: EXCLUDE the axis from the composite entirely; renormalize the remaining 4 weights to sum to 1.0.** Prevents a free `Coach Alignment = 1.0` that would let new users score artificially high. The radar also dims/skips this axis visually while absent. |
-| `journal_consistency` | `journal_trades.notes` + `journal_entries` | `count(trades with non-empty notes OR linked journal_entries) / count(closed trades)` over trailing 30d |
-
-These are defaults; all weights live in `dignitas_config` and are tunable without redeploy (FR-6).
-
-### D3 — Scheduler trigger hour
-
-Daily cron fires at **UTC 00:30** (30 min past midnight UTC). Chosen to:
-- Not collide with coach's Sunday 18:00 UTC run.
-- Give downstream processors 30 min of quiet after midnight boundary.
-- Mirror `coach/schedule.rs` hourly-poll pattern (checks `already_fired_today(user, date)` each poll).
-
-Trigger hour captured as a const in `dignitas/schedule.rs` — tunable without migration.
-
-### D4 — Backfill policy for existing users at launch
-
-`cold_start = true` when fewer than 7 days of input data available. When ENG-01a ships, **existing users with ≥7 days of trading activity will show non-cold-start scores from day 1** — no backfill of historical snapshots. This means the 7-day delta for day-1 is `null` (only 1 snapshot exists) — frontend renders `DIGNITAS 72.4 —` with em-dash until 7 snapshots accumulate. Documented in T5 implementation note; no user migration needed.
-
-### D5 — Migration numbering
-
-Next slot: **`20260421000000_dignitas_history_config.up.sql`** (paired `.down.sql`). Single migration for both tables + `users.dignitas_pill_hidden` column is acceptable since they all land in the same spec. Seed `dignitas_config` rows for formula weights in the same `.up.sql`.
-
-**Weight-tuning semantics (FR-6):** when `dignitas_config` weights are changed, existing `dignitas_history` snapshots are **forward-only** — they are NOT recomputed. The next daily snapshot picks up the new weights; prior snapshots retain what was computed at their time. This preserves audit integrity and avoids expensive recomputation. The transparency page (T11) should show the currently-active weight set and note that historical rows reflect weights in effect at snapshot time.
-
-### D6 — Frontend-computed radar inputs are NOT reusable
-
-The spec's "extract pure-data portions of `PerformanceRadar` into `snapshot.rs`" guidance is misleading. The radar's current axes are exactly the inputs FR-9 forbids. T4's input computation is genuinely new backend work, grounded in the schema sources above (D2) — not a port.
+- **Router crate is binary-only** — no `src/lib.rs`. Top-level `tests/…rs`
+  cannot `use router::…`. The spec's `crates/router/tests/dignitas_handles_test.rs`
+  is not viable. Tests live inline as `#[cfg(test)] mod tests` per module.
+  Shared with `AGENTS.md`.
+- **Rate limiter already exists.** `router::middleware::auth::RateLimiter`
+  struct (per-IP, bucket over time window). Reuse the **struct** (no new
+  dependency) — instantiate a **dedicated** `RateLimiter::new(60,
+  Duration::from_secs(60))` for the public profile route. Do NOT share
+  instance with the auth middleware's limiter, or the public-profile quota
+  will couple to auth-endpoint traffic.
+- **30-day handle-change window must survive a release.** If we store
+  `last_changed_at` on `user_handles`, releasing deletes the row and the clock
+  resets. Store `last_handle_change_at TIMESTAMPTZ` on `users` so the window
+  persists across claim → release → reclaim by the same user.
+- **Public route scope is new.** `/api/v1` today has `/auth` (mixed), `/depth`,
+  `/dignitas` (JWT), etc. We add a sibling `web::scope("/public")` with no
+  `JwtMiddleware` for the profile read.
+- **Journal `Layout` wraps every route.** The `/d/:handle` route cannot depend
+  on `AuthProvider`-gated fetches. Resolution: inside `PublicProfile.tsx`, do
+  not call any authed client functions; use a bespoke `fetch` against
+  `/api/v1/public/profile/:handle` without `credentials: 'include'`. If
+  `Layout` itself fires authed probes (e.g. top-nav identity), exclude the
+  public route via a conditional in `Layout` keyed on `useLocation`.
+- **ENG-01a is already live.** `DignitasPanel`, `DignitasSparkline`,
+  `dignitas_history` table, `/dignitas/me`, `/dignitas/history` all exist.
+  The public profile is a server-side read of the same data with the
+  visibility gate applied; we do not reuse the authed handlers (they require
+  `AuthenticatedUser`). We build a dedicated read path that takes a handle
+  and joins through `user_handles → dignitas_history`.
+- **Path prefix.** Spec writes `/api/public/profile/:handle`; the real server
+  base is `/api/v1`, so the canonical path is
+  `/api/v1/public/profile/:handle`. Documented explicitly here so FR-5 is not
+  ambiguous.
+- **`<meta name="robots">` in an SPA — two-layer defence.** Vite builds a
+  single `index.html`; imperative meta-tag management covers JS-executing
+  crawlers (Googlebot) but NOT static HTML scrapers (Archive.org, Facebook
+  OG, many SEO tools). FR-9 requires noindex default; a single-layer JS-only
+  fix leaks profiles to every non-JS crawler. **Resolution (two layers):**
+  1. **HTTP header layer (Cloudflare Pages `_headers`):** serve
+     `X-Robots-Tag: noindex, nofollow` for `/d/*` — covers all crawlers
+     regardless of JS execution. Applied at the CDN edge; see
+     `reference_cloudflare_pages` memory for current Pages deploy flow.
+     Documented under T12b.
+  2. **SPA layer (`PublicProfile.tsx`):** imperative meta-robots management
+     via `onMount`/`onCleanup` — default `noindex, nofollow`, flips to
+     `index, follow` when `allow_indexing === true`. Overridden header MUST
+     also flip server-side when the underlying profile opts in — the
+     `_headers` file can't see the DB, so the API response shape is
+     orthogonal; header stays noindex by default, the SPA-side meta flips
+     when the API returns `allow_indexing: true`, and Googlebot honors the
+     stricter of the two. True indexing (archive.org, static scrapers)
+     stays off until we add per-handle header rewriting in a later spec.
+     This is acceptable MVP — "opt-in to JS-crawler indexing" is stronger
+     than "opt-in to full web indexing."
+- **Reserved-word mirror.** The spec requires parallel lists on backend and
+  frontend. Treat the backend file as canonical (the server is the
+  enforcement gate); the frontend file exists only for pre-submit UX hints.
+  Backend always re-validates.
+- **CORS for new methods.** `PATCH` is already enabled project-wide (prior
+  CORS fix for coach preferences). `DELETE` is in use elsewhere. No CORS
+  changes needed.
 
 ---
 
-## Status
+## Tasks
 
-**COMPLETE** — all 13 tasks shipped (T1–T12 + T9b). Spec archived to `.specify/spec-archive/ENG-01a-dignitas-score-living/`.
+### CP-1 — Backend foundation: handles table, validation, service
 
-- `cargo clippy --all-targets`: pass (warnings only, pre-existing)
-- `cargo test`: 685 pass, 1 pre-existing failure (`test_me_returns_user_info` — unrelated to Dignitas, documented in T5 LEARNINGS)
-- `cd testudo-journal && bun run build`: pass
+- [ ] **T1** — Migration `NNNN_user_handles.up.sql` + `.down.sql`. Creates
+  `user_handles(user_id UUID PK → users ON DELETE CASCADE, handle TEXT UNIQUE
+  NOT NULL, bio TEXT NULL, show_score BOOLEAN NOT NULL DEFAULT FALSE,
+  show_sparkline BOOLEAN NOT NULL DEFAULT FALSE, allow_indexing BOOLEAN NOT
+  NULL DEFAULT FALSE, claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`.
+  `CREATE UNIQUE INDEX idx_user_handles_handle_lower ON user_handles
+  (lower(handle))` for case-insensitive uniqueness. Adds
+  `last_handle_change_at TIMESTAMPTZ NULL` column to `users` for the 30-day
+  window that survives release. *Complexity: simple.*
+
+- [ ] **T2** — `services/dignitas/handles/validation.rs`: pure
+  `validate_handle(&str) -> Result<NormalizedHandle, HandleError>` — trims,
+  lowercases, enforces regex `^[a-z0-9][a-z0-9_-]{1,22}[a-z0-9]$`, checks
+  reserved list, runs profanity filter. Inline `#[cfg(test)]` covers: valid,
+  too short, too long, leading `-`, trailing `_`, uppercase normalization,
+  reserved hit, profanity hit. RED first, then GREEN. *Complexity: simple.*
+
+- [ ] **T3** — `services/dignitas/handles/reserved.rs` +
+  `services/dignitas/handles/profanity.rs`: `static` lists loaded via
+  `OnceLock<HashSet<&'static str>>`. Reserved minimum set per spec: `admin`,
+  `testudo`, `api`, `www`, `root`, `support`, `help`, `mod`, `team`,
+  `official`, `cz`, `sbf`, `vitalik`. Profanity: 10–20 core substrings (not
+  exhaustive — trip-wire only, per spec risk 3). Inline unit tests for
+  lookup, substring match. *Complexity: simple.*
+
+- [ ] **T4** — `services/dignitas/handles/mod.rs`: `HandleService` with
+  postgres-backed methods — `claim(user_id, handle, bio) ->
+  Result<ClaimOutcome, HandleError>` (enforces 30-day window via
+  `users.last_handle_change_at`, returns `Err::RateLimited { retry_at }`,
+  `Err::Taken`, `Err::Reserved`, `Err::Invalid`), `release(user_id)`,
+  `update_visibility(user_id, patch)`, `update_bio`, `update_indexing`,
+  `get_identity(user_id) -> IdentityPreferences`,
+  `get_public_profile(handle) -> Option<(UserHandle, Option<ScoreRow>,
+  Option<Vec<HistoryRow>>)>` with visibility-gated fetches. All DB writes in
+  one transaction per mutation; bump `last_handle_change_at` on claim and
+  release. Inline pure tests for outcome decisions where possible; DB-bound
+  paths covered by an `#[ignore]` integration test gated on `DATABASE_URL`.
+  *Complexity: medium.*
+
+### CP-1 continued — Authed endpoints
+
+- [ ] **T5** — `routes/dignitas.rs` additions:
+  `POST /api/v1/dignitas/handle` (body: `{ handle, bio? }` → 201 +
+  IdentityPreferences on success; 400 invalid; 409 taken; 400 reserved; 429
+  w/ `{ can_change_handle_at }` on rate limit).
+  `DELETE /api/v1/dignitas/handle` (204 on success; 429 w/
+  `can_change_handle_at` on rate limit; 404 if no handle currently claimed).
+  `PATCH /api/v1/dignitas/visibility` (body `{ show_score?, show_sparkline?,
+  allow_indexing? }` → 204). `GET /api/v1/dignitas/identity` (returns
+  `IdentityPreferences`: handle, bio, visibility, allow_indexing,
+  can_change_handle_at). Wire into the existing `/dignitas` scope in
+  `main.rs`. Request validation tests inline. *Complexity: simple.*
+
+### CP-3 backend — Public read + rate limit
+
+- [ ] **T6** — `routes/public_profile.rs`:
+  `GET /api/v1/public/profile/:handle` (no JWT) using the handle service.
+  404 when unclaimed. 200 with `{ handle, bio, score: null|string,
+  sparkline: null|[...], member_since }` — `score` null unless
+  `show_score=true`, `sparkline` null unless `show_sparkline=true`.
+  Per-IP rate limit via a **dedicated** `RateLimiter::new(60,
+  Duration::from_secs(60))` (separate instance from auth middleware's)
+  stored in `app_data`. 429 on breach. Record attempt on every call.
+  **Inline tests enumerate the full visibility matrix — FR-10 empty-carcass
+  coverage:** (a) `{show_score:false, show_sparkline:false}` → 200 with
+  both null (FR-10), (b) `{true, false}` → score populated, sparkline
+  null, (c) `{false, true}` → score null, sparkline populated, (d)
+  `{true, true}` → both populated. Plus rate-limit wiring test (mock IP).
+  *Complexity: simple.*
+
+- [ ] **T7** — `main.rs` wiring: create the public profile `RateLimiter`,
+  add `routes::public_profile` to `routes/mod.rs`, register
+  `web::scope("/public").service(web::scope("/profile").route("/{handle}",
+  web::get().to(public_profile::get_profile)))` as a sibling of `/dignitas`
+  with **no** `JwtMiddleware`. *Complexity: simple.*
+
+### CP-2 frontend — Account identity management
+
+- [ ] **T8** — `testudo-journal/src/api/client.ts` additions:
+  `IdentityPreferences`, `PublicProfile` types; `fetchIdentity()`,
+  `claimHandle()`, `releaseHandle()`, `patchVisibility()`,
+  `patchIndexing()`, `updateBio()` (authed — via `fetchWithCredentials`);
+  `fetchPublicProfile(handle)` (unauth — bare `fetch`, no credentials).
+  *Complexity: simple.*
+
+- [ ] **T9** — `testudo-journal/src/config/dignitas-reserved-handles.ts`
+  mirroring the backend's minimum reserved list. UX-only; backend is the
+  enforcement gate. *Complexity: trivial.*
+
+- [ ] **T10** — `components/account/IdentitySettings.tsx`: brutalist
+  section on Account page. Claim form with inline regex/reserved preview
+  (fires backend call on submit — trusts server as final gate). Release
+  button with confirm. Bio `<textarea>` (≤140 chars, countdown). Three
+  toggles: `show_score`, `show_sparkline`, `allow_indexing`. Shows
+  `can_change_handle_at` timer when rate-limited. Uses the existing
+  `PageSubHeader` styling and `HelpTip` conventions. *Complexity: medium.*
+
+- [ ] **T11** — `pages/Account.tsx`: mount `<IdentitySettings />` as a new
+  section (below `CoachBanner`). *Complexity: trivial.*
+
+### CP-3 frontend — Public profile page
+
+- [ ] **T12** — `pages/PublicProfile.tsx`: reads `:handle` from route
+  params, calls `fetchPublicProfile`, renders 404 state on null, otherwise
+  shows brutalist header with handle + join date + bio, plus the score
+  card + 90-day `DignitasSparkline` only when opted-in. Manages
+  `<meta name="robots">` in `onMount` / `onCleanup` — defaults noindex,
+  flips to `index, follow` only when `allow_indexing: true` is returned.
+  Sets `document.title` to `Testudo — /d/<handle>`. No authed calls.
+  *Complexity: medium.*
+
+- [ ] **T13** — `index.tsx`: register `<Route path="/d/:handle"
+  component={PublicProfile} />`. Verify `Layout` does not fire authed
+  probes for this path — if it does (top-nav identity etc.), gate them
+  off via `useLocation().pathname.startsWith('/d/')`. *Complexity: simple.*
+
+- [ ] **T13b** — **HTTP-header FR-9 enforcement (Cloudflare Pages).**
+  Add a `_headers` file entry (or update existing) under
+  `testudo-journal/public/_headers`:
+  ```
+  /d/*
+    X-Robots-Tag: noindex, nofollow
+  ```
+  Ensures static HTML crawlers (Archive.org, Facebook OG, non-JS SEO
+  bots) are blocked from indexing public profiles regardless of the SPA
+  imperative meta layer. Complements T12's JS-layer control. Verify via
+  `curl -I https://testudo.app/d/test-handle | grep -i x-robots-tag`
+  after deploy. Manual QA (T15/T16): confirm header present on a real
+  profile URL. *Complexity: trivial.*
+
+- [ ] **T14** — `components/DignitasPanel.tsx`: add a third action
+  "SHARE PROFILE" that copies `${origin}/desk/d/<handle>` to clipboard.
+  Only rendered when identity has a claimed handle AND `show_score` is
+  true (we require a minimally-visible profile before offering the share
+  button — squatted-empty profiles are URL-shareable but the pill panel
+  is not the right surface). Fetch identity via `createResource` against
+  `fetchIdentity`. Toast on copy success. *Complexity: simple.*
+
+### CP-4 — Anti-abuse finish + verification
+
+- [ ] **T15** — Integration sweep for rate-limit paths:
+  `#[tokio::test] #[ignore]` DB-backed test for handle claim hitting
+  30-day window; inline unit test for per-IP 60/min breach returning 429.
+  Document the manual-QA deferral (incognito browser verification) in the
+  spec's completion signal. *Complexity: simple.*
+
+- [ ] **T16** — Verification pass: `cd testudo-exchange && cargo clippy
+  --all-targets && cargo test`; `cd testudo-journal && bun run build`.
+  Fix any regressions. *Complexity: simple.*
+
+- [ ] **T17** — Append to `.specify/specs/ENG-01b-dignitas-public-profile/
+  LEARNINGS.md` with per-task gotchas (at minimum: inline-test override,
+  rate-limit sharing, `last_handle_change_at` location, SPA meta-robots
+  handling). Final commit with
+  `feat(eng-01b): Dignitas public profile — handles, opt-in visibility,
+  shareable discipline`. *Complexity: trivial.*
+
+---
+
+## Commit strategy
+
+- T1 alone — migration (reversible, isolated).
+- T2 + T3 + T4 bundled — pure-module + service are useless individually; no
+  callers before T5. Prevents broken-intermediate state per `AGENTS.md`.
+- T5 bundled with its `main.rs` wiring — authed handle/visibility
+  endpoints ship + smoke-testable independently (JWT curl works).
+- T6 bundled with T7 (public scope wiring) — unauth endpoint + dedicated
+  RateLimiter ship together. Landing AFTER T5 means the authed path is
+  already curl-verified before the public surface appears, narrowing blast
+  radius if anything regresses.
+- T8 alone — pure API surface additions; no callers yet.
+- T9, T10, T11 bundled — frontend Account-page slice.
+- T12 + T13 + T13b bundled — public profile page + route registration + `_headers` FR-9 enforcement (ships as one "public profile slice" atomic change).
+- T14 alone — Dignitas panel enhancement.
+- T15 alone — test hardening.
+- T16 alone — verification fixes (if any).
+- T17 alone — LEARNINGS + final spec-complete commit.
+
+---
+
+## Blockers
+
+None. All dependencies (ENG-01a, `RateLimiter`, `users` table, journal
+routing, Account page scaffold) are in place.
+
+---
+
+## PLANNING COMPLETE
+
+Spec: ENG-01b-dignitas-public-profile
+Total Tasks: 18 (T1–T17 + T13b)
+Ready for BUILD mode — Gate 1 pass 2026-04-21.
+
+Next task: T1 — `user_handles` migration + `users.last_handle_change_at` column.
