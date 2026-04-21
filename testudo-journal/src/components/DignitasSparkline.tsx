@@ -1,11 +1,15 @@
 import { createMemo, Show } from 'solid-js'
 import { EChart } from './charts/EChart'
-import type { DignitasHistoryPoint } from '../api/client'
 import { getAccentPrimary, accentPrimaryAlpha } from '../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
+interface SparklinePoint {
+  date: string
+  score: string
+}
+
 interface Props {
-  snapshots: DignitasHistoryPoint[]
+  snapshots: SparklinePoint[]
 }
 
 export function DignitasSparkline(props: Props) {

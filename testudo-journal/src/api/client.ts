@@ -888,6 +888,7 @@ export interface PublicProfile {
   score: string | null
   sparkline: { date: string; score: string }[] | null
   member_since: string
+  allow_indexing: boolean
 }
 
 export async function fetchIdentity(): Promise<IdentityPreferences> {

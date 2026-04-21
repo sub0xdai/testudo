@@ -16,6 +16,7 @@ const Account = lazy(() => import('./pages/Account'))
 const Pair = lazy(() => import('./pages/Pair'))
 const Coach = lazy(() => import('./pages/Coach'))
 const Dignitas = lazy(() => import('./pages/Dignitas'))
+const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 
 // Redirect bare root to /desk/ — router base doesn't catch paths outside /desk/*
 if (window.location.pathname === '/' || window.location.pathname === '') {
@@ -36,6 +37,7 @@ render(
           <Route path="/account" component={Account} />
           <Route path="/coach" component={Coach} />
           <Route path="/dignitas" component={Dignitas} />
+          <Route path="/d/:handle" component={PublicProfile} />
           <Route path="/*" component={() => <Navigate href="/" />} />
         </Router>
       </FilterProvider>

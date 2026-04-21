@@ -354,7 +354,8 @@ export function Layout(props: { children: JSX.Element }) {
 
   // UX-01: Standalone pages bypass Layout shell entirely (reactive via router)
   const location = useLocation()
-  const isStandalonePage = () => location.pathname.endsWith('/pair')
+  const isStandalonePage = () =>
+    location.pathname.endsWith('/pair') || location.pathname.startsWith('/d/')
 
   function cycleTheme() {
     const current = theme()
