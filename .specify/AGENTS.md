@@ -1,1014 +1,221 @@
 # Cross-Cutting Operational Rules
 
-> **Scope (changed 2026-04-20):** this file holds ONLY cross-cutting rules
-> that apply to every spec — tech-stack conventions, shared anti-patterns,
-> protocol decisions that transcend individual specs.
+> **Scope:** this file holds ONLY cross-cutting rules that apply to every spec
+> — tech-stack conventions, shared anti-patterns, protocol decisions that
+> transcend individual specs.
 >
 > **Per-spec discoveries live in `.specify/specs/<spec>/LEARNINGS.md`**
 > (append-only by vox build iterations). Vox reads both files on every
-> iteration, but writes only to the per-spec file. Keeping this file
-> curated prevents the cross-spec context pollution that bloated it
-> to 1000+ lines before the split.
+> iteration, but writes only to the per-spec file.
 >
 > Rule of thumb: if a learning would apply to an unrelated future spec,
-> lift it here by hand. If it's specific to one spec's architecture or
-> decisions, leave it in the per-spec file.
+> lift it here by hand. If it's specific to one spec's architecture, leave
+> it in the per-spec file. Git history and `.specify/spec-archive/` preserve
+> per-spec postmortems.
 
 ---
 
-## Codebase Patterns
+## Codex Axioms
 
-### Rust Backend
+- KISS, DRY, SoC, SOLID, TDD (Red-Green-Refactor), Five Whys
+- `rust_decimal::Decimal` for all financial math — never `f64`
+- `Result<T, E>` everywhere; no `unwrap()` in production code
 
-- Exchange status normalization: Use `normalize_status()` in `exchange_api.rs` — maps SDK variants to CCXT strings
-- `PlaceOrderResult.status` uses CCXT convention: `"closed"` = filled, `"open"` = resting
-- `TradeManagerService::cancel_order(user_id, order_id, symbol, exchange_account_id)` — all fields available from `OrderGroup`
+## Git
 
-### File Locations
-
-- Hyperliquid exchange API: `crates/router/src/services/hyperliquid/exchange_api.rs`
-- Trade management routes: `crates/router/src/routes/trade_management.rs`
-- OrderGroup model: `crates/engine/src/shadow/order_group.rs`
-- SDK types: `hyperliquid-sdk-rs 0.1.2` — `ExchangeDataStatus` enum in `types/responses.rs`
-
----
-
-## Anti-Patterns (Don't Do This)
-
-- Don't use `format!("{:?}", ExchangeDataStatus)` for status — Debug format produces strings like `"Filled(FilledOrder { ... })"` that don't match CCXT conventions
-- Don't cancel Active groups in cleanup — only Pending ghosts should be purged
+- Commit messages: `type: description` (feat, fix, refactor, docs, test, chore)
+- No `Co-Authored-By` trailers in this repo
+- Always stage specific files; never `git add -A` or `git add .`
+- Don't commit broken intermediate states — if a task's changes break callers,
+  bundle dependent tasks into one atomic commit (plan-sanctioned bundling).
 
 ---
 
-## Signs (Discoverable Patterns)
+## Financial Math & Wire Format
 
-### When you see OrderGroups stuck in Pending forever
--> Status normalization bug: `place_order` returned non-CCXT status string, so `is_filled` check failed. Fix: use `normalize_status()`.
+- `Decimal` serializes as a JSON **string** by default (`rust_decimal` 1.3x+).
+  All wire types use `string` on the TS side. `Decimal::ONE` serializes as
+  `"1"`, not `"1.0"` — watch this in assertions.
+- `dec!(…)` macro works in `const` position — use it for threshold constants.
+- Division-by-zero guards are mandatory in any helper that divides
+  user-provided Decimals (losses, quantities, baselines).
+- `Uuid` → `string` on the wire. `DateTime<Utc>` → RFC3339 ISO string.
 
-### When you see CLEAR ALL not canceling exchange orders
--> `cleanup_stale_trades()` only canceled shadow engine orders. Fix: also call `TradeManagerService::cancel_order()` for entry/SL/TP exchange order IDs.
+## Decimal conventions with frontend
 
----
-
-## Discoveries Log
-
-### 2026-03-21 — HL-11-status-transition-fix
-- `ExchangeDataStatus` has 6 variants: `Success`, `WaitingForFill`, `WaitingForTrigger`, `Error(String)`, `Resting(RestingOrder)`, `Filled(FilledOrder)`
-- `WaitingForFill` existed in SDK but was only referenced in comments
-- Extracting `normalize_status()` as a standalone function enables both production use and direct unit testing (DRY)
-- `cleanup_stale_trades()` previously used `is_terminal()` filter which let Active groups through — changed to explicit `!= Pending` skip
-
-### 2026-03-21 — UXP-18-multi-theme (Planning)
-- Tailwind v4 (extension) handles CSS var opacity natively; v3 (web/journal) requires `rgb(var(--channel) / <alpha-value>)` pattern
-- 9 unique opacity modifier usages in web+journal prevent simple `var(--color)` approach in preset
-- Extension popup uses DIFFERENT token names than shared preset (e.g., `bg-core` vs `main-bg`) — theme values must be mapped, not copied
-- Journal has dual charting libraries: ECharts (registered theme) + lightweight-charts (inline config) — both need dispose+re-init on theme change
-- Shadow DOM modal can't inherit `[data-theme]` from outer document — must set attribute on host element at creation
-- Journal `app.css` already has 13 `:root` CSS vars — only needs override blocks, not greenfield
-- `SpotlightBackground.tsx` uses hardcoded `rgba(5,5,5,...)` — must use `color-mix()` or `rgb(var())` for theming
-- RainbowKit `darkTheme()` vs `lightTheme()` — conditional in `main.tsx` based on current theme
-
-### 2026-03-22 — EXT-37-message-dispatch-refactor
-- 28 message types in `RuntimeMessageSchema` (spec said 27, but ACCOUNT_LINKED was added since spec draft)
-- `ReturnType<typeof RuntimeMessageSchema.parse>` avoids needing `z` import for type inference
-- `Extract<ParsedMessage, { type: T }>` utility type (`MsgOf<T>`) cleanly narrows union in handlers
-- Handler functions must be declarations (not arrows) to enable hoisting — `debouncedConnectWebSocket` is defined after the handler block
-- Pre-existing test failures: `vi.stubGlobal` incompatibility (bun vs vitest) + Playwright runner incompatibility — not related to dispatch refactor
-
-### 2026-03-22 — EXT-38-background-decomposition (Build T1)
-- **Module mock scope confirmed**: `vi.mock("webextension-polyfill")` applies to ALL modules that import it, including extracted `background/storage.ts`. No test changes needed for module extraction.
-- **Pre-existing test failures (7)**: `EXECUTE_TRADE` missing `break_even_enabled`, token refresh mutex vitest compat, and 5 `ensureActiveExchange` tests using legacy `activeExchangeId` key instead of per-mode `activeCexAccountId`/`activeDexAccountId`. None related to decomposition.
-- **Unused imports cleanup**: Extracting `getSettings` to storage.ts made `Settings` type, `DEFAULT_SETTINGS`, `SettingsSchema`, `StoredSettingsSchema` unused in background.ts — removed from imports.
-
-### 2026-03-22 — EXT-38-background-decomposition (Build T2)
-- **doRefresh reverted to raw fetch**: Successfully broke auth↔api circular dependency. The refresh endpoint only needs `refresh_token` in body (no JWT header), so raw `fetch` + `getSettings()` is sufficient. Behavior preserved: clears tokens on HTTP error, returns false on network error without clearing.
-- **clearRefreshTimer helper**: `handleLogout` directly accessed `refreshTimer` variable. Added `clearRefreshTimer()` export to auth.ts so logout handler doesn't need private state access.
-- **Unused imports cleanup (T2)**: Extracting auth functions made `AuthTokens`, `LoginResponse` types, `calculateRefreshDelay` util, `ExchangeMode` type, and 4 schema imports (`AuthTokensSchema`, `StoredTokensSchema`, `JwtEmailPayloadSchema`, `RefreshResponseSchema`) unused in background.ts — all removed. `LoginResponseSchema` stays (used by `authenticate()`).
-- **Line reduction**: background.ts reduced by ~70 lines (998→~928). auth.ts is 109 lines.
-
-### 2026-03-22 — EXT-38-background-decomposition (Planning)
-- **Circular dep: auth ↔ api**: `doRefresh()` was migrated to `apiRequest()` (commit 27728c2) with `auth: "none"`. Since `apiRequest` calls `refreshAccessToken` on 401, this creates auth → api → auth cycle. Fix: revert `doRefresh` to raw `fetch` + `getSettings()` — refresh endpoint only needs the refresh token in body, not JWT.
-- **Circular dep: storage ↔ api**: Spec placed `ensureActiveExchange()` and `migrateActiveExchangeId()` in storage.ts, but both call `listExchangeAccounts()` (api.ts), while `apiRequest()` needs `getSettings()` (storage.ts). Fix: move both to api.ts.
-- **`getAuthStatus` misplacement**: Spec placed in storage.ts but it only calls `getTokens()` + `JwtEmailPayloadSchema.safeParse` — pure auth concern. Moved to auth.ts.
-- **Hoisting constraint lifts**: EXT-37 required function declarations for hoisting (handlers → `debouncedConnectWebSocket`). In EXT-38, handlers.ts imports from websocket.ts, so arrow functions work fine.
-- **Tab cache listeners**: `browser.tabs.onCreated/onRemoved` set `cachedContentTabs = null`. These can run at module import time in websocket.ts since the cache variable is module-scoped — no explicit `init()` function needed.
-- **Test compatibility**: `background.test.ts` does `await import("./background")` and captures `onMessage.addListener`. Bootstrap still registers this listener, so tests work unchanged. `_disconnectWebSocket` re-exported from bootstrap.
-- **Build compatibility**: esbuild entrypoint `src/background.ts` unchanged. esbuild follows import graph through `src/background/` modules automatically. No config changes.
-
-### 2026-03-22 — EXT-38-background-decomposition (Build T3)
-- **Largest extraction**: api.ts is 457 lines — the biggest module, containing all HTTP API wrappers, normalizers, trade execution, and exchange management. Background.ts reduced from 900→481 lines.
-- **`authenticate` not re-exported**: `authenticate()` is only used by `login()` and `register()` (both in api.ts), so it doesn't need to be imported back into background.ts. Only `login` and `register` are needed in handler functions.
-- **`getExchangeMode` still needed in bootstrap**: `handleGetExchangeMode` and `handleSetExchangeMode` still reference `getExchangeMode` from storage.ts — must keep in storage import even though most exchange logic moved to api.ts.
-- **No test changes**: Module mocking continues to work across the new import graph. Same 7 pre-existing failures, 70 passing.
-
-### 2026-03-22 — EXT-38-background-decomposition (Build T4)
-- **Sidecar health callback pattern**: `connectWebSocket`'s `ws.onmessage` handler calls `setSidecarStatus()` for sidecar.health stream messages. Since websocket.ts shouldn't depend on sidecar (not yet extracted), used injectable callback: `onSidecarHealth(handler)` setter in websocket.ts, wired by bootstrap via `onSidecarHealth(setSidecarStatus)`. Type-safe: callback accepts `"healthy" | "unreachable"` (subset of `SidecarStatus`).
-- **State accessor exports**: `handleWsStatus` needed direct access to `wsState` and `wsReconnectTimer` (module-private in websocket.ts). Added `getWsState()`, `getWsReconnectTimer()`, and `resetReconnectDelay()` exports instead of exposing mutable state.
-- **Tab listeners run at import time**: `browser.tabs.onCreated/onRemoved` listeners that invalidate `cachedContentTabs` execute when websocket.ts module is first imported. This is safe because the cache variable is module-scoped and the listeners only null it out. No explicit init function needed.
-- **Line reduction**: background.ts reduced from 481→320 lines (-34%). websocket.ts is 175 lines containing 7 exported functions and 7 module-scoped state variables.
-- **No test changes**: Same pre-existing failures (vi.stubGlobal compat, Playwright runner, legacy storage keys). Build passes for both Chrome and Firefox targets.
-
-### 2026-03-22 — EXT-38-background-decomposition (Build T5)
-- **Simplest extraction**: sidecar.ts is 44 lines — the smallest module. Contains 4 exported functions (`setSidecarStatus`, `getSidecarStatus`, `checkSidecarHealth`, `startSidecarHealthPolling`, `stopSidecarHealthPolling`), the `SidecarStatus` type, and 3 module-scoped state variables.
-- **Added `getSidecarStatus()` accessor**: `handleSidecarStatus` previously read `sidecarStatus` directly. Added accessor function to avoid exposing mutable module state, consistent with websocket.ts pattern (`getWsState()`).
-- **`apiRequest` removed from bootstrap imports**: With sidecar extraction, `apiRequest` is no longer used directly in background.ts — only in api.ts (internally) and sidecar.ts. Cleaned from imports.
-- **Line reduction**: background.ts reduced from 320→286 lines (-11%). Cumulative from monolith: 1043→286 (73% reduction with T1-T5 complete).
-- **No test changes**: Same 7 pre-existing failures, 70 passing.
-
-### 2026-03-22 — EXT-38-background-decomposition (Build T6-T8)
-- **T6+T7+T8 completed in single pass**: Extracting handlers.ts (T6) naturally reduced background.ts to 61 lines (T7), and build+test validation passed immediately (T8). All three tasks were interdependent — no value in separate iterations.
-- **handlers.ts is 228 lines**: Contains all 28 handler functions, the dispatch map, and 3 type definitions (`ParsedMessage`, `MessageHandler`, `MsgOf`). Imports from all 5 extracted modules + `webextension-polyfill` (for `handleSetExchangeMode` and `handleAccountLinked` which use `browser.storage.local.set` directly).
-- **Bootstrap at 61 lines**: background.ts now only contains: imports, unhandled rejection listener, onInstalled handler, onMessage listener (using imported `messageHandlers`), startup sequence (migrate → refresh → connect), sidecar health wiring, storage.onChanged listener, and test export.
-- **No RuntimeMessageSchema import in handlers.ts**: Used `import type` since handlers.ts only needs the type for `ParsedMessage` derivation, not the runtime value. The actual `safeParse` call stays in bootstrap's `onMessage` listener.
-- **Final module sizes**: storage.ts (~55), auth.ts (~109), api.ts (~457), websocket.ts (~175), sidecar.ts (~44), handlers.ts (~228), background.ts (~61). Total: ~1129 lines across 7 files vs original 1043-line monolith — ~8% overhead from module boundaries.
-- **No test changes**: Same 7 pre-existing failures, 70 passing. Test captures `onMessage.addListener` from bootstrap — unchanged.
-- **Decomposition complete**: All acceptance criteria met. background.ts <100 lines, 6 modules extracted, no circular imports, build passes, tests unchanged.
-
-### 2026-03-22 — bundle-size optimization: Remove Zod from content.js
-- **Zod v4 was 85% of content.js bundle**: 304kb out of 358kb. Imported only by `scraper.ts` for 4 trivial schemas (`PositionToolDataSchema`, `TradeSetupSchema`, `ScraperHealthRecordSchema`, `ScraperHealthHistorySchema`).
-- **Zod v4 bundles ALL locales**: Unlike v3, Zod v4 includes ~30 locale files (he, ru, ta, th, be, km, ka, uk, hy, bg, ur, ar, mk, fa...) plus JSON schema processors, regex library — none used by scraper's simple `.safeParse()` calls.
-- **Plain validators are equivalent**: The 4 schemas only used `.safeParse()` checking positive numbers, string length, enum membership, nullable integers with range. Replaced with ~50 lines of plain TypeScript runtime checks. Identical validation behavior.
-- **Result**: content.js dropped from 368,141 → 57,984 bytes (84.3% reduction, -310,157 bytes).
-- **No functionality change**: All 6 scraper strategies, telemetry recording, and chart API health detection work identically. Build passes for Chrome and Firefox.
-- **Lesson**: Audit ALL transitive dependencies in content scripts. Content scripts run on every page load — even one `import { z } from "zod"` anywhere in the dependency graph pulls the entire library into the bundle. Background scripts (which also use Zod) are unaffected since they load once.
-
-### 2026-03-22 — bundle-size optimization: Remove webextension-polyfill from content scripts
-- **webextension-polyfill was 16.5% of content.js bundle**: 9.3kb out of 57.9kb. Imported by both `content.ts` and `scraper.ts`.
-- **MV3 makes the polyfill unnecessary for content scripts**: Chrome MV3 `chrome.*` APIs return Promises natively (since Chrome 110+). Firefox MV3 has native `browser.*` namespace. The polyfill's main purpose — wrapping callback-based Chrome APIs in Promises — is redundant in MV3.
-- **Content script uses only 4 APIs**: `runtime.sendMessage()`, `runtime.onMessage.addListener()`, `storage.local.get()`, `storage.local.set()`. All Promise-based in both Chrome MV3 and Firefox MV3.
-- **Replacement**: Single line `const browser = (globalThis as any).browser ?? (globalThis as any).chrome;` in each file. Firefox uses its native `browser`, Chrome falls back to `chrome`.
-- **Result**: content.js dropped from 57,984 → 47,832 bytes (17.5% reduction, -10,152 bytes).
-- **Cumulative**: content.js from 368,141 (baseline) → 47,832 (87.0% total reduction).
-- **Background script still uses polyfill**: The polyfill remains in background.ts, popup, and other non-content-script modules where its broader API coverage is still used. This change is content-script-only.
-- **Lesson**: For content scripts with minimal API surface, prefer native MV3 APIs over polyfills. The polyfill is only needed when targeting MV2 or using many different browser extension APIs.
-
-### 2026-03-22 — css-dedup optimization: Tailwind v4 font variable naming mismatch
-- **`@theme` `--font-family-mono` ≠ Tailwind `font-mono`**: The `@theme` block defines `--font-family-mono: "Space Mono", ...` but Tailwind v4's `font-mono` utility maps to `--font-mono` (the Tailwind default: `ui-monospace, SFMono-Regular, Menlo, ...`). Using `font-mono` class would silently change the font from Space Mono to the system monospace stack.
-- **Custom utility required**: Created `.font-family-mono { font-family: var(--font-family-mono); }` in `@layer components` to bridge the naming gap. This avoids inline `style={{ "font-family": "var(--font-family-mono)" }}` while preserving the correct font.
-- **Root cause**: The popup.css `@theme` uses `--font-family-*` convention (matching CSS spec naming), but Tailwind v4 utilities expect `--font-*` shorthand. The base styles (`body`, `input`, `select`, `button`) reference `--font-family-sans`/`--font-family-mono` directly, so renaming the theme vars would require updating all base style references.
-
-### 2026-03-22 — UXP-19-features-layout
-- **Hero + compact list beats terminal log**: The landing page already uses ghost annotations (`// SYSTEM_CAPABILITIES`, `// core_module`) as a terminal metaphor. Adding a second terminal-style feature list (Option B) would create competing metaphors. Option A (hero feature + compact secondary list) adds hierarchy without a new visual language.
-- **`border-text-primary` for visual dominance**: Primary feature uses `border-text-primary` instead of `border-container-border` — brighter border creates immediate visual weight difference. Secondary features use `border-l` only (left border, no full box).
-- **Ghost annotation as authenticity signal**: The hero block includes `// core_module — position_sizer.rs` referencing the actual Rust backend file. This ties the marketing surface to the real codebase, reinforcing the brutalist "this is real" aesthetic.
-- **font-mono preserved intentionally**: UXP-23 spec handles the mono→display typography migration. This spec only changes layout structure to avoid scope creep between specs.
-
-### 2026-03-22 — UXP-22-signal-color-calibration
-- **7 source files, 3 surfaces**: Signal colors defined in extension (popup.css, modal.tsx, ArcGauge.tsx), web (index.css, main.tsx), and journal (app.css, tokens.ts). Spec only listed 5 files — journal was missed. Always grep to find all occurrences.
-- **Journal tokens.ts has dual fallbacks**: Both `getCSSVarRGB` fallback strings (comma-separated) and `getCSSVarRaw` fallback strings (space-separated) plus hardcoded `rgba()` fallback returns. Three places per color to update.
-- **Build artifact lag**: `testudo-journal/dist/` retains old colors in pre-built CSS until journal is rebuilt. Not a source code issue but shows up in grep.
-- **RainbowKit accent**: `testudo-web/src/main.tsx` passes signal green as `accentColor` to `darkTheme()` — easy to miss since it's in a config call, not CSS.
-
-### 2026-03-22 — UXP-20-strip-glassmorphism
-- **Features.tsx already clean**: UXP-19 layout refactor removed glassmorphism from feature cards before this spec ran. Spec's FR-1 was already satisfied — always verify current state before implementing spec line items.
-- **Card.tsx glass variant unused**: The `variant="glass"` option existed but had zero callers. Removed entirely rather than making it match `solid` — dead code elimination over backwards compatibility.
-- **4 files, not 5**: Spec listed 5 files but Features.tsx needed no changes. Actual changes: Card.tsx (variant removal), Header.tsx (60%→90% opacity), Hero.tsx (60%→95% opacity), Pricing.tsx (90%→95% opacity).
-
-### 2026-03-22 — UXP-23-landing-typography
-- **Pricing feature list items are body copy**: Items like "Risk engine + position sizing" are persuasive descriptions, not data labels — changed to `font-display` even though they're short. The distinction is semantic role (persuading vs displaying data), not word count.
-- **Section headings stay mono**: Short headings like `CORE [SYSTEMS]` and `[PRICING]` use terminal bracket notation as intentional aesthetic — these are title elements, not paragraph text. The >20 word acceptance criterion confirms headings don't need changing.
-- **5 class replacements across 3 files**: Hero tagline, Features primary + secondary descriptions, Pricing subtitle + feature list. All remaining `font-mono` usages (ghost annotations, price ticker, CTA buttons, feature labels, footer) are intentional terminal-aesthetic or data-display elements.
-
-### 2026-03-22 — UXP-21-light-theme-parity
-- **ThemeContext lifted from Header**: Theme state (`getStoredTheme`, `applyTheme`, `cycleTheme`) was duplicated knowledge in Header.tsx. Extracting to ThemeContext.tsx enables any component (including RainbowKit wrapper in main.tsx) to read and react to theme changes. Header.tsx dropped from 130→103 lines.
-- **RainbowKitProvider requires wrapper component**: Can't call `useTheme()` inside `createRoot().render()` directly — hooks only work inside components. Created `RainbowKitThemeWrapper` as a thin component between `ThemeProvider` and `RainbowKitProvider` to bridge the gap.
-- **Mouse tracking unconditional**: Previously `isLight` guarded the mousemove listener — mouse tracking only ran in dark mode. Removed the guard since both themes now use the spotlight. The `useEffect` no longer depends on `isLight` (changed to `[]` deps), preventing listener teardown/re-attach on theme toggle.
-- **Light theme borders via CSS attribute selectors**: `[data-theme="light"] .border { border-width: 2px; }` overrides Tailwind's generated `border-width: 1px` with higher specificity (0-2-0 vs 0-1-0). Covers `.border`, `.border-b`, `.border-l`, `.border-t`, `.border-r`. No component changes needed.
-- **Texture grain uses `--text-primary` not `--bg-core`**: Dark scan-lines use `--bg-core` at 15% opacity because the overlay should darken. Light texture uses `--text-primary` at 4% opacity because the grain should add subtle dark marks on the cream background. Using `--bg-core` would be invisible (cream on cream).
+- When values feed math or formatters on the frontend, accept both
+  `z.string()` and `z.number()` via a coercing union and `.transform(Number)`.
+  Pure-display decimals can stay as `string`.
 
 ---
 
-### 2026-03-22 — JNL-14-markdown-hardening
-- **Scrollbar `*` selector hid ALL scrollbars**: The journal used `* { scrollbar-width: none }` which suppressed scrollbars on every element including the editor textarea and preview pane. Moving to `body` selector preserves the hidden page-level scrollbar while letting internal scroll containers show native scrollbars.
-- **SolidJS label+hidden-input pattern**: For file upload triggers, `<label><input type="file" class="hidden" onChange={...} /></label>` works without `for`/`id` attributes since the input is a child of the label. Reset `e.currentTarget.value = ''` after upload to allow re-selecting the same file.
-- **Journal CSS uses space-separated RGB tokens**: Same `rgb(var(--border))` pattern as extension and web. Image border rule follows existing pattern from `.markdown-preview pre` which already uses `border: 1px solid rgb(var(--border))`.
-
-### 2026-03-22 — JNL-15-export-with-images
-- **FileReader for base64 conversion**: `FileReader.readAsDataURL()` produces `data:image/png;base64,...` strings that embed directly into markdown `![alt](data:...)` syntax. Works in all markdown viewers (VS Code, Obsidian, Typora, GitHub).
-- **String.replace only replaces first match**: `result.replace(full, ...)` is safe here because each match is processed sequentially from `matchAll` — the full match string includes the unique URL, so duplicates aren't an issue unless the same image URL appears multiple times with the same alt text. If that becomes an issue, would need `replaceAll` or index-based replacement.
-- **Async migration is minimal**: Making `exportEntry` async only affects 2 callers. EntryCard's onClick doesn't need await (fire-and-forget is fine since errors are caught internally). EntryEditor awaits for cleanliness but doesn't use the result.
-- **Bulk export tagMap from cache**: `JournalTimeline` already loads trade details (including tags) into `tradeDetailCache` as entries render. The `getEntryTags()` helper pulls from this cache, so bulk export doesn't need additional API calls — it just builds the `Record<string, JournalTag[]>` from what's already loaded.
-
-### 2026-03-22 — JNL-16-database-view
-- **Client-side sorting is sufficient for <500 entries**: Backend `fetchEntries` only supports `page`/`limit`/`tradeId` query params — no `sort_by`, `sort_dir`, or `entry_type` filtering. Client-side sort on 200-entry fetch (current limit) is imperceptible. Server-side sorting can be added later when entry counts warrant it.
-- **Asset column sorts via accessor, not entry field**: `entry.trade_id` maps to a symbol via `tradeDetailCache`. For sort comparisons, the `getTradeLabel` accessor is called per-entry. This is fine for <500 entries but would need denormalization for larger datasets.
-- **View toggle lives in JournalTimeline, not Journal.tsx**: Journal.tsx is a 12-line wrapper. Lifting state to Journal.tsx would require passing 10+ props/callbacks. Keeping viewMode inside JournalTimeline alongside existing filter/data state is simpler — no refactor needed.
-- **SolidJS `classList` for toggle buttons**: `classList={{ 'bg-text-primary text-main-bg': viewMode() === 'table', 'text-text-tertiary hover:text-text-primary': viewMode() !== 'table' }}` cleanly toggles active/inactive styling. More idiomatic than ternary in `class` string.
-- **Markdown stripping for preview column**: Simple regex chain (images → links → formatting chars → newlines) produces clean 80-char previews. No need for a full markdown parser — the preview is intentionally lossy.
-- **Removed `rounded` from buttons**: Spec requires "zero-radius, monochrome-first aesthetic". Existing buttons had `rounded` class. Removed from view toggle, export, tags, and new entry buttons to match.
-
-### 2026-03-22 — JNL-17-nested-collections
-- **localStorage prototype viable**: No backend `/journal/collections` endpoints exist. localStorage persistence with flat array + client-side `buildTree()` satisfies all CRUD + nesting requirements. Migration to backend requires swapping `readAll()`/`writeAll()` calls in `lib/collections.ts` for API calls — single file change.
-- **Collection state in JournalTimeline, not Journal.tsx**: Journal.tsx is a 12-line wrapper. Lifting collection state there would require passing 10+ props. Keeping `activeCollection`, `collections`, `sidebarCollapsed` signals inside JournalTimeline matches the pattern from JNL-16 (viewMode lives there too).
-- **Filter bridge is one-directional on select**: Clicking a collection writes its saved `filters` to the existing `typeFilter`, `tagFilter`, `dateFrom`, `dateTo` signals. Manual filter changes after selection still work (they override the collection's preset). "Clear" resets both filters and active collection.
-- **Max depth enforcement**: `getDepth()` walks `parent_id` chain. `createCollection()` and `updateCollection()` throw if depth would reach 3. UI hides "+" button at depth 2 via `getCollectionDepth()` check.
-- **Sidebar collapse uses vertical text rotation**: When collapsed, sidebar becomes an 8px-wide strip with "Collections" text rotated 90° via `rotate-90` class. This preserves affordance while minimizing space on mobile.
-- **"Save Current Filters" in sidebar footer**: Only appears when filters are active (`hasActiveFilters()` check). Auto-generates name from active filter values (e.g., "post-trade + breakout"). Avoids a modal — creates immediately, user can rename inline.
-
-### 2026-03-22 — JNL-18-storage-quotas
-- **DB row before file write prevents quota desync**: Insert `journal_images` row first (reserves quota), then write file. On write failure, rollback the DB row. If reversed (file first, then DB), a failed insert leaves an untracked file consuming disk but not counted against quota.
-- **`ErrorResponse::with_details` for structured errors**: Quota exceeded errors include `{ used_bytes, quota_bytes, remaining_bytes }` in the `details` field. Frontend `UploadError` class captures this structured data so the UI can show specific numbers without parsing the message string.
-- **`UploadError` extends `Error` for type narrowing**: Frontend uses `instanceof UploadError` to distinguish quota errors from generic upload failures. The `code` field matches backend's `error` field (e.g., `"quota_exceeded"`).
-- **StorageBar uses `createResource` with refresh key**: Passing `storageRefreshKey()` as the source parameter to `createResource` triggers a re-fetch whenever the key increments. EntryEditor calls `onStorageChange` after successful upload to bump the key.
-- **No backfill for existing images**: Existing uploaded images (pre-JNL-18) won't have `journal_images` rows. They're "free" — not counted against quota. This avoids a complex migration scanning the filesystem. New uploads are tracked going forward.
-- **Image deletion is best-effort for filesystem**: DB row deletion is the source of truth for quota reclamation. File deletion is wrapped in a non-failing log — if the file was already removed or the path is invalid, quota is still freed.
-
-### 2026-03-24 — AUTH-01-infra-hardening
-- **CexSidecarConfig struct literal in tests**: Adding a new field to `CexSidecarConfig` requires updating 3 test struct literals in `cex_client.rs` (test_config_defaults, test_ws_url_conversion × 2). Use `replace_all` for efficiency.
-- **Express middleware ordering matters**: PSK middleware (`pskGuard`) must be mounted via `app.use()` BEFORE route handlers. Mounting after `app.get("/health", ...)` would bypass the guard for that route — but the guard explicitly exempts `/health` anyway, so ordering is cosmetic for health but critical for all other routes.
-- **Sidecar Dockerfile build context**: Must be monorepo root (`../..` from `docker/` directory), not `testudo-cex/`, because `safe-cex-sub0` is a sibling directory. The `sed` rewrite in Dockerfile changes `file:../safe-cex-sub0` → `file:./vendor/safe-cex-sub0` inside the container.
-- **Production compose sidecar service name**: Named `exchange-sidecar` (not `sidecar` or `testudo-cex`) — this is the Docker DNS hostname the router uses via `CCXT_SIDECAR_URL=http://exchange-sidecar:3100`.
-- **ws-stream needs frontend network only**: WS-Stream doesn't talk to PostgreSQL directly (it reads from pg_queue via the queue's LISTEN/NOTIFY) — wait, actually it likely needs DB access. Placed on frontend only per spec diagram. May need `internal` too if it queries PG directly — verify in AUTH-02.
-- **Migration timestamp convention**: `20260324000000` for wallet migration, `000001` for sessions — SQLx runs in lexicographic filename order, ensuring users table changes land before sessions FK.
-
-### 2026-03-24 — AUTH-02-backend-auth (Build T1)
-- **AuthService → TokenService is sync**: `AuthService` trait was async (DB lookups in verify_token). `TokenService` is sync — JWT verification needs no DB access. This eliminates `.await` in trade_management's `extract_user_id()` and trade_events dual auth, simplifying error handling.
-- **AuthContext simplified**: Removing `AuthService` from `AuthContext` drops 1 field and 1 generic parameter. All callers updated from `AuthContext::new(user, auth_service.clone())` to `AuthContext::new(user)`. 2 call sites in order.rs, multiple in auth_helpers tests.
-- **User model blast radius**: Changing User struct fields (email→wallet_address) touches 9 files across 2 crates: models/user.rs, models/mod.rs, auth/mod.rs, lib.rs (common_utils) + types/auth.rs, repositories/user.rs, utils/validation.rs, routes/exchanges.rs tests, middleware/auth.rs tests (router). Using `replace_all` on `email: "test@example.com"` → `wallet_address: "0x..."` catches most test fixtures.
-- **Test count delta**: 960 tests pass (was 978). 18 fewer from removed email/password auth tests (register, login, password hashing, bcrypt-specific). All remaining tests pass clean.
-- **Pre-existing warnings not from AUTH-02**: `engine/actor.rs:1814` unused variable, `cex_client.rs:599` useless conversion, `evaluator.rs:188` manual contains. None related to auth changes.
-- **bcrypt removal clean**: `bcrypt = "0.15"` removed from common_utils/Cargo.toml. No transitive dependencies on bcrypt remain. `sha2` was already present for crypto operations — reused for `hash_token()`.
-
-### 2026-03-24 — AUTH-02-backend-auth (Build T2)
-- **SessionRepository placed in router crate**: Spec said `crates/sqlx_postgres/src/session_repo.rs`, but the actual repo pattern lives in `crates/router/src/repositories/`. Both `PostgresUserRepository` and `ExchangeAccountRepository` are concrete types there (no trait abstraction). The sqlx_postgres crate has an older trait-based pattern that's no longer followed. Placed session.rs alongside user.rs for consistency.
-- **AuthError reused, not RepoError**: `PostgresUserRepository` returns `Result<T, AuthError>` (not `RepoError`). SessionRepository follows the same convention since sessions are auth-domain objects. `ExchangeAccountRepository` uses its own `RepoError` because it has domain-specific errors (DuplicateAccount, Conflict, Encryption).
-- **cleanup_expired deletes revoked too**: The `cleanup_expired` method removes both expired (`expires_at < NOW()`) and revoked (`is_revoked = TRUE`) sessions. Revoked sessions serve no purpose after the refresh rotation completes — cleaning them up prevents table bloat.
-- **No AppState wiring in T2**: SessionRepository is created but not yet added to AppState. T4 (auth routes) will wire it when the routes that consume it are built. Adding it to AppState now would require a placeholder in main.rs construction.
-
-### 2026-03-24 — AUTH-02-backend-auth (Build T3)
-- **alloy 0.1.4 Signature API**: The type is `alloy::primitives::Signature` (not `PrimitiveSignature` — renamed in 0.8+). `from_bytes_and_parity(&[u8; 64], bool)` returns `Result<Signature, SignatureError>` (fallible). `recover_address_from_prehash(&B256)` returns `Result<Address, SignatureError>`.
-- **`eip191_hash_message` exists in alloy 0.1.4**: Re-exported at `alloy::primitives::eip191_hash_message`. Takes `&[u8]`, returns `B256`. No need for manual keccak256 prefix computation.
-- **Ethereum v normalization**: Wallets return v=27/28 (legacy) but alloy expects bool parity (0=false, 1=true). Must normalize: `v=27 → false`, `v=28 → true`, `v=0 → false`, `v=1 → true`. Anything else is invalid.
-- **AuthError::InvalidToken is a unit variant**: No payload. For SIWE errors that need context strings, use `AuthError::Unauthorized(String)` instead. `InvalidToken` is for generic JWT validation failures; `Unauthorized(msg)` carries the specific reason.
-- **DashMap cleanup-on-insert pattern**: Both NonceStore and PairingStore call `cleanup()` in their `generate()` methods, removing expired entries before inserting new ones. This mirrors the AuthCache pattern in `services/hyperliquid/auth.rs`. No background task needed — cleanup is amortized across insertions.
-- **alloy::signers::Signer trait for testing**: `PrivateKeySigner::sign_message()` (async) produces EIP-191 personal signatures compatible with `recover_signer()`. The `Signer` trait must be imported for the method to be available. `signature.as_bytes()` returns the 65-byte `[r(32) + s(32) + v(1)]` representation.
-- **No AppState wiring in T3**: NonceStore and PairingStore are created but not yet added to AppState. T4 will add them when building auth routes. This avoids touching main.rs construction prematurely.
-
-### 2026-03-24 — AUTH-02-backend-auth (Build T4)
-- **Auth routes use `web::Data<T>` extractors not AppState fields**: NonceStore, PairingStore, SessionRepository, and PostgresUserRepository are injected as `web::Data<T>` — keeps AppState unchanged, enables independent testing of each handler. T5 wires them via `.app_data()` in main.rs.
-- **`actix_web::test` import shadows `#[test]` attribute**: When `use actix_web::test` is in scope, `#[test]` resolves to the actix macro (requires `async fn`). Fix: rename import to `use actix_web::test as actix_test` in test modules that also use sync `#[test]`.
-- **Cookie builder returns `Cookie<'static>`**: `Cookie::build("name", value.to_string())` requires `.to_string()` on the value (not a borrowed &str) because the cookie must own its data for `'static` lifetime.
-- **`Address` display format**: `format!("{recovered:#}")` produces checksummed 0x-prefixed address (e.g., `0xC285...5b36`). Without `#`, produces lowercase non-checksummed. The `#` alternate form matches what users expect from wallet addresses.
-- **auth_error_to_response helper**: Routes return `Result<HttpResponse>` (always `Ok`) — auth errors are mapped to appropriate HTTP status codes in the response body rather than using actix's error propagation. This avoids needing `ResponseError` impl for `AuthError`.
-- **Shared `rotate_refresh()` for cookie + JSON paths**: Both `/auth/refresh` (cookie) and `/auth/extension-refresh` (JSON body) use the same rotation logic. The only difference is where the refresh token comes from and how new tokens are returned.
-- **16 unit tests in auth.rs**: Cookie property tests, error mapping tests, nonce endpoint tests (via actix test server), /me endpoint test (via JwtMiddleware with real token), pairing store tests, UserResponse serialization. All pass without a database connection.
-
-### 2026-03-24 — AUTH-02-backend-auth (Build T5)
-- **Nested scope for auth split**: Actix `web::scope("")` (empty path) inside `/auth` scope allows wrapping only authenticated routes with `JwtMiddleware` while leaving public routes (nonce, verify-siwe, refresh, extension-pair, extension-refresh) unwrapped. Routes resolve correctly — `/api/v1/auth/logout` goes through JWT middleware, `/api/v1/auth/nonce` does not.
-- **`supports_credentials()` required for `allowed_origin_fn`**: When using `allowed_origin_fn` (dynamic origin checking), `supports_credentials()` must be called explicitly — it's not implied. Without it, browsers won't include cookies in requests even if `withCredentials: true` is set on the client.
-- **app_data propagation**: `app_data()` calls on the `/api/v1` scope propagate to all nested scopes (including `/auth` and its nested `web::scope("")`). No need to repeat `.app_data(nonce_store.clone())` inside the auth scope — it inherits from the parent.
-- **user.rs deletion clean**: The stub file had no consumers — `routes::user` was never imported in main.rs or any other module. Safe deletion with just `pub mod user` removal from routes/mod.rs.
-- **Test count stable**: 905 tests pass (308 common_utils + 216 engine + 11 pg_queue + 451 router + 17 sqlx_postgres + 10 ws-stream), 0 failures. Pre-existing clippy warnings unchanged.
-
-### 2026-03-24 — AUTH-02-backend-auth (Build T6)
-- **All tests green with zero intervention**: T1-T5 left the test suite clean — no test fixes needed in T6. 1,013 tests pass across all crates (308 common_utils + 216 engine + 11 pg_queue + 451 router + 17 sqlx_postgres + 10 doc-tests), 0 failures. 23 ignored (expected — doc-test ignores + 1 sqlx integration test).
-- **Test count increased from T5 (905→1,013)**: The 108-count jump is from engine tests being counted as both lib and bin test targets (108×2=216). T5's count of 905 was accurate for unique tests; the full `cargo test` run counts both targets. Not a real increase — just counting methodology.
-- **Pre-existing clippy warnings stable**: Same 3 warnings as before AUTH-02: `useless_conversion` in cex_client.rs:599, `unused_variables` in actor.rs:1814, `manual_contains` in evaluator.rs:188. None introduced by AUTH-02.
-- **AUTH-02 spec complete**: All 6 tasks done. SIWE is the sole auth method, HttpOnly cookies for web/journal, JSON tokens for extension via pairing, refresh rotation with server-side tracking, old email/password code deleted.
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T1)
-- **T1 scope expanded to include consumer fixes**: Changing AuthContext's `login` signature from `(email, password)` to `(user: User)` and removing `register` breaks LoginPage, RegisterPage. Deleting `AuthTokens`/`LoginResponse`/`TokenResponse` types breaks ForgotPasswordPage. Rather than shipping a non-building intermediate, T1 now includes: delete RegisterPage/ForgotPasswordPage, stub LoginPage with ConnectButton, clean App.tsx routes, remove login/register validation schemas.
-- **RainbowKit already wired at app root**: `main.tsx` has `WagmiProvider` → `QueryClientProvider` → `RainbowKitProvider` wrapping `AuthProvider` wrapping `App`. The `ConnectButton` component works immediately in LoginPage — no provider changes needed.
-- **wagmi config uses Arbitrum only**: `wagmi.ts` has `chains: [arbitrum]`. SIWE message construction (T2) should use `Chain ID: 42161` to match.
-- **AccountPage.tsx has dead `isFreshRegistration` state**: Reads `location.state.freshRegistration` from RegisterPage navigation. With RegisterPage deleted, this is always false. Left in place to avoid unnecessary churn — can be cleaned up in T3 when AccountPage is reworked.
-- **Axios 401 interceptor simplified dramatically**: Old pattern (163 lines): request interceptor + response interceptor with refresh queue + localStorage reads/writes. New pattern (40 lines): just `withCredentials: true` + single 401 retry with cookie refresh. No queue needed because cookies handle concurrent requests automatically (no per-request token injection).
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T2)
-- **SIWE flow auto-triggers via useEffect**: `useEffect` watches `isConnected && address && siweState === 'idle'` — triggers SIWE immediately after RainbowKit wallet connect. The `siweState` guard prevents re-triggering on re-renders or after errors.
-- **Signature rejection detection via regex**: wagmi's `signMessageAsync` throws with various messages across wallet providers ("user rejected", "denied", "cancelled"). Regex `/reject|denied|cancel/i` covers MetaMask, WalletConnect, and Coinbase Wallet. On rejection, wallet is disconnected so user can retry cleanly via ConnectButton.
-- **No `useRef` needed for SIWE guard**: Earlier designs used `siweTriggered` ref to prevent double-triggering. The `siweState` signal ('idle' → 'signing' → 'verifying') handles this naturally — `useEffect` only fires when state is 'idle', and `handleSiwe` immediately sets 'signing'.
-- **EIP-4361 Chain ID hardcoded to 42161**: Matches `wagmi.ts` config `chains: [arbitrum]`. If multi-chain support is added later, should read from wagmi's `useChainId()` hook instead.
-- **Disconnect on error enables clean retry**: After any failure (rejection or backend error), `disconnect()` is called. This resets RainbowKit's ConnectButton to its initial state, so the user can click it again to start fresh. Without disconnect, the button would show "Connected" but auth would be stuck.
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T3)
-- **`isFreshRegistration` was dead code**: With RegisterPage deleted in T1, `location.state.freshRegistration` is never set. Removed the state variable and its two conditional references in the onboarding screen (welcome header + dynamic heading text). Simplifies onboarding to always show "GET STARTED".
-- **ExtensionPairing uses interval ref + cleanup**: The countdown timer uses `setInterval` stored in a `useRef` to avoid stale closure issues. `clearTimer` is memoized with `useCallback` and used in `useEffect` cleanup to prevent memory leaks on unmount. The `setCountdown` callback form (`prev => prev - 1`) avoids capturing stale state.
-- **authApi.pairExtension() already wired in T1**: The API client already had the `pairExtension` method from T1's rewrite, so no client changes were needed — just the UI component.
-- **Pairing card placed after exchange accounts**: The `ExtensionPairing` component sits in its own `<Card>` below the exchange accounts card. This separates concerns (exchange management vs browser pairing) and avoids cluttering the exchange CRUD section.
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T4)
-- **Single function replaces four**: `fetchWithCredentials()` (13 lines) replaces `getToken()`, `refreshAccessToken()`, `refreshPromise`, and `fetchWithRefresh()` (40 lines). The cookie-based approach needs no token storage, no dedup mutex, and no header injection — `credentials: "include"` handles everything.
-- **No consumer changes needed**: All 32 files importing from `api/client.ts` use the exported API functions (`fetchTrades`, `fetchOverview`, etc.), not the internal auth helpers. The migration is fully contained within client.ts — zero changes to components.
-- **`fetchCrud` keeps Content-Type header**: Even though `Authorization` was removed, `Content-Type: application/json` must stay for POST/PUT/DELETE bodies. The `...init` spread after `headers` lets callers override when needed (e.g., `uploadJournalImage` omits Content-Type for FormData).
-- **Upload drops Content-Type intentionally**: `uploadJournalImage` previously set `Authorization` but relied on browser auto-setting `Content-Type: multipart/form-data` with boundary. With cookies, it passes no headers at all — browser handles both cookie and multipart boundary.
-- **No localStorage auth references remain**: Grep confirms zero `getToken`, `localStorage`, `Bearer`, `refreshPromise` references in client.ts. Only remaining localStorage usage in journal is `testudo-theme` in Layout.tsx (non-auth, theme preference).
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T5)
-- **`chrome.storage.session` for tokens, `chrome.storage.local` for settings**: Token storage (`getTokens`, `storeTokens`, `clearTokens`) migrated to `browser.storage.session` — tokens auto-clear on browser close (FR-19). Settings, exchange preferences, and active account IDs remain in `browser.storage.local` since they should persist across sessions.
-- **Extension uses `/auth/extension-refresh` not `/auth/refresh`**: The cookie-based `/auth/refresh` endpoint expects HttpOnly cookies. Extensions can't send cookies (isolated context), so they use `/auth/extension-refresh` which accepts `{ refresh_token }` in the JSON body and returns new tokens in the response body.
-- **`TOKEN_SYNCED_FROM_WEB` fully removed**: Deleted token-sync.ts, removed from manifest.json content_scripts, removed from build.ts IIFE_ENTRIES, removed RuntimeMessageSchema variant, removed handler + dispatch entry, removed 4 tests (2 ensureActiveExchange-via-sync, 2 direct TOKEN_SYNCED tests).
-- **JWT claims now `{ sub, wallet_address }` not `{ email }`**: `JwtEmailPayloadSchema` → `JwtWalletPayloadSchema`. `getAuthStatus()` returns `{ authenticated, walletAddress }` instead of `{ authenticated, email }`. Popup AuthContext signal renamed accordingly (`email` → `walletAddress`).
-- **`LoginResponse.user.email` → `wallet_address`**: Both type and schema updated to match backend's `UserResponse { id, wallet_address }`. T6 will replace login/register entirely with pairing, but the schema must match the current backend response shape for any remaining callers.
-- **Popup consumers updated**: HeaderBar.tsx and MainView.tsx both read `auth.walletAddress()` instead of `auth.email()`. The `data-testid="footer-email"` updated to `"footer-wallet"`.
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T6)
-- **LOGIN/REGISTER/FORGOT_PASSWORD → PAIR**: Three message types replaced by single `PAIR: { code: string.length(6) }`. `LoginResponseSchema` renamed to `PairResponseSchema` (same shape — backend `/auth/extension-pair` returns `{ tokens, user }` identically). `LoginResponse` type deleted from types.ts (was unused).
-- **`authenticate()`/`login()`/`register()`/`forgotPassword()` → `pair()`**: api.ts auth wrappers collapsed to single function. `pair(code)` POSTs to `/api/v1/auth/extension-pair` with `{ code }`, parses `PairResponseSchema`, stores tokens + schedules refresh. Same pattern as old `authenticate()` but simpler (no email/password).
-- **AuthContext: 3 methods → 1**: Popup AuthContext dropped `login()` and `register()`, replaced by `pair(code)`. Same message-passing pattern (`browser.runtime.sendMessage({ type: "PAIR", code })`), same success flow (`checkAuth()` on success).
-- **PairView.tsx replaces AuthSection.tsx**: Same glass card layout/styling, but email+password inputs replaced by single 6-digit numeric code input with centered monospace digits. Instructions direct user to web app account settings for code generation. AuthSection.tsx retained in tree but no longer imported.
-- **Test mock needed `storage.session`**: T5 migrated auth to `browser.storage.session` but test mock only had `storage.local`. Added `makeStorageArea()` factory + `session` property to mock. Also added `sessionStorage()` test helper. Fixed LOGOUT assertion to check `session.remove` instead of `local.remove`.
-- **Pre-existing test failures unchanged**: 5 remaining failures are pre-existing from EXT-38 era (EXECUTE_TRADE `break_even_enabled`, token refresh mutex vitest compat, ensureActiveExchange legacy storage keys). Not caused by T6.
-
-### 2026-03-24 — AUTH-03-frontend-auth (Build T7 — Validation)
-- **All three frontends build clean**: `bun run build` passes for testudo-web (tsc + vite, 11.6s), testudo-extension (esbuild Chrome+Firefox, <1s), testudo-journal (vite, 5.8s). No compilation errors.
-- **14/14 acceptance criteria verified**: No email/password UI, no RegisterPage, no localStorage tokens, cookie-based auth with /auth/me, extension pairing flow, token-sync deleted, journal credentials: "include", extension chrome.storage.session — all confirmed via code inspection.
-- **AUTH-03 spec complete**: All 7 tasks (T1-T7) done. Three frontends migrated from email/password + localStorage JWT to wallet-connect SIWE + HttpOnly cookies (web/journal) and device pairing + chrome.storage.session (extension).
-
-### 2026-03-24 — EXT-39-pair-ux (Build T1)
-- **OTP refs array pattern in Solid.js**: `let refs: HTMLInputElement[] = []` with `ref={(el) => (refs[i] = el)}` in JSX. Unlike React's `useRef`, Solid's `ref` callback assigns directly to the array slot during render. No `createSignal` or `createEffect` needed for ref management.
-- **requestAnimationFrame for popup auto-focus**: `onMount(() => refs[0]?.focus())` may fire before the popup DOM is painted in Chrome extension context. Wrapping in `requestAnimationFrame` ensures the input element is visible and focusable.
-- **Paste handler on container, not individual inputs**: `onPaste` is attached to the flex container `div` wrapping all six OTP boxes. This captures paste events regardless of which box is focused, and `e.preventDefault()` stops the browser from inserting text into the focused input.
-- **Session expired detection via stored popupView**: `browser.storage.local.get("popupView")` persists which view the user was on. If auth check returns false but stored view is "main", the session expired between popup opens. Explicit logout sets `popupView: "auth"` first, so no false positive.
-- **OTP box CSS needs light theme overrides**: Dark theme uses `rgba(255,255,255,0.08)` borders, but light theme needs `rgba(0,0,0,0.12)`. Added `[data-theme="light"] .otp-box` selectors in `@layer components` for border-color, focus, and placeholder colors.
-- **Popup bundle size unchanged**: popup.js stayed at 83.4kb after adding OTP component — no new dependencies, just restructured DOM and event handlers.
-
-### 2026-03-24 — EXT-39-pair-ux (Build T2 — Validation)
-- **All 18 acceptance criteria verified via code inspection**: Six OTP boxes, single-digit enforcement, auto-advance, backspace navigation, paste auto-submit, no manual auto-submit, Enter key submit, button disabled state, auto-focus with rAF, underscore placeholder, numbered instructions, dynamic settings URL, loading spinner + disabled inputs, red error text, success checkmark with 800ms delay, expiry hint, session expired banner, Chrome+Firefox build — all confirmed.
-- **Build sizes stable**: popup.js 83.4kb, content.js 47.1kb, background.js 333.2kb — identical for Chrome and Firefox. No bundle size regression from T1.
-- **EXT-39 spec complete**: Both tasks done. PairView upgraded from single text input to six-box OTP with full state feedback. No new dependencies added.
-
-### 2026-03-24 — EXT-40-smart-card-grid (Build T1)
-- **KebabMenu confirmation inline in dropdown**: Rather than replacing the entire dropdown content on confirm, each destructive action (delete, revoke) independently toggles to a CONFIRM/NO row via `confirmAction` state. This lets the user confirm one action without losing access to other menu items.
-- **`isDeleting`/`isRevoking` props unused in ExchangeCard**: These props exist on the interface for T3 wiring (AccountPage tracks which account is mid-delete/revoke for async state), but T1's KebabMenu handles confirmation locally. The kebab closes on confirm click, so the card doesn't need to show "DELETING..." state — the parent's `handleDelete` async updates the list.
-- **`auth_mode` determines CEX/DEX badge, not `ExchangeInfo.type`**: The spec suggested using `ExchangeInfo.type` for the badge, but the card only receives `ExchangeAccount` props (no join with exchanges list). `auth_mode === 'agent_wallet'` reliably indicates DEX (Hyperliquid) vs CEX. Simpler than threading `ExchangeInfo` through props.
-- **Test result display shows latency OR error**: Successful test shows `{latency_ms}ms` in green; failed test shows `{message}` in red at smaller font size. No test result shows `---` as balance placeholder. This dual-purpose area serves as balance placeholder until a future `fetchBalance` integration.
-- **HTML entity `&#x22EE;` for kebab icon**: Using the Unicode vertical ellipsis character directly avoids SVG overhead and matches the spec's `⋮` requirement. Renders consistently across browsers.
-
-### 2026-03-24 — EXT-40-smart-card-grid (Build T2)
-- **AddExchangeCard is stateless**: Pure presentational component — single `onClick` prop, no internal state. The ghost card pattern (dashed border, "+" icon, hover color shift) matches the spec exactly. 12 lines total.
-- **ExtensionPairingBanner duplicates logic from ExtensionPairing**: New component rather than variant prop on existing `ExtensionPairing.tsx` — keeps SoC clean since the banner layout (horizontal flex, inline code display, condensed padding) is structurally different from the card layout (vertical stack, large code block). Both will coexist until T3 swaps the AccountPage import.
-- **Banner code display inline with title**: When a code is active, the banner shows title + code + countdown + "NEW CODE" button in a single flex row. This is much more compact than the original vertical layout with its centered 4xl code block. `flex-wrap` handles narrow viewports gracefully.
-
-### 2026-03-24 — EXT-40-smart-card-grid (Build T3)
-- **Balance fetch is fire-and-forget per card**: After `fetchData()` resolves accounts, each account's balance is fetched individually with `.catch(() => {})`. Cards render immediately with "---", then update as balances arrive. No loading spinner for balances — keeps initial paint fast.
-- **`formatBalance` prioritizes USDT/USDC**: The helper scans `balances[]` for USDT or USDC first (the primary trading assets), falling back to `balances[0]`. Formats as `$X,XXX.XX` with locale-aware number formatting.
-- **Balance and test result now coexist**: T1's ExchangeCard showed test result OR "---" in a single area. T3 separates: balance is the large primary display, test result appears as a small annotation below. Both can be visible simultaneously.
-- **`handleMigrate` opens form with exchange pre-selected**: Instead of navigating or showing a modal, migration reuses the existing form by setting `formExchange` to `'hyperliquid'` and `showForm` to `true`. Same pattern as the old inline migration prompt but triggered from the card's kebab menu.
-- **Form section is full-width below grid, not inside a card**: The add-exchange form spans the full container width below the grid with its own CANCEL button. This avoids grid alignment issues from trying to expand one grid cell.
-- **`max-w-5xl` replaces `max-w-2xl`**: Only on the normal management return path. Onboarding and setupComplete screens retain `max-w-2xl` since they don't need grid width.
-- **Old `ExtensionPairing` import replaced by `ExtensionPairingBanner`**: The card-wrapped vertical ExtensionPairing component is no longer used on AccountPage. The compact banner renders directly via `<ExtensionPairingBanner />` with its own border-top separator.
-
-### 2026-03-24 — EXT-40-smart-card-grid (Build T4 — Validation)
-- **All 13 acceptance criteria verified**: Responsive grid (1/2/3 cols), heartbeat dots (pulsing green / static red), kebab menu with TEST/DELETE/REVOKE, click-outside-close, signal-red destructive styling, ghost card with dashed border, form toggle on ghost click, compact extension pairing banner, max-w-5xl container, all existing functionality preserved, design tokens only (no raw colors), bun run build passes.
-- **AccountPage reduced from 532→438 lines**: Grid layout is more concise than the old stacked-row approach despite adding balance fetching logic. The form section is cleaner with its own CANCEL button below the grid.
-- **EXT-40 spec complete**: All 4 tasks done. Account management UI redesigned from stacked rows to responsive card grid with heartbeat indicators, kebab menus, ghost card, and compact pairing banner. No new dependencies added.
-
-### 2026-03-29 — EXT-43-main-world-bridge
-- **Separate esbuild entry for bridge**: `page-bridge.ts` is bundled as a third IIFE build (no Solid plugin, no sourcemap needed since it runs in page context). Build output: 2.4kb minified.
-- **Bridge IIFE self-executes**: Wrapped in `(function() { ... })()` — runs immediately when injected via `<script>` tag. No exports, no module system.
-- **`isChartPlatform()` replaces `isTradingView()` for symbol-only guard**: The existing symbol-only fallback was gated on `isTradingView()`. Changed to `isChartPlatform()` which includes tradingview.com, dexscreener.com, hyperliquid, gmx.io, bybit.com — prevents spurious modal opens on random websites while enabling multi-platform support.
-- **Bridge tried before DOM strategies**: In the Alt+X handler, bridge `getPositionTool` is attempted first (async), falling back to synchronous DOM scraper strategies. This prioritizes zero-dialog extraction over dialog-dependent strategies.
-- **content.js bundle size +0.4kb**: From 47.8kb to 48.2kb — bridge injection code is minimal (postMessage listener, inject function, bridgeRequest helper with timeout).
-- **No changes to scraper.ts**: Existing 6-strategy scraper is completely untouched. Bridge is additive — runs as a pre-strategy step in content.ts, not inserted into the strategy array.
-
-### 2026-03-29 — EXT-44-hyperliquid-support
-- **FR-7 was pre-satisfied by EXT-43**: `isChartPlatform()` already included `host.includes("hyperliquid")`, so bridge injection worked on Hyperliquid without any changes. The `isHyperliquid()` function was added for readability and used to replace the inline check.
-- **Leaf div walk is the only viable selector strategy**: Hyperliquid uses styled-components with hash classes (`sc-bjfHbI`, `bFBYgR`) that change every build. Text-content matching via regex (`/^[A-Z0-9]{2,10}-USDC$/`) on childless divs is the only stable approach.
-- **Symbol format conversion is a simple hyphen strip**: `BTC-USDC` → `BTCUSDC`. No exchange prefix stripping or perpetual suffix handling needed (unlike TradingView's `BINANCE:BTCUSDT.P`).
-- **DOM strategy [2] won't work on Hyperliquid**: Content script runs in isolated world — `findPositionToolByChartApi()` (strategy 2) can't access `window.TradingViewApi`. The bridge handles this instead. On non-TradingView sites, the DOM fallback path tries `[2]` but silently returns null.
-- **content.js bundle size +0.8kb**: From 48.2kb to 48.6kb — Hyperliquid scraper function and platform detection are minimal additions.
-- **Manifest uses exact domain**: `*://app.hyperliquid.xyz/*` not `*://*.hyperliquid.xyz/*` — the trading app is only on the `app` subdomain. This minimizes permission scope.
-
-### 2026-03-29 — EXT-45-dexscreener-symbols
-- **FR-5 pre-satisfied by EXT-43**: `isChartPlatform()` already included `dexscreener.com`, so bridge injection worked without changes. Same pattern as EXT-44 where FR-7 was pre-satisfied.
-- **`isDexScreener()` added for readability**: Not strictly needed (bridge injection uses `isChartPlatform()`), but follows the `isHyperliquid()` pattern for platform-specific scraper guards and future use in content.ts.
-- **4-strategy fallback for DexScreener symbols**: (1) TradingView legend selectors — DexScreener embeds charting lib directly, so `[data-name="legend-source-item"]` may match; (2) title parens — `(SYMBOL)` in `document.title`; (3) title slash — `TOKEN / SOL` in title; (4) leaf element scan — `XXX / YYY` pattern in childless spans/divs/anchors.
-- **DexScreener check before generic SYMBOL_SELECTORS**: Same cascade pattern as Hyperliquid — platform-specific scraper runs first in `scrapeSymbol()`, falling through to TradingView-targeted selectors only if platform check fails.
-- **No manifest changes needed**: DexScreener was already in `host_permissions` and `content_scripts.matches` from initial manifest setup. Unlike EXT-44 (Hyperliquid), no permission additions required.
-- **content.js bundle size +0.7kb**: From 48.6kb to 49.3kb — DexScreener scraper function is ~35 lines.
-
-### 2026-03-29 — EXT-46-async-scraper-flow
-- **`strategiesToTry` was the root bug**: The existing code passed `isTradingView() ? undefined : [2]` to `scrapeTradeSetup()`, meaning non-TV sites tried only Strategy 2 (chart API via `findPositionToolByChartApi()`). Strategy 2 accesses `window.TradingViewApi` which is inaccessible from the content script's isolated world. With the bridge (EXT-43) handling chart API access in main world, the DOM fallback should only run on TradingView where strategies 0-5 actually work.
-- **`scrapeTimeframe()` was unexported**: Bridge-sourced setups on TradingView should get the real timeframe (e.g., "4h", "1D"), not a generic "chart" label. Added `export` to the existing function — zero behavioral change, just visibility.
-- **`isChartPlatform()` vs `bridgeReady` for outer guard**: `bridgeRequest()` already returns null when bridge isn't ready (internal `bridgeReady` check at line 59). Using `isChartPlatform()` as the outer guard is semantically clearer and doesn't add latency — the promise resolves immediately if bridge isn't ready.
-- **Three-step cascade is cleaner**: Bridge (async, all platforms) → DOM strategies (sync, TradingView only) → symbol-only (sync, all chart platforms). Each step has a clear scope and no wasted work. Previous code attempted DOM strategies on non-TV sites where they could never succeed.
-- **content.js bundle unchanged at 49.3kb**: Code reorganization is length-neutral — removed `strategiesToTry` logic, added `scrapeTimeframe` import and conditional.
-- **Completes EXT-43→46 series**: This spec ties together the main-world bridge (EXT-43), Hyperliquid platform detection (EXT-44), DexScreener symbol extraction (EXT-45), and the revised async scraper flow into a coherent multi-platform Alt+X experience.
-
-### 2026-03-31 — REL-02-hl-journal-pipeline
-- **HL trigger orders never match FillDetector OID gate**: WaitingForTrigger orders return `"cloid:..."` as OID at placement, but the actual exchange assigns a numeric OID when the trigger fires. FillDetector's `get_group_by_exchange_order(oid)` → None → dropped. Neither Python nor Rust HL SDKs solve this. Industry pattern: match on `closedPnl != "0"`, not order ID.
-- **Shared `build_trade_close_event()` extracted to `hl_fill_journal.rs`**: Both `import_worker` (batch) and `ws_fills` (live 30s poll) now use the same conversion logic. Source field distinguishes: `"import_hl"` vs `"live_poll"`.
-- **Borrow checker pattern for `&mut self` + `Arc` in async loop**: When iterating fills and calling `self.record_tid()` (mutable borrow), can't hold `self.journal.as_ref()` (immutable borrow) across the loop. Fix: clone `Arc<JournalService>`, copy `Uuid`, clone `Option<PgPool>` into locals before the loop.
-- **`journal_service` creation moved earlier in main.rs**: Was after WsSubscriptionManager creation. Moved before it so `with_journal()` builder can wire it into the manager.
-- **`open_times` HashMap seeded from startup reconciliation**: 24h REST lookback populates `coin → timestamp` from `fill.dir.starts_with("Open")` fills. Subsequent 30s polls also update it. Used as `open_time_ms` parameter to `build_trade_close_event()` for accurate duration.
-- **Dedup layer: `seen_tids` (in-memory HashSet) + DB unique index**: `seen_tids` prevents redundant DB writes within a process lifetime. `idx_unique_import_fill` on `(user_id, exchange, exchange_fill_id)` catches cross-process duplicates (poller vs import worker).
-
-### 2026-03-31 — REL-03-hl-group-reconciliation
-- **`reconcile_group` is a static async method**: Takes explicit params (`engine_handle`, `exchange_api`, `user_id`, etc.) instead of `&self`. This avoids borrow checker issues — the method is called inside the `for fill in &fills` loop where `self.record_tid()` already holds a mutable borrow.
-- **Symbol format mismatch between HL fills and OrderGroups**: HL fills use bare coin name ("BTC"), OrderGroups use "BTC_USDT" format. The reconciler matches both with `g.symbol == symbol_usdt || g.symbol == symbol`.
-- **`fill.dir` carries close direction**: Values like "Close Long", "Close Short" — used to determine terminal status (StoppedOut vs TookProfit) by comparing exit_price against group entry_price.
-- **Dual pg_notify path**: When REL-03 engine_handle is present, `reconcile_group` emits pg_notify with specific event_type ("stopped_out"/"took_profit") and group_id. When absent (REL-02-only fallback), original generic "trade_closed" notify fires.
-- **Sibling cancel cancels all 3 exchange order IDs**: entry, SL, and TP — the filled one returns OrderNotFound (no-op), the others get cancelled. Same pattern as `fill_detector.rs:cancel_all_related_orders()`.
-
-### 2026-04-01 — CON-01a-daily-stats-regression
-- **TradeManagementState lacks pool**: Needed `pool: Option<PgPool>` field with `with_pool()` builder to resolve exchange_name from exchange_account_id during trade placement. Tests use `new()` which defaults to None — backward compatible.
-- **RehydrationService needed pool for batch exchange_name lookup**: Added `pool: PgPool` to constructor. Uses `SELECT id, exchange_name FROM exchange_accounts WHERE id = ANY($1)` to batch-fetch exchange names for all rehydrated positions. Groups get exchange_name set post-build before engine load.
-- **EngineCommand::ConfigureGroup extended**: Added `exchange_name: Option<String>` field. Handler sets it on the group alongside `exchange_account_id`. Only one call site in trade_management.rs.
-- **parse_trade_close_payload default changed**: From `"cex"` to `"unknown"` for missing exchange field. Consistent with fill_detector's `group.exchange_name.as_deref().unwrap_or("unknown")` fallback.
-- **Daily stats upsert after tx.commit() is correct**: The TradeEventWriter's transaction covers trade_events + managed_positions + journal_trades atomically. Daily stats are post-commit fire-and-forget because they're recomputable from journal_trades. Same SQL as JournalService::upsert_daily_stats — no abstraction needed, just copy the queries.
-- **Draft notes merge pattern**: DELETE FROM journal_trade_drafts RETURNING notes → UPDATE journal_trades SET notes WHERE trade_group_id. Uses pool (not transaction) since it's post-commit. Same pattern as JournalService lines 167-191.
-
-### 2026-04-01 — UXA-01-agent-wallet-visibility
-- **`ExchangeAccountResponse` constructed in 3 places**: `get_user_exchange_accounts()` (exchanges.rs:150), `add_exchange_account()` (exchanges.rs:260), and test in `types/exchanges.rs:275`. All three need `requires_reauthorization` field when adding new fields.
-- **`CexExchangeApi::load_credentials` also uses `list_by_user()`**: When modifying `list_by_user()` to include inactive accounts, CexExchangeApi's fallback path (no explicit account ID) now needs to filter to active accounts explicitly, otherwise it could pick an inactive agent wallet as the "first" account.
-- **`error_code_for()` parallel to `format_exchange_error()`**: Both functions match on the same `ExchangeApiError` enum. Keeping them separate (not merging into a single return struct) preserves backward compatibility — `format_exchange_error` is used in warning strings too, not just API responses.
-- **`ApiResponse` Deserialize requires `error_code` optional**: Since `ApiResponse` derives both Serialize and Deserialize, and existing JSON from clients/tests won't have `error_code`, it must be `Option<String>` with `skip_serializing_if` and default None for deserialization.
-
-### 2026-04-01 — UXA-02-desk-reauth-ux
-- **Account.tsx API key `type="text"` security leak**: The inline add-exchange form in Account.tsx used `type="text"` for the API key input while OnboardingFlow used `type="password"`. Extracting `AddExchangeForm` as a shared component fixed this by using `type="password"` for all credential fields.
-- **WalletConnectFlow step progress adapts to re-auth mode**: Normal flow has 4 steps (Connect, Initialize, Sign, Approve). Re-auth skips Initialize, so step labels and indices are dynamically computed based on `isReauth()` flag. The `init-agent` step in re-auth mode maps to index 0 (same as idle) since it's just fetching approve-data, not generating a keypair.
-- **OnboardingFlow simplified to binary state**: Previously used a 4-step state machine (`select`, `credentials`, `submitting`, `success`) with its own form rendering. After extracting `AddExchangeForm`, OnboardingFlow only tracks `success` boolean — all form logic lives in the shared component.
-- **Account.tsx had 6 dead form signals**: `showWalletConnect`, `formApiKey`, `formSecret`, `formPassphrase`, `formSubmitting`, `needsPassphrase` were all replaced by `AddExchangeForm`'s internal state. Only `formInitialExchange` signal needed (to pre-select exchange for migration flow).
-- **`AddExchangeForm.initialExchange` prop enables migration pre-selection**: When "Migrate to agent wallet" is clicked on a direct-key Hyperliquid card, Account.tsx opens the form with `initialExchange='hyperliquid'`, auto-selecting the WalletConnectFlow path.
-
-### 2026-04-01 — UXA-03-extension-error-recovery
-- **`error_code` flows through 4 layers**: `ErrorResponseSchema` (apiRequest HTTP error path) → `ApiResult` type → `normalizeBackendAck` (HTTP 200 logical error path) → `BackendResponse` type+schema → content.ts response cast. All four must carry `error_code` for end-to-end propagation.
-- **`DESK_URL` already includes `/desk` suffix**: Value is `http://localhost:3002/desk`, so account link is `${DESK_URL}/#/account`, NOT `${DESK_URL}/desk/#/account` as the spec template suggested. Fallback: `https://testudo.vip/desk/#/account`.
-- **Banner uses same Shadow DOM pattern as toasts**: Each banner gets its own shadow host (`testudo-sniper-banner`), reusing `TOAST_STYLES` (which includes `TOAST_CSS` + theme vars). Only one banner active at a time (tracked via `activeBanner` module var) — showing a new one removes the old.
-- **content.ts safely imports from utils.ts**: `DESK_URL` is a plain string constant. `utils.ts` imports only `type { Settings }` which tree-shakes. No Zod or webextension-polyfill pulled into content bundle. content.js grew 2.9kb (49.3→52.2kb).
-
-### 2026-04-17 — RSK-01 T1 (Backend types + route stub)
-- **`rust_decimal` serializes as string by default**: With `rust_decimal = "1.36"` and no explicit serde config, `Decimal` fields serialize as JSON strings (e.g., `"0"`, `"3.5"`). Matches the spec's "decimal as string (convention)" and the existing `ExchangeBalanceEntry` pattern. No `#[serde(with = "rust_decimal::serde::str")]` needed.
-- **Route-scope registration pattern**: New route scopes inside `/api/v1` follow the existing `/risk-config` shape — `web::scope("/foo").wrap(JwtMiddleware::new(token_service.clone())).route(...)`. The `token_service.clone()` is crucial; `JwtMiddleware` takes ownership.
-- **Service-layer types live in the service file**: `risk_config.rs` keeps `RiskConfigResponse` + `ErrorResponse` next to handlers rather than in `types/`. Followed that convention — `RiskSnapshot`, `VenuePositions`, `VenueMargin`, `CorrelationBucket`, `PositionEntry`, `RiskError` all live in `services/risk_snapshot.rs`.
-- **`AuthenticatedUser` post-AUTH-02**: The extractor now yields `{ user_id: Uuid, wallet_address: String }` (not `email`). Always use `user.user_id` for DB lookups.
-- **Stubbed service returns `Ok(zeroed)` for T1**: The spec's vertical slicing calls for a wire-contract task (T1) that the frontend can mock against before real aggregation (T2). `build_snapshot` is async from day one so T2's DB fan-out requires zero signature churn.
-
-### 2026-04-17 — RSK-01 T2 (Backend aggregation logic)
-- **`list_by_user` includes inactive agent wallets, but `load_credentials` filters to active**: `list_by_user` returns rows where `is_active = true OR (auth_mode = 'agent_wallet' AND is_active = false)` so the UI can flag re-auth needs, but `load_credentials` enforces `is_active = true`. The snapshot service skips inactive accounts before fan-out — calling `load_credentials` on them returns `RepoError::NotFound` and would just log noise.
-- **`OnceLock<DashMap<Uuid, _>>` is the lighter-weight cache singleton**: `lazy_static` is in Cargo.toml but `std::sync::OnceLock<DashMap>` plus a `cache()` accessor (`SNAPSHOT_CACHE.get_or_init(DashMap::new)`) needs no macro and gives the same lazy-init semantics. Used for the 5s TTL snapshot cache.
-- **Mark-price approximation for CEX positions**: The CEX sidecar's `SidecarPositionResponse` has `symbol/side/contracts/entry_price/unrealized_pnl` — no mark price. Compute it as `entry_price ± (unrealized_pnl / contracts)` based on side. HL exposes `markPx` and `positionValue` directly in `clearinghouseState.assetPositions[].position` — use them when available.
-- **Stablecoin-only USD-equivalent margin sum**: `fetch_cex_margin` sums entries whose `asset` is in `["USDT","USDC","USD","BUSD","DAI","TUSD","FDUSD"]`. Non-stable assets (BTC/ETH spot balances) are intentionally excluded — futures margin is always stable-denominated, and treating volatile balances as USD-equivalent would lie about free margin.
-- **Async closures in `iter().map(|acc| async move { … })`**: With `app_state: &AppState` captured into the future, `tokio::join!` per-account works without `Box::pin`. `futures_util::future::join_all` collects them. Keep the per-account `acc_id`/`exchange_name` clone outside the `async move` block so the future doesn't borrow from `acc` across the `.await`.
-- **Symbol → base-asset extraction**: Handles `BTC`, `BTC/USDT`, `BTC/USDT:USDT`, `BTC_USDT`, `BTC-USDT`, `BTCUSDT`. Order matters — separator-based splitting first, then suffix stripping. `BTCUSDT` only strips the `USDT` suffix; `BTC` (no suffix) returns as-is.
-- **9 unit tests cover bucket map, base-asset extraction, correlation aggregation, cache invalidation, and JSON shape**: Integration tests against a real `AppState` are deferred to T3 (which needs stub `ExchangeApi` adapters per the plan). The pure helpers (`bucket_for`, `extract_base_asset`, `build_correlation_stack`) are fully testable without DB or HTTP.
-- **`(Vec<_>, Vec<_>)` from `Iterator::unzip()`**: Cleaner than two `.iter().map().collect()` calls when the per-account fan-out returns `Option<(VenueMargin, VenuePositions)>` — `flatten()` drops the failed accounts, then `unzip()` splits margin/positions.
-
-### 2026-04-17 — RSK-01 T3 (Backend aggregation tests)
-- **Router is a binary-only crate**: No `src/lib.rs`, no `[[lib]]` target in `Cargo.toml`. A top-level `tests/*.rs` integration file can't `use router::services::…` because there's no library target to link against. The project's established pattern is inline `#[cfg(test)] mod tests` inside each module — `services/hyperliquid/tests/` is the only exception and lives as a submodule too.
-- **Extract pure aggregation for testability**: Splitting `build_snapshot` into `(fan-out) → (aggregate_snapshot pure fn) → (cache_put)` isolates the math from HTTP/DB dependencies. Tests construct `Vec<VenuePositions>` + `Vec<VenueMargin>` fixtures directly and assert on the returned `RiskSnapshot`. No mock `AppState` or `CexClient` needed.
-- **Spec's "stub ExchangeApi adapters" hint was wrong**: The `ExchangeApi` trait in `services/exchange_api.rs` is for order placement/amendment/cancellation — not balance or positions. `build_snapshot` uses `cex_client` + `hl_http_client` directly, not through `ExchangeApi`. Refactoring to a balance+positions trait would be a cross-cutting change out of T3 scope.
-- **`dec!(0.6)` exact for 12000/20000**: `rust_decimal` division is exact for these fixture values, so `assert_eq!(aggregate_leverage, dec!(0.6))` passes without precision tolerance. Same for `0.5` long/short split — exact in decimal.
-- **`margin_by_venue` sort is a contract**: Tests assert ordering (`hyperliquid` before `bybit` when hl has more free margin) — FR-3 calls for "sorted descending" and the frontend widget relies on it. Verifying order in tests prevents regression if future refactors drop the `sort_by`.
-
-### 2026-04-17 — RSK-01 T4 (Frontend types + API client)
-- **`rust_decimal` → string convention is universal in this client**: Existing interfaces (`AccountStats`, `EquityPoint`, `ExchangeBalanceEntry`, `JournalTrade`) all type Decimal fields as `string`. The `formatters.ts` helpers `parseFloat` at render time. RiskSnapshot follows the same pattern — `net_exposure_usd: string`, `aggregate_leverage: string`, etc.
-- **`Uuid` → `string` in payloads**: The backend's `exchange_id: Uuid` serializes to a plain string via serde. The frontend already types `ExchangeAccount.id: string`, so `VenuePositions.exchange_id: string` matches the existing convention.
-- **`DateTime<Utc>` → ISO string**: `chrono` serializes to RFC3339 strings by default. Same pattern as `JournalEntry.created_at: string`, `ExchangeAccount.created_at: string`.
-- **Narrowed union types for `side` / `direction`**: Used `'long' | 'short'` and `'long' | 'short' | 'mixed'` literal unions. Backend returns these as plain `String`, but the constraints are enforced by the aggregator code (`build_correlation_stack` hard-codes the values). Typing them narrowly on the frontend enables exhaustive switches in T7/T8 widgets.
-- **`fetchWithCredentials` already handles 401 + refresh**: The existing helper (cookie-based) is reused — no new auth path. `fetchRiskSnapshot` is a one-liner that throws on non-2xx (matches `fetchOverview` etc.).
-
-### 2026-04-17 — RSK-01 T5 (LiveRiskStrip + PulseStrip components — mock data)
-- **`formatPercent` expects percent-scale input, not 0..1**: `formatPercent(num)` returns `${num.toFixed(1)}%`. The backend emits `long_pct` as a 0..1 fraction per the type contract, so callers must multiply by 100 before passing in. Failing to do so yields `"0.6%"` for a 60/40 split.
-- **`formatCurrency` always prefixes sign**: Returns `"+$1,000.00"` for positive, `"-$1,000.00"` for negative. For UI fields that are semantically absolute (NET EXPOSURE, FREE MARGIN), strip the leading `+` with `.replace(/^\+/, '')`. Never strip the `-` — we want negative values to show.
-- **Signal-green pulse indicator is the "live" convention**: `WalletChip` and `ExchangeCard` both use `inline-block w-2 h-2 rounded-full bg-signal-green animate-pulse`. PulseStrip uses a slightly smaller `w-1.5 h-1.5` variant to fit the ≤32px row. Amber without `animate-pulse` signals `stale` per spec risk #1.
-- **`useNavigate` from `@solidjs/router` inside a component**: Hook must be called at component top-level (not inside an event handler). Returns a function that accepts a path string (e.g., `/account`). The router is router-root-relative — BrowserRouter `/account` resolves to the `/desk/account` hash route without extra prefixing.
-- **Responsive collapse via Tailwind `md:` breakpoint (768px)**: `grid-cols-2 md:grid-cols-4` handles the 4-metric strip's mobile 2x2 layout. `hidden md:flex` + `flex md:hidden` toggle between compact (`$X / Yx`) and full (`$X · Yx · $Z free`) formats on PulseStrip.
-- **`divide-x` + `divide-container-border` for internal cell dividers**: Cleaner than `border-r` on each child — Tailwind's divide utilities handle the "last-child no border" edge case automatically. Combined with `divide-y md:divide-y-0 md:divide-x` for mode-switching between stacked-mobile and columnar-desktop.
-- **Solid `<For>` preferred over `.map()` even for fixed arrays**: Overview.tsx + StatSection.tsx both use `<For each={...}>`. While `.map()` works for static data, `<For>` is the idiomatic signal-reactive primitive and matches codebase style.
-
-### 2026-04-17 — RSK-01 T6 (Wire real endpoint + Layout + Account composition)
-- **`createResource` with reactive source gates the fetch**: `createResource(() => auth.isAuthenticated(), async (authed) => authed ? fetchRiskSnapshot() : null)`. The source function `() => auth.isAuthenticated()` is tracked; when it flips true the fetcher re-runs and returns `null` for unauthenticated state. Avoids `if (!auth.isAuthenticated()) return null` inside the fetcher, which wouldn't re-trigger on auth-state change.
-- **Positioning context required for flex-column z-stacking**: The Layout has a `fixed z-0` background div, then relatively-positioned `<header class="relative z-50">` and `<main class="relative z-10">`. A static-positioned PulseStrip button would not layer above the fixed background — needed to wrap in `<div class="relative z-50 shrink-0">` before z-index takes effect. CSS z-index requires a positioned ancestor.
-- **Derive ExchangeBalanceResponse from VenueMargin to keep ExchangeCard contract stable**: Rather than refactor `ExchangeCard` to accept `VenueMargin | ExchangeBalanceResponse`, synthesized a minimal `{ balances: [{ asset: 'USDT', total, available, used }] }` from `margin_by_venue` entries. `formatBalance` inside ExchangeCard already looks up USDT/USDC first — the synthesis matches its contract exactly. No component changes needed.
-- **Snapshot owned twice (Layout + Account) is fine**: Both call `createResource(fetchRiskSnapshot)` independently. T2's 5s server-side cache makes the second fetch O(1). Avoided building a RiskSnapshotContext — extra plumbing, no measurable cost savings. Revisit only if the cache window becomes a bottleneck.
-- **Removed `onMount(async () => {})` empty block** in Account.tsx along with `fetchBalances` and `balances` signal. The spec-plan "remove per-account balance fan-out" was satisfied by deleting the initializer, the helper, and the signal together — a single logical change.
-- **Children-render-prop `<Show when={snapshot()}>{(snap) => …}`** flows the narrowed non-null accessor into the child without an explicit non-null assertion. LiveRiskStrip's prop type is `RiskSnapshot` (not `RiskSnapshot | null`), so this pattern avoids both `!` and redundant null-checks in markup.
-- **Help entry keys are flat strings keyed by dotted namespace**: `HELP['risk.exposure']`, `HELP['risk.pulse']` — no nested object. HelpTip renders nothing when the string is empty/undefined (guard in HelpTip.tsx:15), so adding entries is additive without touching consumers. T7/T8 will wire the actual tooltip triggers.
-
-### 2026-04-17 — RSK-01 T7 (PositionsByVenue widget)
-- **Filter venues with zero positions before render, keep them in the count for the empty-state fallback**: `positions_by_venue` ships every connected venue (so `MarginByVenue` in T8 renders them all), but a per-venue positions table for an idle venue is noise. Filter at render time, but compute `venueCount()` from the unfiltered array so the "No open positions across N venue(s)" message stays truthful.
-- **Pulse dot is conditional**: Same `w-2 h-2 rounded-full bg-signal-green animate-pulse` as `ActivePositions.tsx`, but swapped to `bg-text-tertiary/40` (no pulse) when `totalPositions() === 0`. The pulse carries semantic meaning ("live, active exposure") — always-pulsing on an empty hub would be a lie.
-- **`overflow-x-auto` on table container**: Six-column position tables can overflow on ≤ sm viewports. Wrapping `<table>` in `<div class="overflow-x-auto">` gives horizontal scroll rather than column crush. T12 mobile QA will confirm this is sufficient.
-- **Symbol shown verbatim from backend**: `ActivePositions.tsx` strips `_` via `(pos.symbol || '').replace('_', '')` because engine-managed trades use `BTC_USDT` internally. Exchange-side positions returned by the risk snapshot already come in the venue's native format (`BTC`, `BTC/USDT`, `BTC/USDT:USDT`), so no transformation is needed. If UX wants unified display, that's a backend normalization task, not a per-widget one.
-- **Mount outside `max-w-4xl` but inside `!isOnboarding()` Show**: Account.tsx's existing card grid lives in `max-w-4xl mx-auto w-full px-8 py-10`. Positions need wider real estate (6 columns), so the new block sits as a sibling below that container at `px-8 pb-10` full-width — matching LiveRiskStrip's layout convention, not the cards'. The re-auth modal and add-exchange modal are `fixed inset-0` overlays, so they're unaffected by tree placement.
-
-### 2026-04-17 — RSK-01 T8 (MarginByVenue + CorrelationStack widgets)
-- **Sort via spread then `sort_by`**: `[...props.snapshot.margin_by_venue].sort(...)` — `Array.prototype.sort` mutates; spreading avoids mutating the snapshot prop (SolidJS signals would flag this as a reactivity violation even if the data were owned).
-- **Min-width floor on correlation bars**: Raw `(value/max)*100` can produce bar widths under 1% when one bucket dominates (e.g. 95% BTC, 5% ETH → ETH bar invisible). `Math.max(2, Math.min(100, pct))` floors at 2% so small buckets remain visible. This is a UX choice (visibility > proportional fidelity); the numeric value next to the bar stays truthful.
-- **Scale bars relative to max bucket, not sum**: Spec said "width proportional to effective_notional_usd" — scaling to `max` rather than `sum` makes the largest bucket always fill 100% and communicates *relative* stack rather than *share of total*. "Share of total" would need a different chart (stacked bar). Max-scaled matches the "directional stacking" mental model in the spec.
-- **Direction coloring uses signal palette**: `bg-signal-green` for long, `bg-signal-red` for short, `bg-signal-amber` for mixed — matches T5's LiveRiskStrip leverage threshold colors and repository-wide convention. No new colors introduced.
-- **Contributing symbols both as `title` attr AND inline row**: Spec said "hover/touch shows contributing symbols" — but `title` alone is invisible on touch devices and non-discoverable. Inline `·`-separated row below the bar makes the information always visible at a low-noise level. `title` attr preserved for desktop hover affordance and A11y tools.
-- **Account.tsx outer container switched to `flex flex-col gap-8`**: T7 used `px-8 pb-10` directly on the positions wrapper. For T8's grid-beside-positions layout, lifted the gap to a parent flex column so the rhythm is consistent. Single source of vertical spacing, avoids accumulating `mt-8` per sibling.
-- **`stripSign` as shared helper pattern**: `formatCurrency` always prefixes `+` for positive values. For FREE/USED/TOTAL fields that are semantically absolute (never negative in display), `.replace(/^\+/, '')` strips the sign. Repeated the helper in both MarginByVenue and CorrelationStack — duplication is acceptable (3 lines each) over premature abstraction to a shared util. If a third consumer emerges, lift it to `formatters.ts`.
-
-### 2026-04-17 — RSK-01 T10 (WebSocket live push + polling fallback + stale indicator)
-- **ws-stream subscription wire format is unchanged across surfaces**: `{ method: "SUBSCRIBE", params: ["order.{user_id}"], id: 1 }` matches `ws-stream/src/types.rs:10` and the extension's `testudo-extension/src/background/websocket.ts:103`. Response frames have `{ stream: "order.{user_id}", data: {...} }` — we only need `stream.startsWith("order.")` to treat them as risk events (ignore sidecar.health etc.). No Zod parsing needed in the journal; any malformed frame is swallowed by the `try/catch`.
-- **`createResource` returns `[resource, { refetch, mutate }]`**: Existing Layout code only destructured `[pulseSnapshot]`, losing the control object. Destructuring the second element as `{ refetch: refetchPulse }` keeps the source-gated auto-refresh and unlocks manual triggering for WS-push + polling fallback — no changes to the fetcher itself.
-- **`createEffect` reconciliation is idempotent — use it**: Gate the WS on `auth.isAuthenticated() && auth.user()?.id`. `wsClient.connect(uid)` tears down any existing socket before reconnecting, and `wsClient.disconnect()` is safe to call repeatedly. This means one effect can cover login, logout, and user switching without state tracking.
-- **Polling fallback as a second effect, not a combined one**: One effect handles WS lifecycle, a second drives the 30s interval. Splitting them means `wsClient.connected()` is the only dependency of the polling effect — when WS state flips, polling flips in response without re-running the connect/disconnect logic.
-- **Reactive staleness requires a time tick**: `Date.now() - Date.parse(snapshot.as_of) > 60_000` is correct but computed only when its inputs change. Without a `setInterval(setNow(Date.now()), 10_000)` signal, the PulseStrip would stay green forever after a WS disconnect — `snapshot` never changes, so the derived `pulseStale()` never re-evaluates. The 10s tick is the cheapest way to get reactive freshness.
-- **`VITE_WS_URL` resolved via `import.meta.env` with inline default**: No `.env.example` touched (security policy: never read/create `.env*`). `vite-env.d.ts` doesn't exist in this project — Vite auto-types `VITE_`-prefixed vars as `string | undefined`. A cast `(import.meta.env.VITE_WS_URL as string | undefined) || 'ws://localhost:4000'` is sufficient.
-- **`connected` prop defaults true on PulseStrip**: Existing mock callers (and any future consumer passing only `snapshot`) keep the pulsing-green dot. Only Layout's real call-site threads through `wsClient.connected()` and flips to the polling (no-pulse) state. Zero breakage.
-
-### 2026-04-17 — RSK-01 T11 (Pulse Strip preference toggle)
-- **Module-scoped `createSignal` is the cross-component shared-state pattern here**: `createSignal` called at module top-level yields one persistent signal for every importer. No Context provider, no event bus, no `window.dispatchEvent(new StorageEvent(...))` hack — Layout reacts to Account's toggle automatically because both read the same accessor. Matches the codebase's existing `lib/` conventions (no `lib/` modules currently own reactive state, but the mechanism is the cleanest option and costs no extra plumbing).
-- **localStorage default is "on" via `!== 'off'` check**: Simpler than `value === null || value === 'on'` because it handles both the unset case and any legacy/typo-ed value by defaulting to enabled. FR-11 spec says "default on" — this is the minimal expression.
-- **Try/catch around `localStorage` is load-bearing**: Private mode / iframes can throw on read or write. Signal initializer and setter both wrap in try/catch so the UI never hard-crashes on first render; the preference is just best-effort persistence.
-- **Toggle lives in the existing subheader `justify-between`**: Account.tsx's `<div class="flex items-center justify-between ...">` already had `justify-between` with only the `<h1>`, so the toggle drops into the right-hand slot without layout churn. No new row added above/below.
-- **`aria-pressed={pulseStripEnabled()}` for A11y**: Toggle button semantics without a full switch role — simpler and sufficient for a binary ON/OFF. Screen readers announce pressed/unpressed state.
-
-### 2026-04-17 — RSK-01 T12 (Final verification)
-- **Mechanical verification is the autonomous scope; live QA is deferred**: Vox can assert on cargo test counts, clippy cleanliness, build success, git history (Overview untouched), and structural responsiveness (Tailwind breakpoint classes in the rendered JSX). It cannot exercise a real 2s-WS-push flow or sweep pixel-level viewport widths without a browser + live exchange state. The plan's T12 entry distinguishes "performed" from "deferred to live session" so future audits know what was actually checked.
-- **Full test suite: 1,098 passing, 0 failing** across common_utils (304), engine (108×2 for lib+bin counts), pg_queue (11), router (540), sqlx_postgres (17), ws_stream (10). Up from AUTH-02-era 1,013 — +85 tests across RSK-01 backend (risk_snapshot + downstream).
-- **Clippy warnings stable at 3 pre-existing**: `cex_client.rs:649` `useless_conversion`, `actor.rs:1814` `unused_variables`, `evaluator.rs:188` `manual_contains`. None introduced by RSK-01.
-- **Output file truncation with `| tail -N` on background tasks**: Background Bash output is captured as the literal stdout of the command — when the command pipes through `tail -15`, only 15 lines land in the output file. For full test output, omit the tail pipe or grep the raw output file. Important for autonomous verification tasks that need complete logs.
-- **Overview regression check via `git log -- path`**: Simpler than a DOM snapshot test. `git log --since="$SPEC_DATE" -- testudo-journal/src/components/Overview.tsx` returning zero commits, combined with a clean `git diff` working tree, is sufficient evidence that the Overview component tree is byte-identical at source level. The rendered DOM can still change via CSS tokens — but those are intentional theming-layer changes, not RSK-01 regressions.
-
-### 2026-04-18 — RSK-01a T1 (Overview hero consolidation + strip deletions)
-- **WS ownership migrates cleanly from Layout to Overview**: Because `createRiskWsClient` is a factory (not a module singleton), Overview can own its own instance with no special teardown. `onCleanup` inside Overview fires on route change (`/` → `/account`), so the WS disconnects before Account mounts its own future resource. No double-subscription possible when the two consumers are sibling routes.
-- **Hero layout gains `flex-wrap` for multi-metric overflow**: Original hero had only 2 items (`gap-10`). With 5 inline metrics + live dot, the row can exceed viewport width on mid-sized displays. Adding `flex-wrap` to both desktop and mobile hero rows prevents overflow without dropping the shared baseline alignment.
-- **Secondary metrics use `text-2xl md:text-3xl`, dominant metrics keep `text-4xl md:text-5xl`**: Visual hierarchy preserves Net P&L + balance as dominant; exposure / leverage / free as subordinate. Labels shrink from `ml-3` to `ml-2` and all use `text-sm` to keep the hero scannable.
-- **`hidden md:flex` almost broke mobile accidentally**: Wrapping the desktop column in `hidden md:flex` would have hidden the calendar + charts on mobile. Caught before commit — the desktop container must stay unconditional (`flex flex-1 min-h-0`); only the aside sidebar is `hidden md:block`. The *mobile strip* is `md:hidden` (conditional on the inverse breakpoint), not the container.
-- **Live/stale dot uses same classList trichotomy as PulseStrip used to**: green + pulse (WS connected, fresh), green static (polling, fresh), amber (stale). Preserved by copying the three-case `classList` from PulseStrip into the dot's `<span>` in Overview. No new visual grammar.
-- **`relativeTime(snap)` helper returns "last updated: Ns ago"** and is used verbatim as `title` attr on the dot. Hover reveals the timestamp for desktop affordance; mobile screen readers announce it via aria-label.
-- **Layout.tsx drops ~65 lines**: snapshot + WS + polling + stale ticker + pulse-strip-enabled block all gone. Remaining responsibility: nav header, theme cycling, lock/connecting/error screens, standalone-page carve-out.
-- **Stale comment cleanup**: `RSK-01 T6: Snapshot drives LiveRiskStrip and per-card balance display` referred to deleted consumers. Removed because both LiveRiskStrip (T1) and the synthesized balance path (T2 upcoming) are going away. Keeping stale comments on file boundaries creates "what does this even do" confusion later.
-
-### 2026-04-18 — RSK-01a T2 (ExchangeCard margin breakdown)
-- **`snapshot?: RiskSnapshot` prop beats pre-synthesized `balance?`**: Moving the `margin_by_venue.find(m => m.exchange_id === props.account.id)` lookup into the card eliminates the `venueMarginFor` / `balanceForCard` helpers on Account.tsx entirely. The card is the correct owner of venue-specific derivation — Account just hands over the raw snapshot and lets each tile self-serve. Net ~15-line deletion on Account.tsx, with the lookup cost identical (one `.find` per card either way).
-- **Free-ratio bar reuses CorrelationStack's grammar**: `h-1.5 bg-text-primary/5 w-full` track + inline `bg-signal-green` fill with `style={{ width: `${pct}%` }}`. Same two-div pattern as CorrelationStack:86–91. Keeps visual language coherent; no new primitive needed.
-- **`formatBalanceUsd(raw)` strips sign at the source**: Unlike `formatCurrency` which prefixes `+`/`-`, margin values are always semantically non-negative (total/free/used in USD-equivalent). Using `Math.abs()` inside a dedicated helper is simpler than `.replace(/^[+-]/, '')` post-hoc, and expresses intent clearly.
-- **`freeRatio` guards against `total <= 0` and non-finite values**: A venue with 0 total (pre-balance-sync or deleted) would produce `NaN`/`Infinity`. Clamp to `[0, 100]` with `Math.max(0, Math.min(100, pct))` and `isFinite` checks. Prevents a 0-width bar from silently showing a broken style attribute.
-- **`Show when={venueMargin()}` fallback = "Margin unavailable"**: Spec risk #1 calls for a defensive lookup-miss path. Rendering a small tertiary-colored inline message (not a crash, not "---") signals: "the card is healthy but snapshot hasn't provided data for this venue yet" — distinct from the reauth error state (which uses an amber banner + button).
-- **`mt-auto flex flex-col gap-2` preserves vertical stacking**: Previous card had `mt-auto` on the balance block alone. New version nests the margin breakdown (which uses internal `gap-1.5`) + optional test result inside a single flex column that still pushes to the card's bottom. Positions slot (T3) will land in this same container below test-result.
-
-### 2026-04-18 — RSK-01a T3 (ExchangeCard positions + delete Positions/Margin widgets)
-- **Inline `PositionsSection` + `PositionRow` beat extracting sub-components**: Spec risk #5 called for extracting `ExchangeCardMargin`/`ExchangeCardPositions` only if the file exceeds ~250 lines. After T3 the file is ~350 lines, but most of that is the existing `KebabMenu` (130 lines) — the actual positions code is small and tightly coupled to the card's prop shape. Kept them as non-exported module-level functions to avoid over-abstraction.
-- **`pt-3 border-t border-container-border/50` separator between margin and positions**: Inside the card's content block, a top border on the positions section creates the visual `── N POSITIONS ──` divider without needing a hairline rule or a dedicated label row. Keeps the "spec mockup" ASCII-art feel intact.
-- **Positions render even when `venueMargin()` is undefined**: The margin `Show` has its own fallback ("Margin unavailable"), and the positions section sits as a sibling after it — not nested inside. If a venue has open positions but no margin data yet (e.g., balance fetch race), positions still render. Decoupling the two sections means each fails independently.
-- **`For` over `.map()` for positions list**: Even with a typically-short (0–3 items) positions list, `For` is idiomatic Solid. `.map()` would work but doesn't match the codebase's reactive primitive convention.
-- **`PositionEntry` added to api/client.ts imports in ExchangeCard**: Already exported from `api/client.ts` for `PositionsByVenue.tsx` (now deleted). Reusing the same type keeps the wire contract as the single source of truth — no type duplication.
-- **Help-content entries for deleted widgets removed cleanly**: `risk.positions_by_venue` and `risk.margin_by_venue` keys were only referenced in the deleted files. Removing them from `help-content.ts` is a safe cleanup. The surviving `risk.exposure`, `risk.leverage`, `risk.margin`, `risk.correlation` keys stay — they're for widgets that remain (or will be added as HelpTips to the new margin/positions sections in a future pass if needed).
-- **CP-3 acceptance criterion "positions update within 2s on WS fill" is NOT satisfied here**: Account.tsx still has no WS handle, only a bare `createResource(fetchRiskSnapshot)`. Positions refresh on route-remount or page-reload. Flagged in planning's Discoveries as a carry-over latent gap — the spec FR-10 says WS ownership should move to Account too, but the plan deferred it. If needed, Account could mirror Overview's WS + polling lifecycle in a fast-follow (~30 lines).
-
-### 2026-04-18 — RSK-01a T4 (CorrelationStack top-mount + 3-col grid with filler)
-- **Early-return at top of component is the cleanest FR-7 implementation**: `if (props.snapshot.correlation_stack.length < 2) return null;` before any derived accessors runs. Deletes the entire empty-state fallback branch plus the outer `<Show when={buckets().length > 0}>` wrapper — the `< 2` guard subsumes both. Solid components returning `null` reserve no DOM and no vertical space, exactly matching the "zero height, no border, no label" acceptance criterion.
-- **Filler math simplifies to `Math.max(0, 2 - accounts.length)`**: Grid always has `<For each={accounts}>` + one explicit `<AddExchangeCard>` = `accounts.length + 1` tiles. Target minimum for a full `lg:grid-cols-3` row is 3. So filler count = `max(0, 3 - (accounts.length + 1))` = `max(0, 2 - accounts.length)`. With 0/1/2/3+ accounts → 2/1/0/0 extra fillers. Simpler than breakpoint-aware counts; md viewports with `grid-cols-2` wrap the filler to a second row cleanly.
-- **`max-w-4xl` → `max-w-6xl` required for 3-col at lg**: `max-w-4xl` caps at ~56rem (896px) which squeezes three min-w cards. `max-w-6xl` = 72rem (1152px) gives each card ~360px at `gap-8`, matching the spec mockup density. Applied to all three Account page sections (correlation top, grid middle, coach bottom) for consistent horizontal rhythm.
-- **Three separate `max-w-6xl` wrapper divs, not one outer**: Correlation section uses `pt-8`, grid uses `py-10`, coach uses `pb-10`. Different vertical padding per section makes a single outer wrapper awkward. Three sibling divs each with `max-w-6xl mx-auto w-full px-8` is cleaner and preserves the existing form/reauth modal placement inside the grid div (they're `fixed inset-0` overlays anyway — position-independent of the grid wrapper).
-- **CorrelationStack's `Show` import stays**: Early return deletes the outer `<Show>` but the inner `BucketRow` still uses `<Show when={props.bucket.contributing_symbols.length > 0}>` at line 92. Don't remove the import reflexively — verify with grep.
-
-### 2026-04-18 — RSK-01a T5 (Verification)
-- **Final LOC delta: −239 lines across testudo-journal/** (307 insertions, 546 deletions). Matches planning estimate of ~−240. Consolidation target achieved — this spec genuinely deleted more than it added. The deletions: 5 component files (PulseStrip, LiveRiskStrip, MarginByVenue, PositionsByVenue, pulse-strip-preference) + ~65-line lifecycle block from Layout.tsx + helpers from Account.tsx. The additions concentrated in Overview.tsx (+179, hero + WS lifecycle) and ExchangeCard.tsx (+122, margin + positions sections).
-- **Overview.tsx modification contained to CP-1 commit**: `git log -- Overview.tsx b35bc31..HEAD` shows only `704dc5b` (T1). No accidental downstream changes in T2-T4. The Overview page's analytics (calendar, charts, radar, sidebar) byte-identical at source level from the spec baseline — only the hero row changed.
-- **Journal.tsx and Pair.tsx: zero commits in diff**: `git log -- Journal.tsx b35bc31..HEAD` and same for Pair.tsx both return empty. Non-goal "no changes to Journal/Pair headers beyond PulseStrip removal" verified — those pages weren't touched in source. Structural effect (PulseStrip removed from Layout → Journal/Pair headers shift up ~28px) propagates through Layout changes alone.
-- **Grep sweep clean**: `PulseStrip|LiveRiskStrip|PositionsByVenue|MarginByVenue|pulse-strip-preference|testudo-pulse-strip` returns zero hits across `testudo-journal/src/`. Dead-reference elimination complete.
-- **Cargo check baseline preserved**: `cd testudo-exchange && cargo check --all-targets` passes with only pre-existing `actor.rs:1842` unused-variable warning. Non-goal "no backend changes" verified.
-- **Mechanical verification is the autonomous scope; live QA deferred**: Vox asserted on build exit codes, LOC delta, git log diffs, grep absence, and responsive Tailwind classes in rendered JSX. Live 2s WS-push propagation, pixel-level viewport sweeps (320/375/414/768/1024/1440), and multi-venue correlation-stack fixtures require a running browser + live exchange state — those remain for human session QA. Same verification pattern as RSK-01 T12.
-
-### 2026-04-18 — RSK-02 T1 (Backend migration + DTO + persistence)
-- **OrderGroup (in-memory actor state) is the source of truth for TradeClosed payloads**: `fill_detector::emit_trade_closed()` reads directly from `&OrderGroup`, not `managed_positions`. For `setup_tag` to reach `journal_trades`, it had to land on `OrderGroup.setup_tag` via a new `ConfigureGroup` command field. `managed_positions.setup_tag` is a secondary store for rehydration after router restart — populated in parallel by `tm.register(managed)` in the request handler.
-- **`EngineCommand::ConfigureGroup` is the single place to write optional group metadata**: Already carries `exchange_name`, `exchange_account_id`, `risk_amount` — adding `setup_tag: Option<String>` is mechanically identical (`if setup_tag.is_some() { group.setup_tag = setup_tag; }`). The pattern scales cleanly. Only one production call site (`routes/trade_management.rs::create_trade`).
-- **`rehydration::build_order_group` carries setup_tag forward through restart**: `ManagedPosition.setup_tag` from the DB → `OrderGroup.setup_tag` via `position.setup_tag.clone()`. If this wasn't done, a router restart would silently drop the tag between open-trade and close-trade, so the analytics bucket would be `(untagged)` for any trade in flight at restart.
-- **`PositionRepository::create_table()` needs both CREATE TABLE + idempotent ALTER**: `managed_positions` uses this hybrid path (not sqlx migrations) to create/upgrade itself at router startup. The proper sqlx migration file is the canonical source, but the idempotent ALTER block catches fresh DBs that boot before migrations run. Add `ADD COLUMN IF NOT EXISTS setup_tag TEXT` to both.
-- **`sqlx::query_as::<_, JournalTrade>` with `SELECT *` auto-picks up new columns**: As long as the `JournalTrade` struct has the field and the DB column exists, no SQL changes needed on `SELECT * FROM journal_trades WHERE id = $1` call sites. Only the explicit column-list queries (`journal_service.rs` and `trade_event_writer.rs` INSERT + RETURNING) need updating.
-- **Clippy `redundant_guards` caught `Some(trimmed) if trimmed.is_empty()`**: Cleaner as `None | Some("")` combined arm. `&str` pattern matching on `""` is idiomatic Rust and emits no guard.
-- **Test count before/after**: 540 → 544 router tests (+ 4 new RSK-02 tests), 1,098 → 1,102 total. All passing. Zero new clippy warnings beyond pre-existing three.
-
-### 2026-04-18 — RSK-02 T2 (Extension schema + types + payload passthrough)
-- **`...setup` spread in content.ts auto-forwards new TradeSetup fields**: Line 290 of `content.ts` spreads the scraped setup into the `EXECUTE_TRADE` payload. Adding `setup_tag?: string | null` to `TradeSetup` makes it flow through without touching content.ts — same pattern as existing optional fields.
-- **`z.string().trim().max(48).nullable().optional()` accepts 4 shapes**: `"foo"`, `null`, `undefined`, and omitted — all pass. `trim()` coerces `"  foo  "` → `"foo"` before max-check. 49-char string rejects. Matches backend's `Option<String>` on CreateTradeRequest.
-- **Extension test mock missing `browser.commands`**: EXT-46 added a browser-level Alt+X hotkey via `browser.commands.onCommand.addListener` in background.ts, but the vitest mock for `webextension-polyfill` doesn't stub `commands.onCommand`. Result: `background.test.ts` now has 28 failures (up from AGENTS.md's documented 7), all `TypeError: Cannot read properties of undefined (reading 'onCommand')`. Pre-existing — NOT caused by RSK-02 changes. Fix is out of scope here; requires adding `commands: { onCommand: { addListener: vi.fn() } }` to the mock.
-- **`body.setup_tag` only set when trimmed length > 0**: Empty string, whitespace-only, null, or undefined all collapse to "omit the field from the body." Backend's `Option<String>` treats absent JSON field and explicit `null` identically — both deserialize to `None`. Cleaner than sending `null` explicitly.
-- **Build deltas**: `dist/chrome/content.js` 53.2kb (unchanged from pre-T2), `dist/chrome/background.js` 333.9kb (+0.7kb for schema + trim logic), `dist/chrome/popup/popup.js` 79.4kb (unchanged — popup doesn't consume TradePayloadSchema). Firefox bundles identical sizes.
-
-### 2026-04-18 — RSK-02 T3 (Backend autocomplete endpoint)
-- **Path is `/api/v1/journal/setup-tags`, not `/api/user/setup-tags`**: Spec's draft path doesn't match codebase convention. No `user.rs` routes module exists, and this is journal-domain data. Placed the route inside the existing `/journal` scope next to `/tags`.
-- **`MAX(closed_at)` with `FromRow` works with `DateTime<Utc>` field**: sqlx maps `TIMESTAMPTZ` to `DateTime<Utc>` even when wrapped by `MAX()`. The aliased column (`AS last_used`) binds to the struct field by name. No `NULLIF`/fallback needed because `GROUP BY setup_tag` guarantees at least one row per group, so `MAX` is never NULL.
-- **`setup_tag <> ''` guard in addition to `IS NOT NULL`**: T1's `CreateTradeRequest` normalization filters empty/whitespace-only strings to `None`, but legacy data or external imports could still contain empty strings. Belt-and-braces filter at the read path ensures the autocomplete never suggests `""`.
-- **Clamp via `.unwrap_or(20).clamp(1, 100)`**: Two-line pattern — default-then-clamp. `Option<i64>::unwrap_or` + `i64::clamp` compose cleanly. Prevents clients from requesting `limit=999999` to enumerate the entire tag history.
-- **No new tests added**: `journal.rs` (1592+ lines, ~100 handlers) has zero `#[cfg(test)] mod tests` blocks — the codebase pattern is to test pure logic in dedicated service/model files, not HTTP handlers. The list_setup_tags handler's only non-trivial logic is the one-line clamp, which isn't worth extracting. Verification is full-suite regression (1,102 tests still passing).
-- **Route registration next to `/tags`**: Semantic sibling — both are tag CRUD endpoints. Placed after `delete_tag` in the scope chain.
-
-### 2026-04-18 — RSK-02 T4 (Extension TradeForm Setup field + autocomplete)
-- **Document-capture keydown + shadow-DOM child conflict**: TradeForm's `handleKeyDown` is registered on `document` with `capture: true` (line 138) to catch Enter/Escape anywhere in the modal. Events dispatched on a Shadow DOM input still fire this capture listener BEFORE the input's own `onKeyDown`. Fix: gate Enter/Escape inside the document-level handler on `showSuggestions() && filteredTags().length > 0` and route to `acceptHighlightedTag()` / `setShowSuggestions(false)` first, then fall through to the normal confirm/dismiss path. ArrowUp/ArrowDown/Tab aren't intercepted at document level, so those stay on the input's own `onKeyDown`.
-- **Module-scoped cache survives modal remount, not content-script reload**: `let setupTagCache: { tags: string[]; fetchedAt: number } | null = null;` at module scope. TradeForm is torn down on every modal dismiss (Shadow DOM unmount), but the module lives as long as the content script — usually the full page session. 5-min TTL matches spec risk #4. Pre-populated from cache on next mount via `createSignal<string[]>(setupTagCache?.tags ?? [])`.
-- **`browser` access in TradeForm.tsx uses globalThis pattern**: TradeForm is bundled into `content.js` (via modal.tsx), which intentionally drops `webextension-polyfill` (per EXT-43-era bundle optimization). Pattern `const browser = (globalThis as any).browser ?? (globalThis as any).chrome;` mirrors scraper.ts + content.ts. Direct import of `webextension-polyfill` would re-bloat content.js by ~10kb.
-- **`onBlur` + 150ms timeout for click-to-select**: Dropdown items use `onMouseDown` (not `onClick`) with `e.preventDefault()` so the input retains focus and blur doesn't fire. But some platforms still race blur-vs-mousedown — the 150ms timeout gives the mousedown handler time to set `setShowSuggestions(false)` before the blur handler does.
-- **Bundle size delta**: content.js 53.2kb → 56.2kb (+3.0kb for Setup field + autocomplete + cache). background.js 333.9kb → 334.4kb (+0.5kb for `listSetupTags` + handler + `SetupTagsResponseSchema`). popup.js unchanged. Chrome and Firefox builds identical sizes.
-- **28 pre-existing test failures unchanged**: `TypeError: Cannot read properties of undefined (reading 'onCommand')` from EXT-46's `browser.commands.onCommand.addListener` — the vitest mock for `webextension-polyfill` has no `commands` property. NOT caused by T4 (documented under RSK-02 T2 discoveries). 274 passing unchanged.
-
-### 2026-04-18 — RSK-02 T5 (Auto-tag on trade close)
-- **`pub(crate)` free function over method**: `upsert_auto_tag(pool, user_id, trade_id, raw_tag)` lives as a module-level `pub(crate)` helper in `journal_service.rs`, not as a method on `JournalService`. Reason: `TradeEventWriter` doesn't hold a `JournalService` reference (it holds `&PgPool` directly). A free function lets both call-sites share the same code without coupling the two services. Matches the codebase's preference for plain helpers over struct-coupled abstractions (same pattern as `compute_derived_fields`).
-- **`ON CONFLICT DO UPDATE SET name = EXCLUDED.name RETURNING id` is the idiomatic "upsert and always return id" pattern**: `DO NOTHING` on conflict skips RETURNING entirely, which would require a follow-up `SELECT`. The no-op `DO UPDATE SET name = EXCLUDED.name` forces the conflicting row to be "updated" (same value) so RETURNING fires. Single round-trip for "get-or-create" semantics.
-- **TradeEventWriter auto-tag path needs a trade_id lookup post-commit**: Unlike `record_trade_close` (which has `trade.id` from the INSERT RETURNING), `TradeEventWriter::insert_journal_trade` doesn't return the row. After `tx.commit()`, a `SELECT id FROM journal_trades WHERE trade_group_id = $1` fetches it. Cheap (indexed unique key) and matches the existing post-commit fire-and-forget pattern used for daily stats and draft notes.
-- **`trade.setup_tag.as_deref()` vs `event.setup_tag`**: In `record_trade_close`, use the `trade` (the returned `JournalTrade`) as the source of truth — this is the canonical persisted casing. In `TradeEventWriter::flush_transaction`, use `close_event.setup_tag` (parsed from the payload) since the trade row is looked up separately and the payload's tag matches what was just committed. Both produce identical results (backend doesn't mutate the tag on write) but using the respective in-scope variable keeps the code local.
-- **Lowercased dedup preserves display casing**: `journal_trades.setup_tag` stores user's original casing ("Breakout"). `journal_tags.name` stores lowercased ("breakout"). The UNIQUE(user_id, name) constraint on `journal_tags` naturally collapses case variants. Users see their casing on the trade detail, and a single tag badge rolled up across case variants.
-- **Test count: 1,102 → 1,102 (unchanged)**: No new tests added. Auto-tag helper hits two DB tables, and the codebase pattern for DB-touching code is not to add unit tests — pure logic (compute_derived_fields, parse_trade_close_payload, normalization helpers) is tested inline; DB ops are verified via the full suite + manual QA. Following the same policy established in T3.
-
-### 2026-04-18 — RSK-02 T6 (Setup breakdown analytics endpoint)
-- **SQL lives in `TimeSeriesService`, not the route handler**: Existing analytics endpoints split responsibility — `services/journal_timeseries.rs` owns the sqlx query + row→domain mapping, `routes/journal.rs` owns HTTP DTO shaping and `DataWrapper { data }` envelope. `setup_breakdown` follows the same split. Placing SQL in the route handler would have been shorter but broken the pattern.
-- **`analytics_pool` (not `pool`) for analytics endpoints**: `AppState` carries two pools. `pool` is the primary write pool used by `list_setup_tags` (T3) and trade writes. `analytics_pool` is the read-optimized pool used by every `/analytics/*` endpoint. Handler constructs `TimeSeriesService::new(app_state.analytics_pool.clone())`. Mismatching these is an easy bug — verified against `symbol_breakdown`'s pattern.
-- **`COALESCE(NULLIF(LOWER(setup_tag), ''), '(untagged)')`**: Two-stage collapse — `LOWER` for case-insensitive dedup (design decision 5), `NULLIF(..., '')` catches legacy/empty-string rows the T3 normalization may have missed, then `COALESCE` folds NULL to `(untagged)` per the acceptance criterion. Same expression used in both `SELECT` and `GROUP BY` (Postgres requires identical expressions for grouping aliases).
-- **`GREATEST(COUNT(*), 1)` instead of `NULLIF(COUNT(*), 0)`**: `COUNT(*)` per group is guaranteed ≥1 by `GROUP BY` semantics, so the zero-guard is cosmetic. Chose `GREATEST` to stay consistent with `symbol_breakdown` (line 308) rather than introducing `NULLIF`. Both produce the same result on non-empty groups.
-- **Expectancy computed in SQL, not client**: `SUM(net_pnl) / GREATEST(COUNT(*), 1)` is cheap in Postgres and avoids a second pass in the frontend. Unlike `ExpectancyBySymbol.tsx` (which derives from `total_pnl / trade_count` client-side), this endpoint pre-computes because expectancy is the default sort key — sorting the server response directly is simpler than sorting an in-memory derived view.
-- **No unit tests added**: Consistent with the established T3/T5 policy. `setup_breakdown` is pure SQL — no branching logic, no computed helpers. Verification path: full `cargo test` regression + manual QA per the spec's acceptance criteria in T10.
-- **Test count stable at 1,102**: No new tests in T6. 544 router tests, 304 common_utils, 108 engine (×2 for lib+bin), 17 sqlx_postgres, 11 pg_queue, 10 ws_stream. Same 3 pre-existing clippy warnings unchanged.
-
-### 2026-04-18 — RSK-02 T7 (Journal API client types + fetchers)
-- **Two-tier client pattern: `fetchApi` (analytics) vs `fetchCrud` (journal CRUD)**: Analytics endpoints under `/api/v1/journal/analytics/*` use `fetchApi(path, filters)` which auto-builds StatsFilter query params. CRUD endpoints under `/api/v1/journal/*` use `fetchCrud(path, init)`. `fetchSetupBreakdown` belongs in the analytics group; `fetchUserSetupTags` belongs in CRUD (no filter context, just a `limit` query). Picking the wrong helper would either drop the limit or attach unwanted filter params.
-- **`limit` passed as query string in path, not via init**: `fetchCrud` doesn't accept a query-builder, so callers concatenate query strings into the path argument: `fetchCrud<SetupTagEntry[]>(\`setup-tags?limit=${limit}\`)`. Same pattern as `fetchTrades` (line 269) and `fetchEntries` (line 305) which both build URLSearchParams then pass `\`trades?${p}\`` to fetchCrud. No URLSearchParams needed for a single integer param.
-- **Decimal fields as `string`, optional Decimals as `string | null`**: `SetupBreakdownItem.avg_r_multiple: string | null` matches backend `Option<Decimal>` serialization (Decimal → string, None → null). `expectancy: string` (non-nullable) matches `Decimal` (always present). Mirrors the `JournalTrade.r_multiple: string | null` vs `realized_pnl: string` pattern at lines 183/190.
-- **`SetupTagEntry` interface placed near `SetupBreakdownItem`, not near `JournalTag`**: Both are RSK-02-domain types. Grouping them together (right after `SymbolBreakdownItem`) keeps the analytics+autocomplete shapes adjacent for future readers. `JournalTag` (lines 200-205) is the post-hoc tag system — semantically different despite the name overlap.
-- **Build size delta minimal**: Only type additions + 2 fetcher wrappers. No new dependencies, no new chart code in this task. Bundle sizes unchanged from RSK-01a baseline.
-
-### 2026-04-18 — RSK-02 T8 (SetupBreakdown chart component)
-- **Mixed view: bar chart + sortable metric table**: FR-9's "sortable by any column" would be awkward on a pure bar chart (sort keys that aren't the bar metric have no visual anchor). Chose bar chart (shows the active sort metric visually) + a compact grid-based table below with clickable column headers. Both render the same `sorted()` derivation — click a header → bars and rows re-sort together. Matches the spec's "chart + table" phrasing and stays under ~180 lines.
-- **Solid `<For>` with fragment children for CSS grid**: `<For each={sorted()}>{(row) => (<><div/><div/><div/><div/><div/></>)}</For>` — fragments are first-class in Solid, and the five inner divs become five siblings under the `grid-cols-[1fr_auto_auto_auto_auto]` parent. Cleaner than wrapping each row in its own div + nested grid.
-- **Toggle-sort-or-swap-dir pattern**: Clicking the already-active sort column flips `asc`↔`desc`. Clicking a different column jumps to it with default `desc`. Default `desc` matches "best-first" intuition for expectancy/avg_r and "most-first" for trade_count; `win_rate` DESC is also the intuitive "highest win rate first."
-- **Null avg_r_multiple sorted last regardless of direction**: `aNull` / `bNull` guards at the top of the comparator force nulls to the bottom. Using `-Infinity` as a sentinel would sort nulls to one end (confusing when flipping direction — nulls jump from bottom to top). Explicit null-handling is clearer.
-- **Null avg_r_multiple renders as 0 in the bar**: When `sortKey === 'avg_r_multiple'` and a row has `null`, `metricValue` returns `0`. ECharts draws a zero-width bar, which is visually distinct from a populated value and doesn't introduce `-Infinity` rendering glitches. The table still shows `—` for null.
-- **Backend returns `win_rate` in percent-scale (0..100), not 0..1**: The RSK-02 T6 SQL multiplies by 100 at aggregation time. `formatPercent(s.win_rate)` works directly — no `* 100` needed. Contrast with `ExpectancyBySymbol.tsx:41` which uses `(item.winRate * 100).toFixed(1)` because `SymbolBreakdownItem.win_rate` is 0..1 (different endpoint, different convention). Easy trap.
-- **Bundle delta**: `Overview-*.js` now 29.63 kB (up from ~27 kB pre-T8) — SetupBreakdown + help-content addition. `vendor-echarts` unchanged (already bundled). Journal build passes in 16.28s.
-
-### 2026-04-18 — RSK-02 T9 (ChartSelector wiring)
-- **`HELP['chart.setup']` was already live from T8's help-content edit**: T8 added the tooltip entry alongside the component. T9's `HelpTip text={HELP[\`chart.${selected()}\`] ?? ''}` resolves naturally once `'setup'` joins the `ChartOption` union — no additional wiring needed in ChartSelector.tsx. Keeps the selector's help lookup signal-generic (no per-chart switch).
-- **CHART_OPTIONS order: `setup` placed after `expectancy`**: Both group trades by a categorical dimension (symbol-level vs setup-level expectancy). Keeping them adjacent in the dropdown makes the analytical pairing discoverable. The plan's "per-group charts grouped" note was load-bearing — breaking the grouping would bury the new chart deep in the time-series half of the list.
-- **Overview.tsx untouched**: The two ChartSelector instances at lines 374-377 render `<ChartSelector defaultChart="treemap" />` and `<ChartSelector defaultChart="expectancy" />`. Both auto-surface the new option via CHART_OPTIONS. No default-chart changes needed — users can switch manually via the dropdown; forcing one ChartSelector to default to `setup` would remove a currently-useful default.
-- **Bundle delta**: `Overview-*.js` 29.79 kB → 29.91 kB (+0.12 kB for the union member + option entry + render branch). New lazy chunk for SetupBreakdown created alongside the other lazy chart chunks.
-
-### 2026-04-18 — RSK-02 T10 (Final verification)
-- **Verification summary**: `cargo clippy --all-targets` clean (3 pre-existing warnings: actor.rs:1842 unused-variable, cex_client.rs:653 useless_conversion, evaluator.rs:188 manual_contains). `cargo test` exit 0. `bun run build` passes for testudo-extension (Chrome + Firefox) and testudo-journal. Zero regressions.
-- **Integration grep footprint**: 17 backend files, 6 extension files, 3 journal files reference `setup_tag` / `SetupBreakdown` / `fetchSetupBreakdown` consistently. Full end-to-end path: Zod schema → TradeSetup → TradePayload → executeTrade POST body → CreateTradeRequest → managed_positions → OrderGroup → TradeCloseEvent → journal_trades → auto-tag → analytics endpoint → SetupBreakdownItem → SetupBreakdown chart.
-- **Background-task CWD gotcha**: `cd <relative-path> && cmd` in `run_in_background: true` bash tasks fails because the background runner CWD differs from the session CWD. Use absolute paths (`cd /home/m0xu/1-projects/testudo/testudo-journal`) or omit `cd` and rely on the session root. Observed in T10 verification — first three background tasks exited 1 with `(eval):cd:1: no such file or directory`.
-- **`cargo test | tail -N` truncates per-crate result summaries**: Piping to `tail` in a background task captures only the final N lines (in this case doc-test summaries). Exit code still reflects the full suite; for full counts omit the tail pipe or re-read the raw output file. Exit 0 here matches AGENTS.md's documented 1,102-test baseline from T5–T9 work.
-- **Manual QA (5 distinct tags + 2 untagged → Setup Breakdown)** remains a live-session acceptance checkbox — deferred as "requires real exchange state." Spec Completion Signal #3 ("One real user trade submitted with a setup tag and observed end-to-end") is not satisfied autonomously.
-
-### 2026-04-19 — RSK-03 T1 (Coach migration + User struct columns)
-- **`User` domain model lives in `common_utils/src/models/user.rs`, not `router/src/models/user.rs`**: Plan path was wrong — router's models dir holds only `journal.rs`. `User` is a shared type used by router auth + ws-stream + engine. Extending it ripples to every struct-literal construction site (`common_utils::User::new`, `router::types::auth` test fixture, `router::repositories::user::UserRow::into_user`). All three needed updates for the compile to succeed.
-- **`PostgresUserRepository` uses explicit column lists, not `SELECT *`**: Both `find_by_wallet_address` and `find_by_id` (and the `find_or_create_by_wallet` RETURNING clause) enumerate columns. Adding `coach_enabled, coach_banner_last_viewed_at` to the SELECTs + RETURNING is required; SQLx's `FromRow` derive on `UserRow` then binds by position to the new fields. Without SELECT updates, `UserRow` construction would break at runtime even though `cargo check` passes.
-- **`find_or_create_by_wallet` INSERT doesn't need new columns in the VALUES list**: Both new columns have DB-level defaults (`coach_enabled DEFAULT TRUE`, `coach_banner_last_viewed_at` nullable). Inserting without specifying them lets PG apply the defaults — simpler than threading `user.coach_enabled` through the bind chain. Only the RETURNING clause needs the columns so the response populates the full `User`.
-- **Migration uses `NUMERIC(4, 3)` for `cache_hit_ratio`**: 0..1 with 3 decimal places of precision (e.g., `0.847`) matches what LLM providers report. `NUMERIC(5, 4)` would be overkill; `REAL` would lose precision in edge cases. SQLx maps this to `Decimal` → `Option<Decimal>` in Rust cleanly.
-- **`ON DELETE CASCADE` on `coach_reports.user_id`**: When a user deletes their account, their coach report history deletes with them. Matches the spec's privacy posture ("user is in control of what leaves the server").
-- **Test count unchanged from RSK-02 baseline**: `cargo test -p common_utils user` → 10/10 pass. `cargo test -p router --bins user_` → 10/10 pass (3 of which exercise the new fields implicitly via `User` struct literals). No new tests added in T1 — migration + struct changes are verified by the full compile + existing tests passing.
-
-### 2026-04-19 — RSK-03 T2 (Coach module scaffolding + types)
-- **Router crate has no `anyhow` dep**: Only `thiserror = "1.0"`. The original plan's `use anyhow::Result` in `service.rs` wouldn't compile. Chose `pub type CoachResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>` as the lowest-commitment stub — T7 is free to narrow to a typed `CoachError` once the error shape is stable without changing callers that just propagate with `?`.
-- **`Arc<dyn Narrator>` vs `Arc<dyn Narrator + Send + Sync>`**: The `Narrator` trait is defined as `pub trait Narrator: Send + Sync`, so `Arc<dyn Narrator>` already carries those auto traits implicitly (they're part of the dyn bound). Spelling out `+ Send + Sync` is redundant. Shorter form preferred.
-- **`#[serde(rename_all = "snake_case")]` on PatternKind + Severity**: Matches the system-prompt taxonomy the LLM will read (`sizing_drift`, `frequency_spike`, etc.). Rust enum variants stay PascalCase for idiomatic code; serde handles the wire format.
-- **`[i64; 24]` for `trades_by_hour_utc`**: Fixed-size array (not `Vec<i64>` or `HashMap<u8, i64>`) — every hour has a slot, bucket index is the UTC hour 0..=23. `Serialize` on `[i64; N]` emits a JSON array of length N — compact + deterministic for LLM consumption and for golden-snapshot tests planned in T4.
-- **`p90_trades_per_6h: Decimal` added to UserBaseline**: T3b (`frequency_spike`) needs a p90 threshold on rolling 6h windows. Plan listed this field in the detector requirements but not in the type contract — surfaced it now so T3 baseline SQL computes it and T3b can consume it without a back-patch.
-- **`ValidationError::UnknownToken` carries a `location` string**: Plan's enum sketch had `section_index: Option<usize>` alone. Added explicit `location: String` (e.g., `"headline"`, `"section[2].body"`) so error messages are self-describing in logs. The `Option<usize>` stays for programmatic routing; `location` is the human-readable slot.
-- **Stub `detect_all` already takes `&UserBaseline, &[TradeEvidence], &WeekStats`**: T2 nails the signature so T3a-T3f each just append `if let Some(p) = detect_x(...) { out.push(p); }` without another signature churn. Returning `Vec::new()` keeps callers compileable.
-- **`schedule.rs` + `validator.rs` are empty comment stubs**: No types or functions needed in T2 — their module declarations are load-bearing only so T7/T6 can fill them without another `pub mod` edit.
-- **Cargo check + clippy + workspace tests green**: 304 common_utils + 108 engine ×2 + 11 pg_queue + 544 router + 17 sqlx_postgres = 1,092 passing, 0 failing. Same 3 pre-existing clippy warnings unchanged (actor.rs:1849, cex_client.rs:653, evaluator.rs:188).
-
-### 2026-04-19 — RSK-03 T3 (Baseline + week-stats + week-trades SQL helpers)
-- **Win-rate scale: 0..1 fraction in coach pipeline**, not the 0..100 percent that `journal_timeseries::symbol_breakdown` and `setup_breakdown` use. Reasoning: detectors compose ratios arithmetically (e.g. "trailing-10 R < 0.5 × baseline"), the LLM/UI multiplies for display. RSK-02 endpoints stay at 0..100 — they go straight to a chart, no math. Coach types (`UserBaseline.win_rate`, `WeekStats.win_rate`, `SetupBaseline.win_rate`) are intentionally a different convention from the analytics endpoints; documented in `digest.rs` module header.
-- **Week boundaries on `opened_at`, baseline window on `closed_at`**: A trade closed in the week but opened weeks ago isn't "this week's behavior." Baseline uses `closed_at` so we get fully-realized PnL/R for the rolling 30-day reference. `journal_trades` rows are always closed by definition (the table is populated from `TradeEventWriter` on close), so no `IS NOT NULL` filter on `closed_at` is needed.
-- **`uuid::Simple` is 32 hex chars, no hyphens**: `format!("{}", id.simple())` produces `"abc123ef9876..."`. First 8 chars matches the first segment of canonical UUID format, so `[T-abc123ef]` tokens are obviously a UUID prefix to anyone debugging.
-- **`FLOOR(EXTRACT(EPOCH FROM opened_at) / 21600)` for 6h window bucketing**: 21600 = 6h. Buckets align to absolute UTC 00:00/06:00/12:00/18:00 boundaries (not user-relative). p90 captures user's typical "busiest 6h windows" regardless of wall-clock.
-- **p90 over only-non-empty windows**: `bucketed CTE` excludes empty 6h spans. Matches "what counts as a busy 6h for this user?" — empty spans aren't busy by definition. If user has zero trades, `percentile_cont` returns NULL → `COALESCE(..., 0)` → `Decimal::ZERO`. T3b's frequency_spike detector must skip if `p90 == 0`.
-- **`avg_position_size_usd` derived from `entry_price * quantity`**: `journal_trades` has no `notional_usd` column. RSK-02's `setup_breakdown` follows the same convention. Approximate for non-USDT-quoted symbols; fine for the perps-dominated Testudo flow.
-- **`bucket_for` + `extract_base_asset` `pub(crate)` swap is mechanical**: Single keyword change in `risk_snapshot.rs`. The existing `super::*` test module continues to compile because `pub(crate) fn` is still in-crate-accessible. T3e will import via `crate::services::risk_snapshot::{bucket_for, extract_base_asset}`.
-- **Test counts**: Router 544 → 550 (+6). Pure-function tests for `top_hours` (3) + `build_hour_histogram` (2) + `untagged_label_matches_rsk02_convention` (1). DB-touching `compute_*` / `fetch_*` helpers verified by compile + clippy clean; full integration test lands in T4 as a golden snapshot. Workspace total: 1,098 passing, 0 failing.
-- **Patterns/mod.rs unchanged**: T2's stub orchestrator already had the exact `(&UserBaseline, &[TradeEvidence], &WeekStats) -> Vec<FlaggedPattern>` signature the plan specifies. T3a flips it from `Vec::new()` to pushing real detector output.
-
-### 2026-04-19 — RSK-03 T3a (sizing_drift detector)
-- **`dec!(1.5)` macro works for `const`**: `rust_decimal_macros::dec!` expands to a `Decimal::from_parts` call that `rustc` accepts in `const` position (verified by compile). No need for `lazy_static` or a runtime `once_cell`. Keeps threshold constants cheap + inspectable.
-- **`.windows(2)` over `.sort_by_key()`-ed refs for post-loss detection**: `sorted.windows(2).filter_map(|w| (w[0].pnl < Decimal::ZERO).then_some(w[1]))` is a 3-line pure-functional expression for "trades whose immediate predecessor lost." `.then_some(x)` (stable since 1.62) is idiomatic for `if bool { Some(x) } else { None }`.
-- **Defensive sort even though `fetch_week_trades` pre-sorts**: The detector accepts any `&[TradeEvidence]`; tests construct unsorted fixtures. Sorting by `opened_at` inside the detector is O(n log n) on a typically-small week slice — cheap insurance against caller assumptions drifting.
-- **`serde_json::Value` for metrics** accepts both owned strings (`multiplier.to_string()`) and numeric literals. For Decimal values I convert to string (matches the `Decimal serialize-as-string` convention used throughout the coach types); integer-valued like `POST_LOSS_WINDOW` stays as a JSON number.
-- **Severity trichotomy (Info/Notable/Concerning) maps cleanly to threshold bands**: strict `>` 1.5× → Notable, `≥` 2.5× → Concerning. Never returns `Info` — detector either flags a notable deviation or returns `None`. `Info` is reserved for future detectors that surface sub-notable observations.
-- **Test counts**: Router 550 → 555 (+5). Five unit tests: fires-on-2x, no-fire-within-baseline, escalates-at-large-multiplier, requires-3-post-loss-trades, none-when-baseline-zero. Plan asked for 2; added 3 edge cases (severity boundary, min-evidence guard, zero-baseline guard) to pin down the contract.
-
-### 2026-04-19 — RSK-03 T3b (frequency_spike detector)
-- **Rolling 6h window via `take_while` over time-sorted slice**: For each anchor `sorted[i]`, count trades in `sorted[i..]` whose `opened_at < anchor.opened_at + 6h`. Since the slice is sorted by `opened_at`, `take_while` short-circuits at the first out-of-window trade — no full pass needed. Best-window tracking via `sorted[i..i + count].to_vec()` after the count is known.
-- **`Decimal::from(i64)` avoids `.into()` casts**: `Decimal::from(best_window.len() as i64)` is clearer than `best_window.len().try_into()` and doesn't fight the `TryFrom<usize>` ambiguity that `Decimal` has.
-- **Severity boundary at 2.5× exactly is `Concerning`**: `multiplier >= CONCERNING_MULTIPLIER_THRESHOLD` uses `>=` not `>`. Matches sizing_drift's semantics (exact-2.5× → Concerning) — a user who spikes to exactly 2.5× baseline deserves the same triage as 2.51×.
-- **`multiplier <= SPIKE_MULTIPLIER_THRESHOLD` skip check**: Returns `None` when the multiplier is exactly 1.5× (not a "spike," within the baseline tolerance band). Consistent with sizing_drift's `multiplier <= DRIFT_MULTIPLIER_THRESHOLD`.
-- **Test count: 555 → 560 (+5)**: Four spec-required tests + one boundary test (`peak_window_respects_6h_boundary`) verifying the `<` exclusive-end semantic. All 10 coach::patterns tests green.
-
-### 2026-04-19 — RSK-03 T3c (session_anomaly detector)
-- **`chrono::Timelike::hour()` returns `u32`, not `u8`**: `opened_at.hour() as u8` needed for HashSet lookup against `typical_session_hours_utc: Vec<u8>`. Safe cast — hours are 0..=23 regardless.
-- **Cold-start guard: empty `typical_session_hours_utc`**: If the baseline hasn't identified typical hours (e.g., <4 distinct hours in 30-day window), every trade would be "off-hours" by definition → false-positive flood. Return `None` when the set is empty. Same spirit as `baseline.p90_trades_per_6h <= 0` guard in frequency_spike.
-- **Severity trichotomy: Notable 2-3 off-hours trades, Concerning ≥ 4**: Spec only specified "≥2 trades off-hours" as the trigger. Escalation threshold chosen to match the "2-4 → 5+" feel of sizing_drift's multiplier thresholds — a handful of off-hours trades is notable, half a week's worth is concerning.
-- **`anomalous_hours_utc` metric deduplicated + sorted via `HashSet` → `Vec` → `sort_unstable`**: LLM reads this to narrate "you traded at 03:00 and 05:00 UTC" rather than raw trade counts. Sorting gives deterministic output for snapshot tests.
-- **Test count: 560 → 566 (+6)**: Five spec-required tests + one metric-shape test (`anomalous_hours_metric_deduplicates_and_sorts`) pinning the dedup behavior. All 16 coach::patterns tests green (sizing_drift 5 + frequency_spike 5 + session_anomaly 6).
-
-### 2026-04-19 — RSK-03 T3d (setup_fatigue detector)
-- **Spec's "trailing 10 across baseline+week" can't be computed from inputs**: `UserBaseline.setup_baselines` carries only aggregates (`trade_count`, `avg_r_multiple`, `win_rate`) — no raw baseline trades. MVP interpretation: use the week's trades for that setup as the recency signal, gated by `MIN_WEEK_TRADES = 3` so a single bad trade can't trigger fatigue. Documented in module docstring; future revision could pull baseline raw R-history into the digest if needed.
-- **Worst-degraded setup wins, not first-detected**: Each detector returns `Option<FlaggedPattern>` (single flag), so for setup_fatigue I track the lowest ratio across all eligible setups in a 5-tuple `(name, ratio, week_avg_r, baseline_avg_r, evidence)` and emit only the worst. Multi-setup metrics could be a future enhancement, but single-flag matches the existing detector contract.
-- **Untagged bucket excluded explicitly**: `baseline.setup_baselines` may contain a `"(untagged)"` key (per `digest::compute_user_baseline` convention). Fatigue is a property of a *specific* setup, so the catch-all bucket is filtered. `UNTAGGED_KEY` constant matches the digest module's value to keep the contract obvious.
-- **Setup tag matching is case-insensitive**: Baseline keys are lowercased per the type doc; week trades carry user's original casing in `setup_tag`. `t.setup_tag.as_deref().map(|tag| tag.to_lowercase() == *setup_key)` collapses casing on the fly. RSK-02 T1 normalization in `CreateTradeRequest` already trims whitespace; lowercase comparison handles "Breakout" / "BREAKOUT" / "breakout" variants from imports.
-- **Three skip guards stack cleanly**: `trade_count < MIN_BASELINE_TRADES` (cold start), `avg_r_multiple <= 0` (negative-baseline ratio nonsense), `r_count < MIN_WEEK_TRADES` (after filtering trades with `r_multiple = None`). Each is an early `continue` rather than a combined guard — keeps the eligibility logic linear and debuggable.
-- **`r_multiple: Option<Decimal>` filtering**: Trades imported from exchanges may lack `r_multiple` if no SL was set. `filter_map(|t| t.r_multiple)` skips those, but I also re-check `r_count >= MIN_WEEK_TRADES` after filtering — a setup with 5 week trades but only 1 R-tagged shouldn't fire fatigue.
-- **Test count: 566 → 574 (+8)**: 6 plan-required tests + 2 edge cases (worst-setup picking with multi-setup fixture + case-insensitive matching). Coach pattern tests now total 24 across 4 detectors.
-
-### 2026-04-19 — RSK-03 T3e (correlation_stack detector)
-- **Sweep-line with close-before-open tie-break**: For concurrent-window detection, events at equal timestamps must process closes (-1) before opens (+1). Otherwise back-to-back trades (A closes at t, B opens at t) momentarily inflate the concurrent count by 1 and create spurious "3-concurrent" windows. Sort key: `(ts, delta)` — `delta=-1` naturally sorts before `delta=1`.
-- **Duration measured as `next_event_ts - run_start`**: When the first event at or after `run_start` brings count below `min_concurrent`, that event's timestamp minus `run_start` is the exact duration of the ≥3-concurrent window. No over-counting since the close event instantaneously drops the count — the half-open interval `[run_start, next_event_ts)` had count ≥ threshold throughout.
-- **`run_active` accumulates all trades seen during the run, not just the starting set**: If 3 trades are open from hour 0-4, a 4th opens at hour 3 joining the stack, and the run ends at hour 6, evidence must include all 4 trades. `run_active.extend(active.iter())` after each event captures the full participant set.
-- **`BTreeMap<(&'static str, String), …>` for deterministic group iteration**: Bucket names are `&'static str` from `BUCKET_MAP`, side is owned `String`. `BTreeMap` gives alphabetical iteration order so the "worst group" tiebreak is deterministic across runs (matters for snapshot tests in T4).
-- **`stables` bucket excluded as noise source**: `extract_base_asset` strips quote asset, so `USDT/EUR` would bucket as "stables". Edge case — but including it would mean a user trading stable-stable pairs gets flagged for correlation stack, which isn't meaningful directional risk.
-- **Worst-group tiebreak: `(peak_concurrent, duration)` tuple comparison**: Rust's derived `Ord` on tuples gives lexicographic comparison — higher peak wins, ties broken by longer duration. `(4, 6h) > (3, 10h)` — correct, since 4 concurrent positions is structurally riskier than 3 held longer.
-- **Test count: 574 → 583 (+9)**: 5 plan-required tests + 4 edge cases (severity boundary at duration, multi-bucket picking, symbol-format variants exercising `extract_base_asset`, side mixing). Coach pattern tests now total 33 across 5 detectors.
-
-### 2026-04-19 — RSK-03 T3f (streak_risk detector)
-- **Win pyramid takes precedence over loss streak under single-flag contract**: Both can fire in the same week — spec says "3+ consecutive losses OR 5+ consecutive wins with size increasing." Detector contract returns `Option<FlaggedPattern>`, so I check pyramid first and return loss streak only when no pyramid exists. Pyramid is `Concerning`, loss streak is `Notable` — picking the higher-severity flag matches the worst-pattern-wins convention used by `setup_fatigue` and `correlation_stack`.
-- **"Monotonically non-decreasing" includes flat sizes**: `t.position_size_usd >= prev.position_size_usd` (not strict `>`). A trader who wins 5 in a row at the same size hasn't pulled back after a hot run — still a behavioral signal worth flagging. Strict `>` would miss this and require explicit pyramiding only.
-- **Pyramid streak restarts on size drop within a win run**: A win whose size drops below the previous win clears `current` and starts fresh from that win (it's still a win, just no longer pyramiding from the prior peak). Without the restart, a small-then-big-then-small-then-big pattern could linger at length 1 forever and never re-accumulate to 5.
-- **`Option::is_none_or` (stable since 1.82)**: `current.last().is_none_or(|prev| t.position_size_usd >= prev.position_size_usd)` — cleaner than `match current.last() { None => true, Some(p) => ... }`. Empty-current case is monotonic by vacuous truth.
-- **`clone()` on `Vec<&TradeEvidence>` is cheap**: References, not owned trades. Tracking `best` as a separate `Vec<&TradeEvidence>` (cloned each time `current.len() > best.len()`) is cheaper than rescanning at the end and avoids a second pass.
-- **Test count: 583 → 592 (+9)**: 3 spec-required + 6 edge cases (decreasing-size win run does NOT fire, flat-size win run DOES fire, size-drop restart within wins, pyramid-vs-loss precedence, two-loss-no-fire boundary). Coach pattern tests now total 41 across all 6 detectors. T3 detector series complete.
-
-### 2026-04-19 — RSK-03 T4 (CoachDigest composer)
-- **Pure / async split**: `build_digest` (async, DB-bound) handles the opt-out + lifetime-trade SQL checks + parallel fan-out, then delegates to `compose_digest` (pure, synchronous) for the week-trade + no-flags gates + evidence filtering. Same pattern as RSK-01's `aggregate_snapshot` extraction — the pure half is fully unit-testable without a Postgres fixture, while the async half is verified by the full-suite regression + T12 manual QA.
-- **`tokio::try_join!` over 3 independent SQL fetches**: `compute_user_baseline` / `compute_week_stats` / `fetch_week_trades` all hit `analytics_pool` with disjoint queries on `journal_trades`. `try_join!` propagates the first error and cancels the other two — matches RSK-01's `tokio::join!` fan-out style but with `Result` semantics (error-propagating) rather than tuple-of-Options. Each helper is already `Result<_, sqlx::Error>`, so `try_join!` composes cleanly without wrapper types.
-- **Skip rules log `skip_reason` as structured field**: `tracing::info!(user_id = %user_id, skip_reason = "opt_out", "coach: skipping digest")`. Four reasons: `opt_out`, `lifetime_below_threshold`, `week_below_threshold`, `no_flags`. Structured keys (not string interpolation) keep logs queryable — T7's scheduler can tally skips by reason to surface "this week: 120 users, 80 skipped for lifetime_below, 30 for no_flags, 10 generated" without regex parsing.
-- **`collect_flagged_trades` preserves input ordering, not flag-order**: `HashSet<Uuid>` for the membership check, then a single pass over the pre-sorted `week_trades` filter. Chronological order is preserved from `fetch_week_trades`'s `ORDER BY opened_at ASC`. This matters: the LLM reads evidence trades top-to-bottom and flag-ordering would scramble the narrative timeline.
-- **Fixture interaction: `detect_all` runs every detector, not just the one under test**: The test `compose_digest_returns_digest_with_filtered_evidence` initially placed a "bystander" trade at hour 17 expecting only sizing_drift to fire. In fact frequency_spike triggered too (5 trades in 6h vs baseline p90 = 2) and pulled the bystander into its evidence → `flagged_trades` incorrectly included it. Fix: raise the fixture baseline `p90_trades_per_6h = 10` to suppress frequency_spike AND move the bystander ~3 days later to break the 6h window + loss streak. Generic lesson: isolation tests against `compose_digest` must design fixtures that either tolerate multi-detector firing or use baseline thresholds high enough to silence unintended detectors.
-- **`(bool,)` / `(i64,)` tuple destructuring for single-column queries**: `sqlx::query_as::<_, (bool,)>("SELECT coach_enabled FROM users WHERE id = $1").fetch_one(...)` — simpler than defining a `#[derive(FromRow)] struct CoachEnabledRow { coach_enabled: bool }` for one-column reads. Same pattern used by the lifetime-count query.
-- **Test count: 6 new `#[test]` bodies in `digest.rs`**: 2 `collect_flagged_trades` tests (includes-only-referenced, deduplicates-across-flags) + 4 `compose_digest` tests (below-week-skip, no-flags-skip, filtered-evidence when sizing_drift fires, serialization-shape round-trip). `cargo test -p router` reports 597 passed / 0 failed post-T4; prior baseline was 592 at T3f close. The 12-test `coach::digest` module now covers pure helpers (T3) + compose-and-filter (T4).
-
-### 2026-04-19 — RSK-03 T5 (Narrator trait + OpenAI-compatible impl)
-- **async-openai 0.34 feature-gated everything**: Default features are only `rustls` (TLS backend). The `Client` struct is behind `#[cfg(feature = "_api")]`, and chat-completion types live in `async_openai::types::chat::*`. Must add `features = ["rustls", "chat-completion"]` with `default-features = false`. Without `chat-completion` the entire API surface (`CreateChatCompletionRequestArgs`, `ChatCompletionRequestSystemMessageArgs`, `CompletionUsage`, etc.) is compiled out.
-- **Type paths moved in 0.34**: `async_openai::types::{CreateChatCompletionRequestArgs, ...}` → `async_openai::types::chat::{...}`. `CompletionUsage`, `PromptTokensDetails`, `CompletionTokensDetails` also under `chat::`.
-- **`OpenAIError::JSONDeserialize(serde_json::Error, String)` is a 2-tuple**, not 1. The second field is the raw response body that failed to parse — useful for debugging but not needed for the typed error mapping. Destructure as `(e, _raw)`.
-- **LLM-side vs narrator-side metadata separation**: LLM is only asked to produce `{headline, sections}`. `model_used`, `cache_hit_ratio`, `generated_at` are filled by the narrator after the call so the LLM can't forge them. Introduced internal `LlmNarrativeContent` struct that parses the LLM response body; `NarratedReport` is assembled around it. Keeps the LLM's output surface small (tighter schema → better adherence) and moves provenance fields under narrator control.
-- **`prompt_tokens_details.cached_tokens` is the OpenAI cache-hit convention**: async-openai types expose this via `CompletionUsage.prompt_tokens_details: Option<PromptTokensDetails>`. DeepSeek exposes a non-standard `prompt_cache_hit_tokens` field directly on usage that async-openai's strict types won't surface — acceptable trade-off per plan Discoveries #14, cache_hit_ratio returns `None` for those providers. Future enhancement: pass a raw HTTP read for cache metrics if DeepSeek stays a priority.
-- **`content: Option<String>` not `String`**: Chat completion response `message.content` is `Option<String>` in async-openai 0.34 because tool-call responses can have no text body. Narrator guards with `.ok_or(NarratorError::Parse("response message had no content"))?` — if the provider returns a tool-call when we asked for JSON, the narrator correctly reports a parse error rather than silently succeeding with empty content.
-- **`Mutex<Option<Result<...>>>` + `.take()` for single-use MockNarrator**: Not `Mutex<Result<...>>` with clone (Result<NarratedReport, NarratorError> doesn't Clone cleanly — NarratorError has a non-Clone serde_json-like subtype). `.take()` consumes the Option on first call; second call panics with a clear error message ("called more than once"), which flushes out test bugs where the system-under-test unexpectedly narrates twice.
-- **Rate-limit detection via `code` + fuzzy message**: `OpenAIError::ApiError.code: Option<String>` is what providers fill with machine-readable categories. Check both `c == "rate_limit_exceeded"` and `c == "429"` (providers vary), plus a lowercase `contains("rate limit")` fallback on the message field. Catches all major providers' rate-limit phrasings.
-- **`system_prompt_is_bundled_and_substantive` test**: One `#[test]` asserts `SYSTEM_PROMPT.len() >= 4_000` AND that canary strings ("Testudo Coach", "sizing_drift", "[T-") are present. This catches accidental blank `system.md` or accidental deletion of key pattern definitions. Acceptance criterion "prompts/system.md ≥ 4 kB (real content, not stub)" — verified in-test, not just by the build.
-- **Test count: 597 → 607 (+10)**. All narrator tests inline in `narrator.rs` per established convention. Five tokio-async tests (mock narrator returns Ok, Timeout, Parse, RateLimit, Provider) + three sync JSON parse tests + one cache-ratio helper test + one `OpenAiNarrator::new` smoke test. Workspace total: 1,165 passing, 0 failing.
-
-### 2026-04-19 — RSK-03 T6 (Citation validator)
-- **`regex` was dev-dependencies-only before T6**: `grep regex Cargo.toml` showed it in `[dev-dependencies]`, which compiles for `cargo test` and silently for `cargo check --tests` but fails on `cargo clippy --all-targets` (which includes the prod bin target). Symptom: validator tests passed in isolation, clippy/build errored with `unresolved import regex`. Fix: add `regex = "1"` to `[dependencies]` and drop the dev-deps duplicate. Lesson for future dep audits — `[dev-dependencies]` is invisible to prod modules even if test-only call sites exist.
-- **Token regex pattern: `\[T-([0-9a-f]{8})\]`** with lazy_static. Lowercase hex only + exactly 8 chars — matches `make_short_id`'s output convention (`id.simple().to_string().chars().take(8).collect()` → always lowercase hex). Uppercase tokens and shorter/longer tokens are silently ignored (not matched by regex), not flagged as UnknownToken. Test `ignores_malformed_tokens_not_matching_regex` pins this behavior.
-- **Location string for error reporting**: `headline` vs `section[{idx}].body`. Making this a human-readable string (not just `Option<usize>`) lets tracing logs in T7 print `location="section[2].body"` without a fmt roundtrip. `section_index: Option<usize>` stays as machine-readable for programmatic routing.
-- **Two-phase checks per section**: UUID-list check (all `section.citations` in `known_ids`) happens BEFORE the body-token regex scan. Reason: a bad UUID in citations is a more structural failure than a typo'd token; reporting it first gives better diagnostics. Both end up as `ValidationError` but UUID check returns earlier.
-- **`.expect("regex guarantees capture group 1")` is load-bearing, not a panic risk**: the regex literal has exactly one capture group; `captures_iter` only yields full matches; `get(1)` on a match with capture group 1 is always `Some`. Cheaper and clearer than `?` unwrapping.
-- **Test count: 607 → 613 (+6)**: 6 inline `#[cfg(test)] mod tests` cases covering positive, unknown UUID, unknown body token, unknown headline token, malformed-token-ignore, empty-report-passes. All inline in `validator.rs` per established T3x convention. Workspace total: 1,171 passing, 0 failing. Three pre-existing clippy warnings unchanged.
-
-### 2026-04-19 — RSK-03 T7 (Scheduler + CoachService orchestration)
-- **Pure `prepare_report` extracted for unit-testability**: `generate_for` needs a database, so I split the narrator-result-to-row-fields decision into a pure `prepare_report(digest, narrator_result) -> PreparedReport` helper. Tests hit that helper with `MockNarrator(Ok/Err)` and bad-citation reports without any PG fixture; DB flow (persist + idempotency) is covered by the full-suite regression. Same pattern as T4's `compose_digest` split from `build_digest`.
-- **Tokio `interval.tick().await` skips the first tick**: `tokio::time::interval` fires immediately at t=0 by default. For a weekly scheduler that should not run on boot, call `interval.tick().await` once before entering the loop. Mirrors the existing sidecar-health monitor pattern in `main.rs:276`.
-- **`ON CONFLICT DO NOTHING RETURNING *` semantics**: on conflict, the RETURNING clause yields no row. Use `fetch_optional`; if it's `None`, a follow-up SELECT fetches the existing row. Simpler than `ON CONFLICT DO UPDATE SET foo = foo` (a no-op update would bump row-ctid even though the logical state is unchanged and could silently invalidate triggers/replication hooks).
-- **`sqlx::types::Json<T>` is unused in this codebase**: the established pattern for JSONB columns is `serde_json::Value` with explicit `to_value` / `from_value` roundtrips. Kept the convention for `digest_json` + `narrative_sections_json`.
-- **Week window anchored at most recent Sunday 00:00 UTC**: `compute_week_bounds(now)` returns `[prev_sun_00, this_sun_00)` — 7 exact days. Running the cron at Sun 18:00 UTC analyses "the week that just finished at Sun 00:00". Mid-week manual invocations roll back to the same boundary (testable via the `on_wednesday_rolls_back_to_prior_sunday` case).
-- **`chrono::Weekday::num_days_from_sunday()` returns 0 on Sunday**: so on Sun 18:00 UTC, `current_sun_midnight = midnight_today - 0 days = today 00:00`. `week_end = today 00:00` (not tomorrow), which is the correct half-open upper bound. No off-by-one on day-of-week.
-- **`futures-util` not `futures`**: this crate bundles `futures-util = "0.3"` directly, not the `futures` facade. Imports must be `use futures_util::stream::{self, StreamExt}` — otherwise compile breaks with `unresolved import futures`.
-- **`buffer_unordered(10)` over `for` loop**: bounded concurrency for batch generation. Each per-user `generate_for` is independent; capping at 10 concurrent means 1000 users complete in ~100 sequential chunks rather than hammering PG/LLM concurrently. Same pattern as ws_subscription_manager's per-account fan-out.
-- **Test count: 613 → 623 router (+10), 1,171 → 1,181 workspace**: 4 new schedule tests (trigger moment, Sunday week bounds, Wednesday rollback, half-open invariant across weekdays) + 6 new service tests (happy path preserves fields, 3 narrator-error variants collapse to fallback, 2 validation-failure variants collapse to fallback). All inline; no external tests/ directory needed.
-
-### 2026-04-19 — RSK-03 T8 (Routes + AppState wiring + config/env)
-- **`confik::Configuration` default attr accepts bare literals**: `#[confik(default = 30)]` for i64, `#[confik(default = true)]` for bool, and `#[confik(default = "https://…")]` for String all work without string-coercion gymnastics. The existing RouterConfig field `server_addr` already demonstrated the `"…"` form; integer and bool bare literals follow the same confik 0.11 API. Env var names are upper-snake of the field (e.g. `COACH_MIN_LIFETIME_TRADES`).
-- **`OPENAI_API_KEY` warns not panics on missing**: Production should fail-fast, but the plan calls for graceful fallback behavior — when no key is set, every `narrate()` call returns `Err(Provider(...))` from async-openai's 401 path, which `prepare_report` collapses into the stats-only row. Persisted reports still ship; narrative just stays `null`. This preserves local-dev and early-deploy ergonomics without violating spec FR-12.
-- **Narrator construction goes BEFORE AppState literal**: `coach_service` needs `analytics_pool.clone()` + `pg_pool.clone()`, then lands in the struct field. Scheduler `spawn_weekly_task` is called immediately after construction so we spawn before the HTTP server blocks on `.await`. No change to the shutdown token — same `shutdown.clone()` pattern as the sidecar-health monitor at main.rs:274.
-- **`analytics_pool` is moved by the AppState literal, so coach needs `.clone()` first**: `postgres_db.analytics_pool().clone()` → owned `analytics_pool` at line 365 → moved into the struct at line 395. Any earlier consumer (coach_service here) must `analytics_pool.clone()` to keep the owned var valid for the struct.
-- **Coach route scope placed between `/risk` and `/journal`**: logical adjacency to the other RSK-* routes + keeps the risk-domain routes grouped in the source reading order. Follows the exact structural pattern of `/risk-config` and `/risk/snapshot` scopes — single `web::scope("/coach").wrap(JwtMiddleware::new(…))` with six `.route()` entries.
-- **`ErrorBody { code: &'static str, message: String }`**: router convention — `code` is a static identifier for clients to switch on, `message` is a human string. Matches `risk.rs:14` and `risk_config.rs:60` exactly. No need to mint a new `CoachError` enum at the HTTP boundary; the service returns `Box<dyn Error + Send + Sync>` and the route logs it via the shared `internal_error()` helper.
-- **PATCH with `{report_id}` path**: Actix macro `web::Path<Uuid>` parses the path segment directly into a Uuid. `path.into_inner()` extracts the owned value. Same pattern as `journal.rs::delete_entry` with `web::Path<Uuid>` (not the tuple form used by other endpoints).
-- **`limit.clamp(1, 100)` + `offset.max(0)` for pagination**: two-line defensive clamp. Clients that send `limit=0` or `offset=-1` don't crash — they just get default-bounded pages. Same pattern as `list_setup_tags` clamp at journal.rs (RSK-02 T3).
-- **Test count unchanged**: 1,181 workspace tests, 0 failures. T8 adds 0 new tests — routes are thin HTTP adapters delegating to T7's service. Pre-existing 3 clippy warnings (actor.rs:1814 via 1842, cex_client.rs:653, evaluator.rs:188) unchanged.
-
-### 2026-04-19 — RSK-03 T9 (Frontend API client types + fetchers)
-- **PatternKind + Severity as string-literal unions**: Backend uses `#[serde(rename_all = "snake_case")]` so values arrive as `"sizing_drift"` / `"notable"` etc. Narrowed TS unions (`'sizing_drift' | 'frequency_spike' | ...`) enable exhaustive `switch` in T10/T11 pattern-rendering code without an `as` cast.
-- **`trades_by_hour_utc: number[]` (not `[number; 24]`)**: TypeScript fixed-length tuple syntax `[number, number, ...]` requires spelling out 24 slots and gains no type safety for consumers that just `.map()` over the array. Plain `number[]` matches the serialized JSON (array of 24 ints) and is idiomatic TS.
-- **`metrics: Record<string, unknown>`**: Backend ships `serde_json::Value` for pattern-specific numbers (e.g. `{"size_multiplier": "2.1"}`). The shape is pattern-dependent, so `unknown` values force consumers to narrow before render. `Record<string, any>` would silently swallow typos.
-- **Preference PATCH uses raw `fetchWithCredentials`, not `fetchCrud`**: `fetchCrud` hits `/api/v1/journal/*`. Coach is `/api/v1/coach/*` — different scope. Tried reusing `fetchExchange` (`/api/v1/exchanges*`); same mismatch. Going direct to `fetchWithCredentials` with manual URL + Content-Type header matches the pattern `fetchRiskSnapshot` already established for RSK-01 snapshots.
-- **204 No Content responses don't parse as JSON**: `setCoachPreference`, `markCoachViewed`, `dismissCoachBanner` all return `Promise<void>`. Throwing on `!res.ok` but never calling `res.json()` — the response body is empty by HTTP spec.
-- **Bundle impact negligible**: `index-Do3Ckp7P.js` grew from 658kb to 659.82kb (+~2kb for 6 interfaces + 6 fetchers). Gzip delta ~600 bytes.
-
-### 2026-04-19 — RSK-03 T10 (/desk/coach page + CoachReport + CoachArchive + NarrativeBlock)
-- **Citation tokens replaced BEFORE handing to `marked`**: `[T-xxxxxxxx]` → `<a href="/desk/trades?trade={uuid}">T-xxxxxxxx</a>` as a pre-processing regex pass on the raw markdown string, then `marked.parse(..., { async: false })`, then `DOMPurify.sanitize`. Inline HTML is GFM-legal and survives marked's parser intact. Attempting to do this as a `marked` renderer extension would need per-token hooks that aren't in the current config; string-replace is 5 lines.
-- **`DOMPurify.sanitize(..., { ADD_ATTR: ['target', 'rel', 'title', 'class'] })`**: Default DOMPurify strips `class` and `title` on `<a>`. Coach citations use both (`class="coach-citation"` for future CSS, `title="SYMBOL · side"` for hover affordance). `ADD_ATTR` allowlists them without relaxing other sanitization.
-- **`short_id` → `id` resolution per-token**: `flagged.find(t => t.short_id === short)` inside the regex replace callback. O(m×n) where m=tokens, n=flagged trades — both tiny (typical 5–15). If an LLM emits a `[T-xxxxxxxx]` token not in `flagged`, the match is returned verbatim (no substitution) — plays nicely with the citation validator's hard gate (invalid reports never reach the frontend in the first place).
-- **Overview fetch for lifetime-trade progress**: `fetchOverview({})` with empty filters returns all-time `total_trades`. Cheaper than adding a `/api/v1/coach/progress` endpoint. Progress bar + "N/30 trades" header uses `overview()?.account.total_trades ?? 0` with `overview.loading` gating `belowThreshold()` to avoid showing the pre-threshold UI while the count is unknown.
-- **`markCoachViewed()` wired via `createEffect` on `latest()`**: Not `onMount` — the resource may still be pending at mount time. `createEffect(() => { const l = latest(); if (l?.data && l.has_new_indicator) markCoachViewed().catch(() => {}) })` fires exactly when the resource resolves with a new-indicator report. Fire-and-forget (`.catch(() => {})`): silent failure is fine — the indicator clears next pageview anyway.
-- **De-duplicate "latest" from archive fetch**: `/api/v1/coach/archive` returns ALL reports DESC by `generated_at`; the first page will overlap with `/latest`. Filter `incoming.filter(r => r.id !== latestId)` when appending to `archiveItems()` — same uuid can't appear twice in the archive list above the already-rendered "current report" block.
-- **`useSearchParams()` + `createEffect` for deep-link**: `?trade={uuid}` → `searchParams.trade` is `string | string[] | undefined`. Array-guard via `Array.isArray(raw) ? raw[0] : raw`. `createEffect` re-fires if the URL changes during session (e.g. user navigates back from a citation and forward again). `closeDetail` clears the param via `setSearchParams({ ...searchParams, trade: undefined }, { replace: true })` so back-button doesn't replay the modal.
-- **HELP key lookup pattern: `HELP[key] ?? ''`**: Missing keys resolve to empty string; `HelpTip` at line 15 of `HelpTip.tsx` does `if (!props.text) return null` and renders nothing. This lets T10 ship now while T11 adds the actual help strings — no visual breakage from absent entries.
-- **Build pass timing**: `cd testudo-journal && bun run build` runs Vite only (no `tsc` in build script). Vite's esbuild transpile is lax on TS errors (only flags syntax + resolution). `bunx tsc --noEmit` surfaces 20+ pre-existing errors across Layout/charts/AuthContext (mostly `import.meta.env` typing + ECharts option literal narrowing). None introduced by T10 — verified by `tsc --noEmit | grep -E "Coach|NarrativeBlock|Trades"` returning zero hits.
-- **Bundle delta: new `Coach-*.js` lazy chunk 14.23 kB / 4.69 kB gzip**. `marked` + `DOMPurify` already bundled for `MarkdownPreview` (used by journal entries) — coach reuses them with zero additional vendor cost.
-
-### 2026-04-19 — RSK-03 T11 (CoachBanner live + nav entry + HELP entries)
-- **`createResource` + `mutate` for optimistic dismiss**: `const [latest, { mutate }] = createResource(fetchLatestCoachReport)`. On dismiss, `mutate({ data: null, has_new_indicator: false })` clears the banner instantly; the PATCH call is fire-and-forget. If the API call fails the banner returns on next session — acceptable since `banner_dismissed_at` is persisted per-report so repeated dismisses are idempotent.
-- **`e.stopPropagation()` on dismiss button**: banner wrapper handles click-to-open via `onClick={handleOpen}` + `navigate('/coach')`. Dismiss button lives inside that wrapper, so its own click must stop propagation or the user is both dismissed-and-navigated. Same pattern as TradeRow / EntryCard dismiss buttons elsewhere in journal.
-- **`headlineFor` fallback chain**: `report.headline` (LLM-provided) → first flagged pattern name prettified → generic "Weekly coach report available". Stats-only fallback reports have `headline: null` but still have `digest.flagged_patterns` populated — the pattern name keeps the banner informative even without the narrative.
-- **Nav ordering: COACH between JOURNAL and ACCOUNT**: keeps analytical-depth reading order (OVERVIEW → JOURNAL → COACH → ACCOUNT). COACH is a read-only analytical surface like OVERVIEW/JOURNAL; ACCOUNT remains the terminal management tab.
-- **HELP keys namespaced `coach.patterns.{snake_case}` matches `PatternKind` enum**: frontend can look up `HELP[\`coach.patterns.${p.pattern}\`]` directly from a `FlaggedPattern.pattern` value without a translation table. Snake-case serde rename on the Rust side already aligns the wire format.
-- **`role="button" tabindex="0" onKeyDown` for div-as-button**: A11y — the banner wrapper is a `div` (not a `<button>`) so the dismiss `<button>` can nest inside without invalid HTML. Adding `role="button"`, `tabindex="0"`, and Enter/Space key handling restores keyboard affordance. The inner DISMISS stays as a real `<button>` so screen readers announce the destructive action distinctly.
-- **Build delta: Account-*.js 31.60 kB (up from 31.46 kB in T10), zero vendor-chunk growth**. `createResource` + router's `useNavigate` already imported elsewhere. `bun run build` exit 0 in 18.03s.
-
-### 2026-04-19 — RSK-03 T12 (Final verification + spec archival)
-- **Final test snapshot: 1,181 passing / 0 failing**: 304 common_utils + 108 engine ×2 (lib + bin test targets) + 11 pg_queue + 623 router + 17 sqlx_postgres + 10 ws_stream. Identical to T7–T11 closing baselines — no new tests needed in T12 since it's a verification + archival task. Router count 623 reflects cumulative +116 from RSK-03 detector suite (41 pattern tests) + digest (12) + narrator (10) + validator (6) + service (10) + schedule (4) + coach types + helpers = matches T7 tally.
-- **3 pre-existing clippy warnings unchanged across the full RSK-03 series**: `actor.rs:1849` unused-variable, `cex_client.rs:653` useless_conversion, `evaluator.rs:188` manual_contains. RSK-03 introduced zero new warnings across all 18 tasks — detectors, digest composer, narrator, validator, service, schedule, routes, and frontend all linted clean.
-- **Integration grep footprint stable across codebase**: 63 hits for `CoachService|coach_reports|CoachDigest|NarratedReport` across 10 router files (main.rs, app.rs, routes/coach.rs + 7 service modules). 31 hits for `CoachBanner|fetchLatestCoachReport|CoachReport|NarrativeBlock` across 7 journal files (Account.tsx, Coach.tsx, CoachReport.tsx, CoachArchive.tsx, NarrativeBlock.tsx, client.ts, CoachBanner.tsx). Consistent wire contract end-to-end.
-- **Journal bundle final size: Account-XH6nB10D.js 31.60 kB**, `Coach-*.js` lazy chunk 14.23 kB / 4.69 kB gzip (T10 baseline). Total RSK-03 journal footprint: ~46 kB uncompressed, ~14 kB gzipped — small for a full coach page + banner + 6-pattern narrative renderer.
-- **T12 commit is housekeeping-only (no source changes)**: Plan + learnings update + spec-directory move. Working tree was clean entering T12 because T1-T11 committed individually in prior iterations. The spec's "umbrella commit" line in the plan is misleading — with per-task commits, T12 is chore-tier (spec-complete marker + archive).
-- **Deferred verifications documented in plan Status section**: production prompt-cache hit rate (≥ 70% from provider logs) + first-20-reports human review + end-to-end manual QA (seeded multi-pattern trader) all require live state Vox cannot exercise autonomously. Same pattern as RSK-01/RSK-02 final verification tasks.
-- **RSK-03 complete**: 18 tasks across T1 migration + T2 scaffolding + T3 baseline + T3a-T3f six detectors + T4 digest composer + T5 narrator + T6 validator + T7 scheduler + T8 routes + T9 frontend API + T10 page + T11 banner + T12 verification. Spec archived to `.specify/spec-archive/RSK-03-ai-trade-coach/`.
-
-### 2026-04-20 — QNT-01a T1 (Migration: user_settings table + kelly_inputs column)
-- **Timestamp `20260420000100_add_qnt_columns`**: Picked above the round-thousand `20260420000000` slot to leave room for ENG-01 dignitas migration (planned but not yet shipped). Lexicographic ordering ensures QNT migration runs after ENG when both land. No conflict with any existing migration at planning time.
-- **JSONB DEFAULT shape baked into column DDL**: `DEFAULT '{"dynamic_risk_enabled": false, "dynamic_risk_unlocked_at": null}'::jsonb` means new rows from `INSERT ... ON CONFLICT DO NOTHING` (T2's GET-or-create path) automatically get the correct shape without an application-side initializer. Cleaner than a trigger or app-side default.
-- **`CREATE TABLE IF NOT EXISTS` + plain `ADD COLUMN`**: Table uses defensive `IF NOT EXISTS`; column add is plain `ADD COLUMN` because a column-already-exists state would indicate a serious upstream problem worth surfacing rather than silencing.
-- **`ON DELETE CASCADE` on user_settings.user_id FK**: Matches `coach_reports` and `user_sessions` precedent — privacy posture is "user controls what stays on the server."
-- **No new index needed**: T1 adds zero indexes. The unlock-gate COUNT query in T2 reuses RSK-02's `idx_journal_trades_user_setup` partial index. user_settings has only one access pattern (lookup by user_id), and the PK already serves it.
-
-### 2026-04-20 — QNT-01a T2 (user_settings routes + unlock gate)
-- **Pre-existing test failure unrelated to T2**: `routes::auth::tests::test_me_returns_user_info` fails on master (verified via `git stash` before T2 changes were applied) with `body["user_id"] == Null` instead of the UUID string. Not introduced by T2 — full router-bin suite went from 631 passing / 1 failing pre-T2 to 640 passing / 1 failing post-T2 (+9 from T2's pure helper tests). Likely a regression in `auth::me`'s response shape from a recent unrelated change; not blocking QNT-01a. Document in T9 verification.
-- **Pure helpers extracted for testability**: `is_unlocked(count) -> bool` and `apply_enable_change(&mut UserSettings, new_enabled, now)` carry the logic worth unit-testing (threshold + unlocked_at stamping). HTTP handlers stay thin DB adapters per the established `coach.rs` / `risk_config.rs` convention. 9 inline tests, no DB needed.
-- **`fetch_or_create_settings` uses `INSERT ... ON CONFLICT DO NOTHING` then `SELECT`**: simpler than `ON CONFLICT DO UPDATE SET ... RETURNING` for a read-mostly access pattern. The default JSONB shape comes from the migration's column DEFAULT, so the INSERT carries no payload. One PG round-trip on first read, plain SELECT thereafter.
-- **`UserSettings` derives `Default`**: clippy flagged manual Default impl as derivable. Both fields are type-default (false / None), so derive is correct.
-- **First-time enable stamps `dynamic_risk_unlocked_at`**: `apply_enable_change` only sets the timestamp when `new_enabled == true && currently None`. Disable→re-enable cycles preserve the original timestamp — important for the spec's "informational, not enforcement" semantics (Discovery #9).
-- **PATCH disable always succeeds, even when count would gate enable**: the unlock-gate condition (`req.dynamic_risk_enabled && !is_unlocked(count)`) only fires on enable transitions. A user can always turn the feature off.
-- **`#[serde(default)]` on both UserSettings fields**: defends against legacy JSONB rows that might lack one of the keys post-future-schema-evolution. Also makes `serde_json::from_value(...).unwrap_or_default()` truly safe when the blob is malformed.
-- **Route mounted at `/api/v1/user/settings`, not `/user-settings`**: the `/user` scope is the natural extension point for QNT-01b additions (preferences, drift thresholds). Keeps the URL hierarchy clean.
-- **`with_dynamic_risk()` builder added to RiskConfig**: T6 will use this when constructing the per-trade override `RiskConfig` for the Kelly-sized path. The new field had to be added explicitly in three places: struct definition, manual `Default::default()` impl, and a builder method — RiskConfig doesn't derive Default, so the field can't be auto-defaulted.
-- **`#[serde(default)]` on `RiskConfig.dynamic_risk_enabled`**: load tolerance for any cached/stored RiskConfig blobs predating the spec — they'll deserialize with the field as `false`, byte-for-byte matching pre-spec behavior (FR-10).
-
-### 2026-04-20 — QNT-01a T3 (Extension schemas + API + SettingsPanel)
-- **Settings panel mounted in MainView account tab** between the info-grid/exposure block and the Account (wallet) block. Single `<SettingsPanel />` slot + existing `divider` separators — no new layout primitives, no tab added. Keeps the "less is more" reorg principle from the RSK-01a spec in force.
-- **Toggle state machine: `unlocked || enabled` gates interaction**. An already-enabled user whose tagged-trade count somehow drops below 30 can still *disable* the toggle (spec Design Decision #9: enforcement is on enable transitions only, not re-gating). Rendered as: `disabled={!canInteract()}` where `canInteract() = !loading && !saving && (unlocked || enabled)`.
-- **Optimistic update + rollback** on PATCH: set the new state immediately, restore `prev` on failure. Avoids a flicker on the common-case happy path while still surfacing 409 server errors inline.
-- **`z.infer<typeof UserSettingsResponseSchema>` for typed API return**: no need to duplicate the TS interface — the Zod schema IS the type source. Imported as `type { z }` so the runtime bundle drops the import.
-- **`browser.runtime.sendMessage` with typed GetResult union** for the optimistic-send response. The background handler returns exactly the shape of the api.ts wrapper; typing it as `{success:true,data} | {success:false,error,error_code?}` at the call site makes the error-path TypeScript-visible.
-- **Pre-existing typecheck baseline reduced 19→18 errors post-T3**: Zero new errors in `schemas.ts`, `background/api.ts` additions, `background/handlers.ts` additions, `popup/components/SettingsPanel.tsx`, or `popup/components/MainView.tsx` edits. One unrelated cascade error cleared as a side-effect of the new import chain.
-- **Test baseline 28 failed / 274 passed stable**: Same `browser.commands.onCommand` mock gap documented in EXT-46 and RSK-02 T2. No new failures from GET/PATCH_USER_SETTINGS message variants — they're not exercised by `background.test.ts` (the pre-existing failing file).
-- **No Tailwind class additions needed**: Toggle UI composes from the existing `bg-signal-green`, `border-border-subtle`, `text-text-primary`, `text-text-dim`, `text-text-secondary`, `text-signal-red` tokens. The switch thumb uses `translate-x-{0.5,5}` with conditional classes — matches the visual grammar of `ExchangeToggle.tsx` (radio-group-style) without needing a new primitive.
-- **`PATCH_USER_SETTINGS` message carries `dynamic_risk_enabled: boolean` directly**, not wrapped in a `payload` object. Mirrors the convention of `SET_EXCHANGE_MODE { mode }`, `CLOSE_EXCHANGE_POSITION { symbol, side, contracts }`, etc. — messages with flat payloads don't wrap.
-
-### 2026-04-20 — QNT-01a T4 (kelly.rs pure math module)
-- **Spec's `reference_kelly ≈ 0.0133` comment is a calculation error**: With the spec's own formula `full_kelly = (b·p − q) / b` evaluated at `(p=0.52, b=1.5)`: `(1.5·0.52 − 0.48) / 1.5 = 0.30 / 1.5 = 0.20`, so `quarter_kelly = 0.20 / 4 = 0.05` (5% of bankroll per trade at a typical setup). Verified with Python and rust_decimal independently. The "≈ 0.0133" in `spec.md §Mathematics` is prose-only and does not affect runtime behavior — only the ratio `user_qk / reference_kelly` matters for the edge multiplier, so the absolute magnitude cancels. Code follows the formula, test asserts `0.05 ± 0.0001`, comment in kelly.rs documents the discrepancy.
-- **`dec!(…)` in `const` position works in rust_decimal 1.35+**: `pub const CLAMP_MIN: Decimal = dec!(0.25)` + `pub const CLAMP_MAX: Decimal = dec!(2.00)` compile cleanly. Same pattern as RSK-03 T3a detector thresholds. No `lazy_static` or `OnceLock` needed for these — `OnceLock` is still required for `reference_kelly()` because it's a computed value (`quarter_kelly(p, b, q)`) not a literal.
-- **Division-by-zero guards on `avg_r_loss <= 0` AND `b <= 0`**: A user with no losing trades yet (cold start on a winning setup) would trip `avg_r_loss = 0`, causing `b = avg_r_win / avg_r_loss` to panic. Guard returns `Decimal::ZERO` → caller treats as "no edge → no position". Belt-and-braces check on `b <= 0` catches the pathological case where `avg_r_win` is zero/negative (shouldn't happen in practice but costs one comparison).
-- **`edge_multiplier` does NOT reject negative quarter_kelly**: Spec FR-5 says negative-edge trades must be rejected, but that gate lives in the `create_trade` handler (T6), not inside `edge_multiplier`. If you pass negative qk here, `raw = negative / 0.05 = negative`, clamped to `CLAMP_MIN = 0.25`. The module doc comment flags this as a caller contract — the caller must check `full_kelly > 0` BEFORE calling `edge_multiplier`.
-- **Test count: 315 lib tests pass** (+11 new kelly tests from 304 baseline). All 11 kelly tests green: reference value, positive/negative edge, zero-loss guard, clamp low/high, multiplier=1 at reference, effective risk at baseline/max/min, quarter=full/4. No regressions in existing 304 tests.
-- **`PSEUDOCOUNT_K = 10` lives in kelly.rs not calibration.rs**: Spec calls for single source of truth. T5's `shrink()` function imports `common_utils::risk::kelly::PSEUDOCOUNT_K` to avoid a duplicate `const K = 10` elsewhere. Rationale: the pseudocount is a Kelly-math parameter (it shapes how per-setup stats blend toward the global prior before feeding into the Kelly formula), not a calibration-engine parameter.
-
-### 2026-04-20 — QNT-01a T5 (CalibrationEngine + shrink + aggregate queries)
-- **`CalibrationEngine` placed in `router/src/services/calibration.rs`, not `common_utils`**: Plan Discovery #3 documented the deviation — common_utils is I/O-free by convention. Peer services (coach, risk_snapshot, journal_timeseries) all live in `router/services/`. Adding sqlx to common_utils would invert the dep graph. Pure `shrink()` co-lives with the engine rather than splitting to kelly.rs because the shrunk-stats shape is calibration-domain (setup vs. prior counts), not Kelly-math.
-- **`pub use common_utils::risk::kelly::PSEUDOCOUNT_K` re-export**: Callers (T6 `create_trade` handler) import `PSEUDOCOUNT_K` from `calibration` rather than reaching into `common_utils::risk::kelly` — keeps the dependency surface from T6's perspective flat ("calibration gives me everything Kelly-shaped"). The constant still lives in `kelly.rs` as the source of truth; this is a convenience re-export.
-- **p_win denominator = ALL closed trades, not just trades with `r_multiple`**: Spec defines `p_win = fraction of closed trades where net_pnl > 0`. Using `COUNT(*) FILTER (WHERE net_pnl > 0) / GREATEST(COUNT(*), 1)` matches that exactly. `avg_r_win` and `avg_r_loss`, by contrast, restrict to `r_multiple IS NOT NULL` via `FILTER` clause — a trade without a stop-loss (no R-multiple) still counts toward p_win but contributes no R to the averages.
-- **`load_prior` filters to tagged trades (`setup_tag IS NOT NULL`)**: The prior is the user's global **tagged** history, not their entire trade log. Rationale per QNT-01a thesis: untagged activity should not calibrate tagged sizing. Matches the RSK-02 unlock-gate threshold (≥30 tagged closes) — a user whose only tagged history sits at exactly 30 trades gets a prior built from exactly those 30.
-- **`LOWER(setup_tag) = LOWER($2)` for setup match**: Case-insensitive per RSK-02 `setup_breakdown` convention. Incoming `setup_tag` is already trimmed but casing is preserved for display — the DB query normalizes both sides at query time. No index penalty: the partial index `idx_journal_trades_user_setup (user_id, setup_tag) WHERE setup_tag IS NOT NULL` doesn't cover case-insensitive matches, but Postgres still uses it for the `user_id` prefix + range-scans the few rows per user.
-- **`row.n.max(0) as u32` guards COUNT(*)::BIGINT → u32 conversion**: `COUNT(*)` is i64 in sqlx land; converting to u32 via `as` would wrap on negative values (impossible in practice, but defensive). `.max(0) as u32` is cheap and shuts down any future "what if someone queries this wrong" concern.
-- **`shrink` division-by-zero guard for `k=0 AND n=0`**: When both pseudocount and per-setup count are zero the denominator is zero. Fall back to the prior — callers with "no data at all" should already be gated out upstream (unlock-gate requires ≥30 lifetime tagged), but the guard prevents a panic if future code wires this differently.
-- **Test count: 640 → 648 router bin tests (+8 calibration tests)**. Pre-existing `routes::auth::tests::test_me_returns_user_info` remains as the sole failure (documented in T2 discovery). All 8 new tests are pure (zero DB dependency) — cover zero-setup returns prior, K=N 50/50 blend, large-N setup dominance, anti-gaming on small N with high p_win, preserved counts, zero-prior-zero-setup, zero-K fallback, and the PSEUDOCOUNT_K=10 pin.
-
-### 2026-04-20 — QNT-01a T6 (create_trade Kelly pre-sizing + CalibratedKelly variant + negative-edge rejection)
-- **`OrderGroup.kelly_inputs: Option<serde_json::Value>` with `#[serde(default)]`**: mirrors the RSK-02 `setup_tag` pattern exactly. Pre-spec serialized groups in pg_queue/WS buffers/rehydration snapshots deserialize with `kelly_inputs = None` without error. Field flows entry → `ConfigureGroup` command → OrderGroup → T7's close path.
-- **`EngineCommand::ConfigureGroup` gained `kelly_inputs: Option<serde_json::Value>`**: single call site in `trade_management.rs::create_trade`. The receiver in `actor.rs` uses `if kelly_inputs.is_some() { group.kelly_inputs = kelly_inputs; }` — matches the existing setup_tag/risk_amount semantics where `None` never clears a previously-set value.
-- **`TradeManagementState.calibration_engine: Option<Arc<CalibrationEngine>>` with `with_calibration_engine` builder**: follows the existing `with_pool`/`with_token_service` pattern. `None` means dynamic-risk path is skipped entirely — callers of `TradeManagementState::new()` in tests don't need to wire calibration.
-- **User settings read uses `query_scalar::<_, serde_json::Value>` + `serde_json::from_value`**: simpler than a `FromRow` struct for a one-column JSONB read. `Ok(None)` (row missing) and DB errors both collapse to `dynamic_risk_enabled = false` with a `warn!` log — trades that would succeed today must never fail due to a calibration-path hiccup (FR-10 additive-only contract).
-- **Kelly pre-sizing reads `setup_tag`, `state.calibration_engine`, AND `req.management` in a single 3-tuple `if let`**: all three must be present for Kelly to fire. Tuple destructuring is cleaner than nested `if let` and scales to the FR-8 `else if setup_tag.is_none()` silent-fallback branch which only needs to log.
-- **Baseline risk_percent override via `override_risk_percent.unwrap_or(mgmt.risk_percent)`**: used in TWO places inside the management branch — the `fixed_fractional` call AND the `computed_risk_amount` calculation. Both must use the effective value or the journaled R-multiple will drift from the actual sizing.
-- **Negative-edge rejection returns 400 with `error_code: "negative_edge"`**: via the existing `ApiResponse::error_with_code` helper. No trade row is ever created — the rejection fires BEFORE `place_order`, so no OrderGroup exists to roll back.
-- **Clippy `needless_borrow` on `Some(ref mgmt)` in a 3-tuple if-let**: rust-clippy 1.94 flags the `ref` as redundant when the pattern is `Option<&T>` derived via `.as_ref()`. Fixed by dropping `ref` — same semantics, cleaner pattern.
-- **Rehydration sets `kelly_inputs: None`**: `managed_positions` has no `kelly_inputs` column today, so rehydrated groups carry None. If a trade's journal row must preserve kelly_inputs across router restart, add the column to managed_positions + rehydration path. For MVP, accepted as a known limitation (commented inline).
-- **Test count stable at 649 router bin / 1 failing / 9 ignored** (pre-existing `test_me_returns_user_info` AUTH regression). No new tests added in T6 — integration happy-path + negative-edge path require DB fixtures deferred to T9 regression + manual QA. Common_utils 315 passing (T4 kelly tests intact), engine 108 passing unchanged.
-
-### 2026-04-20 — QNT-01a T7 (record_trade_close: persist kelly_inputs JSONB at close)
-- **Three parallel INSERT paths into `journal_trades`**: `JournalService::record_trade_close` (CEX fill path via `fill_detector::emit_trade_closed` → `TradeEventWriter::insert_journal_trade`), `JournalService::record_trade_close` (HL import worker batch via `import_worker`), and shared `hl_fill_journal::build_trade_close_event` (live HL poll in `ws_fills` + import worker). All three construct `TradeCloseEvent` — all three had to gain `kelly_inputs: None` (imports never have Kelly context) plus the one emission-path in `fill_detector` that forwards `OrderGroup.kelly_inputs` into the JSON payload. Missing one site would silently leak a field-order mismatch that rustc wouldn't catch (struct literals check names, not values).
-- **`TradeEventWriter::insert_journal_trade` mirrors `JournalService::record_trade_close` but with different sink semantics**: the former is the CON-01 atomic co-write (part of the TradeEventWriter transaction), the latter is the standalone idempotent record. RSK-02 T5 flagged this dual-write pattern; T7 kept both in sync for `kelly_inputs` — skipping TradeEventWriter would lose the column for live-detected fills because that's the primary write path (JournalService's `record_trade_close` only fires for imports in current production).
-- **`parse_trade_close_payload` uses `.filter(|v| !v.is_null()).cloned()` not `.and_then(|v| v.as_object())`**: payload field is a full `serde_json::Value::Object` — but `is_null()` guards against an explicit `"kelly_inputs": null` emission (which the `emit_trade_closed` macro always writes because `group.kelly_inputs.clone()` serializes `None` as JSON null). Filter + clone preserves the full object identity for DB binding; converting to/from an Object would drop any non-object shape from future versions.
-- **`JournalTrade` model field is `Option<serde_json::Value>`**: SQLx's `JSONB NULL` column maps cleanly to `Option<serde_json::Value>` with no type annotation needed (it's a blanket impl). No separate typed wrapper struct — the kelly_inputs blob is transparent at the ORM layer; consumers (frontend, coach, analytics) parse the JSON field-by-field on read.
-- **SELECT + INSERT + RETURNING column lists in `record_trade_close` all updated in lockstep**: the idempotency-check SELECT, the fresh-insert INSERT, and the fresh-insert RETURNING all explicitly list columns (not `SELECT *`). `kelly_inputs` had to be added to all three — missing RETURNING would deserialize the field as `None` even when the DB wrote a populated value, breaking the acceptance criterion that dynamic-mode trades surface kelly_inputs in API responses.
-- **`journal_trades.id = $2` vs `trade_group_id = $2` in draft-notes UPDATE**: The pre-existing JournalService UPDATE uses `WHERE id = $2`, while TradeEventWriter uses `WHERE trade_group_id = $2`. Different lookup keys because the two paths commit in different orders relative to the draft-notes read. Not related to T7 but noted to avoid accidental "cleanup" that would break idempotency.
-- **No managed_positions schema change (deliberate)**: Plan Discovery #13 documented that kelly_inputs won't survive a router restart between trade entry and trade close because `managed_positions` has no corresponding column and rehydration sets it to `None`. Acceptable MVP limitation — production closes typically happen within minutes/hours, router restarts are infrequent. Adding the column would require migration + rehydration path + CON-01 double-write to managed_positions; deferred as non-blocking.
-- **Test count stable at 649 router bin / 1 failing / 9 ignored** (same pre-existing `test_me_returns_user_info` AUTH regression). No new tests in T7 — the INSERT paths are verified by compile + full-suite regression; end-to-end behavior (fixed vs. dynamic trades writing different kelly_inputs values) requires DB fixtures deferred to T9 + manual QA. Common_utils 315, engine 108×2, pg_queue 11, sqlx_postgres 17, ws_stream 10 — all unchanged.
-
-### 2026-04-20 — QNT-01a T8 (Dynamic-risk untagged fallback + info log)
-- **Pure no-op task at source level — FR-8 was already satisfied by T6's branch structure**: The plan flagged this as a likely no-op ("T8 is purely the `tracing::info!` line + inline-test verification"). Verified: T6's `if let (Some(tag), Some(engine), Some(mgmt)) = ...` guards Kelly computation behind tag-present, and the `else if setup_tag.is_none()` arm at line 834 emits the FR-8 info log and falls through. `override_risk_percent` stays `None` in the fallthrough, so downstream sizing uses `mgmt.risk_percent` verbatim — byte-for-byte identical to fixed-mode. No Kelly SQL ever fires.
-- **No inline handler test added**: `create_trade` is a 400+-line HTTP handler with AppState, DB pool, shadow engine, CCXT client, and token-service dependencies. An integration test fixture covering "dynamic-on + untagged" would duplicate ~200 lines of harness setup from existing tests. Following the T5/T6/T7 policy (integration verified by full-suite regression + manual QA at T9) — pure `kelly.rs` + `calibration::shrink` helpers are already unit-tested at T4/T5, and the fallthrough is a compile-time guarantee from Rust's exhaustive match semantics.
-- **Zero source changes in T8**: only plan + AGENTS.md updated. Commit is a status marker ("T8 complete") + learnings append. Full test suite green: 639 passing / 1 failing (pre-existing) / 9 ignored — matches T7 closing baseline exactly, confirming no latent regression from branch structure.
-- **Pre-existing clippy 3 warnings unchanged**: actor.rs:1858, cex_client.rs:653, evaluator.rs:188. All QNT-01a tasks (T1–T8) have held the zero-new-warnings line.
-
-### 2026-04-20 — QNT-01a T9 (Final verification + spec archival)
-- **Final test snapshot: router 639 passing / 1 pre-existing failure (`test_me_returns_user_info`) / 9 ignored**, plus common_utils 315, engine 108×2, pg_queue 11, sqlx_postgres 17, ws_stream 10. Zero QNT-01a-introduced regressions across 8 preceding tasks. The one AUTH-02 failure has survived unchanged from before T1 and is documented as out-of-scope.
-- **Clippy warning count stable across entire QNT-01a series**: actor.rs:1858, cex_client.rs:653, evaluator.rs:188 — three pre-existing warnings that held from RSK-03 T12 through QNT-01a T8. Zero new warnings introduced by kelly.rs, calibration.rs, user_settings.rs, the OrderGroup/ConfigureGroup additions, or the `create_trade` pre-sizing branch.
-- **Extension typecheck baseline 18 errors, same pre-existing set**: modal.tsx `chrome` references, api.ts `TradeGroupResponse` shape drift, AuthSection.tsx legacy `login` reference, utils.ts `process` type, types.test.ts `break_even_enabled`. None touched by QNT-01a. `bun run typecheck` (not `bun run build`) per production-URL-defaults rule held across T3 and T9.
-- **Integration grep footprint: 16 Rust files + 4 TS files + 2 migration files**. Slightly under the plan's ~20-Rust target — kelly.rs itself doesn't match any of the search terms (it's referenced via `common_utils::risk::kelly::*` imports counted in the file list). TS side: schemas.ts, background/api.ts, background/handlers.ts, SettingsPanel.tsx. Consistent end-to-end.
-- **Spec T9 is commit-only / housekeeping, no source changes**: Plan-status line flip + learnings append + spec-directory move. Per-task commits at T1-T8 already landed individual feat(qnt-01a): messages. Matches the T12-style archival pattern from RSK-02/RSK-03.
-- **Manual QA deferred**: four live-session acceptance criteria remain unverified by Vox (30-trade-threshold 409, threshold-crossing enable, live dynamic sizing, negative-edge rejection). Vox cannot exercise real trade flow + DB state without a running exchange + authenticated user session. Same deferral pattern as RSK-01 T12, RSK-02 T10, RSK-03 T12.
-
-### 2026-04-20 — QNT-01b T1 (SettingsPanel N/30 copy + unlock date caption)
-- **`dynamic_risk_unlocked_at` already flows end-to-end from QNT-01a T2**: `UserSettingsSchema.dynamic_risk_unlocked_at: z.string().nullable()` at schemas.ts:215. The backend stamps the timestamp on first enable via `apply_enable_change`. Frontend just needed to render it — no wire-contract changes.
-- **Date rendering via `new Date(raw).toISOString().slice(0,10)` for YYYY-MM-DD**: Backend emits RFC3339 with time + TZ; the caption only wants a date. `toLocaleDateString()` would vary by user locale (confusing in tests + shared screenshots); `toISOString().slice(0, 10)` is deterministic. `Number.isNaN(d.getTime())` guards against malformed strings falling back to null rather than rendering "Invalid Date".
-- **Caption placement: separate `<p>` below the description `<p>`**: Spec FR-3 says "small caption". Keeping it as a sibling paragraph with `text-[10px] text-text-dim mt-1` avoids nesting inside the description (which is already `text-[11px] text-text-dim`). Visually clear 2-line stack when unlocked.
-- **`(unlocked() || enabled()) && unlockedAt()` gate, not just `unlockedAt()`**: If the field were ever non-null while the account is somehow locked (legacy data, schema skew), we want the caption hidden to match the toggle state. Matches the description's own `unlocked() || enabled()` gate exactly — parallel grammar.
-- **Copy verbatim per spec FR-2**: `"Dynamic Risk unlocks after 30 tagged closes ({taggedCount()}/30)"`. Previous QNT-01a copy was `"Unlocks after 30 tagged closes (currently N)"` — reworded + pluralized (e.g. "(17/30)" reads more progress-bar-like than "currently 17").
-- **Typecheck baseline: 18 pre-existing errors, zero new**: All errors in modal.tsx (chrome refs ×9), api.ts (TradeGroupResponse/ExchangePositionsResponse shape drift ×3), AuthSection.tsx (legacy login), types.test.ts (break_even_enabled), utils.ts (process type ×4). Same set documented from QNT-01a T3/T9. SettingsPanel.tsx adds no new errors.
-
-### 2026-04-20 — QNT-01b T2 (compute_sizing_preview extraction)
-- **`classify_calibrated()` takes both `prior` and `setup_stats` in addition to `shrunk`**: The `kelly_inputs` JSON blob persisted to `journal_trades.kelly_inputs` includes the raw per-setup `p_win` and the raw global-prior `p_win` (as `p_setup_raw` and `p_global_raw`). `ShrunkStats` only carries the blended output, so the pure classifier signature must accept the two raw `SetupStats` inputs to preserve the QNT-01a T7 blob shape exactly.
-- **`#[serde(skip_serializing)]` on `SizingPreview.kelly_inputs`** keeps the DB-persistence blob from leaking into the T3 preview HTTP response — the preview endpoint can serialize `SizingPreview` directly without a wrapper DTO. Call-sites in `create_trade` still read the field (it's only skipped at serde-serialize time, not at module access).
-- **Error-path fallback in `create_trade` is `warn! + baseline`, not a typed variant**: `compute_sizing_preview` propagates `sqlx::Error` unchanged. The execution path catches with `Err(e) => warn!(…, "calibration load failed — falling back to baseline")`, leaving `override_risk_percent = None` and `kelly_inputs_json = None`. Preserves QNT-01a "never fail a trade for a calibration hiccup" (FR-10). T3's preview route will convert the same error to a 5xx so the client can render "Preview unavailable".
-- **Negative-edge log moved from helper to `create_trade`**: The "QNT-01a: negative edge — rejecting trade" log is a route-level concern (the rejection is an HTTP 400), not a helper concern. The helper just populates `SizingReasoning::NegativeEdge { quarter_kelly }`. The info log fires in `create_trade` on match, carrying the `quarter_kelly` field from the variant.
-- **Helper invoked only when `req.management.is_some()`**: Preserves QNT-01a behavior where Kelly never fires without a management block (there's no baseline `risk_percent` otherwise). The helper itself is signature-agnostic (accepts `baseline_risk_pct` unconditionally) — the `management.is_some()` guard stays in `create_trade` as a structural precondition, not inside the pure helper.
-- **`state.calibration_engine.as_deref()` turns `Option<Arc<CalibrationEngine>>` into `Option<&CalibrationEngine>`**: The helper takes `Option<&CalibrationEngine>` so it's easy to mock in tests with `None`. `as_deref()` is the canonical Option→borrowed-reference conversion for Arc-wrapped data.
-- **`Clone` + `PartialEq` on `SizingPreview` and `SizingReasoning`**: Derive `Clone` so the T3 route can pass the preview through an HTTP response + log without taking ownership twice. `PartialEq` enables concise test assertions (`assert!(matches!(…))` works but full equality is clearer when comparing complete previews).
-- **Unused `calibration` import cleanup**: After extracting the Kelly block, the `use crate::services::calibration::{self, CalibrationEngine}` in trade_management.rs had no remaining `calibration::` references (only `CalibrationEngine` as a type). Changed to `use crate::services::calibration::CalibrationEngine` + new `use crate::services::sizing_preview`.
-- **Test count: router 639 → 650 (+11)**: 11 new inline tests in sizing_preview.rs cover fixed_mode, untagged, missing-engine fallback, classify_calibrated with clamp bounds, reference-point multiplier=1, NegativeEdge carries quarter_kelly, Calibrated carries shrunk stats, serde rename_all="snake_case", and `kelly_inputs` skip-serializing. Workspace total 1,219 passing / 1 pre-existing failure (`test_me_returns_user_info` documented AUTH regression).
-- **3 pre-existing clippy warnings stable**: actor.rs:1858, cex_client.rs:653, evaluator.rs:188. Zero new warnings from T2 extraction.
-
-### 2026-04-20 — QNT-01b T3 (POST /trades/preview route)
-- **`management` block is a hard requirement for preview, not soft-fail**: The helper gracefully handles `management == None` at call-sites that wish to pass through baseline, but the preview route has no baseline risk% without it. Returns 400 with the explicit error `"management block required for sizing preview"`. FR-5 guards this on the extension side (no preview fetch unless `dynamic_risk_enabled && setup_tag && management` are all present), but a direct-API caller hitting the endpoint blind gets a useful error.
-- **user_settings lookup failure is a soft-fail-to-fixed-mode, not 5xx**: Mirrors the `create_trade` branch at lines 732-733 (silent fall-through to `false`). Returning 500 on a user_settings hiccup would escalate storage flakiness into user-visible "Preview unavailable" in the modal when the safest thing is to just show the baseline flow (FixedMode preview). Calibration-load errors *inside* the helper (sqlx::Error from load_prior/load_setup) still map to 500 as the plan specified — those represent a more specific calibration-system problem worth surfacing.
-- **No-pool FixedMode test is the simplest end-to-end preview test**: Without a Postgres fixture, the handler's `state.pool` is None → dynamic_risk_enabled short-circuits to false → helper returns FixedMode → HTTP 200 with `{"kind":"fixed_mode", baseline==effective, mult=1}`. Zero DB/engine setup required, and it still exercises: auth via X-User-Id, setup_tag normalization, management-block gate, JSON response shape, AND kelly_inputs skip-serialization. Same pattern the existing shadow/X-User-Id tests in trade_management.rs use for engine-free integration coverage.
-- **`Decimal::ONE` serializes as `"1"`, not `"1.0"`**: `rust_decimal` serialization is minimal form. `dec!(1.0)` baseline serializes as `"1.0"` because the literal carries scale=1, but `Decimal::ONE` (used for `edge_multiplier` in `fixed_mode()`) serializes as `"1"`. Test assertions must match: `assert_eq!(body["edge_multiplier"], "1")` not `"1.0"`. Easy trap when hand-rolling JSON body assertions.
-- **Byte-parity test degenerate when both paths share the helper**: Since create_trade and preview_trade_sizing both call `sizing_preview::compute_sizing_preview` with identical argument tuples, parity is structural — the test reduces to two calls with identical args asserting equality. Kept as a regression canary: if a future refactor accidentally inlines the helper in one of the two handlers, divergence would surface immediately. The helper's own unit tests (sizing_preview.rs — 11 cases) carry the actual mathematical validation.
-- **Test count: router 650 → 655 (+5)**: 5 new integration tests (fixed-mode response shape, missing-management 400, oversized-tag 400, missing-auth 400, byte-parity canary). Same pre-existing `test_me_returns_user_info` AUTH regression unchanged. Clippy clean — zero new warnings.
-
-### 2026-04-20 — QNT-01b T4 (Extension SizingPreview schema + message + API helper + handler)
-- **Backend `Decimal` serializes as string on the wire but frontend needs numbers for formatting**: Plan schema sketch said `z.number()` for decimal fields. Real wire format is string (T3 test asserts `body["edge_multiplier"] == "1"`). Resolution: `DecimalNumberSchema = z.union([z.string(), z.number()]).transform((v) => Number(v))` — accepts both wire forms and delivers `number` to consumers. Matches `TradeGroupResponseSchema.DecimalLikeStringSchema` pattern but transforms to number instead of string (preview consumers need math for `%.toFixed(1)` + `Math.round(p_eff * 100)`).
-- **`n_setup` stays pure `z.number().int()`**: backend is `u32`, serializes as a real JSON number. Only `Decimal` fields need the coerce union.
-- **`previewTradeSizing()` body mirrors `executeTrade()` normalizations**: `normalizeSymbol()`, `mapSide()`, decimal fields as `.toString()`, optional `exchange_account_id`, optional `setup_tag` (trimmed, non-empty). Kept as parallel code (~15 duplicate lines) rather than extracting a shared `buildTradeBody()` — risk of shared helper diverging subtly from executeTrade's wire contract (the exact thing spec Risk #1 byte-parity gate is designed to prevent) outweighs the DRY win.
-- **5-second timeout on preview**: shorter than executeTrade's default to surface network hiccups quickly so UI can fall back to "Preview unavailable" (FR-10) without blocking. Execute path has no timeout by default — a real trade submission is worth waiting for.
-- **Dispatch entry + handler follow QNT-01a T3 pattern exactly**: `handlePreviewTradeSizing(msg)` pulls `.payload` off typed message via `MsgOf<"PREVIEW_TRADE_SIZING">`. Registered between `PATCH_USER_SETTINGS` and `WEB_WALLET_CHANGED` — keeps QNT-01* message types adjacent in dispatch table.
-- **Typecheck baseline 18 errors preserved**: Same pre-existing set as QNT-01b T1 (modal.tsx chrome refs, api.ts type drift, AuthSection.tsx legacy login, types.test.ts break_even_enabled, utils.ts process). Zero new errors from SizingPreviewSchema, previewTradeSizing, or handlePreviewTradeSizing additions.
-- **Test baseline 274 passing / 28 failing stable**: Same pre-existing `browser.commands.onCommand` mock gap documented in EXT-46 + RSK-02 T2 + QNT-01a T3. No new failures from T4.
-
-### 2026-04-20 — QNT-01b T5 (TradeForm preview row — calibrated happy path)
-- **Module-scoped `dynamicRiskCache` mirrors `setupTagCache` pattern (5-min TTL)**: Content-script lifetime cache avoids a round-trip per Alt+X for the ~100% of pre-unlock users. Initial-render default reads the cache synchronously so the preview gate doesn't flicker from "false → true" on first mount for already-enabled users. `onMount` fetch always runs to refresh the flag.
-- **`z.infer<typeof SizingPreviewSchema>` imported as type-only**: `import type { SizingPreviewSchema } from "../schemas"` + `import type { z } from "zod"`. Runtime bundle keeps zero new imports — the schema itself stays in the background worker where parsing happens. Content script only needs the type for signal typing.
-- **Preview payload builder constructed inline, not extracted**: `buildPreviewPayload()` assembles the TradePayload shape (setup fields + management preset) that `PREVIEW_TRADE_SIZING` expects. Kept separate from `buildSetup()` (which produces TradeSetup for EXECUTE_TRADE) — the two payloads diverge enough that merging them via a spread would mask future schema drift.
-- **`Extract<SizingPreview["reasoning"], { kind: "calibrated" }>` narrows the discriminated union**: IIFE pattern `{(() => { const p = preview()!; const r = p.reasoning as Extract<...> ... })()}` gets TypeScript-level access to the Calibrated-only fields (`n_setup`, `p_eff`, `avg_r_win`). `Show when={...kind === "calibrated"}` guards at runtime; the `Extract` cast narrows at compile-time within the render branch.
-- **Preview row placement: above the `.footer`, after the `.balance-section`**: Matches spec FR-5 "above the confirm button". Visually sits between the raw-risk display (Balance rows) and the armed confirm button, so the user reads baseline% → calibrated% → confirm in natural vertical order.
-- **CSS: `color-mix` tint for steel/red backgrounds, matching the existing balance-row convention**: `.kelly-preview-row` uses `color-mix(in srgb, var(--color-accent-steel) 6%, transparent)` for the calibrated variant and equivalent red tint for negative (reserved for T6). Consistent with `.side-btn-active-long` and `.rr-value.good` which use the same `color-mix` opacity pattern.
-- **`⚡` badge as flex child, not `::before` pseudo**: The toast CSS uses `::before` for icons, but those are single-character glyphs with fixed content. Preview row uses an inline `<span class="kelly-preview-badge">⚡</span>` so future variants (untagged "💤", negative "⛔") can swap the emoji per-variant without CSS class permutations.
-- **No render on FixedMode/Untagged/NegativeEdge yet in T5**: Plan explicitly scopes T5 to the calibrated happy path. Other variants + FR-10 "Preview unavailable" land in T6/T7. Dynamic-off users still get no fetch + no render — the `dynamicRiskEnabled()` gate alone is enough for zero-traffic silence on pre-unlock accounts.
-- **Typecheck baseline 18 errors preserved**: Same pre-existing set. Zero new errors from TradeForm.tsx signal additions, buildPreviewPayload, fetchPreview, or modal.tsx CSS additions.
-
-*This file grows as Vox learns. Never delete entries.*
-
-### 2026-04-20 — QNT-01b T6 (debounce + untagged + negative-edge variants)
-- **`debounce()` lives in `utils.ts`, tested with `vi.useFakeTimers()`**: 10-line helper returning `T & { cancel }`. Three unit tests (basic delay, coalesce-with-last-args, cancel) exercise the critical invariants. Vitest's fake timers + `vi.advanceTimersByTime()` make the debounce deterministic without real clock flakiness.
-- **Sequence counter (`let previewSeq = 0; const mySeq = ++previewSeq`) is the superseding pattern**: Each `fetchPreview` claims a monotonically increasing slot. On response (success or catch), it only writes to state if `mySeq === previewSeq`. Two guard points per call — after the await + inside catch — because errors must not clobber a newer successful response either.
-- **`createEffect` subscribes via ref reads, not deps arrays**: Solid tracks dependencies by evaluating reactive accessors inside the effect body. Bare `entryStr(); stopStr(); targetStr(); setupTag(); side();` establishes subscriptions. `props.management.risk_percent` also reads the reactive prop — assigned to `const _ = ...; void _;` to show intent + avoid "unused expression" lints.
-- **`canSubmit` memo composes `isValid() && !previewNegativeEdge()`**: Applied in 4 places — `handleConfirm` early-return, button `disabled`, button `title` hover text, and style color/border/opacity ternaries. `previewNegativeEdge()` only fires when `dynamic_risk_enabled && reasoning.kind === "negative_edge"`, so fixed-mode users retain the old validity-only gate.
-- **Multivariant render in single `<Show>` IIFE with `kind` dispatch**: Instead of three sibling `<Show when={kind === "x"}>` blocks, use one outer `<Show when={preview()}>` with an IIFE that branches on `kind`. Fewer DOM recalculations, more idiomatic, easy to read. `fixed_mode` returns `null` (FR-5 guards against fetching at all when off, but defensive null-fallthrough costs nothing).
-- **Emoji badges differ per variant**: ⚡ (calibrated, accent), 💤 (untagged, muted), ⛔ (negative, red). Spec §Paved Roads says "badge-style leading `⚡`" but doesn't mandate one-emoji-fits-all — variant-specific emoji reinforces the color coding for users with reduced color vision.
-- **Test delta: 274 → 277 passing (+3 debounce)**. Same 28 pre-existing `browser.commands.onCommand` mock failures unchanged. Typecheck baseline 18 errors preserved — zero new errors from debounce, createEffect, new memos, or multivariant render.
-
-### 2026-04-20 — QNT-01b T7 (Preview failure fallback)
-- **Dual-state distinction `preview()` vs `previewError()`**: `preview()` holds the last valid SizingPreview, `previewError()` flags that the most recent fetch failed. Both signals are independent — on success: `preview(data); previewError(false)`. On failure: `preview(null); previewError(true)`. Rendering guards: success row shows `dynamicRiskEnabled() && preview()`; unavailable row shows `dynamicRiskEnabled() && previewError() && !preview()`. The `!preview()` guard on the error row prevents a stale-then-broken flicker where a successful preview stays onscreen while a later failure sets the error flag; on error we always null out the preview, so this is a belt-and-braces invariant.
-- **Two failure paths both set `previewError(true)`**: (a) try/catch for network errors, (b) `res.success === false` for backend 4xx/5xx wrapped in the background handler's ApiResult shape. Both produce the same FR-10 "Preview unavailable" surface — the user experience is the same regardless of whether the router was unreachable or rejected the payload. Clearing happens on any successful subsequent fetch.
-- **Confirm button unaffected by preview errors**: `canSubmit = isValid() && !previewNegativeEdge()`. `previewNegativeEdge()` requires `preview()?.reasoning.kind === "negative_edge"` — when `preview()` is null (preview failed), the kind check is false, so the gate opens. FR-10 satisfied by construction — no new `canSubmit` term needed.
-- **`⚠` (warning) emoji for the unavailable variant**: Consistent with the T6 variant-per-emoji convention (⚡ calibrated, 💤 untagged, ⛔ negative). The warning glyph maps naturally to "service degraded, carry on" — distinct from the red stop sign that means "blocked".
-- **Typecheck baseline 18 errors preserved**: Zero new errors from `previewError` signal, the dual render guard, or the new `<Show>` block. Same pre-existing set (api.ts TradeGroupResponse/ExchangePositionsResponse drift, modal.tsx chrome refs, AuthSection.tsx legacy login, types.test.ts break_even_enabled, utils.ts process types).
-
-### 2026-04-20 — QNT-01b T8 (Final verification + spec archival)
-- **Final test snapshot: router 655 passing / 1 pre-existing failure (`test_me_returns_user_info`) / 9 ignored**, plus common_utils 315, engine 108×2, pg_queue 11, sqlx_postgres 17, ws_stream 10. Same sole AUTH-02 regression that held through QNT-01a and the entire QNT-01b series. Zero QNT-01b-introduced regressions across T1–T7.
-- **Clippy warning count stable across entire QNT-01b series**: actor.rs:1858 unused-variable, cex_client.rs:653 useless_conversion, evaluator.rs:188 manual_contains. Three pre-existing warnings held from QNT-01a T9 through QNT-01b T8. Zero new warnings from `sizing_preview.rs` extraction, preview route, schema/API additions, or TradeForm signal additions.
-- **Extension typecheck baseline 18 errors preserved**: Same pre-existing set as documented across QNT-01a T3, QNT-01a T9, QNT-01b T1, QNT-01b T4, QNT-01b T5, QNT-01b T7. None touched by QNT-01b.
-- **Integration grep footprint: 3 backend files + 4 extension files**. Backend: `trade_management.rs` (preview route + create_trade call), `services/mod.rs` (module declaration), `services/sizing_preview.rs` (the extracted helper itself). Extension: `schemas.ts` (SizingPreviewSchema), `background/api.ts` (previewTradeSizing), `background/handlers.ts` (dispatch), `components/TradeForm.tsx` (render). Consistent end-to-end.
-- **Spec T8 is housekeeping-only, no source changes**: Plan status update + learnings append + spec-directory move from `.specify/specs/` to `.specify/spec-archive/`. Per-task commits at T1-T7 already landed individual `feat(qnt-01b):` messages. Matches the T9/T12-style archival pattern from QNT-01a, RSK-02, and RSK-03.
-- **Manual QA deferred**: popup unlock-date + N/30 visuals, dynamic-mode preview row variants (calibrated/untagged/negative-edge), preview-unavailable fallback on network disconnect, and end-to-end `kelly_inputs` parity between preview and executed trade. Vox cannot exercise real trade flow + DB state without a running exchange + authenticated user session. Same deferral pattern as QNT-01a T9, RSK-01 T12, RSK-02 T10, RSK-03 T12.
-
-### 2026-04-20 — HIST-03 T1 (CP-0 static-analysis diagnostic)
-- **Hypothesis #1 present:** `journal_service.rs:184-224` bare `INSERT ... RETURNING` via `fetch_one`. Import callers rely on post-insert error-string matching (`idx_unique_import_fill|duplicate key`) at `import_worker.rs:297-298, 395, 462` — brittle; silently produces duplicates when the key differs.
-- **Hypothesis #2 present (most likely root cause):** `import_worker.rs:386` (CEX pnl fills) + `import_worker.rs:533` (reconstruction path feeding `last_fill_id` into `exchange_fill_id`) both `fill.id.parse::<i64>().unwrap_or(fill.timestamp as i64)`. If Bybit returns parseable IDs on one endpoint version and non-numeric IDs on another, the synthetic timestamp key drifts between runs → partial index miss → duplicate row.
-- **Spec §Files deviation — `fill_detector.rs` not modified by this spec:** it emits a channel event via `emit_trade_closed`, not SQL. Writes flow through `TradeEventWriter::insert_journal_trade` (CON-01 atomic path) or `JournalService::record_trade_close` (HL live poll / imports).
-- **5th error-string site discovered — not listed in spec plan's T5:** `ws_fills.rs:572-573` string-matches `idx_unique_import_fill|duplicate key` on HL live fills. T5 migration must handle it alongside the 4 import_worker sites, not just one `ws_fills.rs:520`.
-- **TradeEventWriter INSERT uses `.execute()`, not `fetch_*`:** `trade_event_writer.rs:366-401` binds 25 columns, no RETURNING consumed. T3's defensive `ON CONFLICT DO NOTHING` is structural only — live trades always have `exchange_fill_id = None` so partial index WHERE predicate excludes them → conflict unreachable.
-- **Partial index already matches spec verbatim:** `20260326000000_add_import_fields.up.sql:8-10`. `ON CONFLICT` target predicate must be `(user_id, exchange, exchange_fill_id) WHERE exchange_fill_id IS NOT NULL DO NOTHING` — the `WHERE` qualifier is load-bearing; Postgres cannot resolve a partial index on `ON CONFLICT` without it.
-
-### 2026-04-20 — HIST-03 T2+T3+T5 (bundled CP-1 + CP-2a)
-- **Plan-sanctioned bundling over "one task only"**: T2 changes `record_trade_close`'s return type and breaks 4 callers (3 in `import_worker.rs`, 1 in `ws_fills.rs`). Shipping T2 alone would leave an intermediate broken build. Plan's §Final commit strategy explicitly recommends "Land T2+T3+T5 as a single atomic commit" — followed the plan. Constitution ("no broken commits") outranks Vox's "one task only" heuristic when they conflict.
-- **`RecordOutcome::Inserted(Box<JournalTrade>)` boxed to silence clippy `large_enum_variant`**: `JournalTrade` is ~496 bytes; unboxed the enum allocates 496B even for `SkippedDuplicate`. Boxed variant costs one heap allocation on the happy path (negligible — this runs at most once per fill) and preserves the series-wide zero-new-warnings baseline (actor.rs:1858, cex_client.rs:653, evaluator.rs:188 unchanged).
-- **Callers match `Inserted(trade)` transparently with `Box<_>`**: Rust auto-derefs the pattern binding — `Ok(RecordOutcome::Inserted(trade))` still yields `&JournalTrade`-like access via `trade.id`, `trade.symbol` etc. without `.as_ref()` or `*trade`. No caller-site code changes needed beyond the enum match itself.
-- **`ProcessOutcome { Imported, Duplicate, StructuralSkip }` in import_worker.rs** replaces the old `Result<bool, _>` convention for `process_hl_fill` / `record_reconstructed_trade`. Three-way outcome lets the caller bump the right counter (`trades_imported`, `trades_skipped_duplicate`, `trades_skipped`) without re-introducing bool ambiguity.
-- **CEX pnl loop now bumps `trades_skipped` on `qty == 0`**: Previously a bare `continue` (zero-qty fills silently vanished from counters). HIST-03's structural-vs-duplicate counter split made this a natural place to tighten — zero-qty is a structural skip, belongs in `trades_skipped`.
-- **`notify_user` WebSocket payload carries new `trades_skipped_duplicate` field**: Extension side doesn't currently consume this field (grep confirmed), but adding it to the pg_notify payload future-proofs the UI for "N duplicates skipped on re-import" messaging in a follow-up.
-- **5 error-string match sites eliminated** (`contains("idx_unique_import_fill")` + `contains("duplicate key")`): 3 in `import_worker.rs` (process_hl_fill, pnl-fill loop, record_reconstructed_trade) + 2 arms in `ws_fills.rs:572-573`. All replaced by structural `RecordOutcome::SkippedDuplicate` pattern. Grep `grep -rn "idx_unique_import_fill" crates/router/src/services/` should return zero hits post-commit.
-- **`ImportResult::default()` replaces manual zero-init struct literals**: Derived `Default` on `ImportResult` now that it has 4 fields — simpler than spelling out all four zeros twice.
-- **Test count stable at 655 passing / 1 failing / 9 ignored**: Same pre-existing `routes::auth::tests::test_me_returns_user_info` AUTH-02 regression documented through QNT-01a, QNT-01b. Zero new tests in this bundle (T7 adds the integration test for idempotency). Zero regressions from the RecordOutcome/ProcessOutcome refactor.
-
-### 2026-04-20 — HIST-03 T4 (canonical_exchange_name helper + apply at INSERT sites)
-- **Helper lives in `common_utils/src/models/exchange_account.rs` as a free `pub fn`**: one-liner `name.trim().to_lowercase()`. Sits next to the existing `.to_lowercase()` call (line 125 in the factory) — same semantic neighborhood. Re-exported from `common_utils/src/models/mod.rs` alongside `ExchangeAccount` for a shallow import path (`common_utils::models::canonical_exchange_name`).
-- **Applied at 2 INSERT sites, not 3**: `journal_service::record_trade_close` (import path + HL live poll) and `TradeEventWriter::insert_journal_trade` (CON-01 atomic live-CEX path). Live trades have `exchange_fill_id = None` so the partial index's `WHERE` predicate excludes them — the canonicalization is defensive there, but cheap and uniform.
-- **Debug log retains raw `event.exchange`**: the `tracing::debug!` on SkippedDuplicate (line 252) still logs the pre-canonicalized input. Intentional — diagnostic logs capture what the caller *sent*, not what was stored. The stored value is canonical; the log shows drift if any creeps in.
-- **Test count unchanged at 655 passing / 1 pre-existing fail / 9 ignored**: common_utils picks up +1 test (`canonical_exchange_name_normalizes`) — 19 tests passing. Router unchanged — helper is applied inside existing INSERT paths, doesn't introduce new branches to test. Clippy warnings stable at 3 pre-existing (actor.rs:1858, cex_client.rs:653, evaluator.rs:188).
-
-### 2026-04-20 — HIST-03 T6 (remove timestamp fallback on `exchange_fill_id`)
-- **Two-site pattern, different control-flow shapes**: The pnl-fill loop (import_worker.rs:~389) sits inside a method that owns `result: ImportResult`, so the unparseable-id branch can `result.errors += 1; continue;` cleanly. The reconstruction path (`reconstruct_positions`, line ~528) is a free function with no counter — dropped trades are invisible from the caller's counters. Accepted this asymmetry because `reconstruct_positions` returning `(Vec<_>, skipped_count)` would widen the function signature for a rare failure mode. The `tracing::warn!` log is the only visibility for reconstruction drops; the pnl path gets both a WARN log and a counter bump.
-- **`positions.remove(&symbol)` on drop in the reconstruction branch**: When an unparseable ID forces us to drop the completed trade, we still consume the open position (can't leave stale state — the exchange fill DID close it on their side). Logging + removing + `continue` mirrors the successful close path minus the `completed.push`.
-- **`let Ok(x) = expr else { ... }` over `match`**: cleaner for the skip-or-bind pattern. Rust 1.65+ let-else is the idiomatic form here; matches the style already used in QNT-01b T2's `compute_sizing_preview` error paths.
-- **No `.specify` docs touched beyond plan**: T6 is pure source change in one file. No schema, no types, no new helpers — fits the plan's "structural fix for spec hypothesis #2" scope exactly.
-- **Test count stable at 655 / 1 pre-existing fail / 9 ignored**: no new tests (reconstruction drop is a defensive branch, covered by full-suite regression + T7's integration test which exercises the happy path). Clippy 3 pre-existing warnings unchanged.
-
-### 2026-04-20 — HIST-03 T7 (integration test — idempotent re-import)
-- **`#[tokio::test] #[ignore]` with explicit `DATABASE_URL`, not `#[sqlx::test]`**: workspace `sqlx` dep is declared without the `macros` feature (`sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio", "bigdecimal", "rust_decimal", "time", "uuid", "chrono"] }` in root `Cargo.toml`). `#[sqlx::test]` would require adding `macros` workspace-wide, which touches a cross-cutting dep for a single test module. The hyperliquid integration tests already use `#[tokio::test] #[ignore]` + env-var credentials — followed the same pattern for consistency.
-- **Wallet-address `CHECK (wallet_address ~ '^0x[0-9a-f]{40}$')`** enforced by the `20260324000000_wallet_primary_users.up.sql` migration: test fixture generates a 40-char lowercase-hex suffix from two concatenated uuid-simple strings, prefixes `0x`. A naive `Uuid::new_v4().to_string()` is 36 chars with hyphens — would fail the constraint. `format!("{suffix}{suffix}").chars().take(40).collect()` is the short, deterministic route.
-- **Cleanup order matches FK direction**: `journal_daily_stats` (user FK) → `journal_trades` (user FK) → `users` (parent). Deleting the parent first would fail `users_id_fkey` on the children. Kept `let _ = ...` on each so a previous failure doesn't leave stale state that blocks the next test run.
-- **Four test cases map 1:1 to plan T7 acceptance**: `fresh_insert_returns_inserted`, `second_insert_returns_skipped_duplicate` (with `COUNT(*) == 1` assertion), `null_exchange_fill_id_not_affected_by_partial_index` (FR-7 live-path regression guard), and `canonical_exchange_applied_and_catches_case_drift` (T4 integration verification — second run with "BYBIT" vs stored "bybit" must still `SkippedDuplicate`).
-- **Test count stable at 655 passing / 1 pre-existing fail / 13 ignored** (was 9 ignored before T7): the 4 new integration tests are correctly gated. No new passing tests, no regressions. Clippy warnings stable at 3 pre-existing. Running the ignored tests requires a live Postgres with the full migration chain applied:
-  ```bash
-  DATABASE_URL=postgres://... cargo test -p router hist03_idempotency -- --ignored
-  ```
-- **`cleanup_user()` fire-and-forget `let _ = ...`**: intentional. If a prior run crashed mid-test and left rows, the first cleanup still runs harmlessly on already-clean state. Using `.expect()` here would fail the test on benign empty-delete no-ops (PG accepts these; but if FK ordering shifts, it could crash cleanup). Best-effort cleanup is safer for a shared test DB.
-
-### 2026-04-20 — HIST-03 T8 (Final verification + spec archival)
-- **Final test snapshot: router 655 passing / 1 pre-existing fail / 13 ignored**, plus common_utils 316 (+1 from T4 canonical_exchange_name test), engine 108×2 lib+bin, pg_queue 11. Same sole AUTH-02 `test_me_returns_user_info` regression documented since QNT-01a T2. Zero HIST-03-introduced regressions across T1–T7.
-- **Clippy warning count stable across entire HIST-03 series**: actor.rs:1858 unused-variable, cex_client.rs:653 useless_conversion, evaluator.rs:188 manual_contains. Three pre-existing warnings held from QNT-01b T8 through HIST-03 T8. Zero new warnings from `RecordOutcome` enum, `ON CONFLICT DO NOTHING` SQL, `canonical_exchange_name` helper, `ProcessOutcome` three-way split, or integration test additions.
-- **Extension typecheck baseline 18 errors preserved**: Same pre-existing set documented across QNT-01a T3/T9, QNT-01b T1/T4/T5/T7. HIST-03 is pure backend — no extension wire-contract changes (the `trades_skipped_duplicate` WS field was added to the pg_notify payload but the extension doesn't currently consume it, so no schema update needed).
-- **Grep evidence of completion**:
-  - `grep -rn "idx_unique_import_fill\|duplicate key" crates/router/src/services/` returns 2 hits, both in doc comments (journal_service.rs:43, 168) — zero remaining in control flow.
-  - `grep -n "timestamp as i64" crates/router/src/services/import_worker.rs` returns 1 hit at line 360, an explanatory comment describing the removed fallback. Zero remaining uses as synthetic keys.
-- **Spec T8 is housekeeping-only, no source changes**: Plan status update + AGENTS.md append + spec-directory move from `.specify/specs/` to `.specify/spec-archive/`. Per-task commits at T1-T7 already landed individual messages. Matches the T8/T9/T12-style archival pattern from QNT-01a, QNT-01b, RSK-02, RSK-03.
-- **Manual QA deferred**: twice-run importer counter invariant, live Bybit round-trip regression check, and post-deploy cleanup SQL execution all require a live DB + exchange state. Vox cannot exercise these autonomously. Same deferral pattern as QNT-01a T9, QNT-01b T8, RSK-02 T10, RSK-03 T12.
+## Rust Backend Patterns
+
+- `BTreeMap` for orderbook, `DashMap` for lock-free per-user balance access.
+- `OnceLock<DashMap<…>>` > `lazy_static!` for singleton caches. `OnceLock`
+  also handles "compute once" values (e.g. reference constants).
+- `Arc<dyn Trait>` already carries `Send + Sync` when the trait is
+  `Trait: Send + Sync`. Don't spell it twice.
+- Prefer `pub(crate) fn` free helpers over methods on services when the
+  helper is shared across unrelated services. Matches the established
+  `compute_derived_fields` / `canonical_exchange_name` / `shrink` pattern.
+- Pure / async split: extract the pure decision logic from any DB-bound
+  service method so it is unit-testable without a Postgres fixture
+  (e.g. `aggregate_snapshot` ↔ `build_snapshot`, `compose_digest` ↔
+  `build_digest`, `compute_sizing_preview` → handlers).
+- Router is binary-only (no `src/lib.rs`) — top-level `tests/` directories
+  cannot `use router::…`. Keep inline `#[cfg(test)] mod tests` per module.
+- `sqlx::query_as::<_, (T,)>` tuple destructuring is idiomatic for
+  single-column reads; don't mint a 1-field `FromRow` struct.
+- `ON CONFLICT DO UPDATE SET col = EXCLUDED.col RETURNING …` is the
+  upsert-and-always-return-id idiom. `DO NOTHING` skips RETURNING.
+- `#[serde(default)]` on newly added struct fields — defends against
+  legacy serialized blobs (pg_queue buffers, WS reconnects, rehydration).
+- Errors `Box<dyn Error + Send + Sync>` at service boundaries is an
+  acceptable stub for new modules — narrow to a typed enum when the shape
+  stabilizes. The router crate has `thiserror`, not `anyhow`.
+- `dev-dependencies` are invisible to prod modules. If a crate is used by
+  a non-test call site, it must be in `[dependencies]`.
+
+## Actor / Engine Conventions
+
+- `OrderGroup` (in-memory actor state) is the source of truth for
+  TradeClosed payloads — `fill_detector::emit_trade_closed` reads from
+  `&OrderGroup`, not `managed_positions`. Any new field that must reach
+  the journal/analytics path needs to land on `OrderGroup` via
+  `EngineCommand::ConfigureGroup`.
+- `ConfigureGroup` is the single canonical write site for optional group
+  metadata. Additions follow the same shape
+  (`if value.is_some() { group.field = value; }`).
+- `managed_positions` is the secondary store used for rehydration after
+  router restart. New `OrderGroup` fields usually need a parallel column
+  there (and the rehydration path) or be explicitly declared MVP-only
+  non-durable.
+
+## Database & Persistence
+
+- Canonical exchange name: always apply `common_utils::models::canonical_exchange_name`
+  (`name.trim().to_lowercase()`) at every INSERT site that writes the
+  exchange key into the journal / idempotency path. Two call sites today:
+  `JournalService::record_trade_close` and
+  `TradeEventWriter::insert_journal_trade`.
+- Partial unique index: `idx_unique_import_fill` on
+  `(user_id, exchange, exchange_fill_id) WHERE exchange_fill_id IS NOT NULL`.
+  `ON CONFLICT` must repeat the `WHERE` predicate verbatim — Postgres
+  cannot resolve partial-index conflicts otherwise. Live-trade inserts
+  (exchange_fill_id = None) are excluded by design.
+- Never use a synthetic timestamp as a stable idempotency key. If an
+  exchange returns unparseable IDs, skip the row and bump a counter —
+  do not paper over with `timestamp as i64` or similar.
+- Idempotent INSERTs use structural outcomes, not error-string matching
+  (`RecordOutcome::Inserted | SkippedDuplicate` over
+  `err.contains("duplicate key")`). The `Box<JournalTrade>` enum variant
+  avoids `large_enum_variant` clippy.
+- `journal_trades`: decimal columns always nullable-only when meaningfully
+  optional (e.g. `r_multiple` depends on SL presence); `JSONB` columns get
+  a DDL-level `DEFAULT '...'::jsonb` so `INSERT ON CONFLICT DO NOTHING`
+  paths don't need app-side initializers.
+- Two pools on `AppState`: `pool` (writes, auth, trades) and
+  `analytics_pool` (read-optimized, every `/analytics/*` endpoint). Wrong
+  pool is an easy and silent bug.
+- `ON DELETE CASCADE` on any per-user auxiliary table's user_id FK —
+  privacy posture is "user controls what leaves the server".
+
+---
+
+## Extension / Frontend Patterns
+
+- Runtime validation: Zod schemas in `src/schemas.ts` are the single
+  source of truth for runtime types. TS types derive via
+  `z.infer<typeof Schema>`.
+- **Content scripts**: avoid bundling heavy deps. Do NOT `import { z }` in
+  `scraper.ts` / `content.ts` — it pulls full Zod + locale files. Use
+  plain TS runtime checks for the 3-5 simple validators that run there.
+- Content scripts on MV3 can drop `webextension-polyfill` and use
+  `const browser = (globalThis as any).browser ?? (globalThis as any).chrome;`
+  — native Promise-based APIs work on both Chrome and Firefox. Background
+  worker keeps the polyfill.
+- Token storage: `chrome.storage.session` (JWTs) + `chrome.storage.local`
+  (settings, prefs). Session storage auto-clears on browser close.
+- Extension uses `/auth/extension-refresh` (JSON body); web/journal use
+  `/auth/refresh` (HttpOnly cookie). Never cross the wires.
+- Module-scoped caches (TTL'd `let cache: {…} | null = null`) survive
+  modal remounts (Shadow DOM teardown) but not content-script reload.
+  Good fit for autocomplete / user-settings flags (5-min TTL).
+- SolidJS: `<For>` over `.map()` for idiomatic signal reactivity;
+  `createResource` with a reactive source function gates fetches on auth;
+  `createEffect` is idempotent — use it for lifecycle logic with safe
+  repeat semantics.
+- Shadow DOM isolation: modal needs its own `[data-theme]` attribute on
+  the host element — it cannot inherit from the outer document.
+- Verification command: `bun run typecheck` in `testudo-extension/`
+  (never `bun run build` on the extension during verification — extension
+  defaults must stay prod-URL; see extension rules).
+
+---
+
+## Trading / Exchange
+
+- Order placement: entry = limit (non-reduce-only); SL = stop-market with
+  stopPrice (reduce-only); TP = limit (NOT reduce-only — WOO rejects
+  reduce-only before position exists).
+- `clientOrderId`: `testudo:{group_id}:{role}` where role = entry | sl | tp.
+- All CCXT sidecar numerics transmitted as strings; all `SidecarOrderResponse`
+  fields like `status`, `filled`, `remaining` are `Option<String>` (WOO
+  returns null).
+- Exchange status normalization: `normalize_status()` in `exchange_api.rs`
+  maps SDK variants to CCXT strings (`"closed"` = filled, `"open"` = resting).
+  Never `format!("{:?}", ExchangeDataStatus)` — Debug leaks internal shape.
+- HL trigger orders need explicit `trigger_limit_px()` (10% slippage band);
+  SDK default is a broken `"0"`.
+- HL fills: match closed positions on `closedPnl != "0"` / `dir` semantics,
+  not on order ID — WaitingForTrigger OIDs do not match final fill OIDs.
+- Position sizing: conservative wins —
+  `MIN(account%, fixed risk, max size, margin capacity)`.
+
+---
+
+## Shared Anti-Patterns
+
+- Don't cancel `Active` order groups in cleanup — only `Pending` ghosts.
+- Don't cache a `balance?` field pre-synthesized on the page and thread
+  it through component props — let cards look up venue-specific data from
+  the snapshot directly (single source of truth).
+- Don't use `format!("{:?}", …)` for any value that crosses a wire
+  contract or a CCXT-style normalization gate.
+- Don't invent "test-only" struct fields or methods in production code —
+  use the `Default` derive or a builder.
+- Don't `amend` commits when pre-commit hooks fail; create a new commit
+  with the fix.
+
+---
+
+## Test / Verification Workflow
+
+- TDD: Red → Pause (map the connections) → Green → Refactor.
+- Background `run_in_background: true` Bash tasks must use absolute paths —
+  the background runner CWD differs from the session CWD. `cd <relative>
+  && cmd` silently fails with `no such file or directory`.
+- `cargo test | tail -N` truncates per-crate summaries. For full counts
+  omit the tail pipe or re-read the raw output file. Exit code is still
+  accurate.
+- Manual QA deferrals are normal for autonomous runs — anything that
+  needs a live exchange / real signed wallet session is documented in the
+  spec's plan Status section as "deferred to live session", not shimmed.
+- Integration tests against live Postgres use `#[tokio::test] #[ignore]`
+  + env-var `DATABASE_URL` (workspace `sqlx` dep lacks the `macros`
+  feature) — `#[sqlx::test]` would require a cross-cutting dep bump.
+- Cleanup order in DB integration tests matches FK direction: children
+  before parents. Use `let _ = ...` for idempotent cleanups that tolerate
+  "row not found".
+
+---
+
+## Opus 4.7 Ergonomics
+
+- Large `create_trade`-scale handlers (~400 lines, multi-subsystem) are
+  a context hazard. Prefer extracting pure helpers (`sizing_preview`,
+  `prepare_report`) and keeping the HTTP handler thin.
+- `AGENTS.md` blowups are the visible symptom of per-spec context
+  pollution; keep entries here timeless, archive dated journals to
+  per-spec LEARNINGS.md.
