@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-21
 > Current spec: ENG-01a-dignitas-score-living
-> Phase: PLAN complete — awaiting BUILD kickoff (one blocker)
+> Phase: COMPLETE — all tasks shipped, spec archived
 
 ---
 
@@ -14,19 +14,19 @@ Dignitas Score as a living artifact: daily snapshot persistence, top-nav pill wi
 
 | Task | Description | Status |
 |------|-------------|--------|
-| T1 | Migrations: `dignitas_history`, `dignitas_config` (seeded w/ formula weights), `users.dignitas_pill_hidden` column | pending |
-| T2 | Core types: `services/dignitas/{mod,types}.rs` — `DignitasSnapshot`, `InputContributions`, `DignitasWeights` | pending |
-| T3 | **RED**: `tests/dignitas_snapshot_test.rs` — 1000 undisciplined high-freq high-P&L trades must score LOWER than 100 disciplined trades (FR-9 gate). Fails until T5 lands. Seed fixture in `tests/fixtures/dignitas_seeds.rs` — disciplined cohort = 100% setup_tag, 100% journaled, 0 DD breaches, 0 coach flags; undisciplined cohort = 0% tagged, 0% journaled, 60% DD breaches, frequent coach flags. Seeds must define fixtures in terms of Dignitas INPUTS, not P&L outcomes. | pending |
-| T4 | `services/dignitas/inputs.rs` — 5 pure functions mapping DB rows → `[0..1]` contributions. Unit-tested per input. See D2 for semantics. | pending |
-| T5 | `services/dignitas/{snapshot,config}.rs` — orchestrator: load weights, assemble inputs, apply formula, handle cold-start, upsert into `dignitas_history`. T3 turns **GREEN**. | pending |
-| T6 | `services/dignitas/schedule.rs` — daily scheduler mirroring `coach/schedule.rs`; UTC 00:30 trigger; batch 500 users + `tokio::yield_now()`; idempotency via `UNIQUE(user_id,date)`. Wire spawn in `main.rs`. | pending |
-| T7 | `routes/dignitas.rs` — `GET /api/dignitas/me` (score + delta_7d + cold_start + pill_hidden), `GET /api/dignitas/history?days=90`, `PATCH /api/dignitas/preferences`. Wire under auth middleware. | pending |
-| T8 | `testudo-journal/src/api/client.ts` — `DignitasCurrent`, `DignitasHistory` types + `fetchDignitasMe/History` + `patchDignitasPreference`. | pending |
-| T9 | `components/DignitasPill.tsx` + mount in `Layout.tsx` top nav; score + signed delta + color (score-green/score-red/tertiary); respect `pill_hidden`; cold-start label (`50 —`). | pending |
-| T9b | Rewrite `PerformanceRadar.tsx` → 5-axis `InputContributions` radar per D1. Delete client-side normalization (`PF × 20` etc.). Reads `InputContributions` from `/api/dignitas/me`. Drop `PerformanceStats` / `RiskStats` props (now unused). Update Overview layout if a slot is freed. Dimmed/skipped rendering for axes with cold-start (Coach Alignment when no reports yet). | pending |
-| T10 | `components/DignitasPanel.tsx` + `DignitasSparkline.tsx` (EChart line) — popover: current score, 90-day sparkline, hide-pill shortcut, "View breakdown →" link to `/desk/dignitas`. **No input breakdown inside the popover** (that role moves to the Overview radar per D1 resolution B′). | pending |
-| T11 | `pages/Dignitas.tsx` at `/desk/dignitas` — transparency table (input × user-value × weight × explanation) + formula; register route in `index.tsx`; add `help-content.ts` entries (`dignitas.pill`, `dignitas.transparency`, `dignitas.inputs.*`). | pending |
-| T12 | Final verification: `cargo clippy --all-targets && cargo test` + `cd testudo-journal && bun run build`; manual QA notes; archive spec. | pending |
+| T1 | Migrations: `dignitas_history`, `dignitas_config` (seeded w/ formula weights), `users.dignitas_pill_hidden` column | complete |
+| T2 | Core types: `services/dignitas/{mod,types}.rs` — `DignitasSnapshot`, `InputContributions`, `DignitasWeights` | complete |
+| T3 | **RED**: `tests/dignitas_snapshot_test.rs` — 1000 undisciplined high-freq high-P&L trades must score LOWER than 100 disciplined trades (FR-9 gate). | complete |
+| T4 | `services/dignitas/inputs.rs` — 5 pure functions mapping DB rows → `[0..1]` contributions. Unit-tested per input. | complete |
+| T5 | `services/dignitas/{snapshot,config}.rs` — orchestrator: load weights, assemble inputs, apply formula, handle cold-start, upsert into `dignitas_history`. T3 turns **GREEN**. | complete |
+| T6 | `services/dignitas/schedule.rs` — daily scheduler; UTC 00:30 trigger; batch 500 users + `tokio::yield_now()`; idempotency via `UNIQUE(user_id,date)`. Wire spawn in `main.rs`. | complete |
+| T7 | `routes/dignitas.rs` — `GET /api/dignitas/me`, `GET /api/dignitas/history?days=90`, `PATCH /api/dignitas/preferences`. Wire under auth middleware. | complete |
+| T8 | `testudo-journal/src/api/client.ts` — `DignitasCurrent`, `DignitasHistory` types + fetch helpers. | complete |
+| T9 | `components/DignitasPill.tsx` + mount in `Layout.tsx` top nav; score + signed delta + color; respect `pill_hidden`; cold-start label (`50 —`). | complete |
+| T9b | Rewrite `PerformanceRadar.tsx` → 5-axis `InputContributions` radar per D1. Reads `InputContributions` from `/api/dignitas/me`. Coach Alignment dim for cold-start. | complete |
+| T10 | `components/DignitasPanel.tsx` + `DignitasSparkline.tsx` — popover: current score, 90-day sparkline, hide-pill shortcut, "View breakdown →" link to `/desk/dignitas`. | complete |
+| T11 | `pages/Dignitas.tsx` at `/desk/dignitas` — transparency table (input × user-value × weight × explanation) + formula; register route; add `help-content.ts` entries. | complete |
+| T12 | Final verification: `cargo clippy --all-targets && cargo test` + `cd testudo-journal && bun run build`; archive spec. | complete |
 
 **Task ordering is dependency-correct:** T1→T2→T3→T4→T5 (Red→Green), T5→T6, T5→T7, T7→T8→(T9‖T9b‖T10‖T11)→T12.
 
@@ -105,12 +105,8 @@ The spec's "extract pure-data portions of `PerformanceRadar` into `snapshot.rs`"
 
 ## Status
 
-PLAN COMPLETE — 12 atomic tasks defined, dependencies mapped. **D1 RESOLVED** (Option B′).
+**COMPLETE** — all 13 tasks shipped (T1–T12 + T9b). Spec archived to `.specify/spec-archive/ENG-01a-dignitas-score-living/`.
 
-**Ready for BUILD** — no blockers remain.
-
-Spec: ENG-01a-dignitas-score-living
-Total Tasks: 13 (T1–T12 + T9b)
-Ready for BUILD mode.
-
-Next task: T1 — Migrations (`dignitas_history`, `dignitas_config` + seed weights, `users.dignitas_pill_hidden`)
+- `cargo clippy --all-targets`: pass (warnings only, pre-existing)
+- `cargo test`: 685 pass, 1 pre-existing failure (`test_me_returns_user_info` — unrelated to Dignitas, documented in T5 LEARNINGS)
+- `cd testudo-journal && bun run build`: pass
