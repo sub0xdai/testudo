@@ -39,6 +39,8 @@
   ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
   │ HIST-03              │ CEX import idempotent dedup (P0, blocks QNT-01c)│ After HIST-01/02 (shipped) — ship BEFORE QNT-01c            │
   ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ HIST-04              │ HL import partial-fill aggregation (P1)         │ After HIST-03 (shipped) — prod shows ~2-3x over-count on HL │
+  ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
   │ ENG-01               │ Dignitas living score + public profile + streak │ After RSK-03 (streak gates on RSK-03 data)                  │
   ├──────────────────────┼─────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
   │ ENG-02               │ On-chain discipline attestations (EAS on Base)  │ After ENG-01 produces streak data                           │
