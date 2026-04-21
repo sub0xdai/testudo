@@ -18,7 +18,7 @@ export const HELP: Record<string, string> = {
   'coach.patterns.streak_risk': 'Three or more consecutive losses, or five or more consecutive wins with non-decreasing position size (pyramiding on a hot run).',
 
   // ── Dignitas Radar ──
-  'radar.dignitas': 'Your standing as a trader — measured across six virtues. Higher score, stronger formation.',
+  'radar.dignitas': 'Five discipline axes: drawdown adherence, risk consistency, setup tagging, coach alignment, and journal consistency. Higher score = stronger formation.',
 
   // ── Risk Hub ──
   'risk.exposure': 'Sum of absolute notional across all open positions. Answers: how much capital is at work right now?',
