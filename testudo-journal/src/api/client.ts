@@ -820,3 +820,54 @@ export async function dismissCoachBanner(reportId: string): Promise<void> {
   )
   if (!res.ok) throw new Error(`Coach dismiss-banner error: ${res.status}`)
 }
+
+// ─── Dignitas API (ENG-01a) ───
+
+export interface DignitasInputContributions {
+  drawdown_adherence: string
+  risk_per_trade_consistency: string
+  setup_adherence: string
+  coach_severity_penalty: string
+  journal_consistency: string
+}
+
+export interface DignitasCurrent {
+  score: string
+  delta_7d: string | null
+  cold_start: boolean
+  pill_hidden: boolean
+  contributions: DignitasInputContributions
+}
+
+export interface DignitasHistoryPoint {
+  date: string
+  score: string
+  cold_start: boolean
+}
+
+export interface DignitasHistory {
+  snapshots: DignitasHistoryPoint[]
+}
+
+export async function fetchDignitasMe(): Promise<DignitasCurrent> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/me`)
+  if (!res.ok) throw new Error(`Dignitas /me error: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchDignitasHistory(days = 90): Promise<DignitasHistory> {
+  const params = new URLSearchParams()
+  params.set('days', String(days))
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/history?${params}`)
+  if (!res.ok) throw new Error(`Dignitas history error: ${res.status}`)
+  return res.json()
+}
+
+export async function patchDignitasPreference(pillHidden: boolean): Promise<void> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/preferences`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pill_hidden: pillHidden }),
+  })
+  if (!res.ok) throw new Error(`Dignitas preferences error: ${res.status}`)
+}
