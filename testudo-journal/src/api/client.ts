@@ -871,3 +871,87 @@ export async function patchDignitasPreference(pillHidden: boolean): Promise<void
   })
   if (!res.ok) throw new Error(`Dignitas preferences error: ${res.status}`)
 }
+
+// ─── Dignitas Identity / Public Profile API (ENG-01b) ───
+
+export interface IdentityPreferences {
+  handle: string | null
+  bio: string | null
+  visibility: { show_score: boolean; show_sparkline: boolean }
+  allow_indexing: boolean
+  can_change_handle_at: string | null
+}
+
+export interface PublicProfile {
+  handle: string
+  bio: string | null
+  score: string | null
+  sparkline: { date: string; score: string }[] | null
+  member_since: string
+}
+
+export async function fetchIdentity(): Promise<IdentityPreferences> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/identity`)
+  if (!res.ok) throw new Error(`Identity error: ${res.status}`)
+  return res.json()
+}
+
+export async function claimHandle(handle: string, bio?: string): Promise<IdentityPreferences> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/handle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ handle, bio }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw Object.assign(new Error(err.message || `Claim handle error: ${res.status}`), { code: err.code, status: res.status, data: err })
+  }
+  return res.json()
+}
+
+export async function releaseHandle(): Promise<void> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/handle`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw Object.assign(new Error(err.message || `Release handle error: ${res.status}`), { code: err.code, status: res.status, data: err })
+  }
+}
+
+export async function patchVisibility(patch: { show_score?: boolean; show_sparkline?: boolean }): Promise<void> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/visibility`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) throw new Error(`Visibility patch error: ${res.status}`)
+}
+
+export async function patchIndexing(allowIndexing: boolean): Promise<void> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/visibility`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ allow_indexing: allowIndexing }),
+  })
+  if (!res.ok) throw new Error(`Indexing patch error: ${res.status}`)
+}
+
+export async function updateBio(bio: string | null): Promise<void> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/handle`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bio }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw Object.assign(new Error(err.message || `Bio update error: ${res.status}`), { code: err.code, status: res.status })
+  }
+}
+
+export async function fetchPublicProfile(handle: string): Promise<PublicProfile | null> {
+  const res = await fetch(`${API_BASE}/api/v1/public/profile/${encodeURIComponent(handle)}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`Public profile error: ${res.status}`)
+  return res.json()
+}
