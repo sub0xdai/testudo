@@ -34,6 +34,13 @@ advisor()                                 # GATE 2 — review the delivered spec
 
 **Purpose:** catch plan-level flaws while they're still cheap to fix.
 
+**Model:** default to **Sonnet** — the plan is fresh, small, and the check is
+structural (FR coverage, contract honor, shared-code guards). Escalate to Opus
+only if: (a) the spec's contracts are subtle/cross-cutting (byte-for-byte
+regression guards, state-machine invariants), or (b) Sonnet's first pass
+returned "looks fine" on a plan you suspect is flawed. Reserve Opus spend for
+Gate 2, where the delivered diff is larger and judgment matters more.
+
 The advisor sees:
 - The full conversation transcript (including any back-and-forth that shaped the spec)
 - The just-written `IMPLEMENTATION_PLAN.md`
@@ -58,6 +65,11 @@ The advisor sees:
 ## Gate 2 — After Build Complete, Before Archive
 
 **Purpose:** verify the delivered spec actually satisfies acceptance criteria, not just passes tests.
+
+**Model:** default to **Opus** — the transcript is long, the diff spans many
+files, and catching silent deviations (FR-10-style path-equivalence failures,
+baseline test drift, scope leak) pays off. This is where the advisor earns its
+keep.
 
 The advisor sees:
 - Full build transcript (every iteration's output, commit messages, validation sweeps)

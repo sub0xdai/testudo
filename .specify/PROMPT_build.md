@@ -30,10 +30,7 @@ Complete exactly ONE task from the implementation plan, then exit.
 ### Step 2: Study Before Coding
 
 - Read the relevant existing code for your task's file-level scope.
-- Understand the patterns in use.
-- Read `AGENTS.md` for cross-cutting rules.
 - Read this spec's `LEARNINGS.md` (if present) for discoveries from prior iterations.
-- Don't assume — verify.
 
 ### Step 3: Implement (Vertical Slices)
 
@@ -42,6 +39,13 @@ Complete exactly ONE task from the implementation plan, then exit.
 - Use existing patterns from the codebase.
 - Implement functionality completely — work in **vertical slices** (one end-to-end checkpoint per task, not horizontal layers).
 - Each task must be independently testable. Don't leave half-wired code.
+
+**Sub-agent dispatch rule (4.7-era):** if the task touches **>3 files across
+>1 subsystem** (e.g. router + engine + extension), dispatch one sub-agent per
+subsystem with explicit scoped file paths. Do NOT attempt to hold all
+subsystems in your own context — Opus 4.7 in particular is prone to silent
+regressions when juggling shared code paths across subsystems (cf. QNT-01a
+FR-10 breach). One subsystem per sub-agent, synthesise in your own context.
 
 ### Step 4: Validate
 
