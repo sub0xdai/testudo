@@ -13,6 +13,7 @@ import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
 import { CorrelationStack } from '../components/account/CorrelationStack'
 import { CoachBanner } from '../components/account/CoachBanner'
+import { IdentitySettings } from '../components/account/IdentitySettings'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
@@ -236,8 +237,9 @@ export default function Account() {
           </Show>
           </div>
 
-          <div class="max-w-6xl mx-auto w-full px-8 pb-10">
+          <div class="max-w-6xl mx-auto w-full px-8 pb-10 space-y-6">
             <CoachBanner />
+            <IdentitySettings />
           </div>
         </Show>
       </Show>
