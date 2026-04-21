@@ -6,6 +6,7 @@ export function TradeRow(props: {
   trade: JournalTrade
   tags?: JournalTag[]
   onClick: () => void
+  onKellyBadgeClick?: () => void
 }) {
   const t = () => props.trade
   const rMultiple = () => {
@@ -57,6 +58,18 @@ export function TradeRow(props: {
       </td>
       <td class="px-3 py-2.5 whitespace-nowrap">
         <div class="flex items-center gap-1.5">
+          <Show when={t().kelly_inputs != null}>
+            <button
+              class="inline-flex items-center gap-0.5 px-1 py-0 text-[10px] font-mono border border-signal-green/40 text-signal-green/80 hover:border-signal-green hover:text-signal-green transition-colors"
+              title="Kelly-sized — click to see calibration inputs"
+              onClick={(e) => {
+                e.stopPropagation()
+                props.onKellyBadgeClick?.()
+              }}
+            >
+              ⚡ Kelly
+            </button>
+          </Show>
           <Show when={t().notes}>
             <span class="text-text-tertiary" title="Has notes">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
