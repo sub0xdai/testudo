@@ -77,7 +77,7 @@ first so the frontend has real endpoints to call; each CP is committable.
 
 ### CP-1 — Backend foundation: handles table, validation, service
 
-- [ ] **T1** — Migration `NNNN_user_handles.up.sql` + `.down.sql`. Creates
+- [x] **T1** — Migration `NNNN_user_handles.up.sql` + `.down.sql`. Creates
   `user_handles(user_id UUID PK → users ON DELETE CASCADE, handle TEXT UNIQUE
   NOT NULL, bio TEXT NULL, show_score BOOLEAN NOT NULL DEFAULT FALSE,
   show_sparkline BOOLEAN NOT NULL DEFAULT FALSE, allow_indexing BOOLEAN NOT
@@ -87,14 +87,14 @@ first so the frontend has real endpoints to call; each CP is committable.
   `last_handle_change_at TIMESTAMPTZ NULL` column to `users` for the 30-day
   window that survives release. *Complexity: simple.*
 
-- [ ] **T2** — `services/dignitas/handles/validation.rs`: pure
+- [x] **T2** — `services/dignitas/handles/validation.rs`: pure
   `validate_handle(&str) -> Result<NormalizedHandle, HandleError>` — trims,
   lowercases, enforces regex `^[a-z0-9][a-z0-9_-]{1,22}[a-z0-9]$`, checks
   reserved list, runs profanity filter. Inline `#[cfg(test)]` covers: valid,
   too short, too long, leading `-`, trailing `_`, uppercase normalization,
   reserved hit, profanity hit. RED first, then GREEN. *Complexity: simple.*
 
-- [ ] **T3** — `services/dignitas/handles/reserved.rs` +
+- [x] **T3** — `services/dignitas/handles/reserved.rs` +
   `services/dignitas/handles/profanity.rs`: `static` lists loaded via
   `OnceLock<HashSet<&'static str>>`. Reserved minimum set per spec: `admin`,
   `testudo`, `api`, `www`, `root`, `support`, `help`, `mod`, `team`,
@@ -102,7 +102,7 @@ first so the frontend has real endpoints to call; each CP is committable.
   exhaustive — trip-wire only, per spec risk 3). Inline unit tests for
   lookup, substring match. *Complexity: simple.*
 
-- [ ] **T4** — `services/dignitas/handles/mod.rs`: `HandleService` with
+- [x] **T4** — `services/dignitas/handles/mod.rs`: `HandleService` with
   postgres-backed methods — `claim(user_id, handle, bio) ->
   Result<ClaimOutcome, HandleError>` (enforces 30-day window via
   `users.last_handle_change_at`, returns `Err::RateLimited { retry_at }`,
@@ -118,7 +118,7 @@ first so the frontend has real endpoints to call; each CP is committable.
 
 ### CP-1 continued — Authed endpoints
 
-- [ ] **T5** — `routes/dignitas.rs` additions:
+- [x] **T5** — `routes/dignitas.rs` additions:
   `POST /api/v1/dignitas/handle` (body: `{ handle, bio? }` → 201 +
   IdentityPreferences on success; 400 invalid; 409 taken; 400 reserved; 429
   w/ `{ can_change_handle_at }` on rate limit).
@@ -132,7 +132,7 @@ first so the frontend has real endpoints to call; each CP is committable.
 
 ### CP-3 backend — Public read + rate limit
 
-- [ ] **T6** — `routes/public_profile.rs`:
+- [x] **T6** — `routes/public_profile.rs`:
   `GET /api/v1/public/profile/:handle` (no JWT) using the handle service.
   404 when unclaimed. 200 with `{ handle, bio, score: null|string,
   sparkline: null|[...], member_since }` — `score` null unless
@@ -147,7 +147,7 @@ first so the frontend has real endpoints to call; each CP is committable.
   `{true, true}` → both populated. Plus rate-limit wiring test (mock IP).
   *Complexity: simple.*
 
-- [ ] **T7** — `main.rs` wiring: create the public profile `RateLimiter`,
+- [x] **T7** — `main.rs` wiring: create the public profile `RateLimiter`,
   add `routes::public_profile` to `routes/mod.rs`, register
   `web::scope("/public").service(web::scope("/profile").route("/{handle}",
   web::get().to(public_profile::get_profile)))` as a sibling of `/dignitas`
@@ -155,18 +155,18 @@ first so the frontend has real endpoints to call; each CP is committable.
 
 ### CP-2 frontend — Account identity management
 
-- [ ] **T8** — `testudo-journal/src/api/client.ts` additions:
+- [x] **T8** — `testudo-journal/src/api/client.ts` additions:
   `IdentityPreferences`, `PublicProfile` types; `fetchIdentity()`,
   `claimHandle()`, `releaseHandle()`, `patchVisibility()`,
   `patchIndexing()`, `updateBio()` (authed — via `fetchWithCredentials`);
   `fetchPublicProfile(handle)` (unauth — bare `fetch`, no credentials).
   *Complexity: simple.*
 
-- [ ] **T9** — `testudo-journal/src/config/dignitas-reserved-handles.ts`
+- [x] **T9** — `testudo-journal/src/config/dignitas-reserved-handles.ts`
   mirroring the backend's minimum reserved list. UX-only; backend is the
   enforcement gate. *Complexity: trivial.*
 
-- [ ] **T10** — `components/account/IdentitySettings.tsx`: brutalist
+- [x] **T10** — `components/account/IdentitySettings.tsx`: brutalist
   section on Account page. Claim form with inline regex/reserved preview
   (fires backend call on submit — trusts server as final gate). Release
   button with confirm. Bio `<textarea>` (≤140 chars, countdown). Three
@@ -174,12 +174,12 @@ first so the frontend has real endpoints to call; each CP is committable.
   `can_change_handle_at` timer when rate-limited. Uses the existing
   `PageSubHeader` styling and `HelpTip` conventions. *Complexity: medium.*
 
-- [ ] **T11** — `pages/Account.tsx`: mount `<IdentitySettings />` as a new
+- [x] **T11** — `pages/Account.tsx`: mount `<IdentitySettings />` as a new
   section (below `CoachBanner`). *Complexity: trivial.*
 
 ### CP-3 frontend — Public profile page
 
-- [ ] **T12** — `pages/PublicProfile.tsx`: reads `:handle` from route
+- [x] **T12** — `pages/PublicProfile.tsx`: reads `:handle` from route
   params, calls `fetchPublicProfile`, renders 404 state on null, otherwise
   shows brutalist header with handle + join date + bio, plus the score
   card + 90-day `DignitasSparkline` only when opted-in. Manages
@@ -188,12 +188,12 @@ first so the frontend has real endpoints to call; each CP is committable.
   Sets `document.title` to `Testudo — /d/<handle>`. No authed calls.
   *Complexity: medium.*
 
-- [ ] **T13** — `index.tsx`: register `<Route path="/d/:handle"
+- [x] **T13** — `index.tsx`: register `<Route path="/d/:handle"
   component={PublicProfile} />`. Verify `Layout` does not fire authed
   probes for this path — if it does (top-nav identity etc.), gate them
   off via `useLocation().pathname.startsWith('/d/')`. *Complexity: simple.*
 
-- [ ] **T13b** — **HTTP-header FR-9 enforcement (Cloudflare Pages).**
+- [x] **T13b** — **HTTP-header FR-9 enforcement (Cloudflare Pages).**
   Add a `_headers` file entry (or update existing) under
   `testudo-journal/public/_headers`:
   ```
@@ -207,7 +207,7 @@ first so the frontend has real endpoints to call; each CP is committable.
   after deploy. Manual QA (T15/T16): confirm header present on a real
   profile URL. *Complexity: trivial.*
 
-- [ ] **T14** — `components/DignitasPanel.tsx`: add a third action
+- [x] **T14** — `components/DignitasPanel.tsx`: add a third action
   "SHARE PROFILE" that copies `${origin}/desk/d/<handle>` to clipboard.
   Only rendered when identity has a claimed handle AND `show_score` is
   true (we require a minimally-visible profile before offering the share
@@ -217,17 +217,17 @@ first so the frontend has real endpoints to call; each CP is committable.
 
 ### CP-4 — Anti-abuse finish + verification
 
-- [ ] **T15** — Integration sweep for rate-limit paths:
+- [x] **T15** — Integration sweep for rate-limit paths:
   `#[tokio::test] #[ignore]` DB-backed test for handle claim hitting
   30-day window; inline unit test for per-IP 60/min breach returning 429.
   Document the manual-QA deferral (incognito browser verification) in the
   spec's completion signal. *Complexity: simple.*
 
-- [ ] **T16** — Verification pass: `cd testudo-exchange && cargo clippy
+- [x] **T16** — Verification pass: `cd testudo-exchange && cargo clippy
   --all-targets && cargo test`; `cd testudo-journal && bun run build`.
   Fix any regressions. *Complexity: simple.*
 
-- [ ] **T17** — Append to `.specify/specs/ENG-01b-dignitas-public-profile/
+- [x] **T17** — Append to `.specify/specs/ENG-01b-dignitas-public-profile/
   LEARNINGS.md` with per-task gotchas (at minimum: inline-test override,
   rate-limit sharing, `last_handle_change_at` location, SPA meta-robots
   handling). Final commit with
@@ -270,4 +270,5 @@ Spec: ENG-01b-dignitas-public-profile
 Total Tasks: 18 (T1–T17 + T13b)
 Ready for BUILD mode — Gate 1 pass 2026-04-21.
 
-Next task: T1 — `user_handles` migration + `users.last_handle_change_at` column.
+**STATUS: COMPLETE — 2026-04-21. All 18 tasks shipped. Spec archived to `.specify/spec-archive/ENG-01b-dignitas-public-profile/`.**
+Manual QA deferred: incognito browser verification of a live claimed handle requires live DB + real session. Verify on next deploy.
