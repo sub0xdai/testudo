@@ -20,6 +20,16 @@ export const HELP: Record<string, string> = {
   // ── Dignitas Radar ──
   'radar.dignitas': 'Five discipline axes: drawdown adherence, risk consistency, setup tagging, coach alignment, and journal consistency. Higher score = stronger formation.',
 
+  // ── Dignitas Score ──
+  'dignitas.pill': 'Your Dignitas score — a discipline-adherence index computed daily from five behavioral inputs. Trade frequency, P&L, and win rate are not inputs. Only how well you follow your own rules.',
+  'dignitas.transparency': 'Each of the five Dignitas inputs, your current value for it, its weight in the formula, and how many points it contributes to your score.',
+  'dignitas.cold_start': 'Your score is pinned to 50 (neutral) while fewer than 7 days of input data exist. This prevents a 100-and-only-goes-down start for new users.',
+  'dignitas.inputs.drawdown': 'Fraction of trading days in the trailing 30d where daily drawdown stayed within your configured limit. Measures capital preservation discipline.',
+  'dignitas.inputs.risk_consistency': 'How closely each trade\'s actual risk percentage matched your configured risk-per-trade target. Deviation from your own plan is the signal — win/loss outcome is not.',
+  'dignitas.inputs.setup_adherence': 'Fraction of closed trades in the trailing 30d tagged with a named setup. Untagged trades signal reactive, plan-absent entries that bypass your own framework.',
+  'dignitas.inputs.coach_alignment': 'Absence of behavioral flags in the last 4 weekly coach reports. Notable flags cost 0.5×; Concerning flags cost 1.0×. Zero flags = 100%. Silently neutral until coach reports exist.',
+  'dignitas.inputs.journal_consistency': 'Fraction of closed trades with trade notes or linked journal entries. Captures execution-reflection discipline independent of outcome.',
+
   // ── Risk Hub ──
   'risk.exposure': 'Sum of absolute notional across all open positions. Answers: how much capital is at work right now?',
   'risk.leverage': 'Net exposure divided by total margin across every venue. 2x+ amber, 5x+ red.',
