@@ -189,6 +189,23 @@ export async function fetchTimeDistribution(filters: StatsFilter): Promise<{ dat
 
 // --- Trade CRUD API ---
 
+export type KellyInputs = {
+  mode: 'calibrated_kelly'
+  baseline_risk_pct: number
+  effective_risk_pct: number
+  edge_multiplier: number
+  p_eff: number
+  avg_r_win: number
+  avg_r_loss: number
+  quarter_kelly: number
+  n_setup: number
+  n_global: number
+  pseudocount_k: number
+  p_setup_raw: number
+  p_global_raw: number
+  computed_at: string
+}
+
 export interface JournalTrade {
   id: string
   user_id: string
@@ -213,6 +230,7 @@ export interface JournalTrade {
   trade_group_id: string | null
   notes: string | null
   setup_tag: string | null
+  kelly_inputs: KellyInputs | null
   created_at: string
   updated_at: string
 }
