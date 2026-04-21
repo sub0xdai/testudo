@@ -1,0 +1,95 @@
+import { createResource, createSignal, Show } from 'solid-js'
+import { A } from '@solidjs/router'
+import { DignitasSparkline } from './DignitasSparkline'
+import { fetchDignitasHistory, patchDignitasPreference, type DignitasCurrent } from '../api/client'
+
+interface Props {
+  data: DignitasCurrent
+  onHide: () => void
+  onClose: () => void
+}
+
+export function DignitasPanel(props: Props) {
+  const [history] = createResource(() => fetchDignitasHistory(90))
+  const [hiding, setHiding] = createSignal(false)
+
+  async function handleHide() {
+    setHiding(true)
+    try {
+      await patchDignitasPreference(true)
+      props.onHide()
+    } finally {
+      setHiding(false)
+    }
+  }
+
+  const score = () => parseFloat(props.data.score).toFixed(1)
+  const delta = () => {
+    if (props.data.cold_start || props.data.delta_7d === null) return null
+    return parseFloat(props.data.delta_7d)
+  }
+  const deltaColor = () => {
+    const d = delta()
+    if (d === null) return 'text-text-tertiary'
+    if (d > 0) return 'text-signal-green'
+    if (d < 0) return 'text-signal-red'
+    return 'text-text-tertiary'
+  }
+
+  return (
+    <div class="p-4">
+      <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">
+        // DIGNITAS_SCORE
+      </div>
+
+      {/* Score */}
+      <div class="text-center mb-3">
+        <div class="font-mono text-3xl text-text-primary">{score()}</div>
+        <Show
+          when={delta() !== null}
+          fallback={
+            <div class="font-mono text-[10px] text-text-tertiary mt-1">
+              {props.data.cold_start ? 'NEUTRAL — BUILDING BASELINE' : '—'}
+            </div>
+          }
+        >
+          <div class={`font-mono text-xs mt-1 ${deltaColor()}`}>
+            {delta()! > 0 ? '▲' : '▼'}
+            {Math.abs(delta()!).toFixed(1)} vs 7d
+          </div>
+        </Show>
+      </div>
+
+      {/* 90-day sparkline */}
+      <Show
+        when={!history.loading}
+        fallback={
+          <div class="h-[80px] flex items-center justify-center">
+            <div class="font-mono text-[10px] text-text-tertiary">LOADING...</div>
+          </div>
+        }
+      >
+        <DignitasSparkline snapshots={history()?.snapshots ?? []} />
+      </Show>
+      <div class="font-mono text-[10px] text-text-tertiary text-right mt-1 mb-3">90d</div>
+
+      {/* Actions */}
+      <div class="border-t border-container-border pt-3 flex items-center justify-between">
+        <button
+          onClick={handleHide}
+          disabled={hiding()}
+          class="font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-50"
+        >
+          {hiding() ? 'HIDING...' : 'HIDE PILL'}
+        </button>
+        <A
+          href="/dignitas"
+          onClick={props.onClose}
+          class="font-mono text-[10px] text-text-secondary hover:text-text-primary transition-colors"
+        >
+          VIEW BREAKDOWN →
+        </A>
+      </div>
+    </div>
+  )
+}
