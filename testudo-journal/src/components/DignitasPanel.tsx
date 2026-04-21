@@ -1,7 +1,7 @@
-import { createResource, createSignal, Show } from 'solid-js'
+import { createResource, createSignal, onCleanup, Show } from 'solid-js'
 import { A } from '@solidjs/router'
 import { DignitasSparkline } from './DignitasSparkline'
-import { fetchDignitasHistory, patchDignitasPreference, type DignitasCurrent } from '../api/client'
+import { fetchDignitasHistory, fetchIdentity, patchDignitasPreference, type DignitasCurrent } from '../api/client'
 
 interface Props {
   data: DignitasCurrent
@@ -11,7 +11,25 @@ interface Props {
 
 export function DignitasPanel(props: Props) {
   const [history] = createResource(() => fetchDignitasHistory(90))
+  const [identity] = createResource(() => fetchIdentity())
   const [hiding, setHiding] = createSignal(false)
+  const [copied, setCopied] = createSignal(false)
+  let copyTimeout: ReturnType<typeof setTimeout> | null = null
+
+  onCleanup(() => { if (copyTimeout) clearTimeout(copyTimeout) })
+
+  const canShare = () => {
+    const id = identity()
+    return id !== undefined && id.handle !== null && id.visibility.show_score
+  }
+
+  function handleShare() {
+    const handle = identity()?.handle
+    if (!handle) return
+    navigator.clipboard.writeText(`${window.location.origin}/desk/d/${handle}`)
+    setCopied(true)
+    copyTimeout = setTimeout(() => setCopied(false), 2000)
+  }
 
   async function handleHide() {
     setHiding(true)
@@ -82,13 +100,24 @@ export function DignitasPanel(props: Props) {
         >
           {hiding() ? 'HIDING...' : 'HIDE PILL'}
         </button>
-        <A
-          href="/dignitas"
-          onClick={props.onClose}
-          class="font-mono text-[10px] text-text-secondary hover:text-text-primary transition-colors"
-        >
-          VIEW BREAKDOWN →
-        </A>
+        <div class="flex items-center gap-3">
+          <Show when={canShare()}>
+            <button
+              onClick={handleShare}
+              class="font-mono text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
+              classList={{ 'text-signal-green': copied() }}
+            >
+              {copied() ? 'COPIED!' : 'SHARE PROFILE'}
+            </button>
+          </Show>
+          <A
+            href="/dignitas"
+            onClick={props.onClose}
+            class="font-mono text-[10px] text-text-secondary hover:text-text-primary transition-colors"
+          >
+            VIEW BREAKDOWN →
+          </A>
+        </div>
       </div>
     </div>
   )
