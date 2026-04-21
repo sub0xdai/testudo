@@ -1,10 +1,28 @@
-import { createSignal, createMemo, onMount } from "solid-js";
+import { createSignal, createMemo, onMount, Show } from "solid-js";
 import browser from "webextension-polyfill";
+import type { z } from "zod";
 import type { ManagementPreset } from "../../types";
 import { DEFAULT_MANAGEMENT_PRESET } from "../../types";
+import type { UserSettingsResponseSchema } from "../../schemas";
+
+type UserSettingsResponse = z.infer<typeof UserSettingsResponseSchema>;
+
+type UserSettingsResult =
+  | { success: true; data: UserSettingsResponse }
+  | { success: false; error: string; error_code?: string };
+
+const DYNAMIC_RISK_HELP =
+  "Scales sizing by your calibrated per-setup edge (Quarter-Kelly, ±2× clamp). Unlocks after 30 tagged closes.";
 
 export default function TradeManagement() {
   const [preset, setPreset] = createSignal<ManagementPreset>({ ...DEFAULT_MANAGEMENT_PRESET });
+
+  // QNT-01b (relocated 2026-04-21): Dynamic Risk toggle lives inside the Risk
+  // Per Trade card — same decision context as the baseline risk slider.
+  const [drState, setDrState] = createSignal<UserSettingsResponse | null>(null);
+  const [drLoading, setDrLoading] = createSignal(true);
+  const [drSaving, setDrSaving] = createSignal(false);
+  const [drError, setDrError] = createSignal<string | null>(null);
 
   onMount(async () => {
     const stored = await browser.storage.local.get(["managementPreset"]);
@@ -12,6 +30,63 @@ export default function TradeManagement() {
       setPreset(stored.managementPreset as ManagementPreset);
     }
   });
+
+  onMount(async () => {
+    try {
+      const res = (await browser.runtime.sendMessage({
+        type: "GET_USER_SETTINGS",
+      })) as UserSettingsResult;
+      if (res?.success) {
+        setDrState(res.data);
+        setDrError(null);
+      } else {
+        setDrError(res?.error || "Failed to load settings");
+      }
+    } catch (e) {
+      setDrError(e instanceof Error ? e.message : "Failed to load settings");
+    } finally {
+      setDrLoading(false);
+    }
+  });
+
+  async function toggleDynamicRisk() {
+    const current = drState();
+    if (!current || drSaving()) return;
+    if (!current.unlocked && !current.settings.dynamic_risk_enabled) return;
+
+    const nextEnabled = !current.settings.dynamic_risk_enabled;
+    setDrSaving(true);
+    setDrError(null);
+
+    const prev = current;
+    setDrState({
+      ...current,
+      settings: { ...current.settings, dynamic_risk_enabled: nextEnabled },
+    });
+
+    try {
+      const res = (await browser.runtime.sendMessage({
+        type: "PATCH_USER_SETTINGS",
+        dynamic_risk_enabled: nextEnabled,
+      })) as UserSettingsResult;
+      if (res?.success) {
+        setDrState(res.data);
+      } else {
+        setDrState(prev);
+        setDrError(res?.error || "Update failed");
+      }
+    } catch (e) {
+      setDrState(prev);
+      setDrError(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setDrSaving(false);
+    }
+  }
+
+  const drEnabled = () => drState()?.settings.dynamic_risk_enabled ?? false;
+  const drUnlocked = () => drState()?.unlocked ?? false;
+  const drTaggedCount = () => drState()?.tagged_trade_count ?? 0;
+  const drCanInteract = () => !drLoading() && !drSaving() && (drUnlocked() || drEnabled());
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -103,6 +178,58 @@ export default function TradeManagement() {
           <span class="text-signal-red">danger</span>
           <span>10%</span>
         </div>
+
+        {/* QNT-01b (relocated 2026-04-21): Dynamic Risk toggle — Kelly governor over the baseline slider above */}
+        <Show when={!drLoading()}>
+          <div
+            class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between gap-3"
+            data-testid="dynamic-risk-row"
+          >
+            <div class="flex items-center gap-1.5">
+              <span class="text-[13px] text-text-primary font-sans font-medium">Dynamic Risk</span>
+              <span
+                role="img"
+                aria-label="About Dynamic Risk"
+                title={DYNAMIC_RISK_HELP}
+                class="inline-flex items-center justify-center w-4 h-4 border border-border-subtle text-[10px] text-text-dim font-mono cursor-help select-none"
+              >
+                ?
+              </span>
+            </div>
+            <div class="flex items-center gap-3">
+              <Show when={!drUnlocked() && !drEnabled()}>
+                <span class="text-[11px] text-text-dim font-mono" data-testid="dynamic-risk-progress">
+                  {drTaggedCount()}/30
+                </span>
+              </Show>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={drEnabled()}
+                aria-label="Toggle Dynamic Risk"
+                disabled={!drCanInteract()}
+                data-testid="dynamic-risk-toggle"
+                onClick={toggleDynamicRisk}
+                class={`relative shrink-0 w-10 h-5 border transition-colors cursor-pointer ${
+                  drEnabled()
+                    ? "bg-signal-green border-signal-green"
+                    : "bg-transparent border-border-subtle"
+                } ${!drCanInteract() ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                <span
+                  class={`absolute top-0.5 h-3.5 w-3.5 transition-transform ${
+                    drEnabled() ? "translate-x-5 bg-bg-core" : "translate-x-0.5 bg-text-dim"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+          <Show when={drError()}>
+            <p class="mt-2 text-[11px] text-signal-red font-sans" data-testid="dynamic-risk-error">
+              {drError()}
+            </p>
+          </Show>
+        </Show>
       </div>
 
       <div class="divider" />

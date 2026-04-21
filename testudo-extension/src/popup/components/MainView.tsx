@@ -6,7 +6,6 @@ import ArcGauge from "./ArcGauge";
 import TabBar, { type TabId } from "./TabBar";
 import TradeManagement from "./TradeManagement";
 import ActiveOrders from "./ActiveOrders";
-import SettingsPanel from "./SettingsPanel";
 import { DESK_URL, type ExchangeMode } from "../../utils";
 import type { BalanceResponse, LiveBalanceResponse } from "../../types";
 
@@ -304,11 +303,6 @@ export default function MainView(props: { onLogout: () => void }) {
                 </div>
               </Show>
             </Show>
-
-            <div class="divider" />
-
-            {/* QNT-01a: Dynamic Risk toggle */}
-            <SettingsPanel />
 
             <div class="divider" />
 
