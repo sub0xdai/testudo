@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { appKit } from '../config/wallet'
 import { pairExtension } from '../api/client'
 import { markExtensionPaired } from './onboarding/useOnboardingState'
+import { DignitasPill } from './DignitasPill'
 
 const NAV_ITEMS = [
   { path: '/', label: 'OVERVIEW' },
@@ -430,6 +431,7 @@ export function Layout(props: { children: JSX.Element }) {
                 )}
               </For>
             </Show>
+            <DignitasPill />
             <ExtensionChip />
             <WalletChip />
           </nav>
@@ -464,6 +466,9 @@ export function Layout(props: { children: JSX.Element }) {
                 )}
               </For>
             </Show>
+            <div class="px-6 py-3">
+              <DignitasPill />
+            </div>
             <div class="px-6 py-3">
               <ExtensionChip />
             </div>
