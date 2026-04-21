@@ -25,3 +25,8 @@ Fixtures defined purely in terms of InputContributions — no P&L fields. The `s
 ## T9b (2026-04-21)
 `testudo-journal` is NOT a submodule — it's a plain directory in the parent testudo repo. Commits made while `cwd` is `testudo-journal/` go to the parent repo directly; no submodule pointer bump step is needed. The "submodule pointer bump" commits in T2–T8 refer to `testudo-exchange`, not `testudo-journal`.
 `PerformanceRadar` now fetches its own data via `createResource(fetchDignitasMe)` — no props. The API already returns `contributions` on `DignitasCurrent`, so no extra endpoint is needed. Coach Alignment cold_start dim uses ECharts `indicator[].color` per-item override.
+
+## Gate 2 follow-up — path-level FR-9 test (deferred, 2026-04-21)
+The current FR-9 ungameability test (`disciplined_scores_higher_than_undisciplined_high_freq_high_pnl`) seeds `InputContributions` directly and verifies `compute_score` correctness. It does NOT verify that `take_daily_snapshot` → `compute_*` pipeline never reads forbidden fields (`journal_trades.realized_pnl`, `trades_per_day`, win rate). If an input function secretly incorporated an outcome metric, the formula-level RED test would still pass.
+
+**Close the loop** on the next dignitas touch: add a `take_daily_snapshot`-level test seeding raw DB rows with pumped P&L + bad discipline; assert the resulting score reflects only discipline inputs. Uses the same `#[tokio::test] #[ignore]` + `DATABASE_URL` pattern as HIST-03's `hist03_idempotency` suite. Closes the path-equivalence gap analogous to the FR-10 breach that triggered the vox workflow polish on 2026-04-20.
