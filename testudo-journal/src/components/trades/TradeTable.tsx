@@ -1,10 +1,11 @@
 import { createSignal, createResource, Show, For } from 'solid-js'
-import { fetchTrades, type TradeListParams } from '../../api/client'
+import { fetchTrades, type TradeListParams, type KellyInputs } from '../../api/client'
 import { useFilters } from '../filterContext'
 import { TradeRow } from './TradeRow'
 import { TradeFilters, type TradeFilterState } from './TradeFilters'
 import { Pagination } from './Pagination'
 import { SkeletonBar } from '../SkeletonBar'
+import { KellyInputsModal } from './KellyInputsModal'
 
 type SortState = { field: string; order: 'asc' | 'desc' }
 
@@ -26,6 +27,7 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
   const [page, setPage] = createSignal(1)
   const [sort, setSort] = createSignal<SortState>({ field: 'closed_at', order: 'desc' })
   const [localFilters, setLocalFilters] = createSignal<TradeFilterState>({})
+  const [kellyInputs, setKellyInputs] = createSignal<KellyInputs | null>(null)
 
   const params = (): TradeListParams => ({
     page: page(),
@@ -163,6 +165,7 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
                       trade={trade}
                       tags={trade.tags}
                       onClick={() => props.onSelectTrade(trade.id)}
+                      onKellyBadgeClick={trade.kelly_inputs != null ? () => setKellyInputs(trade.kelly_inputs!) : undefined}
                     />
                   )}
                 </For>
@@ -179,6 +182,12 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
           </span>
           <Pagination page={page()} totalPages={totalPages()} onPageChange={setPage} />
         </div>
+      </Show>
+
+      <Show when={kellyInputs()}>
+        {(ki) => (
+          <KellyInputsModal inputs={ki()} onClose={() => setKellyInputs(null)} />
+        )}
       </Show>
     </div>
   )

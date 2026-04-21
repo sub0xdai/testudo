@@ -26,6 +26,13 @@ export const HELP: Record<string, string> = {
   'risk.margin': 'Free margin available across all connected exchanges. The dry powder you can still deploy.',
   'risk.correlation': 'Positions grouped by asset family and direction — surfaces directional stacking (e.g., three longs on BTC/ETH/SOL trading as one BTC-beta bet).',
 
+  // ── Kelly Sizing ──
+  'kelly.badge': 'This trade was sized by Calibrated Kelly — the position size was adjusted based on your setup\'s historical win rate and R-ratios vs your global baseline.',
+  'kelly.edge_multiplier': 'How much the Calibrated Kelly engine scaled your baseline risk for this setup. Values above 1× mean the setup\'s edge is stronger than your baseline; below 1× means weaker. Clamped to [0.25×, 2.0×].',
+  'kelly.n_setup': 'Number of closed trades recorded for this specific setup tag at the time of sizing. More trades → less weight given to the global prior.',
+  'kelly.n_global': 'Total tagged closed trades in your global baseline at the time of sizing. This is the reference pool the setup is compared against.',
+  'kelly.p_eff': 'Blended effective win rate used in the Kelly formula — a weighted average of the setup\'s raw win rate and your global prior, with heavier weight on the prior when setup sample size is small.',
+
   // ── Charts ──
   'chart.symbol': 'Trade count by trading pair — shows where you trade most.',
   'chart.treemap': 'Rectangle area = P&L magnitude per symbol. Green = profit, red = loss.',
