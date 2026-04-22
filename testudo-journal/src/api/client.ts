@@ -831,12 +831,19 @@ export interface DignitasInputContributions {
   journal_consistency: string
 }
 
+export interface DignitasStreak {
+  days_clean: number
+  longest_ever: number
+}
+
 export interface DignitasCurrent {
   score: string
   delta_7d: string | null
   cold_start: boolean
   pill_hidden: boolean
   contributions: DignitasInputContributions
+  /** ENG-01c: null when user has no RSK-03 coach reports yet. */
+  streak: DignitasStreak | null
 }
 
 export interface DignitasHistoryPoint {

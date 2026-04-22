@@ -91,6 +91,21 @@ export function DignitasPanel(props: Props) {
       </Show>
       <div class="font-mono text-[10px] text-text-tertiary text-right mt-1 mb-3">90d</div>
 
+      {/* Streak (ENG-01c) — silent increment, silent reset */}
+      <div class="flex items-center justify-between font-mono text-[10px] text-text-tertiary mb-3">
+        <Show
+          when={props.data.streak}
+          fallback={<span>STREAK —</span>}
+        >
+          {(streak) => (
+            <>
+              <span class="text-text-secondary">STREAK {streak().days_clean}d</span>
+              <span>LONGEST {streak().longest_ever}d</span>
+            </>
+          )}
+        </Show>
+      </div>
+
       {/* Actions */}
       <div class="border-t border-container-border pt-3 flex items-center justify-between">
         <button
