@@ -20,7 +20,7 @@ export function DignitasPanel(props: Props) {
 
   const canShare = () => {
     const id = identity()
-    return id !== undefined && id.handle !== null && id.visibility.show_score
+    return id !== undefined && id.handle !== null && id.show_score
   }
 
   function handleShare() {

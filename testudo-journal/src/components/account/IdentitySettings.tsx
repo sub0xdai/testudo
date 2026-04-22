@@ -136,8 +136,8 @@ export function IdentitySettings() {
   async function toggleVisibility(field: 'show_score' | 'show_sparkline') {
     const cur = identity()
     if (!cur) return
-    const next = !cur.visibility[field]
-    mutate({ ...cur, visibility: { ...cur.visibility, [field]: next } })
+    const next = !cur[field]
+    mutate({ ...cur, [field]: next })
     setVisError('')
     try {
       await patchVisibility({ [field]: next })
@@ -362,13 +362,13 @@ export function IdentitySettings() {
                     <ToggleRow
                       label="Show Dignitas score"
                       hint="Displays your current score on the public profile"
-                      enabled={prefs().visibility.show_score}
+                      enabled={prefs().show_score}
                       onToggle={() => toggleVisibility('show_score')}
                     />
                     <ToggleRow
                       label="Show 90-day sparkline"
                       hint="Shows score history chart on the public profile"
-                      enabled={prefs().visibility.show_sparkline}
+                      enabled={prefs().show_sparkline}
                       onToggle={() => toggleVisibility('show_sparkline')}
                     />
                     <ToggleRow

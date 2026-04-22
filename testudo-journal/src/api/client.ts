@@ -877,7 +877,8 @@ export async function patchDignitasPreference(pillHidden: boolean): Promise<void
 export interface IdentityPreferences {
   handle: string | null
   bio: string | null
-  visibility: { show_score: boolean; show_sparkline: boolean }
+  show_score: boolean
+  show_sparkline: boolean
   allow_indexing: boolean
   can_change_handle_at: string | null
 }
