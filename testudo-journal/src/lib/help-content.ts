@@ -18,7 +18,7 @@ export const HELP: Record<string, string> = {
   'coach.patterns.streak_risk': 'Three or more consecutive losses, or five or more consecutive wins with non-decreasing position size (pyramiding on a hot run).',
 
   // ── Dignitas Radar ──
-  'radar.dignitas': 'Five discipline axes: drawdown adherence, risk consistency, setup tagging, coach alignment, and journal consistency. Higher score = stronger formation.',
+  'radar.dignitas': 'Five discipline axes: drawdown, sizing, setup, coach, and journal. Higher score = stronger formation. Tap an axis on the breakdown page for its full definition.',
 
   // ── Dignitas Score ──
   'dignitas.pill': 'Your Dignitas score — a discipline-adherence index computed daily from five behavioral inputs. Trade frequency, P&L, and win rate are not inputs. Only how well you follow your own rules.',
