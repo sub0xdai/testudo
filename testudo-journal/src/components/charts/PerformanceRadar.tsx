@@ -23,9 +23,9 @@ export function PerformanceRadar() {
 
     const emptyIndicators = [
       { name: 'Drawdown', max: 100 },
-      { name: 'Risk Consistency', max: 100 },
-      { name: 'Setup Adherence', max: 100 },
-      { name: 'Coach Alignment', max: 100 },
+      { name: 'Sizing', max: 100 },
+      { name: 'Setup', max: 100 },
+      { name: 'Coach', max: 100 },
       { name: 'Journal', max: 100 },
     ]
 
@@ -33,7 +33,7 @@ export function PerformanceRadar() {
       shape: 'circle' as const,
       splitNumber: 4,
       center: ['50%', '52%'],
-      radius: '48%',
+      radius: '55%',
       name: {
         textStyle: {
           color: tertiary,
@@ -73,10 +73,10 @@ export function PerformanceRadar() {
 
     const indicator = [
       { name: 'Drawdown', max: 100 },
-      { name: 'Risk Consistency', max: 100 },
-      { name: 'Setup Adherence', max: 100 },
+      { name: 'Sizing', max: 100 },
+      { name: 'Setup', max: 100 },
       {
-        name: d.cold_start ? 'Coach (—)' : 'Coach Alignment',
+        name: d.cold_start ? 'Coach (—)' : 'Coach',
         max: 100,
         ...(d.cold_start ? { color: tertiary } : {}),
       },
