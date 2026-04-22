@@ -133,7 +133,7 @@ export function IdentitySettings() {
     }
   }
 
-  async function toggleVisibility(field: 'show_score' | 'show_sparkline') {
+  async function toggleVisibility(field: 'show_score' | 'show_sparkline' | 'show_streak') {
     const cur = identity()
     if (!cur) return
     const next = !cur[field]
@@ -370,6 +370,12 @@ export function IdentitySettings() {
                       hint="Shows score history chart on the public profile"
                       enabled={prefs().show_sparkline}
                       onToggle={() => toggleVisibility('show_sparkline')}
+                    />
+                    <ToggleRow
+                      label="Show discipline streak"
+                      hint="Displays days-clean and longest-ever counters on the public profile"
+                      enabled={prefs().show_streak}
+                      onToggle={() => toggleVisibility('show_streak')}
                     />
                     <ToggleRow
                       label="Allow search engine indexing"

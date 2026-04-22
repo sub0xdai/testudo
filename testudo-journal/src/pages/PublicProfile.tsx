@@ -96,6 +96,25 @@ export default function PublicProfile() {
                     </div>
                   </div>
                 </Show>
+
+                <Show when={p().streak_days !== null}>
+                  <div class="border border-container-border bg-container-bg">
+                    <div class="px-6 py-5">
+                      <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-3">
+                        // DISCIPLINE_STREAK
+                      </div>
+                      <div class="flex items-baseline justify-between">
+                        <div>
+                          <span class="font-mono text-3xl font-bold text-text-primary">{p().streak_days}</span>
+                          <span class="font-mono text-sm text-text-tertiary ml-1">days clean</span>
+                        </div>
+                        <div class="font-mono text-[10px] text-text-tertiary">
+                          LONGEST {p().longest_ever}d
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Show>
               </div>
             )}
           </Show>

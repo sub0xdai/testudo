@@ -886,6 +886,7 @@ export interface IdentityPreferences {
   bio: string | null
   show_score: boolean
   show_sparkline: boolean
+  show_streak: boolean
   allow_indexing: boolean
   can_change_handle_at: string | null
 }
@@ -895,6 +896,9 @@ export interface PublicProfile {
   bio: string | null
   score: string | null
   sparkline: { date: string; score: string }[] | null
+  /** ENG-01c: null unless show_streak AND streak data exists */
+  streak_days: number | null
+  longest_ever: number | null
   member_since: string
   allow_indexing: boolean
 }
@@ -928,7 +932,7 @@ export async function releaseHandle(): Promise<void> {
   }
 }
 
-export async function patchVisibility(patch: { show_score?: boolean; show_sparkline?: boolean }): Promise<void> {
+export async function patchVisibility(patch: { show_score?: boolean; show_sparkline?: boolean; show_streak?: boolean }): Promise<void> {
   const res = await fetchWithCredentials(`${API_BASE}/api/v1/dignitas/visibility`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
