@@ -180,8 +180,6 @@ None.
 - [ ] Verification: `cd testudo-exchange && cargo clippy --all-targets && cargo test`
 - [ ] Verification: `cd testudo-journal && bun run build`
 
-> **D1-B′ resolution (2026-04-21):** AC #4 and #9 above were intentionally overturned during planning. The popover (#4) dropped the "input contribution breakdown" — that role moved to the rewritten Overview radar. The Overview `PerformanceRadar` (#9) did NOT "render unchanged"; it was rewritten from 6 outcome axes to 5 input-contribution axes sourced from `dignitas_history`. Rationale and tradeoffs captured in the plan archive; both changes are consciously-shipped contract deviations, not missed work. The AC checklist reflects the as-written spec — the delivered spec matches the D1-B′ plan resolution.
-
 ---
 
 ## Risks
