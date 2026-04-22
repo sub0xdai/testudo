@@ -33,7 +33,7 @@ export function PerformanceRadar() {
       shape: 'circle' as const,
       splitNumber: 4,
       center: ['50%', '52%'],
-      radius: '55%',
+      radius: '48%',
       name: {
         textStyle: {
           color: tertiary,
