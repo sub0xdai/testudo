@@ -37,6 +37,14 @@
 - A follow-up spec can promote the router to a lib+bin layout if a CLI interface becomes necessary.
 - Manual QA deferral: "kill WS connection + fill Bybit trade" requires a live Bybit account; verified design correctness via inline unit tests only. Deferred to live session by operator.
 
+## 2026-04-24 — T23 (Verification Summary)
+
+- **Dual-emit idempotency**: WS fill path and 30s reconciliation sweep can both fire for the same trade group. `trade_event_writer.rs` guards at the `SELECT 1 ... WHERE trade_group_id = $1` level before INSERT — first writer wins, second is a no-op. No explicit lock needed.
+- **Side derivation without a side field**: `OrderGroup` carries no explicit `side` field. Close direction is inferred from `stop_loss_price < entry_price` (LONG exits via "sell"; SHORT exits via "buy"). Both `FillDetector` and `ReconciliationService` derive side this way via shared `derive_close_side()` in `trade_closed_payload.rs`.
+- **Stats-query triage pattern**: classify every `journal_trades` query as EXCLUDE (aggregations feeding stats/charts) vs KEEP (user-facing lists, idempotency guards, imports). Only EXCLUDE queries gain `AND needs_reconciliation = FALSE`. Wrong classification causes either silent P&L distortion (forgot to exclude) or missing "pending" rows in the UI (excluded a list query).
+- **Verification**: `cargo clippy --all-targets` clean; `cargo test` 736 pass / 1 pre-existing fail (`test_me_returns_user_info`); `bun test` in testudo-cex 118 pass / 2 pre-existing fail (balance/position leverage — unrelated to FIX-08).
+- **Live QA deferred**: "Kill WS connection, fill trade on Bybit, verify in desk after 30s poll" requires a live Bybit account. Correctness verified via inline unit tests (T9, T14, T15). Operator should run this against a sandbox account before enabling in production.
+
 ## 2026-04-24 — T1 (Migration)
 
 - The working directory when Vox runs is **inside `testudo-exchange/`** (the submodule), not the monorepo root. `git add` paths must be relative to the submodule root. After committing in the submodule, `cd /home/m0xu/1-projects/testudo && git add testudo-exchange` bumps the parent pointer.
