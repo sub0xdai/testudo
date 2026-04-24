@@ -30,6 +30,7 @@ app.post("/balance", handlers.handleBalance);
 app.post("/order", handlers.handleOrder);
 app.post("/order/edit", handlers.handleEditOrder);
 app.post("/order/cancel", handlers.handleCancelOrder);
+app.post("/order/fetch", handlers.handleFetchOrder);
 app.post("/orders/cancel-all", handlers.handleCancelAllOrders);
 app.post("/orders/open", handlers.handleOpenOrders);
 app.post("/position", handlers.handlePosition);

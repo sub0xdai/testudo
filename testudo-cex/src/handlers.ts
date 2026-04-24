@@ -386,6 +386,57 @@ export function createHandlers(gateway: ExchangeGateway) {
     }
   }
 
+  // ── POST /order/fetch — fetch closed order by ID (Bybit only for MVP) ──
+
+  async function handleFetchOrder(req: Request, res: Response) {
+    try {
+      const envelope = parseEnvelope(req.body);
+
+      if (envelope.exchangeId !== 'bybit') {
+        return res.status(501).json({
+          error: `fetchOrder not implemented for ${envelope.exchangeId}`,
+          code: 'NotImplemented',
+        });
+      }
+
+      const { orderId, symbol } = envelope.params;
+      const exchange = await gateway.getOrCreate(
+        envelope.exchangeId,
+        envelope.credentials,
+        envelope.sandbox,
+        () => {}
+      );
+
+      const { data } = await (exchange as any).xhr.get('/v5/order/history', {
+        params: { category: 'linear', orderId },
+      });
+
+      const list: any[] = data?.result?.list ?? [];
+      const order = list[0];
+
+      if (!order) {
+        return res.status(404).json({
+          error: `Order not found: ${orderId}`,
+          code: 'OrderNotFound',
+        });
+      }
+
+      return res.json({
+        id: String(order.orderId),
+        symbol: symbol ?? order.symbol,
+        status: order.orderStatus ?? null,
+        side: (order.side ?? '').toLowerCase() || null,
+        avgPrice: stringify(order.avgPrice) || null,
+        filled: stringify(order.cumExecQty) ?? '0',
+        fees: stringify(order.cumExecFee) ?? '0',
+        timestamp: order.updatedTime ? Number(order.updatedTime) : Date.now(),
+      });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
   // ── POST /orders/open — reads from Store (FR-7) ──
 
   async function handleOpenOrders(req: Request, res: Response) {
@@ -425,6 +476,7 @@ export function createHandlers(gateway: ExchangeGateway) {
     handleHealth,
     handleBalance,
     handleOrder,
+    handleFetchOrder,
     handleEditOrder,
     handleCancelOrder,
     handleCancelAllOrders,

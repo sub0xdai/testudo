@@ -550,4 +550,97 @@ describe("handlers", () => {
       expect(typeof order.remaining).toBe("string");
     });
   });
+
+  describe("POST /order/fetch", () => {
+    const bybitEnvelope = {
+      exchange_id: "bybit",
+      credentials: { apiKey: "test-key", secret: "test-secret" },
+      sandbox: false,
+    };
+
+    it("Bybit happy path — returns fill data from order history", async () => {
+      const xhrResponse = {
+        result: {
+          list: [
+            {
+              orderId: "bybit-order-123",
+              symbol: "BTCUSDT",
+              side: "Sell",
+              orderStatus: "Filled",
+              avgPrice: "69500",
+              cumExecQty: "0.01",
+              cumExecFee: "0.695",
+              updatedTime: "1714000000000",
+            },
+          ],
+        },
+      };
+
+      const exchWithXhr = {
+        ...exchange,
+        xhr: { get: mock(() => Promise.resolve({ data: xhrResponse })) },
+      };
+      (gateway as any).getOrCreate = mock(() =>
+        Promise.resolve(exchWithXhr)
+      );
+      handlers = createHandlers(gateway);
+
+      const req = mockReq({
+        ...bybitEnvelope,
+        params: { orderId: "bybit-order-123", symbol: "BTC_USDT" },
+      });
+      const res = mockRes();
+      await handlers.handleFetchOrder(req, res);
+
+      expect(res._status).toBe(200);
+      expect(res._json.id).toBe("bybit-order-123");
+      expect(res._json.symbol).toBe("BTC_USDT");
+      expect(res._json.status).toBe("Filled");
+      expect(res._json.side).toBe("sell");
+      expect(res._json.avgPrice).toBe("69500");
+      expect(res._json.filled).toBe("0.01");
+      expect(res._json.fees).toBe("0.695");
+      expect(res._json.timestamp).toBe(1714000000000);
+    });
+
+    it("Bybit not-found — returns 404 OrderNotFound when list is empty", async () => {
+      const exchWithXhr = {
+        ...exchange,
+        xhr: {
+          get: mock(() =>
+            Promise.resolve({ data: { result: { list: [] } } })
+          ),
+        },
+      };
+      (gateway as any).getOrCreate = mock(() =>
+        Promise.resolve(exchWithXhr)
+      );
+      handlers = createHandlers(gateway);
+
+      const req = mockReq({
+        ...bybitEnvelope,
+        params: { orderId: "nonexistent-order", symbol: "BTC_USDT" },
+      });
+      const res = mockRes();
+      await handlers.handleFetchOrder(req, res);
+
+      expect(res._status).toBe(404);
+      expect(res._json.code).toBe("OrderNotFound");
+    });
+
+    it("non-Bybit exchange — returns 501 NotImplemented without creating exchange", async () => {
+      const req = mockReq({
+        ...testEnvelope, // exchange_id: "woo"
+        params: { orderId: "order-123", symbol: "BTC_USDT" },
+      });
+      const res = mockRes();
+      await handlers.handleFetchOrder(req, res);
+
+      expect(res._status).toBe(501);
+      expect(res._json.code).toBe("NotImplemented");
+      expect(res._json.error).toContain("woo");
+      // gateway.getOrCreate must not have been called
+      expect((gateway as any).getOrCreate).not.toHaveBeenCalled();
+    });
+  });
 });
