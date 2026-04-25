@@ -51,7 +51,7 @@ Critically: the score is tuned so that **trading more, trading less, or trading 
 | FR-2 | Score inputs are **discipline-adherence only**: drawdown adherence, risk-per-trade consistency, setup adherence (RSK-02), coach severity penalty (RSK-03 if available), journal consistency. **Explicitly excludes trade frequency, raw P&L, win rate** | High | backend |
 | FR-3 | `DignitasPill` in top nav on every page: shows current score + delta since 7-day-ago baseline (`DIGNITAS 70.2 ▲0.4`); subtle color (score-green / score-red / tertiary); hidden via user preference | High | journal/frontend |
 | FR-4 | Clicking pill opens `DignitasPanel`: current score, 90-day sparkline, breakdown of input contributions, "Hide pill" preference shortcut | High | journal/frontend |
-| FR-5 | Cold-start neutral at 50 — new users see 50 until their first ≥7-day input window closes, preventing 100-and-only-goes-down or 0-and-demoralizing starts | High | backend |
+| FR-5 | Cold-start: while the user has fewer than 10 closed trades in the trailing 30d, the score is computed from real inputs but flagged `cold_start: true`. UI renders "PRELIMINARY — N of 10 trades" instead of a 50 placeholder. (Revised 2026-04-25 — see LEARNINGS § "Cold-start redesign".) | High | backend |
 | FR-6 | Score weights live in `dignitas_config` table so they can be tuned without a redeploy | Medium | backend |
 | FR-7 | `/desk/dignitas` transparency page: shows every input, its current value for the user, its weight, and plain-English explanation. Shows the formula | Medium | journal/frontend |
 | FR-8 | User preference to hide the entire Dignitas pill from top nav; default visible | Medium | journal/frontend |
@@ -175,7 +175,7 @@ None.
 - [ ] User can hide the pill; pill disappears immediately; preference persists
 - [ ] `/desk/dignitas` transparency page renders every input with its value, weight, and explanation
 - [ ] Score formula ungameable: test fixture of 1000 high-frequency high-P&L undisciplined trades produces lower score than 100 disciplined trades (`dignitas_snapshot_test.rs`)
-- [ ] Cold-start: new user with <7 days of data sees score `50` with `cold_start: true`
+- [ ] Cold-start: user with <10 closed trades in trailing 30d sees `cold_start: true` with the real computed score (revised 2026-04-25; replaces the original "score = 50" rule)
 - [ ] Overview's `PerformanceRadar` reads from `dignitas_history` and continues rendering unchanged
 - [ ] Verification: `cd testudo-exchange && cargo clippy --all-targets && cargo test`
 - [ ] Verification: `cd testudo-journal && bun run build`

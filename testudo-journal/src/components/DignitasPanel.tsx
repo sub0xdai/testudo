@@ -46,6 +46,12 @@ export function DignitasPanel(props: Props) {
     if (props.data.cold_start || props.data.delta_7d === null) return null
     return parseFloat(props.data.delta_7d)
   }
+  // Cold-start copy is concrete on purpose: a trader needs to know exactly
+  // how thin the signal is and what would firm it up. "PRELIMINARY" alone
+  // doesn't tell them whether they need 1 more trade or 7.
+  const COLD_START_TARGET_TRADES = 10
+  const preliminaryCopy = () =>
+    `PRELIMINARY — ${props.data.trade_count_30d} of ${COLD_START_TARGET_TRADES} trades`
   const deltaColor = () => {
     const d = delta()
     if (d === null) return 'text-text-tertiary'
@@ -67,7 +73,7 @@ export function DignitasPanel(props: Props) {
           when={delta() !== null}
           fallback={
             <div class="font-mono text-[10px] text-text-tertiary mt-1">
-              {props.data.cold_start ? 'NEUTRAL — BUILDING BASELINE' : '—'}
+              {props.data.cold_start ? preliminaryCopy() : '—'}
             </div>
           }
         >

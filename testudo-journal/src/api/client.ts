@@ -840,6 +840,9 @@ export interface DignitasCurrent {
   score: string
   delta_7d: string | null
   cold_start: boolean
+  /** Closed trades counted in the trailing 30d window for the latest snapshot.
+   * Drives the "PRELIMINARY — N of M trades" UI copy in DignitasPanel. */
+  trade_count_30d: number
   pill_hidden: boolean
   contributions: DignitasInputContributions
   /** ENG-01c: null when user has no RSK-03 coach reports yet. */
