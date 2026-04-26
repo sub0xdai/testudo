@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { injectSwShell } from './scripts/inject-sw-shell'
 
 export default defineConfig({
   plugins: [
     solid(),
+    injectSwShell({ version: process.env.VITE_SW_VERSION ?? 'v1' }),
     ...(process.env.ANALYZE === '1' ? [visualizer({ open: true, gzipSize: true, brotliSize: true })] : []),
   ],
   base: process.env.VITE_BASE_PATH || '/desk/',

@@ -38,6 +38,25 @@ function preconnect(rawUrl: string): void {
 preconnect(import.meta.env.VITE_API_URL ?? '')
 preconnect(import.meta.env.VITE_WS_URL ?? '')
 
+// Service worker registration — opt-in via VITE_ENABLE_SW=true (FR-14).
+// Deferred to requestIdleCallback (or 2s setTimeout fallback) so it never
+// competes with cold-load main-thread work (FR-11). Default OFF until the
+// CP-4 canary verifies stale-shell mitigations.
+if (import.meta.env.VITE_ENABLE_SW === 'true' && 'serviceWorker' in navigator) {
+  const register = (): void => {
+    navigator.serviceWorker.register('/sw.js')
+      .catch((err) => console.warn('[sw] register failed', err))
+  }
+  const w = window as Window & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number
+  }
+  if (typeof w.requestIdleCallback === 'function') {
+    w.requestIdleCallback(register, { timeout: 2000 })
+  } else {
+    setTimeout(register, 2000)
+  }
+}
+
 const root = document.getElementById('root')
 
 render(
