@@ -1,8 +1,9 @@
-import { createResource, createMemo } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchTimeDistribution } from '../../api/client'
+import { useCachedResource, stableHash } from '../../lib/cache'
 import { getSignalGreen, getBgHover } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
@@ -11,7 +12,11 @@ const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 
 export function TimeHeatmap() {
   const { filters, setFilters } = useFilters()
-  const [data, { refetch }] = createResource(filters, fetchTimeDistribution)
+  const data = useCachedResource(
+    () => 'time-distribution:' + stableHash(filters()),
+    () => fetchTimeDistribution(filters()),
+    { staleMs: 30_000 },
+  )
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   const option = createMemo((): EChartsOption | undefined => {
@@ -81,7 +86,7 @@ export function TimeHeatmap() {
       title="TIME DISTRIBUTION"
       loading={data.loading}
       empty={!data()?.data?.length}
-      onRetry={refetch}
+      onRetry={() => data.refetch()}
       hasActiveFilters={hasActiveFilters()}
       onClearFilters={() => setFilters({})}
     >

@@ -1,4 +1,5 @@
-import { createSignal, createResource, Show, onCleanup, onMount } from 'solid-js'
+import { createSignal, Show, onCleanup, onMount } from 'solid-js'
+import { useCachedResource } from '../../lib/cache'
 import {
   createEntry,
   updateEntry,
@@ -66,7 +67,11 @@ export function EntryEditor(props: {
     setTimeout(props.onClose, CLOSE_ANIMATION_MS)
   }
 
-  const [allTags] = createResource(fetchTags)
+  const allTags = useCachedResource(
+    () => 'tags:all',
+    fetchTags,
+    { staleMs: 5 * 60_000 },
+  )
 
   const typeColor = () => {
     const types = getEntryTypes()

@@ -1,8 +1,9 @@
-import { createSignal, createResource, Show, For, type JSX } from 'solid-js'
+import { createSignal, Show, For, type JSX } from 'solid-js'
 import { useFilters } from './filterContext'
 import { FilterPopout } from './FilterPopout'
 import { HelpTip } from './HelpTip'
 import { fetchFilterOptions } from '../api/client'
+import { useCachedResource } from '../lib/cache'
 
 type Preset = '1w' | '1m' | '3m' | 'ytd' | 'all'
 
@@ -52,9 +53,10 @@ export function PageSubHeader(props: PageSubHeaderProps) {
   const [showPopout, setShowPopout] = createSignal(false)
   const [preset, setPreset] = createSignal<Preset>('all')
 
-  const [options] = createResource(
-    () => filters().exchange,
-    (exchange) => fetchFilterOptions(exchange || undefined)
+  const options = useCachedResource(
+    () => 'filter-options:' + (filters().exchange ?? ''),
+    () => fetchFilterOptions(filters().exchange || undefined),
+    { staleMs: 5 * 60_000 },
   )
 
   const activeFilterCount = () => {

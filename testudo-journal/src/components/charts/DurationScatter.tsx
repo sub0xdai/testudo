@@ -1,14 +1,19 @@
-import { createResource, createMemo } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchDurationProfit } from '../../api/client'
+import { useCachedResource, stableHash } from '../../lib/cache'
 import { signalGreenAlpha, signalRedAlpha, getTextTertiary } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function DurationScatter() {
   const { filters, setFilters } = useFilters()
-  const [data, { refetch }] = createResource(filters, fetchDurationProfit)
+  const data = useCachedResource(
+    () => 'duration-profit:' + stableHash(filters()),
+    () => fetchDurationProfit(filters()),
+    { staleMs: 30_000 },
+  )
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   const option = createMemo((): EChartsOption | undefined => {
@@ -65,7 +70,7 @@ export function DurationScatter() {
       title="DURATION / PROFIT"
       loading={data.loading}
       empty={!data()?.data?.length}
-      onRetry={refetch}
+      onRetry={() => data.refetch()}
       hasActiveFilters={hasActiveFilters()}
       onClearFilters={() => setFilters({})}
     >

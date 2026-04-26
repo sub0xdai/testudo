@@ -1,14 +1,19 @@
-import { createResource, createMemo } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchDailyPnl } from '../../api/client'
+import { useCachedResource, stableHash } from '../../lib/cache'
 import { getSignalGreen, getSignalRed, getTextTertiary, getBorder } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function DailyPnl() {
   const { filters, setFilters } = useFilters()
-  const [data, { refetch }] = createResource(filters, fetchDailyPnl)
+  const data = useCachedResource(
+    () => 'daily-pnl:' + stableHash(filters()),
+    () => fetchDailyPnl(filters()),
+    { staleMs: 30_000 },
+  )
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   const option = createMemo((): EChartsOption | undefined => {
@@ -77,7 +82,7 @@ export function DailyPnl() {
   })
 
   return (
-    <ChartContainer title="DAILY P&L HISTORY" loading={data.loading} empty={!data()?.data?.length} onRetry={refetch} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
+    <ChartContainer title="DAILY P&L HISTORY" loading={data.loading} empty={!data()?.data?.length} onRetry={() => data.refetch()} hasActiveFilters={hasActiveFilters()} onClearFilters={() => setFilters({})}>
       <EChart option={option} />
     </ChartContainer>
   )

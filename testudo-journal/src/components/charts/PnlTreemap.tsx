@@ -1,14 +1,19 @@
-import { createResource, createMemo } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchSymbolBreakdown } from '../../api/client'
+import { useCachedResource, stableHash } from '../../lib/cache'
 import { getSignalGreen, getSignalRed } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function PnlTreemap() {
   const { filters, setFilters } = useFilters()
-  const [data, { refetch }] = createResource(filters, fetchSymbolBreakdown)
+  const data = useCachedResource(
+    () => 'symbol-breakdown:' + stableHash(filters()),
+    () => fetchSymbolBreakdown(filters()),
+    { staleMs: 30_000 },
+  )
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
   const option = createMemo((): EChartsOption | undefined => {
@@ -72,7 +77,7 @@ export function PnlTreemap() {
       title="P&L TREEMAP"
       loading={data.loading}
       empty={!data()?.data?.length}
-      onRetry={refetch}
+      onRetry={() => data.refetch()}
       hasActiveFilters={hasActiveFilters()}
       onClearFilters={() => setFilters({})}
     >

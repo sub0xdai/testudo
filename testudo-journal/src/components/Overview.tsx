@@ -1,4 +1,5 @@
-import { createResource, createSignal, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
+import { createSignal, createResource, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
+import { useCachedResource, stableHash } from '../lib/cache'
 import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { PnlCalendar } from './charts/PnlCalendar'
@@ -36,9 +37,17 @@ export function Overview() {
   const { filters } = useFilters()
   const auth = useAuth()
 
-  const [stats, { refetch: refetchStats }] = createResource(filters, fetchOverview)
+  const stats = useCachedResource(
+    () => 'overview:' + stableHash(filters()),
+    () => fetchOverview(filters()),
+    { staleMs: 30_000 },
+  )
   // Equity resource kept for CumulativeProfit in ChartSelector
-  const [equity] = createResource(filters, fetchEquityCurve)
+  const equity = useCachedResource(
+    () => 'equity-curve:' + stableHash(filters()),
+    () => fetchEquityCurve(filters()),
+    { staleMs: 30_000 },
+  )
 
   // Aggregate account balance across all exchanges
   const [totalBalance, setTotalBalance] = createSignal<number | null>(null)
@@ -63,7 +72,7 @@ export function Overview() {
   // RSK-01a T1: Overview owns the live risk snapshot (WS push + 30s polling fallback + stale indicator).
   const [snapshot, { refetch: refetchSnapshot }] = createResource(
     () => auth.isAuthenticated(),
-    async (authed) => (authed ? fetchRiskSnapshot() : null),
+    async (authed: boolean) => (authed ? fetchRiskSnapshot() : null),
   )
 
   const [now, setNow] = createSignal(Date.now())
@@ -227,7 +236,7 @@ export function Overview() {
           <p class="font-mono text-text-tertiary text-xs mb-4">{String(stats.error)}</p>
           <button
             class="btn-ghost border border-container-border px-3 py-1.5"
-            onClick={() => refetchStats()}
+            onClick={() => stats.refetch()}
           >
             Retry
           </button>

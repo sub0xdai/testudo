@@ -1,4 +1,5 @@
 import { createSignal, createResource, Show, For, createMemo } from 'solid-js'
+import { useCachedResource, invalidate } from '../../lib/cache'
 import {
   fetchEntries,
   fetchTags,
@@ -101,7 +102,11 @@ export function JournalTimeline() {
     (params) => fetchEntries({ limit: params.limit }),
   )
 
-  const [tags, { refetch: refetchTags }] = createResource(fetchTags)
+  const tags = useCachedResource(
+    () => 'tags:all',
+    fetchTags,
+    { staleMs: 5 * 60_000 },
+  )
 
   // Trade detail cache: tradeId -> { tags, symbol, closed_at }
   const [tradeDetailCache, setTradeDetailCache] = createSignal<
@@ -462,7 +467,7 @@ export function JournalTimeline() {
       <Show when={showTagManager()}>
         <TagManager
           tags={tags() ?? []}
-          onUpdate={() => refetchTags()}
+          onUpdate={() => { invalidate('tags:'); tags.refetch() }}
           onClose={() => setShowTagManager(false)}
         />
       </Show>

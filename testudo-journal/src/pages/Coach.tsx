@@ -1,4 +1,5 @@
 import { createResource, createSignal, createEffect, Show, onMount } from 'solid-js'
+import { useCachedResource } from '../lib/cache'
 import {
   fetchLatestCoachReport,
   fetchCoachArchive,
@@ -19,7 +20,11 @@ const ARCHIVE_PAGE_SIZE = 20
 export default function Coach() {
   const [latest, { refetch: refetchLatest }] = createResource(fetchLatestCoachReport)
   const [preference, { mutate: setPreference }] = createResource(fetchCoachPreference)
-  const [overview] = createResource(() => fetchOverview({}))
+  const overview = useCachedResource(
+    () => 'overview:{}',
+    () => fetchOverview({}),
+    { staleMs: 30_000 },
+  )
 
   const [archiveOffset, setArchiveOffset] = createSignal(0)
   const [archiveItems, setArchiveItems] = createSignal<StoredCoachReport[]>([])

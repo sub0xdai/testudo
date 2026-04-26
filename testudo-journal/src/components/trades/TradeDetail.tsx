@@ -1,4 +1,5 @@
 import { createSignal, createResource, Show, For, onCleanup, onMount } from 'solid-js'
+import { useCachedResource, invalidate } from '../../lib/cache'
 import {
   fetchTradeDetail,
   fetchTags,
@@ -49,10 +50,11 @@ export function TradeDetail(props: TradeDetailProps) {
     (id) => getDraftNotes(id),
   )
 
-  const [allTags] = createResource(() => !props.isActive, (shouldFetch) => {
-    if (!shouldFetch) return Promise.resolve([])
-    return fetchTags()
-  })
+  const allTags = useCachedResource(
+    () => !props.isActive ? 'tags:all' : undefined,
+    fetchTags,
+    { staleMs: 5 * 60_000 },
+  )
 
   const [notes, setNotes] = createSignal('')
   const [notesDirty, setNotesDirty] = createSignal(false)
@@ -124,12 +126,14 @@ export function TradeDetail(props: TradeDetailProps) {
 
   async function handleAddTag(tagId: string) {
     await addTradeTags(props.tradeId, [tagId])
+    invalidate('tags:')
     setShowTagPicker(false)
     refetch()
   }
 
   async function handleRemoveTag(tagId: string) {
     await removeTradeTag(props.tradeId, tagId)
+    invalidate('tags:')
     refetch()
   }
 
@@ -140,6 +144,7 @@ export function TradeDetail(props: TradeDetailProps) {
     try {
       const tag = await createTag({ name })
       await addTradeTags(props.tradeId, [tag.id])
+      invalidate('tags:')
       setNewTagName('')
       setShowTagPicker(false)
       refetch()

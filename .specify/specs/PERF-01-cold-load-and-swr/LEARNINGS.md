@@ -31,3 +31,30 @@ Callers that don't await are unaffected (fire-and-forget); callers that need awa
 Build: `index-QoKlizKF.js` — 77.75 kB raw / **26.17 kB gzip** (well under 250 KB FR-3 budget).
 `vendor-wallet-*.js` — 2,152.95 kB raw / 632.21 kB gzip (separate chunk, deferred execution).
 Lighthouse TTI delta: to be measured manually (T8 deferred to live session).
+
+---
+
+## 2026-04-26 — CP-3: useCachedResource + analytics migration
+
+### createEffect scheduling requires deferred test assertions
+Solid.js schedules `createEffect` on the microtask queue. Unit tests using `createRoot` must
+`await` multiple `Promise.resolve()` flushes to observe signal updates. Stale-revalidate tests
+require a deferred promise (not `mockResolvedValue`) to separate the "stale data served" moment
+from the "background fetch resolved" moment — otherwise both happen within the same tick window.
+
+### Overview.tsx retains createResource for snapshot
+`Overview.tsx` still uses Solid's `createResource` for the live risk snapshot (which is
+WebSocket-driven, not analytics). Only import `useCachedResource` for the analytics resources;
+keep `createResource` in the import list for the snapshot.
+
+### TradeDetail.tsx conditional tags pattern
+The original `createResource(() => !props.isActive, ...)` conditional maps cleanly to
+`useCachedResource(() => !props.isActive ? 'tags:all' : undefined, ...)`. When key returns
+`undefined`, the cache skips all fetching. Callers that used `allTags() ?? []` are unaffected
+since `CachedResource<T>()` returns `T | undefined`.
+
+### CachedResource loading is a reactive getter, not a function
+`CachedResource<T>.loading` is typed as `boolean` (a reactive getter via `Object.defineProperty`)
+matching Solid's `Resource<T>.loading` pattern. Callers write `data.loading` in JSX — it works
+reactively because the getter reads the underlying signal inside a tracked scope. Do NOT type it
+as `() => boolean` or callers would need `data.loading()`, breaking the drop-in compatibility.

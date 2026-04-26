@@ -1,8 +1,9 @@
-import { createResource, createSignal, createMemo, Show, For } from 'solid-js'
+import { createSignal, createMemo, Show, For } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { useFilters } from '../filterContext'
 import { fetchDailyPnl } from '../../api/client'
 import type { StatsFilter, DailyPnlPoint } from '../../api/client'
+import { useCachedResource, stableHash } from '../../lib/cache'
 import { pnlColor } from '../../lib/formatters'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -50,7 +51,11 @@ export function PnlCalendar() {
     }
   })
 
-  const [data] = createResource(monthFilter, fetchDailyPnl)
+  const data = useCachedResource(
+    () => 'daily-pnl:' + stableHash(monthFilter()),
+    () => fetchDailyPnl(monthFilter()),
+    { staleMs: 30_000 },
+  )
 
   // Build a lookup map from date string → DailyPnlPoint
   const dataMap = createMemo(() => {
