@@ -19,6 +19,11 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    modulePreload: {
+      polyfill: false,
+      resolveDependencies: (_filename, deps) =>
+        deps.filter((d) => !/vendor-wallet|vendor-echarts/.test(d)),
+    },
     rollupOptions: {
       output: {
         manualChunks: {
