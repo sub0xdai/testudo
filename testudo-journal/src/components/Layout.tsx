@@ -1,5 +1,6 @@
 import { createSignal, For, Show, onMount, onCleanup } from 'solid-js'
-import { A, useLocation, type RouteSectionProps } from '@solidjs/router'
+import { useLocation, type RouteSectionProps } from '@solidjs/router'
+import { NavLink } from './NavLink'
 import { useAuth } from '../context/AuthContext'
 import { pairExtension } from '../api/client'
 import { markExtensionPaired } from './onboarding/useOnboardingState'
@@ -419,7 +420,7 @@ export function Layout(props: RouteSectionProps) {
             <Show when={auth.isAuthenticated()}>
               <For each={NAV_ITEMS}>
                 {(item) => (
-                  <A
+                  <NavLink
                     href={item.path}
                     end={item.path === '/'}
                     class="font-mono text-xs tracking-wider transition-colors"
@@ -427,7 +428,7 @@ export function Layout(props: RouteSectionProps) {
                     inactiveClass="text-text-secondary hover:text-text-primary"
                   >
                     {item.label}
-                  </A>
+                  </NavLink>
                 )}
               </For>
             </Show>
@@ -453,7 +454,7 @@ export function Layout(props: RouteSectionProps) {
             <Show when={auth.isAuthenticated()}>
               <For each={NAV_ITEMS}>
                 {(item) => (
-                  <A
+                  <NavLink
                     href={item.path}
                     end={item.path === '/'}
                     class="block px-6 py-3 min-h-[44px] font-mono text-sm tracking-wider transition-colors flex items-center"
@@ -462,7 +463,7 @@ export function Layout(props: RouteSectionProps) {
                     onClick={() => setMenuOpen(false)}
                   >
                     {item.label}
-                  </A>
+                  </NavLink>
                 )}
               </For>
             </Show>

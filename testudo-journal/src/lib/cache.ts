@@ -134,6 +134,18 @@ export type CachedResource<T> = {
   refetch(): void
 }
 
+/**
+ * Best-effort background prefetch — fires the fetcher and writes to memCache.
+ * No-op if the key is already cached. Errors are silently discarded.
+ * Used by route-prefetch hooks to warm the cache before navigation.
+ */
+export function prefetch<T>(key: string, fetcher: () => Promise<T>): void {
+  if (_memCache.has(key)) return
+  fetcher().then(data => {
+    _memCache.set(key, { data, updatedAt: Date.now() })
+  }).catch(() => { /* best-effort prefetch */ })
+}
+
 export function useCachedResource<T>(
   key: () => string | undefined,
   fetcher: (k: string) => Promise<T>,

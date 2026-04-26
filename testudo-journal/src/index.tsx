@@ -22,6 +22,22 @@ if (window.location.pathname === '/' || window.location.pathname === '') {
   window.location.replace('/desk/')
 }
 
+function preconnect(rawUrl: string): void {
+  if (!rawUrl) return
+  try {
+    const u = new URL(rawUrl)
+    if (u.protocol === 'ws:') u.protocol = 'http:'
+    else if (u.protocol === 'wss:') u.protocol = 'https:'
+    const link = document.createElement('link')
+    link.rel = 'preconnect'
+    link.href = u.origin
+    link.crossOrigin = 'anonymous'
+    document.head.appendChild(link)
+  } catch { /* malformed URL — skip */ }
+}
+preconnect(import.meta.env.VITE_API_URL ?? '')
+preconnect(import.meta.env.VITE_WS_URL ?? '')
+
 const root = document.getElementById('root')
 
 render(
