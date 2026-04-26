@@ -1,621 +1,804 @@
-# Implementation Plan — PERF-01 Journal Cold-Load Diet + SWR Cache
+# Implementation Plan — PERF-02 Batched Analytics Endpoint + Journal Service Worker
 
-**Status: COMPLETE — archived to `.specify/spec-archive/PERF-01-cold-load-and-swr/`**
-**Completed:** 2026-04-26
-
-**Spec:** `.specify/spec-archive/PERF-01-cold-load-and-swr/spec.md`
-**Depends on:** None (frontend-only, single-package: `testudo-journal/`)
-**Strategy:** Five vertical checkpoints, each independently committable
-(CP-1..CP-5). CP-1 is the highest-leverage, lowest-risk delete (defer
-the wallet bundle off the cold path). CP-2 locks that win in with a
-budget guardrail. CP-3 introduces the cache primitive — the largest
-behavioural change and the only one that can plausibly leak bugs into
-existing analytics flows. CP-4 layers persistence + identity-namespacing
-on top. CP-5 is polish (prefetch + preconnect). Land them in that order.
+**Spec:** `.specify/specs/PERF-02-batch-analytics-and-sw/spec.md`
+**Depends on:** PERF-01-cold-load-and-swr (merged; cache primitive at
+`testudo-journal/src/lib/cache.ts`).
+**Strategy:** Four vertical checkpoints. CP-1 (backend handler + parity
+test) and CP-3 (service worker + Vite injection) are independent and can
+be parallelized after PERF-01. CP-2 (frontend `useCachedBatch` +
+Overview migration) depends on CP-1's wire shape. CP-4 is a one-line
+default-flip after a one-week SW canary; no new code.
 
 ---
 
 ## Discoveries
 
-- **Wallet eager-import is multi-site.** `index.tsx:7` is the obvious
-  cold-path import, but the real refactor surface is
-  `src/context/AuthContext.tsx` — AuthProvider calls `appKit.subscribeProviders`
-  (line 43) and `appKit.subscribeAccount` (line 244) **synchronously at
-  provider construction** (i.e. on every Desk page load). It also calls
-  `appKit.disconnect()` from `checkSession()` on lines 67 and 71 even
-  for users who arrive logged-out. Any "lazy `connectWallet()`" plan
-  that only edits `index.tsx` is incomplete. Full call-site map:
+### Backend topology (router crate)
 
-  | File | Line(s) | Usage | Migration |
-  |------|---------|-------|-----------|
-  | `index.tsx` | 7 | Side-effect import | **Delete** |
-  | `context/AuthContext.tsx` | 43 (`subscribeProviders`) | Sync at init | **Move** behind first-gesture init |
-  | `context/AuthContext.tsx` | 67, 71, 140, 215, 282 (`disconnect`) | Cleanup paths | **Guard** — skip when not yet loaded |
-  | `context/AuthContext.tsx` | 105 (`getChainId`) | Inside `runSiwe` | Already gated by `userInitiatedConnect` → safe (wallet must be loaded by then) |
-  | `context/AuthContext.tsx` | 244 (`subscribeAccount`) | Sync at init | **Move** behind first-gesture init |
-  | `context/AuthContext.tsx` | 259 (`getCaipNetwork`) | Inside subscribeAccount | Co-moves with 244 |
-  | `context/AuthContext.tsx` | 276 (`open`) | `connectWallet()` action | Already user-gesture; await load |
-  | `components/Layout.tsx` | 4 | Bare import, no usage | **Delete** (dead import) |
-  | `components/account/WalletConnectFlow.tsx` | 79 (`getAddress`), 273 (`open`), 291 (`disconnect`) | All inside the Account → Add Exchange flow | User-gesture-bound; await load |
+- **All 8 analytics handlers** (`crates/router/src/routes/journal.rs:1253–1433`)
+  are GET, accept `web::Query<StatsFilter>`, use `app_state.analytics_pool`,
+  and require the `AuthenticatedUser` extractor. Each is a thin adapter
+  that calls one `StatsEngine` or `TimeSeriesService` method and wraps
+  the result in `OverviewResponse` or `DataWrapper<Vec<…>>`. Adapter
+  logic per handler is non-trivial — the response structs (`DailyPnlResponse`,
+  `SymbolBreakdownResponse`, `SetupBreakdownResponse`, `DurationProfitResponse`,
+  `ReturnBucketResponse`, `TimeSlotResponse`) rename / map fields from the
+  service-tier types (e.g. `net_pnl → pnl`, `duration_minutes → duration_secs`,
+  `bucket_label → bucket`, `day_count → count`). **The batch handler must
+  reuse the SAME conversion logic** to satisfy parity (FR-15) — extract
+  a pure helper per response type so drift becomes structurally hard.
 
-  Net move: introduce `loadWallet(): Promise<AppKit>` (lazy singleton),
-  introduce `attachWalletListeners(appKit)` (one-shot, idempotent) called
-  from inside `connectWallet()` after the kit resolves. Every other
-  consumer awaits `loadWallet()` from a click handler. `checkSession()`
-  never calls `disconnect()` unconditionally — it only calls it if a kit
-  has already been loaded this session.
+- **Service signatures** (all `&self`, all `Result<T, sqlx::Error>`,
+  all `(user_id: Uuid, filter: &StatsFilter)`):
+  - `StatsEngine::account_overview / performance_stats / risk_stats`
+    (`services/journal_stats.rs:229+, 245+, 322+`).
+  - `TimeSeriesService::equity_curve / daily_pnl / symbol_breakdown /
+    setup_breakdown / duration_profit / return_distribution /
+    time_distribution` (`services/journal_timeseries.rs:257+`).
+  - `Result<T, sqlx::Error>` — **not `anyhow::Result`** as the spec
+    sketch implies. The `run_section` helper must operate on
+    `Result<T, sqlx::Error>` and stringify via `e.to_string()` in the
+    `Err` arm.
 
-- **`vendor-wallet` chunk in `vite.config.ts:21` is incomplete.** It lists
-  `@reown/appkit`, `@reown/appkit-adapter-ethers`, `ethers` — but not
-  `@reown/appkit-adapter-solana` (in `package.json:14`) and not the
-  `@reown/appkit/networks` import. Once dynamic-import lands those will
-  auto-split into a chunk anyway, but for predictable chunk-naming we
-  add them to the manualChunks list explicitly (CP-1). Note: spec says
-  `bs58` but the real Solana base58 dep is `@scure/base` (used in
-  `AuthContext.tsx:2`) — `bs58` is in package.json but not actually
-  imported. Either way, both are off the cold path once wallet is lazy.
+- **No batch types exist anywhere.** Grep for `BatchRequest`,
+  `BatchResponse`, `SectionKey` returns zero hits. Land them in
+  `routes/journal.rs` alongside the existing handlers (no
+  `routes/mod.rs` re-export needed — routes are wired by direct path
+  reference in `main.rs`).
 
-- **77 `createResource` sites repo-wide.** Spec scope is the 7 analytics
-  endpoints + filter-options + tags + setup-tags. Concrete migration
-  targets:
+- **Route registration** is in `crates/router/src/main.rs:1093–1124`
+  under `web::scope("/journal").wrap(JwtMiddleware)`. The new POST
+  batch route slots in immediately after `/analytics/time-distribution`
+  (line 1103), before `/trades` (line 1104). No CORS / middleware
+  changes needed — the `/journal` scope already covers it.
 
-  | File:line | Fetcher | TTL tier |
-  |-----------|---------|----------|
-  | `components/Overview.tsx:39` | `fetchOverview` | 30s |
-  | `components/Overview.tsx:41` | `fetchEquityCurve` | 30s |
-  | `components/charts/DailyPnl.tsx:11` | `fetchDailyPnl` | 30s |
-  | `components/charts/PnlCalendar.tsx:53` | `fetchDailyPnl` (month) | 30s |
-  | `components/charts/PnlTreemap.tsx:11` | `fetchSymbolBreakdown` | 30s |
-  | `components/charts/DurationScatter.tsx:11` | `fetchDurationProfit` | 30s |
-  | `components/charts/ReturnHistogram.tsx:11` | `fetchReturnDistribution` | 30s |
-  | `components/charts/TimeHeatmap.tsx:14` | `fetchTimeDistribution` | 30s |
-  | `pages/Coach.tsx:22` | `fetchOverview` (no filters) | 30s |
-  | `components/PageSubHeader.tsx:55` | `fetchFilterOptions` | 5min |
-  | `components/journal/JournalTimeline.tsx:104` | `fetchTags` | 5min |
-  | `components/journal/EntryEditor.tsx:69` | `fetchTags` | 5min |
-  | `components/trades/TradeDetail.tsx:54` | `fetchTags` | 5min |
+- **No `crates/router/tests/` directory exists.** Per AGENTS.md the
+  router crate is binary-only (no `src/lib.rs`), so a top-level
+  `tests/analytics_batch_parity.rs` (as the spec proposes) **cannot
+  compile** — it would have nothing to `use`. The parity test must
+  live inline in `routes/journal.rs` as `#[cfg(test)] mod batch_tests`,
+  gated `#[tokio::test] #[ignore]` with `DATABASE_URL` env. The spec's
+  proposed filename in its `## Files` section is a planning oversight —
+  corrected here.
 
-  Plus `fetchSetupBreakdown` and `fetchUserSetupTags` exist in
-  `client.ts` but no current callers; the migration prep on `client.ts`
-  exposes them through the cache layer regardless (FR-5, FR-6) so future
-  callers default into the cache.
+- **`StatsFilter` derives `Deserialize`** (proven by
+  `web::Query<StatsFilter>` working today). It will deserialize equally
+  cleanly from `web::Json<BatchRequest>` where
+  `BatchRequest.filter: StatsFilter`. No additional derive work needed.
 
-- **No `typecheck` script today.** `package.json:6-10` has only
-  `dev`, `build`, `preview`. Spec acceptance criteria explicitly call
-  `bun run typecheck && bun run build`. CP-1 adds
-  `"typecheck": "tsc --noEmit"` (zero new dep — `typescript` already
-  in devDeps).
+### Frontend cold-paint reality (Overview)
 
-- **No `bs58` runtime use.** `bs58` is in `package.json:16` but not
-  actually imported. `@scure/base`'s `base58` is what `AuthContext`
-  uses (`AuthContext.tsx:2`). Out-of-scope for this spec — flag for a
-  future cleanup, do not delete inside CP-1 to avoid scope-creep.
+- **The spec's "Overview fans out 8 fetches" is incorrect for the real
+  code.** Direct survey of every analytics fetch site under
+  `src/components/` and `src/pages/` shows exactly **5** analytics
+  requests fire on Overview cold-paint:
 
-- **PublicProfile is a Layout-bypass route.** `components/Layout.tsx:357-358`
-  detects `/d/:handle` and renders children without the auth shell. So
-  `PublicProfile.tsx:12` (`createResource(handle, fetchPublicProfile)`)
-  runs without `useAuth`. Identity-namespacing for cache (FR-12)
-  therefore needs an explicit "no identity → no persist" guard rather
-  than relying on `auth.user()` being absent in a Layout-bypass route.
-  Concretely: `useCachedResource(..., { identity: auth.user()?.id ?? null,
-  persist: !isPublicProfileRoute })` and the cache layer treats
-  `identity: null` as "memory only". Cleaner alternative: have
-  `PublicProfile.tsx` keep using bare `createResource` (no cache layer
-  at all) — it's a single endpoint per handle, no compound benefit.
-  **Resolution:** PublicProfile stays on plain `createResource`, no
-  cache wrap. FR-12 is satisfied structurally (the route never opts in).
+  | # | Component | Fetcher | Filter shape |
+  |---|-----------|---------|--------------|
+  | 1 | `Overview.tsx:42` | `fetchOverview` | global `filters()` |
+  | 2 | `Overview.tsx:48` | `fetchEquityCurve` | global `filters()` |
+  | 3 | `charts/PnlCalendar.tsx:58` | `fetchDailyPnl` | **monthly** `monthFilter()` |
+  | 4 | `charts/PnlTreemap.tsx:16` (default ChartSelector left) | `fetchSymbolBreakdown` | global `filters()` |
+  | 5 | `charts/DailyPnl.tsx:16` (default ChartSelector right) | `fetchDailyPnl` | global `filters()` |
 
-- **The 30s and 5min TTLs in the spec are read-modes, not stale-times.**
-  Re-read: "render-stale + revalidate; 30-second stale TTL". So when
-  age ≥ 30s the cache returns the stale entry **and** triggers a
-  background refetch. There is no "expire and refuse to serve" mode —
-  expiry just means "definitely refetch in the background". This matters
-  because it means `localStorage` entries never need explicit eviction
-  by TTL (they only need eviction by quota or by identity-change). TTL
-  is purely a freshness flag for the revalidator.
+  The other 4 analytics endpoints (setup_breakdown, duration_profit,
+  return_distribution, time_distribution) are mounted lazily inside
+  ChartSelector branches and only fetch when the user picks a
+  different chart. `PerformanceRadar` (Overview sidebar, line 287)
+  calls `fetchDignitasMe`, which is **not** an analytics endpoint.
 
-- **Mutation → invalidation map.** Reading `client.ts` cover-to-cover:
+  Implications:
+  - The cold-paint win is **5 → 1 batch + 1 monthly GET = 5 → 2**.
+    Smaller than spec's "7 → 1" framing, but still meaningful.
+  - The acceptance criterion "exactly one POST /analytics/batch on
+    cold paint" must be relaxed to "exactly one POST /analytics/batch
+    + at most one /analytics/daily-pnl GET (PnlCalendar's monthly
+    filter)".
 
-  | Mutation (file:line) | Invalidates (key prefix) |
-  |----------------------|--------------------------|
-  | `updateTradeNotes` (`client.ts:314`) | `trades:`, `trade-detail:` |
-  | `addTradeTags` (`client.ts:321`) | `trades:`, `trade-detail:`, `tags:` (count rises) |
-  | `removeTradeTag` (`client.ts:328`) | `trades:`, `trade-detail:` |
-  | `createTag` (`client.ts:380`) | `tags:` |
-  | `updateTag` (`client.ts:387`) | `tags:`, `trades:` (display name) |
-  | `deleteTag` (`client.ts:394`) | `tags:`, `trades:` |
-  | `createEntry` (`client.ts:350`) | `entries:`, `journal-timeline:` |
-  | `updateEntry` (`client.ts:363`) | `entries:` |
-  | `deleteEntry` (`client.ts:374`) | `entries:` |
-  | `saveDraftNotes` (`client.ts:475`) | `draft:{groupId}` |
-  | `claimHandle` / `releaseHandle` / `patchVisibility` / `updateBio` | `identity:`, `public-profile:` |
-  | `setCoachPreference` / `markCoachViewed` / `dismissCoachBanner` | `coach-latest:`, `coach-archive:` |
-  | `patchDignitasPreference` | `dignitas-me:` |
+- **PnlCalendar uses a different filter shape than Overview.** Lines
+  56–60 of `charts/PnlCalendar.tsx` derive `monthFilter()` with explicit
+  `start_date` / `end_date` for the visible calendar month. The spec's
+  `BatchRequest { filter: StatsFilter, sections: Vec<SectionKey> }`
+  schema — verbatim — only carries one filter. **Architectural call:**
+  PnlCalendar stays on its own `fetchDailyPnl` GET; the batch endpoint
+  remains single-filter. Per-section filter overrides are out of scope
+  (YAGNI: one edge case does not justify schema complexity, and the
+  parity-test surface doubles).
 
-  Since CP-3's scope is the 7 analytics + filter-options + tags +
-  setup-tags, the live invalidation work in CP-3 is narrow:
-  `addTag/createTag/updateTag/deleteTag` → `invalidate('tags:')`. The
-  larger map above is documented for future-spec scope; no need to wire
-  every entry now — but the comment-block in `lib/cache.ts` lists the
-  full map so future migrations don't re-derive it.
+- **Two `fetchDailyPnl` call sites coexist by design.** PnlCalendar
+  (monthly filter) and the DailyPnl chart (global filter) produce
+  different cache keys — they are not deduplicating misses. CP-2's
+  `useCachedBatch` integrates the global-filter call site only.
 
-- **`identity` for namespacing = `auth.user()?.id`.** Wallet address is
-  unstable (user can switch wallets and re-claim a UUID); the backend
-  user UUID is the durable per-account identity. Use that, not the
-  wallet address, as the `localStorage` key namespace.
+- **The 7 `createResource` chart panels behind ChartSelector**
+  (`DrawdownChart`, `SymbolBreakdown`, `MarketReturn`,
+  `ExpectancyBySymbol`, `HoldingPeriodAnalysis`, `SymbolDonut`,
+  `SetupBreakdown`) were never migrated by PERF-01 and are out of
+  PERF-02's scope. They mount only when the user picks them; not on
+  cold paint. Future cleanup, not this spec.
 
-- **No service worker exists today.** Service worker is explicitly out
-  of scope (Phase 4 → PERF-02). Just confirming `localStorage` is the
-  only persistence layer this spec touches.
+### Cache primitive (`src/lib/cache.ts`)
 
-- **Existing test infra.** `vitest@3.2.4` + `jsdom@29.0.1` already in
-  `devDependencies`. `src/api/client.test.ts` is the existing pattern
-  for test files — colocated `.test.ts` next to source. `lib/cache.test.ts`
-  follows that convention.
+- **`_memCache` is intentionally non-public** (line 20: "Exported for
+  testing only — do not read/write externally in production code"). The
+  batch hook needs to write to N keys — add a narrow `prime(key, data)`
+  export rather than widening `_memCache`'s contract.
 
-- **`saveData` / `effectiveType` API surface.** `navigator.connection` is
-  Chromium-only; Safari/Firefox return `undefined`. The data-saver guard
-  in CP-5 is best-effort: `const conn = (navigator as any).connection;
-  const slow = conn?.saveData === true || /^(2g|slow-2g)$/i.test(conn?.effectiveType ?? ''); if (slow) return;`
-  Safari/Firefox always prefetch — acceptable per spec ("rude to metered
-  connections" not "must skip on metered"; Chromium gives us the signal).
+- **Existing public surface** consumed by per-section call sites:
+  `useCachedResource`, `invalidate`, `clearCacheForIdentity`,
+  `stableHash`, `prefetch` (route-prefetch helper from PERF-01 CP-5).
+  CP-2 adds `prime` and `cacheKeyForSection`.
+
+- **Cache key derivation is currently inlined at every call site**
+  (`'overview:' + stableHash(filters())`,
+  `'symbol-breakdown:' + stableHash(filters())`, etc.). Spec risk #5
+  (cache-key skew between batch and per-section paths) is real because
+  of this scatter. CP-2 introduces a single exported helper
+  `cacheKeyForSection(SectionKey, StatsFilter): string` consumed by
+  both call sites; existing per-section call sites are migrated to use
+  it as part of CP-2 (one-line change per site).
+
+### Service worker
+
+- **No service worker exists today** — confirmed via grep for
+  `serviceWorker.register`, absence of `public/sw.js`, no SW plugin in
+  `vite.config.ts`. Greenfield.
+
+- **Vite 5.4.x has a stable `writeBundle` plugin hook.** A small
+  inline plugin (~30 LOC) reads the emitted bundle, locates the entry
+  chunk filename + main CSS asset, templates a `sw.js` source from
+  `public/sw.template.js`, and writes the result to `dist/sw.js`. No
+  Workbox dep — matches spec's KISS framing.
+
+- **`?nosw=1` escape hatch and `VITE_ENABLE_SW` flag default off in
+  CP-3.** CP-3's commit must NOT change the default; CP-4's one-line
+  flip happens after the canary week.
+
+- **Registration site:** `src/index.tsx:25–43` already sets up
+  preconnect before `render()`. SW registration sits after preconnect,
+  inside an `import.meta.env.VITE_ENABLE_SW === 'true'` guard, with
+  `requestIdleCallback` (Chromium) / `setTimeout(2000)` fallback
+  (Safari/Firefox).
+
+- **`VITE_API_URL` and `VITE_WS_URL` already exist** (`src/index.tsx:38–39`).
+  `VITE_ENABLE_SW` is the only new flag.
+
+### Test infra (frontend + backend)
+
+- **vitest 3.2.4 + jsdom** already configured — `src/lib/cache.test.ts`
+  is the existing pattern for colocated `.test.ts`. SW logic in CP-3 is
+  hard to unit-test (depends on `caches`, `fetch`, MV3 lifecycle); a
+  thin extracted-helper layer can be unit-tested for the URL-routing
+  decision without a real ServiceWorker context. The SW shell itself is
+  verified manually in CP-3's acceptance walkthrough + observed during
+  CP-4 canary.
+
+- **Backend integration test pattern (per AGENTS.md):**
+  `#[tokio::test] #[ignore]` + `DATABASE_URL` env. `cargo test` excludes
+  ignored tests by default, so CI stays green; `cargo test -- --ignored`
+  runs the parity test against a live Postgres locally and in the soak
+  job. No `sqlx::test` — workspace `sqlx` lacks the `macros` feature.
 
 ---
 
 ## Tasks
 
-### CP-1 — Wallet defer (FR-1, FR-2)
+### CP-1 — Backend batch endpoint + parity test (FR-1, FR-2, FR-3, FR-4, FR-5, FR-15)
 
-- [x] **T1** — `package.json`: add `"typecheck": "tsc --noEmit"` script.
-  No new dep (typescript already devDep). One-line diff.
-  *Complexity: trivial.*
+- [ ] **T1** — Extract pure response-conversion helpers in
+  `crates/router/src/routes/journal.rs`. New `pub(super)` (or
+  `fn`-local) helpers, one per non-trivial response struct:
+  - `to_daily_pnl_response(raw: Vec<DailyPnlPoint>) -> Vec<DailyPnlResponse>`
+  - `to_symbol_breakdown_response(raw: Vec<SymbolBreakdown>) -> Vec<SymbolBreakdownResponse>`
+  - `to_setup_breakdown_response(raw: Vec<SetupBreakdown>) -> Vec<SetupBreakdownResponse>`
+  - `to_duration_profit_response(raw: Vec<DurationProfitPoint>) -> Vec<DurationProfitResponse>`
+  - `to_return_distribution_response(raw: Vec<ReturnBucket>) -> Vec<ReturnBucketResponse>`
+  - `to_time_distribution_response(raw: Vec<TimeDistribution>) -> Vec<TimeSlotResponse>`
+  - `to_overview_response(account, performance, risk) -> OverviewResponse`
+  Migrate the existing per-section handlers to call these helpers
+  (the existing inline `.map().collect()` blocks become single-line
+  `let data = to_*_response(raw)`). Per-section endpoint responses
+  remain byte-for-byte identical — verified by visual inspection of
+  the helper call sites.
+  *Complexity: medium — 7 handlers touched, transformation is mechanical.*
 
-- [x] **T2** — Rewrite `src/config/wallet.ts`:
-  - Remove top-level `createAppKit({...})` call.
-  - Export `loadWallet(): Promise<AppKit>` lazy-singleton:
-    ```ts
-    let walletPromise: Promise<AppKit> | null = null
-    export function loadWallet(): Promise<AppKit> {
-      if (walletPromise) return walletPromise
-      walletPromise = (async () => {
-        const [{ createAppKit }, { EthersAdapter }, { SolanaAdapter }, networks] =
-          await Promise.all([
-            import('@reown/appkit'),
-            import('@reown/appkit-adapter-ethers'),
-            import('@reown/appkit-adapter-solana'),
-            import('@reown/appkit/networks'),
-          ])
-        return createAppKit({
-          adapters: [new EthersAdapter(), new SolanaAdapter()],
-          networks: [networks.mainnet, networks.arbitrum, networks.base,
-                     networks.polygon, networks.solana],
-          projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '',
-          metadata: {
-            name: 'Testudo',
-            description: 'Automated risk management for crypto trading',
-            url: window.location.origin,
-            icons: ['/testudo-icon.png'],
-          },
-          themeMode: 'dark',
-        })
-      })()
-      return walletPromise
-    }
-    export function isWalletLoaded(): boolean { return walletPromise !== null }
-    ```
-  - Remove the `appKit` named export entirely (force compile errors at
-    every consumer site so the migration is exhaustive — see T3..T5).
+- [ ] **T2** — Add new types to `routes/journal.rs`:
+  ```rust
+  #[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+  #[serde(rename_all = "snake_case")]
+  pub enum SectionKey {
+      Overview, EquityCurve, DailyPnl, SymbolBreakdown,
+      SetupBreakdown, DurationProfit, ReturnDistribution, TimeDistribution,
+  }
+
+  #[derive(Deserialize)]
+  pub struct BatchRequest {
+      pub filter: StatsFilter,
+      /// `None` (or omitted) = compute all sections.
+      #[serde(default)]
+      pub sections: Option<Vec<SectionKey>>,
+  }
+
+  #[derive(Serialize)]
+  #[serde(untagged)]
+  pub enum SectionResult<T: Serialize> {
+      Ok(T),
+      Err { error: String },
+  }
+
+  #[derive(Serialize, Default)]
+  pub struct BatchResponse {
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub overview: Option<SectionResult<OverviewResponse>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub equity_curve: Option<SectionResult<DataWrapper<Vec<EquityCurvePoint>>>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub daily_pnl: Option<SectionResult<DataWrapper<Vec<DailyPnlResponse>>>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub symbol_breakdown: Option<SectionResult<DataWrapper<Vec<SymbolBreakdownResponse>>>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub setup_breakdown: Option<SectionResult<DataWrapper<Vec<SetupBreakdownResponse>>>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub duration_profit: Option<SectionResult<DataWrapper<Vec<DurationProfitResponse>>>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub return_distribution: Option<SectionResult<DataWrapper<Vec<ReturnBucketResponse>>>>,
+      #[serde(skip_serializing_if = "Option::is_none")]
+      pub time_distribution: Option<SectionResult<DataWrapper<Vec<TimeSlotResponse>>>>,
+  }
+  ```
+  Note: `DataWrapper` envelopes preserved per-section so the wire shape
+  matches what the per-section endpoints already return. Sections not
+  requested are `None` and stripped from JSON via `skip_serializing_if`.
+  *Complexity: simple — pure type definitions.*
+
+- [ ] **T3** — Implement `analytics_batch` handler in `routes/journal.rs`:
+  ```rust
+  pub async fn analytics_batch(
+      app_state: web::Data<AppState>,
+      user: AuthenticatedUser,
+      body: web::Json<BatchRequest>,
+  ) -> Result<HttpResponse> {
+      let engine = StatsEngine::new(app_state.analytics_pool.clone());
+      let ts = TimeSeriesService::new(app_state.analytics_pool.clone());
+      let filter = body.filter.clone();
+      let user_id = user.user_id;
+      let want = |k: SectionKey| body.sections.as_ref().map_or(true, |s| s.contains(&k));
+
+      let (ov, eq, dp, sb, setb, durp, ret, td) = tokio::join!(
+          run_section_when(want(SectionKey::Overview),         compute_overview(&engine, user_id, &filter)),
+          run_section_when(want(SectionKey::EquityCurve),      compute_equity_curve(&ts, user_id, &filter)),
+          run_section_when(want(SectionKey::DailyPnl),         compute_daily_pnl(&ts, user_id, &filter)),
+          run_section_when(want(SectionKey::SymbolBreakdown),  compute_symbol_breakdown(&ts, user_id, &filter)),
+          run_section_when(want(SectionKey::SetupBreakdown),   compute_setup_breakdown(&ts, user_id, &filter)),
+          run_section_when(want(SectionKey::DurationProfit),   compute_duration_profit(&ts, user_id, &filter)),
+          run_section_when(want(SectionKey::ReturnDistribution), compute_return_distribution(&ts, user_id, &filter)),
+          run_section_when(want(SectionKey::TimeDistribution), compute_time_distribution(&ts, user_id, &filter)),
+      );
+
+      Ok(HttpResponse::Ok().json(BatchResponse {
+          overview: ov, equity_curve: eq, daily_pnl: dp,
+          symbol_breakdown: sb, setup_breakdown: setb,
+          duration_profit: durp, return_distribution: ret, time_distribution: td,
+      }))
+  }
+
+  async fn run_section_when<T, Fut>(wanted: bool, fut: Fut) -> Option<SectionResult<T>>
+  where T: Serialize, Fut: Future<Output = Result<T, sqlx::Error>>,
+  {
+      if !wanted { return None }
+      Some(match fut.await {
+          Ok(v) => SectionResult::Ok(v),
+          Err(e) => {
+              tracing::error!("analytics_batch section error: {e}");
+              SectionResult::Err { error: e.to_string() }
+          }
+      })
+  }
+  ```
+  Where `compute_overview` / `compute_*` are thin async wrappers that
+  call the service method + the corresponding `to_*_response` helper
+  from T1 — the batch path and per-section path produce identical
+  envelopes by construction. `tokio::join!` (not `try_join!`) so a
+  per-section failure does not short-circuit siblings (FR-4).
   *Complexity: medium.*
 
-- [x] **T3** — Refactor `src/context/AuthContext.tsx`:
-  - Replace `import { appKit } from '../config/wallet'` with
-    `import { loadWallet, isWalletLoaded } from '../config/wallet'`.
-  - Move `subscribeProviders` + `subscribeAccount` setup into a new
-    helper `attachWalletListeners(kit: AppKit)` that returns
-    `() => unsubscribe()` — called once after the first `loadWallet()`
-    resolves; idempotency guarded by a `let listenersAttached = false`
-    flag.
-  - In `checkSession()`: replace bare `appKit.disconnect()` with
-    `if (isWalletLoaded()) (await loadWallet()).disconnect()`. On a cold,
-    logged-out visit `isWalletLoaded()` is `false` → no wallet bundle
-    loaded.
-  - In `connectWallet()`: become `async () => { setSiweError(null);
-    userInitiatedConnect = true; const kit = await loadWallet();
-    if (!listenersAttached) { attachWalletListeners(kit);
-    listenersAttached = true; } kit.open(); }`.
-  - In `runSiwe`/`runSiws` `appKit.disconnect()` calls (lines 140, 215):
-    replace with `(await loadWallet()).disconnect()` — at this point the
-    kit is guaranteed loaded since the SIWE/SIWS path is only reached
-    via the subscribeAccount listener which only attaches after
-    loadWallet resolves.
-  - Same for `logout()` and the chainId fetch on line 105.
-  - Keep `onCleanup` calling the unsub returned by `attachWalletListeners`,
-    but only if listeners were attached.
-  *Complexity: medium — multi-call-site refactor with subtle async ordering.*
-
-- [x] **T4** — Refactor `src/components/Layout.tsx`:
-  - Delete the unused `import { appKit } from '../config/wallet'` on
-    line 4. (Audited — no usages in the file.)
+- [ ] **T4** — Wire route in `crates/router/src/main.rs:1093–1124`
+  under the `/journal` scope, immediately after the existing
+  `/analytics/time-distribution` line:
+  ```rust
+  .route("/analytics/batch", web::post().to(journal::analytics_batch))
+  ```
   *Complexity: trivial.*
 
-- [x] **T5** — Refactor `src/components/account/WalletConnectFlow.tsx`:
-  - Replace `import { appKit } from '../../config/wallet'` with
-    `import { loadWallet } from '../../config/wallet'`.
-  - Convert the synchronous `appKit.getAddress()` (line 79) into an
-    async helper or a memo that waits for the kit:
-    `const [walletAddress] = createResource(async () => { const k = await loadWallet(); return k.getAddress() })`.
-    The component is already inside the Account → Add Exchange flow —
-    user has reached this view by clicking through, so loading wallet
-    here is acceptable and on-demand.
-  - Replace `appKit.open()` (line 273) with
-    `async () => { (await loadWallet()).open() }`.
-  - Replace `appKit.disconnect()` (line 291) similarly.
-  *Complexity: simple.*
+- [ ] **T5** — Inline parity test module
+  `#[cfg(test)] mod batch_tests` at the bottom of `routes/journal.rs`:
+  - `#[tokio::test] #[ignore]` gated, `DATABASE_URL` from env.
+  - Seed fixture: insert 3–5 closed `journal_trades` rows for a synthetic
+    `user_id` covering ≥ 2 distinct symbols, ≥ 1 setup tag, ≥ 1 winning
+    + 1 losing trade so every section has data.
+  - Build a `StatsFilter` with no constraints (whole window).
+  - For each section, call the section-specific `compute_*` helper
+    directly (no Actix HTTP layer needed — the helpers are the shared
+    code path) and capture the result.
+  - Call the same `compute_*` helpers via the same `tokio::join!`
+    pattern used by `analytics_batch` for `sections: None`.
+  - Assert each section's `serde_json::Value` is structurally equal
+    via `assert_eq!(serde_json::to_value(&per_section)?,
+    serde_json::to_value(&batch_envelope.overview)?)` etc.
+  - Cleanup: delete seeded rows in FK-respecting order (use `let _ =
+    ...` for idempotent cleanups per AGENTS.md).
+  - Add a partial-failure test: stub one section to return
+    `Err(sqlx::Error::RowNotFound)` (via a wrapped helper that injects
+    the error), assert envelope returns 200 with that section's
+    `SectionResult::Err { error }` populated and other sections `Ok` —
+    FR-4 guarantee.
+  *Complexity: medium.*
 
-- [x] **T6** — Update `vite.config.ts` `manualChunks.vendor-wallet`:
-  add `@reown/appkit-adapter-solana` and `@reown/appkit/networks` to
-  the chunk list so the dynamically-imported pieces stay grouped under
-  one chunk name. (Without this, Rollup will create one auto-named
-  chunk per dynamic import — still correct, just less inspectable.)
-  *Complexity: trivial.*
+- [ ] **T6** — Verification:
+  `cd testudo-exchange && cargo clippy --all-targets && cargo test`
+  (excludes ignored tests, must stay green). Then
+  `cargo test -- --ignored` against a developer-local Postgres for the
+  parity test. Record both runs in the commit message.
+  *Complexity: simple — verification step.*
 
-- [x] **T7** — Delete `import './config/wallet'` from
-  `src/index.tsx:7`. *Complexity: trivial.*
+### CP-2 — Frontend `useCachedBatch` + Overview migration (FR-6, FR-7)
 
-- [x] **T8** — `cd testudo-journal && bun run typecheck && bun run build`
-  → record main entry chunk gzipped size + `vendor-wallet` chunk
-  presence/size from the build output. Manually click "Connect" in a
-  browser, verify in DevTools Network tab that `vendor-wallet*.js` only
-  fires after the click. Record the cold-load Lighthouse TTI (mobile
-  preset) before and after as a baseline for the CP-1 commit message
-  (per acceptance criteria). *Complexity: simple — verification step.*
+- [ ] **T7** — Extend `testudo-journal/src/lib/cache.ts`:
+  - Add `export type SectionKey = 'overview' | 'equity_curve' | 'daily_pnl'
+    | 'symbol_breakdown' | 'setup_breakdown' | 'duration_profit'
+    | 'return_distribution' | 'time_distribution'` matching the Rust
+    enum's `serde(rename_all = "snake_case")` output.
+  - Add `export function cacheKeyForSection(key: SectionKey, filter:
+    StatsFilter): string` returning the spec-aligned key shape:
+    `'overview:' + stableHash(filter)` for `overview`,
+    `'equity-curve:' + stableHash(filter)` for `equity_curve`, etc.
+    (matches existing per-section call-site keys).
+  - Add `export function prime<T>(key: string, data: T, opts?:
+    { identity?: string | null; persist?: boolean }): void` — writes
+    `{ data, updatedAt: Date.now() }` to `_memCache`, and to
+    `localStorage` when `opts.persist && opts.identity`. No-op if key
+    already has a fresher entry. The narrow primitive the batch hook
+    needs; do not export `_memCache`.
+  *Complexity: simple — additive API extensions.*
 
-### CP-2 — Bundle-budget guardrail (FR-3)
+- [ ] **T8** — Migrate existing per-section call sites to use
+  `cacheKeyForSection`. One-line change per site (replace inline
+  `'<name>:' + stableHash(filters())` with
+  `cacheKeyForSection('<key>', filters())`):
+  - `src/components/Overview.tsx:41` (overview), `:47` (equity_curve)
+  - `src/components/charts/PnlTreemap.tsx:15`
+  - `src/components/charts/PnlCalendar.tsx:57` (uses `monthFilter()`
+    — keep distinct)
+  - `src/components/charts/DailyPnl.tsx:15`
+  - `src/components/charts/DurationScatter.tsx:15`
+  - `src/components/charts/ReturnHistogram.tsx:15`
+  - `src/components/charts/TimeHeatmap.tsx:18`
+  - `src/pages/Coach.tsx:26`
+  No behavior change — purely centralizes key derivation. Defends spec
+  risk #5 (key skew). *Complexity: simple — repetitive.*
 
-- [x] **T9** — Add `rollup-plugin-visualizer` as devDependency. Wire
-  into `vite.config.ts` plugins array, gated by `process.env.ANALYZE === '1'`
-  so the default `bun run build` doesn't open the visualizer browser
-  tab in CI. *Complexity: trivial.*
-
-- [x] **T10** — Create `scripts/check-bundle-budget.ts`:
-  - Read `dist/.vite/manifest.json` (or fallback to globbing
-    `dist/assets/index-*.js` — manifest is more robust).
-  - For each entry chunk, compute gzipped size via Node's `zlib.gzipSync`
-    on `readFileSync` of the chunk file.
-  - Threshold: `MAIN_ENTRY_GZ_BUDGET = 250 * 1024` (FR-3).
-  - If any entry exceeds budget, print a table (chunk → size → over-by)
-    and `process.exit(1)`. Otherwise print "OK" with sizes.
-  - Use plain Node (no extra deps): `zlib`, `fs`, `path`, `process`.
-  *Complexity: simple.*
-
-- [x] **T11** — Add `package.json` script `"build:check": "vite build && tsx scripts/check-bundle-budget.ts"`.
-  Add `tsx` to devDependencies (the script is a one-off, ESM/TS-friendly
-  runner; alternative is to write the script as plain `.mjs` and skip
-  the dep — **prefer plain `.mjs`** to keep dep count low. Update the
-  script filename + path accordingly: `scripts/check-bundle-budget.mjs`).
-  *Complexity: trivial.*
-
-- [x] **T12** — Document the budget contract in
-  `testudo-journal/CLAUDE.md`: "Main entry chunk gzipped budget: 250KB
-  (FR-3 PERF-01). Run `bun run build:check` after any cold-path-touching
-  PR." *Complexity: trivial.*
-
-- [x] **T13** — Verify FR-3 by temporarily lowering
-  `MAIN_ENTRY_GZ_BUDGET` to a number below current size, confirming
-  `bun run build:check` exits non-zero, then revert.
-  *Complexity: trivial.*
-
-### CP-3 — `useCachedResource` primitive + analytics integration (FR-4, FR-5, FR-7, FR-11)
-
-- [x] **T14** — New file `src/lib/cache.ts`. Header comment lists the
-  full mutation→invalidation map from Discoveries (so future migrations
-  don't re-derive). Public API:
+- [ ] **T9** — Add to `testudo-journal/src/api/client.ts`:
   ```ts
-  export interface CacheOpts {
-    staleMs?: number          // default 30_000
-    persist?: boolean         // default false
-    identity?: string | null  // null disables persist regardless
+  export type BatchSection = 'overview' | 'equity_curve' | 'daily_pnl'
+    | 'symbol_breakdown' | 'setup_breakdown' | 'duration_profit'
+    | 'return_distribution' | 'time_distribution'
+
+  export interface BatchAnalyticsResponse {
+    overview?:           OverviewResponse | { error: string }
+    equity_curve?:       { data: EquityPoint[] } | { error: string }
+    daily_pnl?:          { data: DailyPnlPoint[] } | { error: string }
+    symbol_breakdown?:   { data: SymbolBreakdownItem[] } | { error: string }
+    setup_breakdown?:    { data: SetupBreakdownItem[] } | { error: string }
+    duration_profit?:    { data: DurationProfitPoint[] } | { error: string }
+    return_distribution?:{ data: ReturnBucket[] } | { error: string }
+    time_distribution?:  { data: TimeSlot[] } | { error: string }
   }
-  export interface CachedResource<T> {
-    (): T | undefined
-    loading: () => boolean
-    error: () => unknown
-    isStale: () => boolean
+
+  export async function fetchAnalyticsBatch(
+    sections: BatchSection[] | undefined,
+    filter: StatsFilter,
+  ): Promise<BatchAnalyticsResponse> {
+    return postJson<BatchAnalyticsResponse>(
+      '/api/v1/journal/analytics/batch',
+      { filter, sections },
+    )
+  }
+  ```
+  Use the existing JSON-POST helper used by other `client.ts`
+  mutations (confirm exact name during implementation; falls under
+  `fetchApi` per the survey at `client.ts:151–156`).
+  *Complexity: simple.*
+
+- [ ] **T10** — New file `testudo-journal/src/lib/cache-batch.ts` (or
+  inlined at the bottom of `cache.ts` if total LOC stays under ~300):
+  ```ts
+  export interface BatchOpts {
+    staleMs?: number
+    persist?: boolean
+    identity?: string | null
+  }
+
+  export function useCachedBatch(
+    sections: () => SectionKey[],
+    filter: () => StatsFilter,
+    opts?: BatchOpts,
+  ): {
+    sections: Record<SectionKey, CachedResource<unknown>>
+    anyLoading: () => boolean
     refetch: () => void
   }
-  export function useCachedResource<T>(
-    key: () => string | undefined,
-    fetcher: (k: string) => Promise<T>,
-    opts?: CacheOpts,
-  ): CachedResource<T>
-
-  export function invalidate(keyPrefix: string): void
-  export function clearCacheForIdentity(identity: string): void
-  export function stableHash(obj: unknown): string  // tiny canonical JSON
   ```
-  Implementation notes:
-  - In-memory store: `const memCache = new Map<string, { data: unknown,
-    updatedAt: number }>()`.
-  - Reactive shape: wraps Solid's `createResource` so consumer sites
-    keep familiar ergonomics. Returns the `accessor` (which is also the
-    callable resource) augmented with `.isStale()` and `.refetch()`.
-  - Read flow: (1) compute current key from `key()`; (2) if memCache
-    hit and age < staleMs → return data, no fetch; (3) if memCache hit
-    and age ≥ staleMs → return data, kick off background fetch, write
-    back; (4) if no memCache hit → return `loading: true`, fetch.
-    Persist tier deferred to CP-4.
-  - `invalidate(prefix)`: drops every memCache entry whose key starts
-    with `prefix`. Subsequent reads on those keys → cold miss → fetch.
-  - `stableHash(obj)`: 5–10 line canonical JSON — sort object keys
-    recursively, omit undefined values, JSON.stringify. Used to derive
-    keys from `StatsFilter` etc. (e.g.
-    `key: () => 'overview:' + stableHash(filters())`).
+  Implementation flow on each reactive read:
+  1. Compute current per-section keys via
+     `cacheKeyForSection(s, filter())`.
+  2. Partition `sections()` into FRESH (memCache hit, age < staleMs)
+     vs STALE_OR_MISSING. Fresh sections short-circuit — no network.
+  3. If STALE_OR_MISSING is empty, return — FR-7's "warm sections
+     short-circuit" criterion.
+  4. Otherwise issue exactly one
+     `fetchAnalyticsBatch(STALE_OR_MISSING, filter())`.
+  5. On response: for each section in the response, call
+     `prime(cacheKeyForSection(section, filter()), payload, opts)`.
+     Sections with `{ error: ... }` are NOT primed — fall back to the
+     stale entry if any (consistent with `useCachedResource`'s
+     "render-stale-on-error" semantics).
+  6. Return per-section reactive `CachedResource<T>` accessors that
+     read from `_memCache` (build them on top of `useCachedResource`
+     with a no-op fetcher once `prime` populates the entry, OR — the
+     simpler approach — back them with private signals updated as
+     entries arrive). Pick the simpler approach during build.
+  *Complexity: medium — partition/fan-out/prime is the heart of the
+  feature.*
+
+- [ ] **T11** — Unit tests in `src/lib/cache-batch.test.ts`
+  (vitest + jsdom, colocated like `cache.test.ts`):
+  - All-cold: no entries primed → exactly one batched fetch fires
+    for all requested sections.
+  - All-warm: prime every requested section within `staleMs` → zero
+    fetches.
+  - Mixed: prime 4 of 7 sections → exactly one batched fetch fires
+    for the 3 stale sections (verifies FR-7).
+  - Per-section error: mock fetch to return
+    `{ overview: { error: '…' }, equity_curve: { data: […] } }` →
+    `equity_curve` cached, `overview` NOT cached, batch resolves
+    without throwing.
+  - Cross-path key parity: assert
+    `cacheKeyForSection('overview', filter) ===
+    'overview:' + stableHash(filter)` for a fixed filter (defends
+    spec risk #5).
+  - `prime` then `useCachedResource` reads the primed entry without
+    triggering its own fetcher (verifies FR-6).
   *Complexity: medium.*
 
-- [x] **T15** — `src/lib/cache.test.ts` (vitest, jsdom env via existing
-  `vitest.config` — pattern from `src/api/client.test.ts`). Cases:
-  - cold miss: first call triggers fetcher, second within staleMs does
-    not.
-  - stale revalidate: vi.useFakeTimers → advance past staleMs → next
-    read returns last data immediately AND triggers fetcher; new data
-    written back.
-  - mutation invalidation: write entry, call `invalidate(prefix)`, next
-    read triggers fetcher.
-  - `stableHash` determinism: `stableHash({a:1,b:2}) === stableHash({b:2,a:1})`.
-  - `isStale()` flips correctly across the staleMs boundary.
+- [ ] **T12** — Migrate `src/components/Overview.tsx`:
+  - Replace the two `useCachedResource` calls (`overview`,
+    `equity_curve`) with one
+    `useCachedBatch(() => ['overview', 'equity_curve',
+    'symbol_breakdown', 'daily_pnl'], filters,
+    { staleMs: 30_000, persist: true,
+      identity: auth.user()?.id ?? null })`.
+    Including `symbol_breakdown` + `daily_pnl` covers ChartSelector's
+    two default-chart panels (`PnlTreemap` reads `symbol-breakdown`
+    cache; `DailyPnl` chart reads `daily_pnl` cache) — they get cache
+    HITS from the primed batch and skip their own fetches.
+  - Render data from `batch.sections.overview()` and
+    `batch.sections.equity_curve()` (instead of `stats()` /
+    `equity()`); update `loading` / `error` reads to match the new
+    accessors.
+  - **Carve-out:** PnlCalendar (`fetchDailyPnl` with `monthFilter()`)
+    keeps its own `useCachedResource` call — its filter shape differs
+    from `filters()`, so its cache key differs, and the batch
+    endpoint's single-filter shape can't include it. Documented in
+    Discoveries; this is the one expected residual GET on cold paint.
+  *Complexity: medium — Overview reactive flow needs careful
+  re-stitching, data shapes unchanged.*
+
+- [ ] **T13** — Verify
+  `cd testudo-journal && bun run typecheck && bun run build && bun
+  run build:check` passes. Main entry chunk gzipped budget (PERF-01's
+  250 KB) holds. *Complexity: simple.*
+
+- [ ] **T14** — Manual browser verification:
+  - DevTools Network on cold Overview: exactly one
+    `POST /analytics/batch` + at most one
+    `GET /analytics/daily-pnl` (PnlCalendar carve-out). Adjusted
+    acceptance: spec's "1 vs 7" framing → "1 batch + 1 calendar GET".
+  - Pre-warm 3 sections via `useCachedResource` (e.g. visit charts
+    that consume them, return to Overview within `staleMs`): the
+    batch request fires only for the still-stale sections.
+  - First-paint Overview wall-clock improvement vs PERF-01 baseline ≥
+    100 ms — record before/after numbers in the commit message and in
+    the spec's LEARNINGS.md.
+  - Inject a 500-error in one section's service handler (temporary):
+    confirm batch returns 200 with that section's `{ error: '…' }`
+    and other panels render normally.
+  *Complexity: medium — purely manual, hard gate before merge.*
+
+### CP-3 — Service worker + Vite injection plugin (FR-8 through FR-14)
+
+- [ ] **T15** — New file `testudo-journal/public/sw.template.js` —
+  hand-written ~150 LOC, no dependencies. Implements:
+  - `const CACHE = '__CACHE_NAME__'` — placeholder replaced by the
+    Vite plugin at build time. Set per-deploy via injected version
+    (`testudo-journal-v1`, bumped per FR-13).
+  - `const SHELL = "[__SHELL__]"` — placeholder replaced with the
+    JSON list of built asset filenames (`index.html`, the entry
+    chunk, main CSS) by the Vite plugin.
+  - `install` listener:
+    `caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())`.
+  - `activate` listener: enumerate `caches.keys()`, delete every key
+    !== `CACHE`, then `self.clients.claim()` (FR-13).
+  - `fetch` listener:
+    - If `url.searchParams.has('nosw')` → return (no `respondWith`,
+      browser handles natively, FR-12).
+    - If `url.pathname.startsWith('/api/')` →
+      `respondWith(networkFirstWithTimeout(req, 3000))`.
+      `networkFirstWithTimeout`: race `fetch(req)` vs
+      `setTimeout(3000)`; on win-by-network, clone response, write to
+      cache, return; on timeout or fetch throw, return cached response
+      with a `sw-fallback: stale` header injected via
+      `new Response(body, { headers: new Headers([...orig.headers,
+      ['sw-fallback', 'stale']]) })` (FR-9).
+    - If `/\.woff2$/.test(url.pathname)` →
+      `respondWith(cacheFirst(req, 30 * 24 * 3600 * 1000))` —
+      cache-first with 30-day TTL via stored `cached-at` header
+      (FR-10).
+    - If `req.mode === 'navigate'` →
+      `respondWith(cacheFirst(req))` — shell from cache, never
+      re-validate during page load (FR-8).
+    - Otherwise: pass through.
+  - Keep file under 200 LOC. KISS, no Workbox.
   *Complexity: medium.*
 
-- [x] **T16** — Migrate `components/Overview.tsx`:
-  - `createResource(filters, fetchOverview)` →
-    `useCachedResource(() => 'overview:' + stableHash(filters()),
-    () => fetchOverview(filters()), { staleMs: 30_000 })`. Persist
-    deferred to CP-4 — wire `persist: true` flag now (no-op until CP-4
-    lands the persistence tier; lets us avoid re-touching call sites).
-  - Same for `fetchEquityCurve` line 41.
-  *Complexity: simple.*
-
-- [x] **T17** — Migrate the 6 chart components (`components/charts/DailyPnl.tsx`,
-  `PnlCalendar.tsx`, `PnlTreemap.tsx`, `DurationScatter.tsx`,
-  `ReturnHistogram.tsx`, `TimeHeatmap.tsx`) to `useCachedResource` with
-  the appropriate fetcher and `staleMs: 30_000`. Same key shape:
-  `'<endpoint>:' + stableHash(filters())`. *Complexity: simple but wide.*
-
-- [x] **T18** — Migrate `pages/Coach.tsx:22` (`fetchOverview({})` no-filter
-  call) → `useCachedResource(() => 'overview:{}',
-  () => fetchOverview({}), { staleMs: 30_000 })`. *Complexity: trivial.*
-
-- [x] **T19** — Migrate `components/PageSubHeader.tsx:55`
-  (`fetchFilterOptions(exchange)`) → `useCachedResource(
-  () => 'filter-options:' + (exchange() ?? ''),
-  () => fetchFilterOptions(exchange() || undefined),
-  { staleMs: 5 * 60_000 })`. *Complexity: trivial.*
-
-- [x] **T20** — Migrate the 3 `fetchTags` sites
-  (`components/journal/JournalTimeline.tsx:104`,
-  `components/journal/EntryEditor.tsx:69`,
-  `components/trades/TradeDetail.tsx:54`) → `useCachedResource(
-  () => 'tags:all', fetchTags, { staleMs: 5 * 60_000 })`. With a single
-  cache key shared across the 3 components, 2nd-render and 3rd-render
-  share the same cache entry — a multiplicative win. *Complexity: simple.*
-
-- [x] **T21** — Wire mutation invalidations (FR-7). In `client.ts`,
-  after each mutation (`createTag`, `updateTag`, `deleteTag`,
-  `addTradeTags`, `removeTradeTag`), import + call
-  `invalidate('tags:')`. **Caveat:** mutating the cache layer from
-  inside the API client creates a tight coupling. **Cleaner pattern:**
-  mutations stay pure in `client.ts`; each caller invalidates after
-  await. **Resolution:** wrap the callers, not the API client. Concrete
-  sites: `JournalTimeline.tsx` (tag CRUD UI), `TradeDetail.tsx`
-  (`addTradeTags`, `removeTradeTag`). One-line `invalidate('tags:')`
-  after each `await`. *Complexity: simple.*
-
-- [x] **T22** — Expose `isStale` indicator (FR-11). No UI work —
-  just verify `cache.ts` test confirms `accessor.isStale()` returns
-  `true` once age ≥ staleMs. *Complexity: trivial — covered in T15.*
-
-### CP-4 — `localStorage` hydration + identity namespacing (FR-6, FR-8, FR-12)
-
-- [x] **T23** — Extend `src/lib/cache.ts`:
-  - Persist tier: when `opts.persist === true && opts.identity !== null`,
-    on cache write also `localStorage.setItem('testudo:cache:' + identity
-    + ':' + key, JSON.stringify({ data, updatedAt }))`.
-  - On cold read: if memCache miss, attempt `localStorage.getItem(...)`
-    under the current identity; if hit, hydrate into memCache as a stale
-    entry (older than staleMs guaranteed) → triggers immediate
-    background revalidate, but UI gets instant render.
-  - Quota guard: cap each entry serialized at 64 KB. On
-    `QuotaExceededError`, evict the oldest persisted entry under the
-    same identity (sorted by `updatedAt`) and retry once. On second
-    failure, fall back to memory-only and `console.warn(' [cache]
-    localStorage quota exceeded; persistence disabled this session')`.
-  - Identity namespacing: persist key always includes identity slot. If
-    `opts.identity === null`, persist becomes a no-op for that read.
-  - `clearCacheForIdentity(identity)`: iterates `localStorage` keys
-    matching `'testudo:cache:' + identity + ':'` prefix, removes each;
-    plus drops matching `memCache` entries.
-  *Complexity: medium.*
-
-- [x] **T24** — Wire identity into call sites. Pass
-  `identity: useAuth().user()?.id ?? null` and `persist: true` to:
-  Overview (T16 sites), the 6 charts (T17), Coach (T18), PageSubHeader
-  filter-options (T19), JournalTimeline / EntryEditor / TradeDetail tags
-  (T20).
-  - Public profile (`pages/PublicProfile.tsx:12`): keep on bare
-    `createResource` — no cache wrap (FR-12 satisfied structurally,
-    documented in CP-1's Discoveries).
-  *Complexity: simple — additive opts on existing migrated sites.*
-
-- [x] **T25** — Logout invalidation. In `AuthContext.tsx::logout`:
-  capture `previousIdentity = user()?.id` BEFORE `setUser(null)`; after
-  setUser, call `clearCacheForIdentity(previousIdentity)`. Also call it
-  on the wallet-switch path inside `subscribeAccount` callback (line
-  244-256) where `current.wallet_address.toLowerCase() !==
-  state.address.toLowerCase()` — that's an effective identity change.
-  *Complexity: simple.*
-
-- [x] **T26** — Extend `src/lib/cache.test.ts`:
-  - Identity isolation: write entry under `identity: 'A'`, switch read
-    to `identity: 'B'`, confirm B reads cold-miss (and does NOT see A's
-    data anywhere — neither in memCache nor in `localStorage` lookup).
-  - `clearCacheForIdentity('A')`: remove all A's persisted entries,
-    confirm B's entries untouched.
-  - Quota error: stub `localStorage.setItem` to throw
-    `QuotaExceededError` once, confirm graceful degradation (memory-only
-    + warn).
-  - TTL hydration: write to `localStorage` directly with old
-    `updatedAt`, confirm the hydrated read returns data immediately AND
-    flips `isStale()` to true AND triggers a background fetch.
-  *Complexity: medium.*
-
-### CP-5 — Hover/touchstart prefetch + preconnect (FR-9, FR-10)
-
-- [x] **T27** — `src/components/NavLink.tsx`: thin wrapper around
-  `@solidjs/router`'s `<A>` that adds `onMouseEnter` and `onTouchStart`
-  listeners. Both call:
-  1. The route's lazy module loader (idempotent — Solid's `lazy()`
-     internally caches).
-  2. A route-registered prefetch hook (optional — if the route is
-     registered in a small `route-prefetch` map under
-     `src/lib/route-prefetch.ts`, run its data prefetcher).
-  Skip prefetch when
-  `(navigator as any).connection?.saveData === true ||
-  /^(2g|slow-2g)$/i.test((navigator as any).connection?.effectiveType ?? '')`.
-  *Complexity: simple.*
-
-- [x] **T28** — `src/lib/route-prefetch.ts`: map route paths to
-  prefetcher closures. Register:
-  - `/` (Overview) → fire `useCachedResource`-equivalent reads via the
-    same key + fetcher used by Overview, so the cache is populated
-    before navigation.
-  - `/trades` → `fetchTrades({ page: 1, limit: 20 })` + prime tags
-    (`tags:all`).
-  - `/coach` → `fetchLatestCoachReport()`.
-  - `/dignitas` → `fetchDignitasMe()`.
-  - `/journal` → `fetchEntries({})` and `tags:all`.
-  Each prefetcher writes via `useCachedResource`'s underlying API (or a
-  helper `prefetch(key, fetcher)` exported from `lib/cache.ts`) so the
-  pre-fired data lands in the same cache slot the destination component
-  reads from. *Complexity: medium.*
-
-- [x] **T29** — Replace `<A>` with `<NavLink>` in
-  `src/components/Layout.tsx` for the 4 NAV_ITEMS entries (lines 421-432
-  desktop and 455-468 mobile). DignitasPill / WalletChip / ExtensionChip
-  unchanged. *Complexity: trivial.*
-
-- [x] **T30** — Inject `<link rel="preconnect">` for API + WS hosts
-  in `src/index.tsx` (or in a small `setupPreconnect()` helper called
-  before `render()`):
+- [ ] **T16** — New Vite plugin in
+  `testudo-journal/scripts/inject-sw-shell.ts` (~30 LOC, plain TS —
+  Vite supports TS plugins natively):
   ```ts
-  function preconnect(href: string) {
-    if (!href) return
-    const link = document.createElement('link')
-    link.rel = 'preconnect'
-    link.href = href
-    link.crossOrigin = 'anonymous'
-    document.head.appendChild(link)
+  import type { Plugin } from 'vite'
+  import { readFileSync, writeFileSync } from 'node:fs'
+  import { resolve } from 'node:path'
+
+  export function injectSwShell(opts: { version: string }): Plugin {
+    return {
+      name: 'testudo-inject-sw-shell',
+      apply: 'build',
+      writeBundle(outOpts, bundle) {
+        const entry = Object.values(bundle).find(
+          c => c.type === 'chunk' && c.isEntry,
+        ) as any
+        const css = Object.values(bundle).find(
+          c => c.type === 'asset' && /\.css$/.test(c.fileName),
+        ) as any
+        const shell = JSON.stringify([
+          '/', '/index.html',
+          '/' + entry.fileName,
+          ...(css ? ['/' + css.fileName] : []),
+        ])
+
+        const tmpl = readFileSync(
+          resolve(process.cwd(), 'public/sw.template.js'), 'utf8')
+        const out = tmpl
+          .replace('__CACHE_NAME__', `testudo-journal-${opts.version}`)
+          .replace('"[__SHELL__]"', shell)
+
+        const outDir = outOpts.dir ?? resolve(process.cwd(), 'dist')
+        writeFileSync(resolve(outDir, 'sw.js'), out)
+      },
+    }
   }
-  preconnect(import.meta.env.VITE_API_URL ?? '')
-  preconnect(import.meta.env.VITE_WS_URL ?? '')
   ```
-  Inserted before `render()` so the browser fires the preconnect during
-  main-bundle parse. *Complexity: simple.*
+  Wire into `vite.config.ts` plugins array:
+  `injectSwShell({ version: process.env.VITE_SW_VERSION ?? 'v1' })`.
+  Source `VITE_SW_VERSION` from build env to bump per deploy.
+  *Complexity: simple.*
 
-### CP-6 — Verification
+- [ ] **T17** — Documentation:
+  - Create `testudo-journal/.env.example` with `VITE_API_URL`,
+    `VITE_WS_URL`, `VITE_WALLETCONNECT_PROJECT_ID`,
+    `VITE_ENABLE_SW=false`, `VITE_SW_VERSION=v1`.
+  - Update `testudo-journal/CLAUDE.md`: SW lifecycle (install →
+    skipWaiting → activate → claim → fetch); cache-version bump
+    procedure; manual user recovery (`unregister + clear caches`);
+    `?nosw=1` debugging flag.
+  *Complexity: simple — docs only.*
 
-- [x] **T31** — `cd testudo-journal && bun run typecheck && bun run build`
-  passes; `bun run build:check` (T11) passes. *Complexity: simple.*
+- [ ] **T18** — Wire SW registration in `src/index.tsx` after the
+  preconnect block (lines 25–43):
+  ```ts
+  if (import.meta.env.VITE_ENABLE_SW === 'true' && 'serviceWorker' in navigator) {
+    const register = () => {
+      navigator.serviceWorker.register('/sw.js')
+        .catch(err => console.warn('[sw] register failed', err))
+    }
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(register, { timeout: 2000 })
+    } else {
+      setTimeout(register, 2000)
+    }
+  }
+  ```
+  Default `VITE_ENABLE_SW=false` — no behavioral change in production
+  on this commit (FR-14). *Complexity: simple.*
 
-- [x] **T32** — Manual browser verification of each acceptance criterion:
-  - DevTools Network: `vendor-wallet*.js` only fetched on Connect click
-    (FR-2).
-  - Lighthouse mobile cold-load TTI delta vs baseline recorded in CP-1
-    (FR-1, FR-2; ≥ 30% target, but ship regardless per spec risk #5).
-  - Cross-identity test: log in as A → log out → log in as B; confirm
-    no flash of A's analytics (FR-8, FR-12).
-  - 30s cache test: Overview → Trades → Overview within 30s; Performance
-    panel shows Overview rendered in <50ms (FR-5).
-  - Mutation test: add a tag, navigate away/back, tag persists (FR-7).
-  - Hover-prefetch: hover any nav link, see route-chunk + data fetch
-    fire before click (FR-9).
-  - View source: `<link rel="preconnect">` for API + WS hosts present
-    (FR-10).
-  *Complexity: medium — purely manual.*
+- [ ] **T19** — Extracted URL-routing helper for testability:
+  `src/lib/sw-route.ts` exporting a pure function `classifyRequest(url:
+  string, mode: RequestMode): 'bypass' | 'api' | 'font' | 'navigate' |
+  'passthrough'`. The SW inlines a copy of this logic (KISS — service
+  workers don't import npm modules cleanly without a bundler). Colocated
+  unit test in `src/lib/sw-route.test.ts` exercises each branch
+  (bypass when `?nosw=1`, api for `/api/*`, font for `.woff2`, navigate
+  for `mode === 'navigate'`, passthrough otherwise).
+  *Complexity: simple.*
 
-- [x] **T33** — Create `.specify/specs/PERF-01-cold-load-and-swr/LEARNINGS.md`
-  with: before/after Lighthouse numbers, gotchas (AuthContext sync→async
-  refactor, stableHash determinism, navigator.connection cross-browser
-  surface), and any deferred-to-PERF-02 follow-ups (service worker,
-  batch endpoint). Update root `MEMORY.md` with a 1-liner pointing at
-  `src/lib/cache.ts` as the cache primitive home.
+- [ ] **T20** — Build + manual verification:
+  - `cd testudo-journal && VITE_ENABLE_SW=false bun run build`
+    produces `dist/sw.js` with placeholders replaced; main entry chunk
+    still under 250 KB gzip (`bun run build:check` passes).
+  - Set `VITE_ENABLE_SW=true` in `.env`, rebuild, `bun run preview`,
+    hard-reload twice. Second visit shows "(ServiceWorker)" in DevTools
+    Network for shell requests (FR-8). Cache Storage panel shows
+    `testudo-journal-v1` populated with `index.html`, the entry chunk,
+    the CSS file (FR-8). `*.woff2` requests on subsequent loads served
+    from Cache Storage (FR-10).
+  - DevTools Network throttling: simulate `/api/*` taking > 3 s.
+    Confirm fallback to cached response with `sw-fallback: stale`
+    response header (FR-9).
+  - Hit `/desk/?nosw=1`: confirm no SW interception (FR-12).
+  - Bump `VITE_SW_VERSION=v2`, rebuild, hard-reload: confirm
+    `testudo-journal-v1` cache deleted on `activate`, `v2` populated
+    (FR-13).
+  - Performance recording on cold load: SW register entry occurs after
+    `domcontentloaded` + idle gap, not before first paint (FR-11).
+  *Complexity: medium — extensive manual verification, no fast
+  iteration loop.*
+
+### CP-4 — Canary + default flip (FR-14, completion-signal items)
+
+- [ ] **T21** — Deploy CP-3 to production with `VITE_ENABLE_SW=true`
+  set ONLY for a beta cohort (route via Cloudflare env or a
+  `?canary=1` opt-in URL). Document the canary plan in
+  `.specify/specs/PERF-02-batch-analytics-and-sw/CANARY.md` (route,
+  rollback procedure, monitoring SLOs). *Complexity: simple — docs +
+  Cloudflare config.*
+
+- [ ] **T22** — Soak for ≥ 7 days. Monitor:
+  - Browser console errors (any SW-related crash).
+  - User-reported "stuck on old shell" issues (Discord / support).
+  - SW cache-version bump applied during soak — verify no users
+    pinned to `testudo-journal-v1` after one full deploy cycle.
+  *Complexity: trivial — observation only.*
+
+- [ ] **T23** — Flip default. One-line change in CI/build env or
+  `.env.production`: `VITE_ENABLE_SW=true`. Commit:
+  `chore(PERF-02): default-enable journal service worker after canary
+  (CP-4)`. *Complexity: trivial.*
+
+- [ ] **T24** — Write
+  `.specify/specs/PERF-02-batch-analytics-and-sw/LEARNINGS.md` with:
+  actual measured first-paint deltas (CP-2 numbers from T14),
+  shell-paint deltas (CP-3 numbers from T20 + canary), gotchas (spec's
+  "8 fetches on Overview" vs reality's 5; PnlCalendar filter-shape
+  collision; Vite plugin `writeBundle` vs `closeBundle` timing),
+  deferred follow-ups (transaction-coalescing for backend pool; batch
+  priming for the 7 unmigrated chart panels; per-section filter
+  overrides if PnlCalendar case multiplies). Update root `MEMORY.md`
+  with one-liner: batch endpoint at `POST /api/v1/journal/analytics/batch`,
+  SW cache-version convention `testudo-journal-v{N}` bumped per deploy.
   *Complexity: trivial.*
 
-- [x] **T34** — Final commit per spec template:
-  `refactor(PERF-01): journal cold-load diet + SWR cache`. Verify with
-  `git log` that CP-1..CP-5 each have their own commit (per "Completion
-  Signal" #1 — each as its own commit). *Complexity: trivial.*
+- [ ] **T25** — Archive spec per repo convention:
+  `.specify/specs/PERF-02-batch-analytics-and-sw/` →
+  `.specify/spec-archive/PERF-02-batch-analytics-and-sw/`. Final
+  `IMPLEMENTATION_PLAN.md` status flip to "COMPLETE — archived".
+  *Complexity: trivial.*
 
 ---
 
 ## Commit strategy
 
-- **T1 + T2 + T3 + T4 + T5 + T6 + T7 bundled** as `refactor(PERF-01): defer wallet bundle off cold path (CP-1)`.
-  All 7 are inseparable — removing the `appKit` named export (T2) breaks
-  every consumer compile until T3+T5 land. T4 / T6 / T7 are trivial deletes.
-  T1 (typecheck script) is bundled because the verification command in
-  the commit message needs it. T8 is verification, not a code change —
-  goes in the commit message body.
-- **T9 + T10 + T11 + T12 + T13 bundled** as `chore(PERF-01): bundle-budget guardrail (CP-2)`.
-  All five describe a single guardrail; T13 is a verify-then-revert step
-  that contributes a sentence to the commit message.
-- **T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22 bundled** as
-  `refactor(PERF-01): SWR cache + analytics migration (CP-3)`. Splitting
-  T14 from its consumers leaves the primitive unused on master; splitting
-  the consumers from T14 leaves them broken. T15 (tests) ships in the
-  same commit as T14 (TDD).
-- **T23 + T24 + T25 + T26 bundled** as `feat(PERF-01): localStorage cache tier + identity namespacing (CP-4)`.
-- **T27 + T28 + T29 + T30 bundled** as `feat(PERF-01): nav prefetch + preconnect (CP-5)`.
-- **T31 + T32 + T33 + T34** — verification, LEARNINGS, archive. T34 is
-  the final spec-archive commit if any cleanup remains.
+- **T1 + T2 + T3 + T4 + T5 + T6 bundled** as
+  `feat(PERF-02): batched analytics endpoint + parity test (CP-1)`.
+  T1 (helper extraction) is a precondition for T3 (the batch handler
+  reuses the helpers); T5 (parity test) verifies T1+T3 together —
+  splitting them leaves master in an inconsistent state. T6 is
+  verification, not new code; goes in the commit message body.
+- **T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 bundled** as
+  `feat(PERF-02): useCachedBatch + Overview migration (CP-2)`.
+  T7 (cache extensions) is unused until T10/T12 land; T11 (tests) is
+  TDD for T10. T8 (key-helper migration) ships in the same commit as
+  T7 to avoid leaving inline keys vs centralized keys in a conflicting
+  state.
+- **T15 + T16 + T17 + T18 + T19 + T20 bundled** as
+  `feat(PERF-02): journal service worker (CP-3, default off)`.
+  All six describe one feature behind one flag; default stays `false`
+  per FR-14.
+- **T21 + T22 are not commits** — monitoring/operations.
+- **T23** is its own commit:
+  `chore(PERF-02): default-enable journal service worker after canary
+  (CP-4)`.
+- **T24 + T25** bundled as `docs(PERF-02): LEARNINGS + spec archive`.
+
+Per AGENTS.md: NO `Co-Authored-By: Claude` trailers in this repo.
 
 ---
 
 ## Risks (from spec, with concrete mitigations)
 
-1. **Cache staleness bugs.** Mitigated by the mutation→invalidation
-   table in Discoveries + comment-block at top of `lib/cache.ts` + T21
-   wiring.
-2. **Identity-leak from cache.** Mitigated by FR-8/FR-12 + T26
-   isolation test + T25 logout invalidation.
-3. **Wallet defer breaks SIWE flow.** Mitigated by T3's
-   `attachWalletListeners` indirection + T8 manual smoke test on real
-   Arbitrum + Solana wallets before merging CP-1. **This is the highest-
-   risk change in the plan — T8 is a hard gate, not a checkbox.**
-4. **`localStorage` quota.** Mitigated by T23's 64KB-per-entry cap +
-   oldest-eviction retry + memory-fallback warning.
-5. **Lighthouse improvement under-delivers.** Mitigated by recording
-   real numbers in CP-1 commit and CP-2 visualizer enabling root-cause
-   analysis if gain < 20% (per spec risk #5, do not block on the exact
-   number).
-6. **Prefetch wastes bandwidth on metered.** Mitigated by `saveData /
-   effectiveType` guard in T27 (Chromium only — Safari/Firefox always
-   prefetch, accepted per Discoveries).
+1. **Stale-shell trap.** Mitigated by versioned cache name (T16 +
+   `VITE_SW_VERSION`), `skipWaiting`/`clients.claim` (T15), `?nosw=1`
+   escape hatch (T15), CP-4 one-week canary (T22), and manual-recovery
+   procedure documented in CLAUDE.md (T17).
+2. **Batch correctness drift.** Mitigated structurally — T1 extracts
+   the conversion helpers; both per-section and batch handlers reuse
+   them. Drift is hard to introduce. T5 parity test is the regression
+   net.
+3. **Pool exhaustion under bursts.** Out of scope for code; documented
+   as a future follow-up (transaction-coalescing) only if metrics
+   show analytics_pool contention. Out-of-spec per "Out of Scope"
+   section.
+4. **SW + SWR cache double-staleness.** Mitigated by T15's
+   `sw-fallback: stale` header — the SPA cache layer treats it
+   identically to its own "stale" signal. Manual loop-avoidance test
+   covered in T14 + T20.
+5. **Cache-key skew between batch and per-section paths.** Mitigated
+   by centralizing key derivation in `cacheKeyForSection` (T7) and
+   migrating all existing call sites to use it (T8). Unit-tested in
+   T11 ("cross-path key parity" case).
+6. **`requestIdleCallback` not available in Safari/Firefox.**
+   Mitigated by `setTimeout(register, 2000)` fallback (T18).
+7. **Backend handler not actually faster.** Mitigated by recording
+   real measured deltas in T14 (frontend Overview cold-paint) and T6
+   (backend isolated-handler timing). If delta < 50 ms, document in
+   LEARNINGS and decline to flip CP-4 default — fall back to keeping
+   the batch endpoint additive without forcing the frontend migration.
+
+### Plan-specific risks (added beyond spec)
+
+8. **Spec's "Overview fans out 8 fetches" framing is incorrect.**
+   Real cold-paint fan-out is 5 (see Discoveries). Mitigated by
+   adjusting the acceptance criterion in T14 to "exactly one POST + at
+   most one PnlCalendar GET". The win is real, just smaller than
+   spec's framing implies.
+9. **PnlCalendar's monthly-filter shape collides with the spec's
+   single-filter `BatchRequest`.** Mitigated by leaving PnlCalendar
+   on its own GET (carve-out documented in T12). Per-section filter
+   overrides explicitly out of scope.
+10. **Vite plugin `writeBundle` timing.** The hook fires after all
+    assets are emitted but before dev-server / preview hooks. If
+    `outOpts.dir` is undefined in some Vite configurations, the
+    plugin falls back to `resolve(process.cwd(), 'dist')` (T16).
+    Verified in T20.
+11. **The 7 plain-`createResource` chart panels (DrawdownChart,
+    SymbolBreakdown variants) are NOT migrated.** Living outside cold
+    paint, scope-bounded out of PERF-02. Documented in Discoveries as
+    a future cleanup — they don't benefit from batch priming until a
+    future migration.
+12. **Per-section error variant tagging.** The spec sketch uses
+    `#[serde(untagged)]` on `SectionResult`. Untagged enums match by
+    field shape; if the success type happens to have an `error: String`
+    field, deserialization is ambiguous. None of the existing response
+    types contain a top-level `error` field, so the conflict does not
+    arise — but documented here so a future contributor adding such a
+    field doesn't break parsing.
 
 ---
 
 ## Blockers
 
-None. All infrastructure in place: vitest + jsdom already configured,
-`vendor-wallet` chunk already exists in vite.config.ts (just incomplete),
-`@reown/appkit` supports dynamic imports natively, no backend or infra
-work required.
+None. PERF-01's cache primitive (`src/lib/cache.ts`) is the substrate
+for CP-2; backend service methods are clean enough that extracting
+conversion helpers (T1) is a mechanical refactor; SW is greenfield
+with no infra constraints (Cloudflare Pages serves `/sw.js` from
+project root by default with `/desk/` scope automatic).
 
 ---
 
 ## PLANNING COMPLETE
 
-Spec: PERF-01-cold-load-and-swr
-Total Tasks: 34 (T1–T34)
+Spec: PERF-02-batch-analytics-and-sw
+Total Tasks: 25 (T1–T25)
 Ready for BUILD mode.
 
-Next task: T1 — add `"typecheck": "tsc --noEmit"` script to
-`testudo-journal/package.json`.
+Next task: T1 — extract pure response-conversion helpers in
+`crates/router/src/routes/journal.rs` so per-section and batch
+handlers share identical adapter logic.
