@@ -78,3 +78,27 @@ Future: if identity needs to be reactive, change to `identity: () => string | nu
 ### clearCacheForIdentity clears the entire memCache
 Since memCache is not identity-namespaced (one active user per session), logout must clear ALL
 memCache entries. `clearCacheForIdentity` calls `_memCache.clear()` — not a prefix-filtered delete.
+
+---
+
+## 2026-04-26 — CP-5: nav prefetch + preconnect
+
+### Route prefetchers target cache keys, not component state
+The `prefetch()` helper writes directly into `_memCache`. The destination component's
+`useCachedResource` reads from `_memCache` on first render — so the prefetch data is served
+without a network round-trip if the hover-to-click window exceeds the fetch latency (~50–200 ms).
+Works silently on cache miss too (no-op if already cached).
+
+### ws:// URLs need protocol conversion for preconnect
+`<link rel="preconnect">` requires an http/https URL. `VITE_WS_URL` is `ws://` or `wss://`.
+`index.tsx::preconnect()` converts ws→http / wss→https via `URL.protocol` mutation before
+inserting the link. Empty/malformed URLs are silently skipped.
+
+### Layout.tsx A import removed when NavLink replaced both usages
+After replacing both `<A>` instances in NAV_ITEMS (desktop + mobile) with `<NavLink>`, `A` was
+no longer imported. TypeScript caught it as TS6133; removed from the `@solidjs/router` import.
+
+### NAV_ITEMS paths are the only hover-prefetch triggers
+The nav only surfaces `/`, `/trades`, `/coach`, `/account`. The prefetch map includes `/dignitas`
+and `/journal` too (for future nav additions), but they don't fire during normal hover interaction.
+`/account` has no prefetcher registered — no cacheable analytics data on that route.
