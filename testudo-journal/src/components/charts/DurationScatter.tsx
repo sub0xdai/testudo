@@ -4,7 +4,7 @@ import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { useAuth } from '../../context/AuthContext'
 import { fetchDurationProfit } from '../../api/client'
-import { useCachedResource, stableHash } from '../../lib/cache'
+import { useCachedResource, cacheKeyForSection } from '../../lib/cache'
 import { signalGreenAlpha, signalRedAlpha, getTextTertiary } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
@@ -12,7 +12,7 @@ export function DurationScatter() {
   const { filters, setFilters } = useFilters()
   const auth = useAuth()
   const data = useCachedResource(
-    () => 'duration-profit:' + stableHash(filters()),
+    () => cacheKeyForSection('duration_profit', filters()),
     () => fetchDurationProfit(filters()),
     { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )

@@ -1,5 +1,5 @@
 import { createSignal, createResource, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
-import { useCachedResource, stableHash } from '../lib/cache'
+import { useCachedBatch } from '../lib/cache'
 import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { PnlCalendar } from './charts/PnlCalendar'
@@ -9,7 +9,7 @@ import { PageSubHeader } from './PageSubHeader'
 import type { StatItem } from './StatSection'
 import { useFilters } from './filterContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchOverview, fetchEquityCurve, exchangeApi, fetchRiskSnapshot, type RiskSnapshot } from '../api/client'
+import { exchangeApi, fetchRiskSnapshot, type RiskSnapshot, type OverviewResponse, type EquityPoint } from '../api/client'
 import { formatCurrency, formatPercent, formatNumber, formatInteger, pnlColor, rColor, streakSign } from '../lib/formatters'
 import { HELP } from '../lib/help-content'
 import { createRiskWsClient } from '../lib/ws'
@@ -37,16 +37,32 @@ export function Overview() {
   const { filters } = useFilters()
   const auth = useAuth()
 
-  const stats = useCachedResource(
-    () => 'overview:' + stableHash(filters()),
-    () => fetchOverview(filters()),
+  // PERF-02 CP-2: one batched request covers Overview's 4 cold-paint sections.
+  // ChartSelector defaults render PnlTreemap (symbol_breakdown) and DailyPnl
+  // chart (daily_pnl); both keep their existing useCachedResource calls and
+  // get cache HITS from the primed batch entries.
+  const batch = useCachedBatch(
+    () => ['overview', 'equity_curve', 'symbol_breakdown', 'daily_pnl'],
+    filters,
     { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
-  // Equity resource kept for CumulativeProfit in ChartSelector
-  const equity = useCachedResource(
-    () => 'equity-curve:' + stableHash(filters()),
-    () => fetchEquityCurve(filters()),
-    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
+  // Thin accessors preserve the prior `useCachedResource` API surface so the
+  // rest of this component reads unchanged.
+  const stats = Object.assign(
+    () => batch.sections.overview() as OverviewResponse | undefined,
+    {
+      get loading() { return batch.sections.overview.loading },
+      get error() { return batch.sections.overview.error },
+      refetch: () => batch.refetch(),
+    },
+  )
+  const equity = Object.assign(
+    () => batch.sections.equity_curve() as { data: EquityPoint[] } | undefined,
+    {
+      get loading() { return batch.sections.equity_curve.loading },
+      get error() { return batch.sections.equity_curve.error },
+      refetch: () => batch.refetch(),
+    },
   )
 
   // Aggregate account balance across all exchanges

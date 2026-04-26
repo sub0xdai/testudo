@@ -187,6 +187,56 @@ export async function fetchTimeDistribution(filters: StatsFilter): Promise<{ dat
   return fetchApi('time-distribution', filters)
 }
 
+
+// --- PERF-02: Batched analytics endpoint ---
+
+export type BatchSection =
+  | 'overview'
+  | 'equity_curve'
+  | 'daily_pnl'
+  | 'symbol_breakdown'
+  | 'setup_breakdown'
+  | 'duration_profit'
+  | 'return_distribution'
+  | 'time_distribution'
+
+/**
+ * Wire-shape of `POST /api/v1/journal/analytics/batch`. Each section is
+ * either the success payload (`OverviewResponse` for overview, `{ data: T[] }`
+ * for everything else, matching the per-section endpoints byte-for-byte) or
+ * `{ error: string }`. Sections not requested are absent from the response.
+ *
+ * Mirrors the Rust `BatchResponse` in
+ * `testudo-exchange/crates/router/src/routes/journal.rs`.
+ */
+export interface BatchAnalyticsResponse {
+  overview?: OverviewResponse | { error: string }
+  equity_curve?: { data: EquityPoint[] } | { error: string }
+  daily_pnl?: { data: DailyPnlPoint[] } | { error: string }
+  symbol_breakdown?: { data: SymbolBreakdownItem[] } | { error: string }
+  setup_breakdown?: { data: SetupBreakdownItem[] } | { error: string }
+  duration_profit?: { data: DurationProfitPoint[] } | { error: string }
+  return_distribution?: { data: ReturnBucket[] } | { error: string }
+  time_distribution?: { data: TimeSlot[] } | { error: string }
+}
+
+/**
+ * One round-trip for N analytics sections. Pass `undefined` for `sections` to
+ * request all eight (server-side default).
+ */
+export async function fetchAnalyticsBatch(
+  sections: BatchSection[] | undefined,
+  filter: StatsFilter,
+): Promise<BatchAnalyticsResponse> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/analytics/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filter, sections }),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
 // --- Trade CRUD API ---
 
 export type KellyInputs = {

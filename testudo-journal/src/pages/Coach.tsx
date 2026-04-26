@@ -1,5 +1,5 @@
 import { createResource, createSignal, createEffect, Show, onMount } from 'solid-js'
-import { useCachedResource } from '../lib/cache'
+import { useCachedResource, cacheKeyForSection } from '../lib/cache'
 import {
   fetchLatestCoachReport,
   fetchCoachArchive,
@@ -23,7 +23,7 @@ export default function Coach() {
   const [preference, { mutate: setPreference }] = createResource(fetchCoachPreference)
   const auth = useAuth()
   const overview = useCachedResource(
-    () => 'overview:{}',
+    () => cacheKeyForSection('overview', {}),
     () => fetchOverview({}),
     { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )

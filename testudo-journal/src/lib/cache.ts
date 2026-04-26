@@ -9,6 +9,8 @@
 //   patchDignitasPreference          → 'dignitas-me:'
 
 import { createEffect, createSignal, untrack } from 'solid-js'
+import type { StatsFilter } from '../api/client'
+import { fetchAnalyticsBatch, type BatchAnalyticsResponse } from '../api/client'
 
 const DEFAULT_STALE_MS = 30_000
 const LS_NAMESPACE = 'testudo:cache:'
@@ -232,3 +234,245 @@ export function useCachedResource<T>(
 
   return accessor as unknown as CachedResource<T>
 }
+
+// ---------------------------------------------------------------------------
+// PERF-02 CP-2: SectionKey + cacheKeyForSection + prime + useCachedBatch
+// ---------------------------------------------------------------------------
+
+/**
+ * Wire-format section identifiers. Snake_case here matches the Rust
+ * `SectionKey` enum's `serde(rename_all = "snake_case")` representation —
+ * see `testudo-exchange/crates/router/src/routes/journal.rs`.
+ */
+export type SectionKey =
+  | 'overview'
+  | 'equity_curve'
+  | 'daily_pnl'
+  | 'symbol_breakdown'
+  | 'setup_breakdown'
+  | 'duration_profit'
+  | 'return_distribution'
+  | 'time_distribution'
+
+/**
+ * Map a SectionKey to its hyphenated cache-key prefix. Per-section call sites
+ * historically used keys like `'equity-curve:' + stableHash(filter)`; this
+ * helper centralizes the wire format so batch and per-section paths cannot
+ * drift (defends spec risk #5).
+ */
+const SECTION_KEY_PREFIX: Record<SectionKey, string> = {
+  overview: 'overview',
+  equity_curve: 'equity-curve',
+  daily_pnl: 'daily-pnl',
+  symbol_breakdown: 'symbol-breakdown',
+  setup_breakdown: 'setup-breakdown',
+  duration_profit: 'duration-profit',
+  return_distribution: 'return-distribution',
+  time_distribution: 'time-distribution',
+}
+
+export function cacheKeyForSection(key: SectionKey, filter: StatsFilter): string {
+  return `${SECTION_KEY_PREFIX[key]}:${stableHash(filter)}`
+}
+
+/**
+ * Narrow primitive: write `{ data, updatedAt: Date.now() }` into memCache and
+ * (optionally) localStorage. No-op if an existing entry is fresher — protects
+ * us from clobbering a recent per-section fetch with a slower batch response.
+ */
+export function prime<T>(
+  key: string,
+  data: T,
+  opts?: { identity?: string | null; persist?: boolean },
+): void {
+  const now = Date.now()
+  const existing = _memCache.get(key)
+  if (existing && existing.updatedAt >= now) return // already fresher
+  const entry: CacheEntry<unknown> = { data, updatedAt: now }
+  _memCache.set(key, entry)
+  if (opts?.persist && opts.identity) lsWrite(opts.identity, key, entry)
+}
+
+export interface BatchOpts {
+  staleMs?: number
+  persist?: boolean
+  identity?: string | null
+}
+
+export type BatchSections = Record<SectionKey, CachedResource<unknown>>
+
+export interface UseCachedBatchResult {
+  sections: BatchSections
+  anyLoading: () => boolean
+  refetch: () => void
+}
+
+/**
+ * A SWR-style fan-out hook: requests N analytics sections in one batched POST,
+ * partitioning requested sections into FRESH (memCache age < staleMs, no
+ * network) and STALE_OR_MISSING (one batched fetch). On response, primes each
+ * section's individual cache key so per-section consumers (PnlTreemap, DailyPnl
+ * chart, etc.) see cache hits and skip their own fetches.
+ *
+ * Per-section error envelopes (`{ error: '...' }`) are NOT primed — any stale
+ * entry is left intact, mirroring `useCachedResource`'s render-stale-on-error
+ * semantics.
+ */
+export function useCachedBatch(
+  sections: () => SectionKey[],
+  filter: () => StatsFilter,
+  opts?: BatchOpts,
+): UseCachedBatchResult {
+  const staleMs = opts?.staleMs ?? DEFAULT_STALE_MS
+  const persist = opts?.persist ?? false
+  const identity = opts?.identity ?? null
+
+  // Per-section reactive backing signals. We allocate signals for the whole
+  // SectionKey set up front so the returned `sections` record is stable.
+  const ALL_KEYS: SectionKey[] = [
+    'overview', 'equity_curve', 'daily_pnl', 'symbol_breakdown',
+    'setup_breakdown', 'duration_profit', 'return_distribution', 'time_distribution',
+  ]
+
+  type Slot = {
+    data: ReturnType<typeof createSignal<unknown>>
+    isStale: ReturnType<typeof createSignal<boolean>>
+    error: ReturnType<typeof createSignal<unknown>>
+  }
+  const slots = new Map<SectionKey, Slot>()
+  for (const k of ALL_KEYS) {
+    slots.set(k, {
+      data: createSignal<unknown>(undefined),
+      isStale: createSignal<boolean>(false),
+      error: createSignal<unknown>(undefined),
+    })
+  }
+
+  const [loading, setLoading] = createSignal(false)
+  // Bumped by `refetch()` to force the effect to re-run even when keys are unchanged.
+  const [refetchTick, setRefetchTick] = createSignal(0)
+
+  function readSlotFromCache(section: SectionKey, key: string): boolean {
+    const slot = slots.get(section)!
+    const cached = _memCache.get(key) as CacheEntry<unknown> | undefined
+    if (cached) {
+      slot.data[1](() => cached.data)
+      const age = Date.now() - cached.updatedAt
+      slot.isStale[1](age >= staleMs)
+      return age < staleMs
+    }
+    // Try localStorage hydration on cold read.
+    if (persist && identity) {
+      const persisted = lsRead(identity, key)
+      if (persisted) {
+        _memCache.set(key, persisted)
+        slot.data[1](() => persisted.data)
+        slot.isStale[1](true)
+        return false
+      }
+    }
+    slot.data[1](undefined)
+    slot.isStale[1](false)
+    return false
+  }
+
+  function isErrorPayload(payload: unknown): payload is { error: string } {
+    return (
+      typeof payload === 'object' &&
+      payload !== null &&
+      'error' in payload &&
+      typeof (payload as { error: unknown }).error === 'string'
+    )
+  }
+
+  async function runBatch(stale: SectionKey[], capturedFilter: StatsFilter) {
+    if (stale.length === 0) return
+    setLoading(true)
+    try {
+      const response = await fetchAnalyticsBatch(stale, capturedFilter)
+      // Snapshot the current keys derived from `capturedFilter` — the user
+      // could change filters mid-flight; in that case we still prime under
+      // the captured-filter key so a future read with the same filter hits.
+      for (const section of stale) {
+        const payload = (response as Record<string, unknown>)[section]
+        if (payload === undefined || payload === null) continue
+        if (isErrorPayload(payload)) {
+          slots.get(section)!.error[1](() => new Error(payload.error))
+          continue
+        }
+        const key = cacheKeyForSection(section, capturedFilter)
+        prime(key, payload, { identity, persist })
+        const slot = slots.get(section)!
+        // Only update the visible slot if filter is still the same (the data
+        // belongs to the captured filter; changing filters reroutes via the
+        // effect re-running).
+        if (untrack(filter) === capturedFilter || stableHash(untrack(filter)) === stableHash(capturedFilter)) {
+          slot.data[1](() => payload)
+          slot.isStale[1](false)
+          slot.error[1](() => undefined)
+        }
+      }
+    } catch (e) {
+      // Network-level failure: surface error on every requested section so
+      // consumers can render an error state. Stale entries (if any) remain.
+      for (const section of stale) {
+        slots.get(section)!.error[1](() => e)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  createEffect(() => {
+    refetchTick() // reactive dep — bumped by refetch()
+    const requested = sections()
+    const f = filter()
+    const stale: SectionKey[] = []
+    for (const section of requested) {
+      const key = cacheKeyForSection(section, f)
+      const fresh = readSlotFromCache(section, key)
+      if (!fresh) stale.push(section)
+    }
+    if (stale.length > 0) {
+      void runBatch(stale, f)
+    }
+  })
+
+  function refetch() {
+    // Drop memCache entries for the currently requested sections so the
+    // effect treats them as cold misses on the next run.
+    const requested = untrack(sections)
+    const f = untrack(filter)
+    for (const section of requested) {
+      const key = cacheKeyForSection(section, f)
+      _memCache.delete(key)
+      if (persist && identity) localStorage.removeItem(buildLsKey(identity, key))
+      const slot = slots.get(section)!
+      slot.error[1](() => undefined)
+    }
+    setRefetchTick(t => t + 1)
+  }
+
+  // Build the public Record<SectionKey, CachedResource<unknown>> facade.
+  // Each accessor reads its slot signals; refetch on a per-section accessor
+  // forwards to the batch refetch (slim — sections are co-fetched by design).
+  const out = {} as BatchSections
+  for (const k of ALL_KEYS) {
+    const slot = slots.get(k)!
+    const accessor = () => slot.data[0]()
+    Object.defineProperty(accessor, 'loading', { get: () => loading(), enumerable: true })
+    Object.defineProperty(accessor, 'error', { get: () => slot.error[0](), enumerable: true })
+    Object.defineProperty(accessor, 'isStale', { get: () => slot.isStale[0](), enumerable: true })
+    Object.defineProperty(accessor, 'refetch', { value: refetch, enumerable: true, writable: false })
+    ;(out as Record<string, unknown>)[k] = accessor as unknown as CachedResource<unknown>
+  }
+
+  return {
+    sections: out,
+    anyLoading: () => loading(),
+    refetch,
+  }
+}
+
+// Re-export for type ergonomics on the consuming side.
+export type { BatchAnalyticsResponse }

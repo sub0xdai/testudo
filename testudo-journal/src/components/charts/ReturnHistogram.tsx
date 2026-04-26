@@ -4,7 +4,7 @@ import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { useAuth } from '../../context/AuthContext'
 import { fetchReturnDistribution } from '../../api/client'
-import { useCachedResource, stableHash } from '../../lib/cache'
+import { useCachedResource, cacheKeyForSection } from '../../lib/cache'
 import { getSignalGreen, getSignalRed } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
@@ -12,7 +12,7 @@ export function ReturnHistogram() {
   const { filters, setFilters } = useFilters()
   const auth = useAuth()
   const data = useCachedResource(
-    () => 'return-distribution:' + stableHash(filters()),
+    () => cacheKeyForSection('return_distribution', filters()),
     () => fetchReturnDistribution(filters()),
     { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
