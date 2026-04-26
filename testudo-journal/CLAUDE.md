@@ -1,3 +1,13 @@
+# testudo-journal
+
+## Performance Budget (PERF-01)
+- Main entry chunk gzip budget: **250 KB** (FR-3, PERF-01).
+- Run `bun run build:check` after any change that touches the cold path (imports in `index.tsx`, `config/wallet.ts`, `context/AuthContext.tsx`).
+- `vendor-wallet` chunk is loaded lazily — only after the user clicks "Connect Wallet". Do not add top-level imports that pull `@reown/appkit` or `ethers` into the main bundle.
+- SWR cache primitive lives in `src/lib/cache.ts` (`useCachedResource`, `invalidate`, `clearCacheForIdentity`, `stableHash`).
+
+---
+
 <claude-mem-context>
 # Recent Activity
 

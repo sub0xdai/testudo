@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
-  plugins: [solid()],
+  plugins: [
+    solid(),
+    ...(process.env.ANALYZE === '1' ? [visualizer({ open: true, gzipSize: true, brotliSize: true })] : []),
+  ],
   base: process.env.VITE_BASE_PATH || '/desk/',
   server: {
     port: 3002,
