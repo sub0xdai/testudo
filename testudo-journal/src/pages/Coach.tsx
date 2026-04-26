@@ -13,6 +13,7 @@ import { CoachReport } from '../components/coach/CoachReport'
 import { CoachArchive } from '../components/coach/CoachArchive'
 import { HelpTip } from '../components/HelpTip'
 import { HELP } from '../lib/help-content'
+import { useAuth } from '../context/AuthContext'
 
 const UNLOCK_THRESHOLD = 30
 const ARCHIVE_PAGE_SIZE = 20
@@ -20,10 +21,11 @@ const ARCHIVE_PAGE_SIZE = 20
 export default function Coach() {
   const [latest, { refetch: refetchLatest }] = createResource(fetchLatestCoachReport)
   const [preference, { mutate: setPreference }] = createResource(fetchCoachPreference)
+  const auth = useAuth()
   const overview = useCachedResource(
     () => 'overview:{}',
     () => fetchOverview({}),
-    { staleMs: 30_000 },
+    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   const [archiveOffset, setArchiveOffset] = createSignal(0)

@@ -11,6 +11,8 @@
 import { createEffect, createSignal, untrack } from 'solid-js'
 
 const DEFAULT_STALE_MS = 30_000
+const LS_NAMESPACE = 'testudo:cache:'
+const MAX_ENTRY_BYTES = 64 * 1024
 
 type CacheEntry<T> = { data: T; updatedAt: number }
 
@@ -34,23 +36,88 @@ function canonicalize(val: unknown): unknown {
   )
 }
 
-/** Drop all cache entries whose key starts with `keyPrefix`. */
+// Extract the cache key portion from a localStorage key: 'testudo:cache:{identity}:{cacheKey}'
+function extractCacheKey(lsKey: string): string | null {
+  const after = lsKey.slice(LS_NAMESPACE.length)
+  const colonIdx = after.indexOf(':')
+  if (colonIdx < 0) return null
+  return after.slice(colonIdx + 1)
+}
+
+function buildLsKey(identity: string, cacheKey: string): string {
+  return `${LS_NAMESPACE}${identity}:${cacheKey}`
+}
+
+function lsRead(identity: string, cacheKey: string): CacheEntry<unknown> | null {
+  try {
+    const raw = localStorage.getItem(buildLsKey(identity, cacheKey))
+    if (!raw) return null
+    return JSON.parse(raw) as CacheEntry<unknown>
+  } catch {
+    return null
+  }
+}
+
+function lsWrite(identity: string, cacheKey: string, entry: CacheEntry<unknown>): void {
+  const key = buildLsKey(identity, cacheKey)
+  const serialized = JSON.stringify(entry)
+  if (serialized.length > MAX_ENTRY_BYTES) return
+
+  function tryWrite() { localStorage.setItem(key, serialized) }
+
+  function evictOldest() {
+    let oldest: { key: string; updatedAt: number } | null = null
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (!k?.startsWith(LS_NAMESPACE)) continue
+      try {
+        const val = JSON.parse(localStorage.getItem(k) ?? '') as CacheEntry<unknown>
+        if (!oldest || val.updatedAt < oldest.updatedAt) oldest = { key: k, updatedAt: val.updatedAt }
+      } catch { /* skip malformed */ }
+    }
+    if (oldest) localStorage.removeItem(oldest.key)
+  }
+
+  try {
+    tryWrite()
+  } catch {
+    evictOldest()
+    try {
+      tryWrite()
+    } catch {
+      console.warn('[cache] localStorage quota exceeded; persistence disabled for this entry')
+    }
+  }
+}
+
+/** Drop all cache entries (memCache + localStorage) whose key starts with `keyPrefix`. */
 export function invalidate(keyPrefix: string): void {
   for (const k of [..._memCache.keys()]) {
     if (k.startsWith(keyPrefix)) _memCache.delete(k)
   }
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const lsKey = localStorage.key(i)
+    if (!lsKey?.startsWith(LS_NAMESPACE)) continue
+    const cacheKey = extractCacheKey(lsKey)
+    if (cacheKey?.startsWith(keyPrefix)) localStorage.removeItem(lsKey)
+  }
 }
 
-/** CP-4: also clears identity-namespaced localStorage entries. Stub for CP-3. */
-export function clearCacheForIdentity(_identity: string): void {
-  // Implemented in CP-4 — localStorage namespace cleanup goes here.
+/** Clear all cached data for a given identity (memCache + localStorage). Call on logout. */
+export function clearCacheForIdentity(identity: string): void {
+  const identityPrefix = `${LS_NAMESPACE}${identity}:`
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i)
+    if (k?.startsWith(identityPrefix)) localStorage.removeItem(k)
+  }
+  _memCache.clear()
 }
 
 export interface CacheOpts {
   staleMs?: number
-  /** CP-4: write to / hydrate from localStorage when true. */
+  /** Write to / hydrate from localStorage when true. Requires non-null identity. */
   persist?: boolean
-  /** CP-4: namespace localStorage keys by user identity. null disables persist. */
+  /** Namespace localStorage keys by user identity. null disables persist. */
   identity?: string | null
 }
 
@@ -73,6 +140,8 @@ export function useCachedResource<T>(
   opts?: CacheOpts,
 ): CachedResource<T> {
   const staleMs = opts?.staleMs ?? DEFAULT_STALE_MS
+  const persist = opts?.persist ?? false
+  const identity = opts?.identity ?? null
 
   const [data, setData] = createSignal<T | undefined>(undefined)
   const [loading, setLoading] = createSignal(false)
@@ -86,8 +155,9 @@ export function useCachedResource<T>(
     }
     try {
       const result = await fetcher(fetchKey)
-      _memCache.set(fetchKey, { data: result, updatedAt: Date.now() })
-      // Only update component state if the key is still current.
+      const entry: CacheEntry<unknown> = { data: result, updatedAt: Date.now() }
+      _memCache.set(fetchKey, entry)
+      if (persist && identity) lsWrite(identity, fetchKey, entry)
       if (untrack(key) === fetchKey) {
         setData(() => result as NonNullable<T>)
         setIsStale(false)
@@ -112,10 +182,20 @@ export function useCachedResource<T>(
         setLoading(false)
         return
       }
-      // Stale: serve immediately, revalidate in the background.
       setIsStale(true)
       void doFetch(k, true)
     } else {
+      // Try localStorage hydration on cold read
+      if (persist && identity) {
+        const persisted = lsRead(identity, k)
+        if (persisted) {
+          _memCache.set(k, persisted)
+          setData(() => (persisted.data as NonNullable<T>))
+          setIsStale(true)
+          void doFetch(k, true)
+          return
+        }
+      }
       setData(undefined)
       setIsStale(false)
       void doFetch(k, false)
@@ -126,6 +206,7 @@ export function useCachedResource<T>(
     const k = untrack(key)
     if (k !== undefined) {
       _memCache.delete(k)
+      if (persist && identity) localStorage.removeItem(buildLsKey(identity, k))
       setIsStale(false)
       void doFetch(k, false)
     }

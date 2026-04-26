@@ -1,5 +1,6 @@
 import { createSignal, Show, onCleanup, onMount } from 'solid-js'
 import { useCachedResource } from '../../lib/cache'
+import { useAuth } from '../../context/AuthContext'
 import {
   createEntry,
   updateEntry,
@@ -67,10 +68,12 @@ export function EntryEditor(props: {
     setTimeout(props.onClose, CLOSE_ANIMATION_MS)
   }
 
+  const auth = useAuth()
+
   const allTags = useCachedResource(
     () => 'tags:all',
     fetchTags,
-    { staleMs: 5 * 60_000 },
+    { staleMs: 5 * 60_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   const typeColor = () => {

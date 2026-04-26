@@ -4,6 +4,7 @@ import { FilterPopout } from './FilterPopout'
 import { HelpTip } from './HelpTip'
 import { fetchFilterOptions } from '../api/client'
 import { useCachedResource } from '../lib/cache'
+import { useAuth } from '../context/AuthContext'
 
 type Preset = '1w' | '1m' | '3m' | 'ytd' | 'all'
 
@@ -52,11 +53,12 @@ export function PageSubHeader(props: PageSubHeaderProps) {
   const { filters, setFilters } = useFilters()
   const [showPopout, setShowPopout] = createSignal(false)
   const [preset, setPreset] = createSignal<Preset>('all')
+  const auth = useAuth()
 
   const options = useCachedResource(
     () => 'filter-options:' + (filters().exchange ?? ''),
     () => fetchFilterOptions(filters().exchange || undefined),
-    { staleMs: 5 * 60_000 },
+    { staleMs: 5 * 60_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   const activeFilterCount = () => {

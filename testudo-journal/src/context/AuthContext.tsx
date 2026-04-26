@@ -1,6 +1,7 @@
 import { createContext, useContext, createSignal, onCleanup, type JSX } from 'solid-js'
 import { base58 } from '@scure/base'
 import { loadWallet, isWalletLoaded } from '../config/wallet'
+import { clearCacheForIdentity } from '../lib/cache'
 import type { AppKit } from '@reown/appkit'
 
 export interface User {
@@ -70,8 +71,10 @@ export function AuthProvider(props: { children: JSX.Element }) {
         state.address &&
         current.wallet_address.toLowerCase() !== state.address.toLowerCase()
       ) {
+        const prevIdentity = current.id
         await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
         setUser(null)
+        clearCacheForIdentity(prevIdentity)
         userInitiatedConnect = true
         notifyExtensionOfWalletChange(state.address.toLowerCase())
       }
@@ -291,8 +294,10 @@ export function AuthProvider(props: { children: JSX.Element }) {
   }
 
   const logout = async () => {
+    const prevIdentity = user()?.id
     await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
     setUser(null)
+    if (prevIdentity) clearCacheForIdentity(prevIdentity)
     if (isWalletLoaded()) {
       ;(await loadWallet()).disconnect()
     }

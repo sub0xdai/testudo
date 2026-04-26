@@ -2,6 +2,7 @@ import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
+import { useAuth } from '../../context/AuthContext'
 import { fetchDailyPnl } from '../../api/client'
 import { useCachedResource, stableHash } from '../../lib/cache'
 import { getSignalGreen, getSignalRed, getTextTertiary, getBorder } from '../../lib/tokens'
@@ -9,10 +10,11 @@ import type { EChartsOption } from 'echarts'
 
 export function DailyPnl() {
   const { filters, setFilters } = useFilters()
+  const auth = useAuth()
   const data = useCachedResource(
     () => 'daily-pnl:' + stableHash(filters()),
     () => fetchDailyPnl(filters()),
-    { staleMs: 30_000 },
+    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 

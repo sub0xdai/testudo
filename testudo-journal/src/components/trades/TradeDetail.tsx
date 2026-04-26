@@ -1,5 +1,6 @@
 import { createSignal, createResource, Show, For, onCleanup, onMount } from 'solid-js'
 import { useCachedResource, invalidate } from '../../lib/cache'
+import { useAuth } from '../../context/AuthContext'
 import {
   fetchTradeDetail,
   fetchTags,
@@ -50,10 +51,11 @@ export function TradeDetail(props: TradeDetailProps) {
     (id) => getDraftNotes(id),
   )
 
+  const auth = useAuth()
   const allTags = useCachedResource(
     () => !props.isActive ? 'tags:all' : undefined,
     fetchTags,
-    { staleMs: 5 * 60_000 },
+    { staleMs: 5 * 60_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   const [notes, setNotes] = createSignal('')

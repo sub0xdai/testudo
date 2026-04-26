@@ -5,6 +5,7 @@ import { fetchDailyPnl } from '../../api/client'
 import type { StatsFilter, DailyPnlPoint } from '../../api/client'
 import { useCachedResource, stableHash } from '../../lib/cache'
 import { pnlColor } from '../../lib/formatters'
+import { useAuth } from '../../context/AuthContext'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -34,6 +35,7 @@ interface WeeklySummary {
 export function PnlCalendar() {
   const { filters, setFilters } = useFilters()
   const navigate = useNavigate()
+  const auth = useAuth()
   const [viewMonth, setViewMonth] = createSignal(new Date())
 
   const monthFilter = createMemo((): StatsFilter => {
@@ -54,7 +56,7 @@ export function PnlCalendar() {
   const data = useCachedResource(
     () => 'daily-pnl:' + stableHash(monthFilter()),
     () => fetchDailyPnl(monthFilter()),
-    { staleMs: 30_000 },
+    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   // Build a lookup map from date string → DailyPnlPoint

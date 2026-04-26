@@ -58,3 +58,23 @@ since `CachedResource<T>()` returns `T | undefined`.
 matching Solid's `Resource<T>.loading` pattern. Callers write `data.loading` in JSX — it works
 reactively because the getter reads the underlying signal inside a tracked scope. Do NOT type it
 as `() => boolean` or callers would need `data.loading()`, breaking the drop-in compatibility.
+
+---
+
+## 2026-04-26 — CP-4: localStorage hydration + identity namespacing
+
+### Bun runtime overrides jsdom localStorage
+When running vitest with `environment: 'jsdom'` via `bunx vitest`, Bun's runtime injects its own
+`localStorage` global (`--localstorage-file` flag, even with no path). This object lacks `.clear()`,
+`.getItem()`, `.setItem()` — only `.key()`, `.removeItem()`, and `.length` survive. Solution:
+`vi.stubGlobal('localStorage', mockLocalStorage)` in `beforeAll` with a Map-backed mock, then
+reset `_store` directly in `beforeEach` rather than calling `.clear()`.
+
+### identity param is captured at useCachedResource call time
+`opts.identity` is read from the captured `opts` object throughout the component's lifetime.
+This is fine because identity doesn't change mid-session (logout unmounts + remounts components).
+Future: if identity needs to be reactive, change to `identity: () => string | null`.
+
+### clearCacheForIdentity clears the entire memCache
+Since memCache is not identity-namespaced (one active user per session), logout must clear ALL
+memCache entries. `clearCacheForIdentity` calls `_memCache.clear()` — not a prefix-filtered delete.

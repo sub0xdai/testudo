@@ -40,13 +40,13 @@ export function Overview() {
   const stats = useCachedResource(
     () => 'overview:' + stableHash(filters()),
     () => fetchOverview(filters()),
-    { staleMs: 30_000 },
+    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
   // Equity resource kept for CumulativeProfit in ChartSelector
   const equity = useCachedResource(
     () => 'equity-curve:' + stableHash(filters()),
     () => fetchEquityCurve(filters()),
-    { staleMs: 30_000 },
+    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   // Aggregate account balance across all exchanges

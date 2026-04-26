@@ -1,5 +1,6 @@
 import { createSignal, createResource, Show, For, createMemo } from 'solid-js'
 import { useCachedResource, invalidate } from '../../lib/cache'
+import { useAuth } from '../../context/AuthContext'
 import {
   fetchEntries,
   fetchTags,
@@ -96,6 +97,8 @@ export function JournalTimeline() {
     date_to: dateTo() || undefined,
   })
 
+  const auth = useAuth()
+
   // Fetch all entries (large limit for client-side filtering)
   const [entriesData, { refetch }] = createResource(
     () => ({ limit: 200, _key: refreshKey() }),
@@ -105,7 +108,7 @@ export function JournalTimeline() {
   const tags = useCachedResource(
     () => 'tags:all',
     fetchTags,
-    { staleMs: 5 * 60_000 },
+    { staleMs: 5 * 60_000, persist: true, identity: auth.user()?.id ?? null },
   )
 
   // Trade detail cache: tradeId -> { tags, symbol, closed_at }

@@ -2,6 +2,7 @@ import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
+import { useAuth } from '../../context/AuthContext'
 import { fetchTimeDistribution } from '../../api/client'
 import { useCachedResource, stableHash } from '../../lib/cache'
 import { getSignalGreen, getBgHover } from '../../lib/tokens'
@@ -12,10 +13,11 @@ const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 
 export function TimeHeatmap() {
   const { filters, setFilters } = useFilters()
+  const auth = useAuth()
   const data = useCachedResource(
     () => 'time-distribution:' + stableHash(filters()),
     () => fetchTimeDistribution(filters()),
-    { staleMs: 30_000 },
+    { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
   const hasActiveFilters = () => Object.values(filters()).some(Boolean)
 
