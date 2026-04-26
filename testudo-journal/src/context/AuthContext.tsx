@@ -1,6 +1,7 @@
 import { createContext, useContext, createSignal, onCleanup, type JSX } from 'solid-js'
 import { base58 } from '@scure/base'
-import { appKit } from '../config/wallet'
+import { loadWallet, isWalletLoaded } from '../config/wallet'
+import type { AppKit } from '@reown/appkit'
 
 export interface User {
   id: string
@@ -12,7 +13,7 @@ interface AuthContextValue {
   isAuthenticated: () => boolean
   loading: () => boolean
   siweError: () => string | null
-  connectWallet: () => void
+  connectWallet: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -36,14 +37,57 @@ export function AuthProvider(props: { children: JSX.Element }) {
   // CON-01: Only trigger SIWE from explicit user action, never from auto-reconnect.
   // This prevents MetaMask popup on every page refresh.
   let userInitiatedConnect = false
+  let listenersAttached = false
+  let unsubListeners: (() => void) | null = null
 
-  // Track providers via subscribeProviders (correct AppKit API)
   let evmProvider: any = null
   let solanaProvider: any = null
-  const unsubProviders = appKit.subscribeProviders((state: Record<string, any>) => {
-    evmProvider = state['eip155'] ?? null
-    solanaProvider = state['solana'] ?? null
-  })
+
+  function attachWalletListeners(kit: AppKit): () => void {
+    const unsubProviders = kit.subscribeProviders((state: Record<string, any>) => {
+      evmProvider = state['eip155'] ?? null
+      solanaProvider = state['solana'] ?? null
+    })
+
+    // Subscribe to account state — triggers SIWE/SIWS only after explicit user action.
+    // On refresh, wallet auto-reconnects and fires this callback, but we must NOT
+    // auto-trigger signing — session cookies from /me handle auth restoration silently.
+    //
+    // Wallet-switch guard: if the wallet extension reports a different address than
+    // the currently authenticated user, the stale server session for the old wallet
+    // is revoked and client state cleared. The user explicitly changed which wallet
+    // is connected — treat that as intent to re-auth — so we re-enable
+    // userInitiatedConnect and fall through to the SIWE check below, which fires a
+    // fresh sign prompt for the new address.
+    // Notify the Testudo extension (if installed) of session changes via
+    // window.postMessage. The extension's content script on desk.testudo.vip
+    // listens and invalidates its paired JWT when the web's wallet diverges.
+    const unsubAccount = kit.subscribeAccount(async (state: { isConnected: boolean; address?: string }) => {
+      const current = user()
+      if (
+        current &&
+        state.isConnected &&
+        state.address &&
+        current.wallet_address.toLowerCase() !== state.address.toLowerCase()
+      ) {
+        await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
+        setUser(null)
+        userInitiatedConnect = true
+        notifyExtensionOfWalletChange(state.address.toLowerCase())
+      }
+
+      if (state.isConnected && state.address && !user() && !siweInFlight && userInitiatedConnect) {
+        const chainNs = kit.getCaipNetwork()?.chainNamespace
+        if (chainNs === 'solana' && solanaProvider) {
+          runSiws(state.address)
+        } else if (evmProvider) {
+          runSiwe(state.address)
+        }
+      }
+    })
+
+    return () => { unsubAccount(); unsubProviders() }
+  }
 
   // Check existing cookie session on mount.
   // If access token expired (401), try refresh before giving up.
@@ -64,11 +108,16 @@ export function AuthProvider(props: { children: JSX.Element }) {
         setUser(null)
         // No valid session — disconnect wallet so appKit.open() shows
         // the connector picker, not the account/balance modal.
-        appKit.disconnect()
+        // Only disconnect if the wallet bundle was already loaded this session.
+        if (isWalletLoaded()) {
+          ;(await loadWallet()).disconnect()
+        }
       }
     } catch {
       setUser(null)
-      appKit.disconnect()
+      if (isWalletLoaded()) {
+        ;(await loadWallet()).disconnect()
+      }
     } finally {
       setLoading(false)
     }
@@ -102,7 +151,9 @@ export function AuthProvider(props: { children: JSX.Element }) {
       const { nonce } = await nonceRes.json() as { nonce: string }
 
       // Build SIWE message — chain-agnostic, uses whatever chain the wallet is on
-      const chainId = appKit.getChainId() ?? 1
+      // Kit is guaranteed loaded here — runSiwe is only called from subscribeAccount
+      // which is attached after loadWallet() resolves.
+      const chainId = (await loadWallet()).getChainId() ?? 1
 
       const message = [
         `${window.location.host} wants you to sign in with your Ethereum account:`,
@@ -137,7 +188,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
           ? 'Signature rejected — click Connect to retry'
           : msg
       )
-      appKit.disconnect()
+      ;(await loadWallet()).disconnect()
     } finally {
       siweInFlight = false
       userInitiatedConnect = false
@@ -212,26 +263,13 @@ export function AuthProvider(props: { children: JSX.Element }) {
           ? 'Signature rejected — click Connect to retry'
           : msg
       )
-      appKit.disconnect()
+      ;(await loadWallet()).disconnect()
     } finally {
       siweInFlight = false
       userInitiatedConnect = false
     }
   }
 
-  // Subscribe to account state — triggers SIWE/SIWS only after explicit user action.
-  // On refresh, wallet auto-reconnects and fires this callback, but we must NOT
-  // auto-trigger signing — session cookies from /me handle auth restoration silently.
-  //
-  // Wallet-switch guard: if the wallet extension reports a different address than
-  // the currently authenticated user, the stale server session for the old wallet
-  // is revoked and client state cleared. The user explicitly changed which wallet
-  // is connected — treat that as intent to re-auth — so we re-enable
-  // userInitiatedConnect and fall through to the SIWE check below, which fires a
-  // fresh sign prompt for the new address.
-  // Notify the Testudo extension (if installed) of session changes via
-  // window.postMessage. The extension's content script on desk.testudo.vip
-  // listens and invalidates its paired JWT when the web's wallet diverges.
   function notifyExtensionOfWalletChange(address: string | null) {
     try {
       window.postMessage(
@@ -241,47 +279,29 @@ export function AuthProvider(props: { children: JSX.Element }) {
     } catch { /* noop — message bus not available */ }
   }
 
-  const unsubAccount = appKit.subscribeAccount(async (state: { isConnected: boolean; address?: string }) => {
-    const current = user()
-    if (
-      current &&
-      state.isConnected &&
-      state.address &&
-      current.wallet_address.toLowerCase() !== state.address.toLowerCase()
-    ) {
-      await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
-      setUser(null)
-      userInitiatedConnect = true
-      notifyExtensionOfWalletChange(state.address.toLowerCase())
-    }
-
-    if (state.isConnected && state.address && !user() && !siweInFlight && userInitiatedConnect) {
-      const chainNs = appKit.getCaipNetwork()?.chainNamespace
-      if (chainNs === 'solana' && solanaProvider) {
-        runSiws(state.address)
-      } else if (evmProvider) {
-        runSiwe(state.address)
-      }
-    }
-  })
-
-  onCleanup(() => {
-    unsubAccount()
-    unsubProviders()
-  })
-
-  const connectWallet = () => {
+  const connectWallet = async () => {
     setSiweError(null)
     userInitiatedConnect = true
-    appKit.open()
+    const kit = await loadWallet()
+    if (!listenersAttached) {
+      unsubListeners = attachWalletListeners(kit)
+      listenersAttached = true
+    }
+    kit.open()
   }
 
   const logout = async () => {
     await fetchAuth('/logout', { method: 'POST' }).catch(() => {})
     setUser(null)
-    appKit.disconnect()
+    if (isWalletLoaded()) {
+      ;(await loadWallet()).disconnect()
+    }
     notifyExtensionOfWalletChange(null)
   }
+
+  onCleanup(() => {
+    unsubListeners?.()
+  })
 
   const value: AuthContextValue = {
     user,

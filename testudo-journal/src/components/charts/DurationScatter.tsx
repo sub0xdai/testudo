@@ -37,14 +37,14 @@ export function DurationScatter() {
       xAxis: {
         type: 'value',
         name: 'DURATION (HRS)',
-        nameLocation: 'center',
+        nameLocation: 'middle',
         nameGap: 25,
         nameTextStyle: { color: getTextTertiary(), fontSize: 10 },
       },
       yAxis: {
         type: 'value',
         name: 'P&L ($)',
-        nameLocation: 'center',
+        nameLocation: 'middle',
         nameGap: 40,
         nameTextStyle: { color: getTextTertiary(), fontSize: 10 },
       },

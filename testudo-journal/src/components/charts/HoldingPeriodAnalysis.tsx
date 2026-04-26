@@ -83,7 +83,7 @@ export function HoldingPeriodAnalysis() {
       yAxis: {
         type: 'value',
         name: 'AVG P&L ($)',
-        nameLocation: 'center',
+        nameLocation: 'middle',
         nameGap: 40,
         nameTextStyle: { color: getTextTertiary(), fontSize: 10 },
       },

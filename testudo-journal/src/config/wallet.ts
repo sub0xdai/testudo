@@ -1,22 +1,40 @@
-import { createAppKit } from '@reown/appkit'
-import { EthersAdapter } from '@reown/appkit-adapter-ethers'
-import { SolanaAdapter } from '@reown/appkit-adapter-solana'
-import { mainnet, arbitrum, base, polygon, solana } from '@reown/appkit/networks'
+import type { AppKit } from '@reown/appkit'
 
-const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || ''
+let walletPromise: Promise<AppKit> | null = null
+let resolvedKit: AppKit | null = null
 
-const ethersAdapter = new EthersAdapter()
-const solanaAdapter = new SolanaAdapter()
+export function loadWallet(): Promise<AppKit> {
+  if (walletPromise) return walletPromise
+  walletPromise = (async () => {
+    const [{ createAppKit }, { EthersAdapter }, { SolanaAdapter }, networks] =
+      await Promise.all([
+        import('@reown/appkit'),
+        import('@reown/appkit-adapter-ethers'),
+        import('@reown/appkit-adapter-solana'),
+        import('@reown/appkit/networks'),
+      ])
+    const kit = createAppKit({
+      adapters: [new EthersAdapter(), new SolanaAdapter()],
+      networks: [networks.mainnet, networks.arbitrum, networks.base, networks.polygon, networks.solana],
+      projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '',
+      metadata: {
+        name: 'Testudo',
+        description: 'Automated risk management for crypto trading',
+        url: window.location.origin,
+        icons: ['/testudo-icon.png'],
+      },
+      themeMode: 'dark',
+    })
+    resolvedKit = kit
+    return kit
+  })()
+  return walletPromise
+}
 
-export const appKit = createAppKit({
-  adapters: [ethersAdapter, solanaAdapter],
-  networks: [mainnet, arbitrum, base, polygon, solana],
-  projectId,
-  metadata: {
-    name: 'Testudo',
-    description: 'Automated risk management for crypto trading',
-    url: typeof window !== 'undefined' ? window.location.origin : 'https://testudo.app',
-    icons: ['/testudo-icon.png'],
-  },
-  themeMode: 'dark',
-})
+export function isWalletLoaded(): boolean {
+  return resolvedKit !== null
+}
+
+export function getLoadedWallet(): AppKit | null {
+  return resolvedKit
+}

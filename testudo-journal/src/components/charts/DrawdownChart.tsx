@@ -3,7 +3,7 @@ import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'
 import { useFilters } from '../filterContext'
 import { fetchEquityCurve } from '../../api/client'
-import { getSignalRed, signalRedAlpha, getChartBg } from '../../lib/tokens'
+import { getSignalRed, signalRedAlpha } from '../../lib/tokens'
 import type { EChartsOption } from 'echarts'
 
 export function DrawdownChart() {

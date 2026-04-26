@@ -42,7 +42,7 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
     dateTo: filters().dateTo,
   })
 
-  const [data, { refetch }] = createResource(params, fetchTrades)
+  const [data] = createResource(params, fetchTrades)
 
   const totalPages = () => {
     const d = data()

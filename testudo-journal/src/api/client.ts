@@ -537,6 +537,7 @@ export interface InitAgentWalletResponse {
 }
 
 export interface ApproveDataResponse {
+  agent_address: string
   typed_data: Record<string, unknown>
   nonce: number
 }

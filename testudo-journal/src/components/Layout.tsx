@@ -1,7 +1,6 @@
-import { createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js'
-import { A, useLocation } from '@solidjs/router'
+import { createSignal, For, Show, onMount, onCleanup } from 'solid-js'
+import { A, useLocation, type RouteSectionProps } from '@solidjs/router'
 import { useAuth } from '../context/AuthContext'
-import { appKit } from '../config/wallet'
 import { pairExtension } from '../api/client'
 import { markExtensionPaired } from './onboarding/useOnboardingState'
 import { DignitasPill } from './DignitasPill'
@@ -340,7 +339,7 @@ function ErrorScreen(props: { message: string; onRetry: () => void }) {
 
 // ─── Layout ───
 
-export function Layout(props: { children: JSX.Element }) {
+export function Layout(props: RouteSectionProps) {
   const auth = useAuth()
   const [menuOpen, setMenuOpen] = createSignal(false)
   const [theme, setTheme] = createSignal<Theme>('amoled')

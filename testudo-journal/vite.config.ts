@@ -21,6 +21,8 @@ export default defineConfig({
           'vendor-wallet': [
             '@reown/appkit',
             '@reown/appkit-adapter-ethers',
+            '@reown/appkit-adapter-solana',
+            '@reown/appkit/networks',
             'ethers',
           ],
           'vendor-echarts': [

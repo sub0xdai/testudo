@@ -233,7 +233,7 @@ export function DatabaseTable(props: {
                         type="checkbox"
                         class="accent-text-primary"
                         checked={selectedIds().has(entry.id)}
-                        onChange={(e) => toggleSelect(entry.id, index(), e.nativeEvent.shiftKey ?? (e.nativeEvent as MouseEvent).shiftKey)}
+                        onChange={(e) => toggleSelect(entry.id, index(), (e as unknown as MouseEvent).shiftKey)}
                       />
                     </td>
                     <td class="px-3 py-2">

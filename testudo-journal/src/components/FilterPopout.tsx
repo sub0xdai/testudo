@@ -1,4 +1,4 @@
-import { createSignal, Show, onCleanup } from 'solid-js'
+import { createSignal, onCleanup } from 'solid-js'
 import { useFilters } from './filterContext'
 import { SymbolSearch } from './SymbolSearch'
 import type { SymbolCount } from '../api/client'

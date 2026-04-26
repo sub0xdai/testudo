@@ -1,5 +1,5 @@
 import { createSignal, Show, For, type JSX } from 'solid-js'
-import { appKit } from '../../config/wallet'
+import { loadWallet, getLoadedWallet } from '../../config/wallet'
 import { exchangeApi } from '../../api/client'
 
 // ─── State Machine ───
@@ -76,7 +76,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
   const isReauth = () => !!props.existingAccountId
 
   function getConnectedAddress(): string | undefined {
-    return appKit.getAddress() ?? undefined
+    return getLoadedWallet()?.getAddress() ?? undefined
   }
 
   async function startFlow() {
@@ -270,7 +270,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                       : 'Connect your Ethereum wallet to authorize an agent keypair for Hyperliquid trading.'}
                   </p>
                   <button
-                    onClick={() => appKit.open()}
+                    onClick={() => loadWallet().then(k => k.open())}
                     class="w-full px-8 py-4 bg-transparent btn-primary font-mono font-bold text-lg"
                   >
                     CONNECT WALLET
@@ -288,7 +288,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                       </p>
                     </div>
                     <button
-                      onClick={() => { appKit.disconnect(); setState({ step: 'idle' }) }}
+                      onClick={() => loadWallet().then(k => { k.disconnect(); setState({ step: 'idle' }) })}
                       class="px-3 py-1 font-mono text-xs text-text-tertiary border border-container-border hover:text-text-primary hover:border-text-primary/30 transition-colors"
                     >
                       Disconnect

@@ -29,7 +29,7 @@ export function PerformanceRadar() {
       { name: 'Journal', max: 100 },
     ]
 
-    const baseRadar = {
+    const baseRadar: any = {
       shape: 'circle' as const,
       splitNumber: 4,
       center: ['50%', '52%'],

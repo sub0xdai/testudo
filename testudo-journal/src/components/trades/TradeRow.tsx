@@ -80,7 +80,7 @@ export function TradeRow(props: {
           <Show when={props.tags && props.tags.length > 0}>
             <div class="flex gap-1">
               <For each={props.tags!.slice(0, 2)}>
-                {(tag, i) => (
+                {(tag) => (
                   <span
                     class="inline-flex items-center gap-0.5 px-1.5 py-0 text-[10px] font-mono border"
                     style={{

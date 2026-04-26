@@ -4,7 +4,6 @@ import { Router, Route, Navigate } from '@solidjs/router'
 import { FilterProvider } from './components/filterContext'
 import { AuthProvider } from './context/AuthContext'
 import { Layout } from './components/Layout'
-import './config/wallet' // initialize Reown AppKit
 import './styles/app.css'
 
 // Lazy-loaded pages — keep main bundle lean
