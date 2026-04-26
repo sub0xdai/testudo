@@ -86,7 +86,10 @@ export default function MainView(props: { onLogout: () => void }) {
         || status === "took_profit"
         || status === "entry_filled"
         || status === "closed"
-        || status === "cancelled";
+        || status === "cancelled"
+        || status === "trade_closed"
+        || status === "manual_closed"
+        || status.startsWith("reconciled_");
       if (shouldRefresh) {
         if (balanceRefreshTimer) clearTimeout(balanceRefreshTimer);
         balanceRefreshTimer = setTimeout(() => {
