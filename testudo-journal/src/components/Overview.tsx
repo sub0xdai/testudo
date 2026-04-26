@@ -47,23 +47,43 @@ export function Overview() {
     { staleMs: 30_000, persist: true, identity: auth.user()?.id ?? null },
   )
   // Thin accessors preserve the prior `useCachedResource` API surface so the
-  // rest of this component reads unchanged.
-  const stats = Object.assign(
-    () => batch.sections.overview() as OverviewResponse | undefined,
-    {
-      get loading() { return batch.sections.overview.loading },
-      get error() { return batch.sections.overview.error },
-      refetch: () => batch.refetch(),
-    },
-  )
-  const equity = Object.assign(
-    () => batch.sections.equity_curve() as { data: EquityPoint[] } | undefined,
-    {
-      get loading() { return batch.sections.equity_curve.loading },
-      get error() { return batch.sections.equity_curve.error },
-      refetch: () => batch.refetch(),
-    },
-  )
+  // rest of this component reads unchanged. NB: `Object.assign` invokes
+  // getters on the source object and copies the resulting values as plain
+  // data properties — that flattens reactivity. Use `defineProperty` so the
+  // getters re-run on every read and stay reactive with the underlying signals.
+  const statsAccessor = (() => batch.sections.overview() as OverviewResponse | undefined) as {
+    (): OverviewResponse | undefined
+    readonly loading: boolean
+    readonly error: unknown
+    refetch: () => void
+  }
+  Object.defineProperty(statsAccessor, 'loading', {
+    get: () => batch.sections.overview.loading, enumerable: true,
+  })
+  Object.defineProperty(statsAccessor, 'error', {
+    get: () => batch.sections.overview.error, enumerable: true,
+  })
+  Object.defineProperty(statsAccessor, 'refetch', {
+    value: () => batch.refetch(), enumerable: true, writable: false,
+  })
+  const stats = statsAccessor
+
+  const equityAccessor = (() => batch.sections.equity_curve() as { data: EquityPoint[] } | undefined) as {
+    (): { data: EquityPoint[] } | undefined
+    readonly loading: boolean
+    readonly error: unknown
+    refetch: () => void
+  }
+  Object.defineProperty(equityAccessor, 'loading', {
+    get: () => batch.sections.equity_curve.loading, enumerable: true,
+  })
+  Object.defineProperty(equityAccessor, 'error', {
+    get: () => batch.sections.equity_curve.error, enumerable: true,
+  })
+  Object.defineProperty(equityAccessor, 'refetch', {
+    value: () => batch.refetch(), enumerable: true, writable: false,
+  })
+  const equity = equityAccessor
 
   // Aggregate account balance across all exchanges
   const [totalBalance, setTotalBalance] = createSignal<number | null>(null)

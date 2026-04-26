@@ -259,4 +259,70 @@ describe('useCachedBatch', () => {
 
     dispose()
   })
+
+  it('section accessor.loading is a live getter: flips during a fetch', async () => {
+    // Use a deferred promise so the fetch is observably mid-flight.
+    let resolveFetch!: (v: client.BatchAnalyticsResponse) => void
+    const deferred = new Promise<client.BatchAnalyticsResponse>(r => { resolveFetch = r })
+    vi.spyOn(client, 'fetchAnalyticsBatch').mockReturnValue(deferred)
+
+    let batchHandle!: ReturnType<typeof useCachedBatch>
+    const dispose = createRoot(d => {
+      batchHandle = useCachedBatch(() => ['overview'], () => baseFilter)
+      return d
+    })
+
+    // Mid-flight: loading should be true on the section accessor.
+    await tick(2)
+    expect(batchHandle.sections.overview.loading).toBe(true)
+
+    // Resolve and confirm loading flips back to false.
+    resolveFetch(makeBatchResponse())
+    await tick(5)
+    expect(batchHandle.sections.overview.loading).toBe(false)
+
+    dispose()
+  })
+
+  it('Overview-style defineProperty wrapper preserves live reactivity', async () => {
+    // Regression test for the Object.assign-vs-defineProperty bug:
+    // Object.assign would invoke the source getter once and copy the
+    // resulting value as a static data property. defineProperty(get) is
+    // re-evaluated on every read.
+    let resolveFetch!: (v: client.BatchAnalyticsResponse) => void
+    const deferred = new Promise<client.BatchAnalyticsResponse>(r => { resolveFetch = r })
+    vi.spyOn(client, 'fetchAnalyticsBatch').mockReturnValue(deferred)
+
+    let batchHandle!: ReturnType<typeof useCachedBatch>
+    const dispose = createRoot(d => {
+      batchHandle = useCachedBatch(() => ['overview'], () => baseFilter)
+      return d
+    })
+
+    // Build the same wrapper Overview.tsx uses.
+    const stats = (() => batchHandle.sections.overview()) as {
+      (): unknown
+      readonly loading: boolean
+      readonly error: unknown
+      refetch: () => void
+    }
+    Object.defineProperty(stats, 'loading', {
+      get: () => batchHandle.sections.overview.loading, enumerable: true,
+    })
+    Object.defineProperty(stats, 'error', {
+      get: () => batchHandle.sections.overview.error, enumerable: true,
+    })
+    Object.defineProperty(stats, 'refetch', {
+      value: () => batchHandle.refetch(), enumerable: true, writable: false,
+    })
+
+    await tick(2)
+    expect(stats.loading).toBe(true)
+
+    resolveFetch(makeBatchResponse())
+    await tick(5)
+    expect(stats.loading).toBe(false)
+
+    dispose()
+  })
 })
