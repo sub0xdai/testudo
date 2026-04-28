@@ -4,8 +4,9 @@
  * Forwards safe-cex fill events and detects order cancellations via Store
  * diffing, sending `order_update` events to the connected Rust backend.
  *
- * Event shape matches the `OrderUpdateEvent` struct in cex_client.rs exactly:
- * numeric fields are JSON numbers (f64/i64), not strings.
+ * FIX-09 FR-1: WS is transition-only. Only `id`, `symbol`, `status`, `side`,
+ * `average`, and `timestamp` are emitted. `average` is kept for the entry fill
+ * path (limit order avg fill price). All close-leg economics come from REST.
  */
 
 import type { WebSocketServer, WebSocket } from "ws";
@@ -24,17 +25,14 @@ export interface OrderSnapshot {
   remaining: number;
 }
 
-/** Wire shape sent over WebSocket — matches Rust OrderUpdateEvent. */
+/** Wire shape sent over WebSocket — matches Rust OrderUpdateEvent (FIX-09 FR-1). */
 export interface OrderUpdatePayload {
   id: string;
   symbol: string;
   status: "closed" | "canceled";
   side: string;
-  price: number;
-  amount: number;
-  filled: number;
-  remaining: number;
-  average: number;
+  /** Entry fill avg price only. Omitted for cancellations and close legs. */
+  average?: number;
   timestamp: number;
 }
 
@@ -86,10 +84,8 @@ export function processPending(
           symbol: toBackendSymbol(fill.symbol, markets),
           status: "closed",
           side: fill.side,
-          price: order.price,
-          amount: order.amount,
-          filled: fill.amount,
-          remaining: 0,
+          // FIX-09 FR-1: average is the canonical fill price for entry orders.
+          // Close-leg economics are resolved by FillReconciler via REST.
           average: fill.price,
           timestamp: Date.now(),
         });
@@ -106,11 +102,6 @@ export function processPending(
       symbol: toBackendSymbol(order.symbol, markets),
       status: "canceled",
       side: order.side,
-      price: order.price,
-      amount: order.amount,
-      filled: order.filled || 0,
-      remaining: order.remaining || order.amount,
-      average: order.price,
       timestamp: Date.now(),
     });
   }
