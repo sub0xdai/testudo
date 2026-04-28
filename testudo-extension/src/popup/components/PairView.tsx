@@ -10,7 +10,14 @@ export default function PairView(props: {
   onAuthenticated: () => void;
   onBack?: () => void;
   sessionExpired?: boolean;
+  sessionExpiredReason?: "session_lost" | "wallet_changed";
 }) {
+  const sessionExpiredCopy = () => {
+    if (props.sessionExpiredReason === "wallet_changed") {
+      return "Wallet changed in web app — pair again to continue";
+    }
+    return "Session expired — pair again to continue";
+  };
   const auth = useAuth();
   const [digits, setDigits] = createSignal("");
   const [error, setError] = createSignal("");
@@ -178,7 +185,7 @@ export default function PairView(props: {
                 {/* Session expired banner */}
                 <Show when={props.sessionExpired}>
                   <div class="text-[11px] text-text-dim font-mono mb-4 text-center border border-border-subtle px-3 py-2">
-                    Session expired — pair again to continue
+                    {sessionExpiredCopy()}
                   </div>
                 </Show>
 

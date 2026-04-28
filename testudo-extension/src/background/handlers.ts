@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 import type { RuntimeMessageSchema } from "../schemas";
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./storage";
-import { getTokens, clearTokens, refreshAccessToken, clearRefreshTimer, getAuthStatus } from "./auth";
+import { getTokens, clearTokens, refreshAccessToken, clearRefreshTimer, getAuthStatus, setSessionState } from "./auth";
 import {
   pair,
   ensureActiveExchange,
@@ -50,7 +50,10 @@ function handleExecuteTrade(msg: ParsedMessage): Promise<unknown> {
 function handlePair(msg: ParsedMessage): Promise<unknown> {
   const { code } = msg as MsgOf<"PAIR">;
   return pair(code).then(async (result) => {
-    if (result.success) await ensureActiveExchange();
+    if (result.success) {
+      await setSessionState("ok");
+      await ensureActiveExchange();
+    }
     return result;
   });
 }
@@ -59,7 +62,10 @@ function handleLogout(): Promise<unknown> {
   clearRefreshTimer();
   disconnectWebSocket();
   stopSidecarHealthPolling();
-  return clearTokens().then(() => ({ success: true }));
+  return clearTokens().then(async () => {
+    await setSessionState("ok"); // explicit logout — clean state, no banner
+    return { success: true };
+  });
 }
 
 function handleAuthStatus(): Promise<unknown> {
@@ -204,6 +210,7 @@ async function handleWebWalletChanged(msg: ParsedMessage): Promise<unknown> {
   if (shouldClear) {
     clearRefreshTimer();
     await clearTokens();
+    await setSessionState("wallet_changed");
     return { success: true, cleared: true };
   }
   return { success: true, cleared: false };

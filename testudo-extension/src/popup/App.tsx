@@ -13,6 +13,10 @@ function AuthGate() {
       fallback={
         <PairView
           onAuthenticated={() => auth.checkAuth()}
+          sessionExpired={auth.sessionState() === "session_lost" || auth.sessionState() === "wallet_changed"}
+          sessionExpiredReason={
+            auth.sessionState() === "wallet_changed" ? "wallet_changed" : "session_lost"
+          }
         />
       }
     >

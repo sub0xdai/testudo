@@ -1,9 +1,12 @@
 import { createSignal, createContext, useContext, onMount, type JSX } from "solid-js";
 import browser from "webextension-polyfill";
 
+export type SessionState = "ok" | "refresh_retrying" | "session_lost" | "wallet_changed";
+
 export interface AuthState {
   authenticated: () => boolean;
   walletAddress: () => string;
+  sessionState: () => SessionState;
   pair: (code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -14,15 +17,18 @@ const AuthContext = createContext<AuthState>();
 export function AuthProvider(props: { children: JSX.Element; onReady: (authed: boolean) => void }) {
   const [authenticated, setAuthenticated] = createSignal(false);
   const [walletAddress, setWalletAddress] = createSignal("");
+  const [sessionState, setSessionState] = createSignal<SessionState>("ok");
 
   async function checkAuth() {
     try {
       const response = await browser.runtime.sendMessage({ type: "AUTH_STATUS" }) as {
         authenticated: boolean;
         walletAddress?: string;
+        sessionState?: SessionState;
       };
       setAuthenticated(response.authenticated);
       if (response.walletAddress) setWalletAddress(response.walletAddress);
+      setSessionState(response.sessionState ?? "ok");
       props.onReady(response.authenticated);
     } catch (err) {
       console.error("Auth check failed:", err);
@@ -52,6 +58,7 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
     await browser.runtime.sendMessage({ type: "LOGOUT" });
     setAuthenticated(false);
     setWalletAddress("");
+    setSessionState("ok");
   }
 
   onMount(checkAuth);
@@ -59,6 +66,7 @@ export function AuthProvider(props: { children: JSX.Element; onReady: (authed: b
   const state: AuthState = {
     authenticated,
     walletAddress,
+    sessionState,
     pair,
     logout,
     checkAuth,
