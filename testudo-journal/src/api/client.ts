@@ -283,6 +283,9 @@ export interface JournalTrade {
   kelly_inputs: KellyInputs | null
   created_at: string
   updated_at: string
+  needs_reconciliation?: boolean
+  close_reason?: 'sl' | 'tp' | 'manual' | null
+  status?: 'reconciling' | 'final'
 }
 
 export interface JournalTag {
