@@ -437,6 +437,77 @@ export function createHandlers(gateway: ExchangeGateway) {
     }
   }
 
+  // ── POST /trades/by-group — fetch recent executions and find the close leg (FR-6) ──
+  // Used by FillReconciler as a fallback when SL/TP order IDs are unknown (Bybit ID-less brackets).
+  // For non-Bybit exchanges, returns 501.
+  async function handleTradesByGroup(req: Request, res: Response) {
+    try {
+      const envelope = parseEnvelope(req.body);
+
+      if (envelope.exchangeId !== 'bybit') {
+        return res.status(501).json({
+          error: `trades/by-group not implemented for ${envelope.exchangeId}`,
+          code: 'NotImplemented',
+        });
+      }
+
+      const { symbol, since_ms, until_ms, expected_qty, qty_tolerance, entry_side } = envelope.params;
+
+      const exchange = await gateway.getOrCreate(
+        envelope.exchangeId,
+        envelope.credentials,
+        envelope.sandbox,
+        () => {}
+      );
+
+      const exchSymbol = toExchangeSymbol(symbol);
+      const closeSide = entry_side === 'buy' ? 'sell' : 'buy';
+      const expQty = parseFloat(expected_qty);
+      const tolQty = parseFloat(qty_tolerance);
+
+      const { data } = await (exchange as any).xhr.get('/v5/execution/list', {
+        params: {
+          category: 'linear',
+          symbol: exchSymbol,
+          startTime: String(since_ms),
+          endTime: String(until_ms),
+          limit: 50,
+        },
+      });
+
+      const list: any[] = data?.result?.list ?? [];
+
+      // Filter by close side and quantity match, then pick the most recent
+      const candidates = list.filter((exec: any) => {
+        const execSide = (exec.side ?? '').toLowerCase();
+        if (execSide !== closeSide) return false;
+        const execQty = parseFloat(exec.execQty ?? '0');
+        return Math.abs(execQty - expQty) <= tolQty;
+      });
+
+      if (candidates.length === 0) {
+        return res.json({ matched: null });
+      }
+
+      // Most recent first (execTime is ms string)
+      candidates.sort((a: any, b: any) => Number(b.execTime) - Number(a.execTime));
+      const best = candidates[0];
+
+      return res.json({
+        matched: {
+          order_id: String(best.orderId ?? best.execId),
+          avg_price: stringify(best.execPrice) ?? '0',
+          filled_qty: stringify(best.execQty) ?? '0',
+          transaction_time_ms: Number(best.execTime),
+          side: (best.side ?? '').toLowerCase(),
+        },
+      });
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
   // ── POST /orders/open — reads from Store (FR-7) ──
 
   async function handleOpenOrders(req: Request, res: Response) {
@@ -477,6 +548,7 @@ export function createHandlers(gateway: ExchangeGateway) {
     handleBalance,
     handleOrder,
     handleFetchOrder,
+    handleTradesByGroup,
     handleEditOrder,
     handleCancelOrder,
     handleCancelAllOrders,
