@@ -180,7 +180,8 @@ describe("processPending", () => {
       expect(msgs[0].data.side).toBe("buy");
       expect(msgs[0].data.symbol).toBe("BTC_USDT");
       expect(msgs[0].data.average).toBe(70050); // fill price
-      expect(msgs[0].data.remaining).toBe(0);
+      // FIX-09 FR-1: remaining/filled not emitted; economics are REST-derived
+      expect(msgs[0].data.remaining).toBeUndefined();
     });
 
     it("clears fills and removals after processing", () => {
@@ -236,7 +237,9 @@ describe("processPending", () => {
       expect(msgs[0].data.symbol).toBe("BTC_USDT");
     });
 
-    it("preserves filled/remaining from order snapshot", () => {
+    it("emits transition-only payload for canceled orders (FIX-09 FR-1)", () => {
+      // FIX-09: canceled events carry id/symbol/status/side/timestamp only.
+      // filled/remaining are omitted — economics live in REST via FillReconciler.
       const ws = mockWs();
       const fills: OrderFillEvent[] = [];
       const removals = new Map([
@@ -249,8 +252,10 @@ describe("processPending", () => {
       processPending(ws, fills, removals);
 
       const d = parseMessages(ws)[0].data;
-      expect(d.filled).toBe(0.005);
-      expect(d.remaining).toBe(0.005);
+      expect(d.id).toBe("partial-cancel");
+      expect(d.status).toBe("canceled");
+      expect(d.filled).toBeUndefined();
+      expect(d.remaining).toBeUndefined();
     });
   });
 

@@ -465,7 +465,8 @@ describe("Phase 3: WebSocket Fill Streaming", () => {
     expect(msg.data.status).toBe("closed");
     expect(msg.data.symbol).toBe("BTC_USDT");
     expect(msg.data.side).toBe("buy");
-    expect(typeof msg.data.filled).toBe("number");
+    // FIX-09 FR-1: filled omitted; economics are REST-derived via FillReconciler
+    expect(msg.data.filled).toBeUndefined();
     expect(typeof msg.data.timestamp).toBe("number");
 
     ws.close();

@@ -1,804 +1,865 @@
-# Implementation Plan — PERF-02 Batched Analytics Endpoint + Journal Service Worker
+# Implementation Plan — FIX-09 REST-Canonical Fill Reconciliation Protocol
 
-**Spec:** `.specify/specs/PERF-02-batch-analytics-and-sw/spec.md`
-**Depends on:** PERF-01-cold-load-and-swr (merged; cache primitive at
-`testudo-journal/src/lib/cache.ts`).
-**Strategy:** Four vertical checkpoints. CP-1 (backend handler + parity
-test) and CP-3 (service worker + Vite injection) are independent and can
-be parallelized after PERF-01. CP-2 (frontend `useCachedBatch` +
-Overview migration) depends on CP-1's wire shape. CP-4 is a one-line
-default-flip after a one-week SW canary; no new code.
+**Status: COMPLETE — archived to `.specify/spec-archive/FIX-09-rest-canonical-fills/` (2026-04-28)**
+
+**Spec:** `.specify/spec-archive/FIX-09-rest-canonical-fills/spec.md`
+**Depends on:**
+- FIX-02 (HL REST reconciliation precedent — pattern reused).
+- FIX-08 (`needs_reconciliation` column at
+  `crates/sqlx_postgres/migrations/20260424000000_journal_trades_needs_reconciliation.up.sql`;
+  `FillReconciler` skeleton at `crates/router/src/services/fill_reconciler.rs`;
+  reconciler dispatch at `crates/router/src/services/trade_event_writer.rs:329`).
+
+**Strategy:** Seven vertical checkpoints. CP-1 lands the RED reproducer
+first so the rest of the work has a green-light target. CP-2 (typed
+`CloseCandidates`, entry exclusion, qty/time gating) is the
+architectural heart and lands before CP-3 (WS contract shrink +
+shortcut removal) so that stripping `event.price`/`event.average`
+doesn't transiently expose the entry-as-exit bug in production. CP-4
+(close_reason + status maturity) layers on top. CP-5 (fetchMyTrades
+fallback) covers the Bybit ID-less path; CP-6 ships the
+"Reconciling…" UX. CP-7 verifies and archives.
 
 ---
 
 ## Discoveries
 
-### Backend topology (router crate)
+### Backend baseline — what FIX-08 already plumbed
 
-- **All 8 analytics handlers** (`crates/router/src/routes/journal.rs:1253–1433`)
-  are GET, accept `web::Query<StatsFilter>`, use `app_state.analytics_pool`,
-  and require the `AuthenticatedUser` extractor. Each is a thin adapter
-  that calls one `StatsEngine` or `TimeSeriesService` method and wraps
-  the result in `OverviewResponse` or `DataWrapper<Vec<…>>`. Adapter
-  logic per handler is non-trivial — the response structs (`DailyPnlResponse`,
-  `SymbolBreakdownResponse`, `SetupBreakdownResponse`, `DurationProfitResponse`,
-  `ReturnBucketResponse`, `TimeSlotResponse`) rename / map fields from the
-  service-tier types (e.g. `net_pnl → pnl`, `duration_minutes → duration_secs`,
-  `bucket_label → bucket`, `day_count → count`). **The batch handler must
-  reuse the SAME conversion logic** to satisfy parity (FR-15) — extract
-  a pure helper per response type so drift becomes structurally hard.
+- **`OrderUpdateEvent`** (`crates/router/src/services/cex_client.rs:226–250`)
+  carries `id`, `symbol`, `status`, `side`, `price` / `amount` /
+  `filled` / `remaining` / `average` (all `Option<Decimal>` via
+  `deserialize_decimal_opt`), `timestamp`, `user_id`. Wire source:
+  `testudo-cex/src/ws-fills.ts:84–95` (`OrderUpdatePayload`). FR-1
+  strips the five middle fields on both ends.
 
-- **Service signatures** (all `&self`, all `Result<T, sqlx::Error>`,
-  all `(user_id: Uuid, filter: &StatsFilter)`):
-  - `StatsEngine::account_overview / performance_stats / risk_stats`
-    (`services/journal_stats.rs:229+, 245+, 322+`).
-  - `TimeSeriesService::equity_curve / daily_pnl / symbol_breakdown /
-    setup_breakdown / duration_profit / return_distribution /
-    time_distribution` (`services/journal_timeseries.rs:257+`).
-  - `Result<T, sqlx::Error>` — **not `anyhow::Result`** as the spec
-    sketch implies. The `run_section` helper must operate on
-    `Result<T, sqlx::Error>` and stringify via `e.to_string()` in the
-    `Err` arm.
+- **`fill_detector.rs` cited regions all match the spec exactly:**
+  - `:265` — `let exit_price = event.average.or(event.price);` (read site).
+  - `:342–376` — CEX-08 proximity logic
+    (`(exit-sl).abs() < (exit-tp).abs()`) when neither SL nor TP IDs
+    are tracked. FR-7 deletes this entire branch — classification
+    moves into the reconciler.
+  - `:430–433`, `:472–475`, `:532–535` — three identical
+    `let (price, needs_recon) = match action.exit_price { Some(p) if p > Decimal::ZERO => (p, false), _ => (Decimal::ZERO, true) };`
+    blocks (SL / TP / ManualClose). FR-2 collapses each to
+    `(Decimal::ZERO, true)` unconditionally.
+  - `emit_trade_closed` (`:659`) already takes
+    `(group, exit_price, close_side, needs_reconciliation)`. CP-3
+    drops the now-dead `exit_price` parameter.
 
-- **No batch types exist anywhere.** Grep for `BatchRequest`,
-  `BatchResponse`, `SectionKey` returns zero hits. Land them in
-  `routes/journal.rs` alongside the existing handlers (no
-  `routes/mod.rs` re-export needed — routes are wired by direct path
-  reference in `main.rs`).
+- **`FillReconciler`** (`crates/router/src/services/fill_reconciler.rs`)
+  exists with the right shape but is the locus of the FR-3 bug:
+  - `reconcile_trade(user_id, trade_group_id, exchange, symbol, order_ids: &[String])`
+    receives `order_ids` from
+    `trade_closed_payload.rs:29–37`, which **pushes
+    `group.exchange_order_id` (entry) FIRST**, then SL, then TP.
+    `fetch_real_price` iterates in order and returns the first
+    `avg_price > 0` — typically the entry's avg. **Today's reconciler
+    happily replaces a placeholder `0` exit_price with the entry's
+    avg_price.** This bug is latent today (FIX-08's WS-derived price
+    skips reconciliation when nonzero); FIX-09 makes WS price always
+    0, which would expose this if not fixed in CP-2 first. The
+    commit ordering matters.
+  - `apply_price_correction` (`:194–269`) writes
+    `exit_price / realized_pnl / realized_pnl_pct / net_pnl / r_multiple`
+    and flips `needs_reconciliation = FALSE`. **No `close_reason`
+    write, no `OrderGroupStatus` update.** Both added in CP-4.
+  - Stats aggregation (`:313`) already excludes
+    `needs_reconciliation = TRUE` rows — FR-8's daily-stats
+    requirement is already met for that surface.
 
-- **Route registration** is in `crates/router/src/main.rs:1093–1124`
-  under `web::scope("/journal").wrap(JwtMiddleware)`. The new POST
-  batch route slots in immediately after `/analytics/time-distribution`
-  (line 1103), before `/trades` (line 1104). No CORS / middleware
-  changes needed — the `/journal` scope already covers it.
+- **Reconciler dispatch site:**
+  `crates/router/src/services/trade_event_writer.rs:329–364` spawns
+  `FillReconciler::reconcile_trade` post-journal-write whenever
+  `close_event.needs_reconciliation` is true. The flat
+  `order_ids: Vec<String>` is `close_event.exchange_order_ids`,
+  populated by `trade_closed_payload.rs:29–37` from
+  `group.exchange_order_id` / `exchange_sl_order_id` /
+  `exchange_tp_order_id`. The dispatch must instead pass typed
+  `CloseCandidates` — drives FR-3 / FR-4.
 
-- **No `crates/router/tests/` directory exists.** Per AGENTS.md the
-  router crate is binary-only (no `src/lib.rs`), so a top-level
-  `tests/analytics_batch_parity.rs` (as the spec proposes) **cannot
-  compile** — it would have nothing to `use`. The parity test must
-  live inline in `routes/journal.rs` as `#[cfg(test)] mod batch_tests`,
-  gated `#[tokio::test] #[ignore]` with `DATABASE_URL` env. The spec's
-  proposed filename in its `## Files` section is a planning oversight —
-  corrected here.
+- **`SidecarFetchOrderResponse`**
+  (`crates/router/src/services/cex_client.rs:362–375`) returns
+  `id, symbol, status, side, avg_price: Option<Decimal>, filled: String, fees: String, timestamp: i64`.
+  For FR-4's quantity gating we need a `Decimal`-typed filled qty;
+  today it's `String`. CP-2 adds a derived `filled_qty: Decimal`
+  field (parsed from `filled` at deser time) without breaking the
+  existing wire shape. `timestamp: i64` (millis epoch) is sufficient
+  for FR-4's clock-drift slop.
 
-- **`StatsFilter` derives `Deserialize`** (proven by
-  `web::Query<StatsFilter>` working today). It will deserialize equally
-  cleanly from `web::Json<BatchRequest>` where
-  `BatchRequest.filter: StatsFilter`. No additional derive work needed.
+- **`TradeCloseEvent`** (`crates/router/src/services/journal_service.rs:17`)
+  is the wire-event between fill_detector → trade_event_writer →
+  fill_reconciler. Today it carries `exchange_order_ids: Vec<String>`.
+  CP-2 replaces with `close_candidates: Option<CloseCandidates>`.
+  Per AGENTS.md, add `#[serde(default)]` to defend against legacy
+  serialized blobs in pg_queue / WS reconnect paths. CP-4 also adds
+  `close_reason: Option<String>` written by reconciler.
 
-### Frontend cold-paint reality (Overview)
+- **`OrderGroupStatus`** (`crates/engine/src/shadow/order_group.rs:20–51`)
+  has `Pending / Active / StoppedOut / TookProfit / Cancelled / Closed
+  / AwaitingReconciliation`. `engine_handle.update_group_status(group_id, status)`
+  is the canonical mutation API
+  (`fill_detector.rs:289, 363, 378`). Spec's "transient certainty:
+  Closed → StoppedOut|TookProfit" is the right protocol. **Decision:**
+  do NOT use `AwaitingReconciliation` for live-trade closes — it's
+  reserved for rehydration. Live-close transient state stays `Closed`.
 
-- **The spec's "Overview fans out 8 fetches" is incorrect for the real
-  code.** Direct survey of every analytics fetch site under
-  `src/components/` and `src/pages/` shows exactly **5** analytics
-  requests fire on Overview cold-paint:
+- **`JournalTrade` model**
+  (`crates/router/src/models/journal.rs:22–57`) has
+  `needs_reconciliation: bool` already. **No `close_reason` field.**
+  CP-4 adds the column + the model field. The
+  `SELECT … FROM journal_trades` column lists in
+  `fill_reconciler.rs:109–115` and other call sites must be updated
+  (grep target: `realized_pnl, realized_pnl_pct`).
 
-  | # | Component | Fetcher | Filter shape |
-  |---|-----------|---------|--------------|
-  | 1 | `Overview.tsx:42` | `fetchOverview` | global `filters()` |
-  | 2 | `Overview.tsx:48` | `fetchEquityCurve` | global `filters()` |
-  | 3 | `charts/PnlCalendar.tsx:58` | `fetchDailyPnl` | **monthly** `monthFilter()` |
-  | 4 | `charts/PnlTreemap.tsx:16` (default ChartSelector left) | `fetchSymbolBreakdown` | global `filters()` |
-  | 5 | `charts/DailyPnl.tsx:16` (default ChartSelector right) | `fetchDailyPnl` | global `filters()` |
+- **Migrations:**
+  `20260424000000_journal_trades_needs_reconciliation.up.sql` added the
+  bool + a partial index (`WHERE needs_reconciliation = TRUE`). CP-4
+  adds `20260427120000_journal_trades_close_reason.up.sql` for the
+  `TEXT NULL` column.
 
-  The other 4 analytics endpoints (setup_breakdown, duration_profit,
-  return_distribution, time_distribution) are mounted lazily inside
-  ChartSelector branches and only fetch when the user picks a
-  different chart. `PerformanceRadar` (Overview sidebar, line 287)
-  calls `fetchDignitasMe`, which is **not** an analytics endpoint.
+### Sidecar baseline
 
-  Implications:
-  - The cold-paint win is **5 → 1 batch + 1 monthly GET = 5 → 2**.
-    Smaller than spec's "7 → 1" framing, but still meaningful.
-  - The acceptance criterion "exactly one POST /analytics/batch on
-    cold paint" must be relaxed to "exactly one POST /analytics/batch
-    + at most one /analytics/daily-pnl GET (PnlCalendar's monthly
-    filter)".
+- **`testudo-cex/src/ws-fills.ts:80–115`** — symbol+side-only matching
+  loop. Map iteration ambiguity is real: when both SL and TP for one
+  group sit in `pendingRemovals`, the first iteration that satisfies
+  `symbol === fill.symbol && side === fill.side` wins. After FR-1
+  strips price/average from `OrderUpdatePayload`, the matching
+  ambiguity remains but its consequences are contained — only `id`
+  matters for transition; economics are REST-derived.
 
-- **PnlCalendar uses a different filter shape than Overview.** Lines
-  56–60 of `charts/PnlCalendar.tsx` derive `monthFilter()` with explicit
-  `start_date` / `end_date` for the visible calendar month. The spec's
-  `BatchRequest { filter: StatsFilter, sections: Vec<SectionKey> }`
-  schema — verbatim — only carries one filter. **Architectural call:**
-  PnlCalendar stays on its own `fetchDailyPnl` GET; the batch endpoint
-  remains single-filter. Per-section filter overrides are out of scope
-  (YAGNI: one edge case does not justify schema complexity, and the
-  parity-test surface doubles).
+- **`testudo-cex/src/server.ts:28–37`** — Express routes today:
+  `GET /health`, `POST /balance`, `POST /order`, `POST /order/edit`,
+  `POST /order/cancel`, `POST /order/fetch`, `POST /orders/cancel-all`,
+  `POST /orders/open`, `POST /position`, `POST /leverage`. Plus
+  `WS /ws/orders` via `setupFillStreaming`. **No
+  `POST /trades/by-group`** — CP-5 adds it adjacent in `handlers.ts`
+  and registers in `server.ts`.
 
-- **Two `fetchDailyPnl` call sites coexist by design.** PnlCalendar
-  (monthly filter) and the DailyPnl chart (global filter) produce
-  different cache keys — they are not deduplicating misses. CP-2's
-  `useCachedBatch` integrates the global-filter call site only.
+- **`/order/fetch` is Bybit-only today** (`handlers.ts:389–410`,
+  hits `/v5/order/history`). CP-5's `/trades/by-group` is
+  exchange-agnostic via CCXT
+  `fetchMyTrades(symbol, since, undefined, { until })`.
 
-- **The 7 `createResource` chart panels behind ChartSelector**
-  (`DrawdownChart`, `SymbolBreakdown`, `MarketReturn`,
-  `ExpectancyBySymbol`, `HoldingPeriodAnalysis`, `SymbolDonut`,
-  `SetupBreakdown`) were never migrated by PERF-01 and are out of
-  PERF-02's scope. They mount only when the user picks them; not on
-  cold paint. Future cleanup, not this spec.
+- **safe-cex Bybit `mapOrder` bug** lives in
+  `testudo-cex/node_modules/safe-cex/src/exchanges/bybit/bybit.exchange.ts`
+  (vendored npm dep, no fork). Per spec risk #5 we explicitly do NOT
+  patch it — journal correctness is scope, in-store safe-cex display
+  is deferred follow-up.
 
-### Cache primitive (`src/lib/cache.ts`)
+### Frontend baseline
 
-- **`_memCache` is intentionally non-public** (line 20: "Exported for
-  testing only — do not read/write externally in production code"). The
-  batch hook needs to write to N keys — add a narrow `prime(key, data)`
-  export rather than widening `_memCache`'s contract.
+- **testudo-journal:**
+  - `testudo-journal/src/components/trades/TradeRow.tsx:47–54`
+    unconditionally renders `formatPrice(t().exit_price)` and
+    applies `pnlColor()` / `rColor()`. CP-6 wraps these cells in
+    `<Show when={...} fallback={<SkeletonBar />}>`.
+  - `JournalTrade` TS type
+    (`testudo-journal/src/api/client.ts:259–286`) is missing
+    `needs_reconciliation`, `close_reason`, `status`. CP-6 adds them.
+  - `SkeletonBar` component from PERF-01 (`src/components/SkeletonBar.tsx`)
+    is the reusable shimmer primitive.
 
-- **Existing public surface** consumed by per-section call sites:
-  `useCachedResource`, `invalidate`, `clearCacheForIdentity`,
-  `stableHash`, `prefetch` (route-prefetch helper from PERF-01 CP-5).
-  CP-2 adds `prime` and `cacheKeyForSection`.
+- **testudo-extension:**
+  - Extension popup does not currently render closed-journal-row UI.
+    `MainView.tsx:92` reads `status.startsWith("reconciled_")` but
+    the journal-row reconciling UX is testudo-journal's
+    responsibility. CP-6's extension touches are limited to schema
+    plumbing for forward compat.
 
-- **Cache key derivation is currently inlined at every call site**
-  (`'overview:' + stableHash(filters())`,
-  `'symbol-breakdown:' + stableHash(filters())`, etc.). Spec risk #5
-  (cache-key skew between batch and per-section paths) is real because
-  of this scatter. CP-2 introduces a single exported helper
-  `cacheKeyForSection(SectionKey, StatsFilter): string` consumed by
-  both call sites; existing per-section call sites are migrated to use
-  it as part of CP-2 (one-line change per site).
+- **Daily stats already exclude pending rows** at
+  `journal_stats.rs:405` (`AND needs_reconciliation = FALSE`). The
+  `list_trades` endpoint at `routes/journal.rs:192–285` does NOT
+  filter — by design (FR-9: row must appear in History). CP-6's
+  serializer adds the wire-format `status: "reconciling"` /
+  `"final"` discriminator; daily stats stay untouched.
 
-### Service worker
+### Key drift from the spec text
 
-- **No service worker exists today** — confirmed via grep for
-  `serviceWorker.register`, absence of `public/sw.js`, no SW plugin in
-  `vite.config.ts`. Greenfield.
-
-- **Vite 5.4.x has a stable `writeBundle` plugin hook.** A small
-  inline plugin (~30 LOC) reads the emitted bundle, locates the entry
-  chunk filename + main CSS asset, templates a `sw.js` source from
-  `public/sw.template.js`, and writes the result to `dist/sw.js`. No
-  Workbox dep — matches spec's KISS framing.
-
-- **`?nosw=1` escape hatch and `VITE_ENABLE_SW` flag default off in
-  CP-3.** CP-3's commit must NOT change the default; CP-4's one-line
-  flip happens after the canary week.
-
-- **Registration site:** `src/index.tsx:25–43` already sets up
-  preconnect before `render()`. SW registration sits after preconnect,
-  inside an `import.meta.env.VITE_ENABLE_SW === 'true'` guard, with
-  `requestIdleCallback` (Chromium) / `setTimeout(2000)` fallback
-  (Safari/Firefox).
-
-- **`VITE_API_URL` and `VITE_WS_URL` already exist** (`src/index.tsx:38–39`).
-  `VITE_ENABLE_SW` is the only new flag.
-
-### Test infra (frontend + backend)
-
-- **vitest 3.2.4 + jsdom** already configured — `src/lib/cache.test.ts`
-  is the existing pattern for colocated `.test.ts`. SW logic in CP-3 is
-  hard to unit-test (depends on `caches`, `fetch`, MV3 lifecycle); a
-  thin extracted-helper layer can be unit-tested for the URL-routing
-  decision without a real ServiceWorker context. The SW shell itself is
-  verified manually in CP-3's acceptance walkthrough + observed during
-  CP-4 canary.
-
-- **Backend integration test pattern (per AGENTS.md):**
-  `#[tokio::test] #[ignore]` + `DATABASE_URL` env. `cargo test` excludes
-  ignored tests by default, so CI stays green; `cargo test -- --ignored`
-  runs the parity test against a live Postgres locally and in the soak
-  job. No `sqlx::test` — workspace `sqlx` lacks the `macros` feature.
+1. Spec FR-6 references CCXT
+   `fetchMyTrades(symbol, since, undefined, { until })`. Confirmed
+   implementable on the safe-cex/CCXT layer.
+2. The integration test path the spec proposes
+   (`router/src/services/integration_tests.rs`) does exist. AGENTS.md
+   notes the router crate is binary-only, so the FR-10 reproducer
+   lives there as `mod fix09_canonical_fill_tests`,
+   `#[tokio::test] #[ignore]`, `DATABASE_URL` from env. A pure-unit
+   slice of `pick_close_leg` (no DB) lives inline in
+   `fill_reconciler.rs` for fast feedback.
+3. `SidecarFetchOrderResponse` lacks `filled_qty: Decimal` — CP-2 (T4)
+   adds it as a derived field via custom deserializer; existing
+   `filled: String` field stays for backward compat.
+4. The reconciler dispatch (trade_event_writer.rs:329) passes a flat
+   `Vec<String>` today. **Plan elects:** replace
+   `exchange_order_ids` on `TradeCloseEvent` with
+   `close_candidates: Option<CloseCandidates>` cleanly in one commit
+   — every call site is in-tree; no deprecation window needed.
+5. The latent reconciler bug (entry's avg returned as exit_price) is
+   masked today by FIX-08's nonzero-WS-price shortcut. **Once CP-3
+   strips that path, the bug becomes the production behavior unless
+   CP-2 lands first.** Commit ordering enforced.
 
 ---
 
 ## Tasks
 
-### CP-1 — Backend batch endpoint + parity test (FR-1, FR-2, FR-3, FR-4, FR-5, FR-15)
+### CP-1 — RED reproducer test (FR-10)
 
-- [ ] **T1** — Extract pure response-conversion helpers in
-  `crates/router/src/routes/journal.rs`. New `pub(super)` (or
-  `fn`-local) helpers, one per non-trivial response struct:
-  - `to_daily_pnl_response(raw: Vec<DailyPnlPoint>) -> Vec<DailyPnlResponse>`
-  - `to_symbol_breakdown_response(raw: Vec<SymbolBreakdown>) -> Vec<SymbolBreakdownResponse>`
-  - `to_setup_breakdown_response(raw: Vec<SetupBreakdown>) -> Vec<SetupBreakdownResponse>`
-  - `to_duration_profit_response(raw: Vec<DurationProfitPoint>) -> Vec<DurationProfitResponse>`
-  - `to_return_distribution_response(raw: Vec<ReturnBucket>) -> Vec<ReturnBucketResponse>`
-  - `to_time_distribution_response(raw: Vec<TimeDistribution>) -> Vec<TimeSlotResponse>`
-  - `to_overview_response(account, performance, risk) -> OverviewResponse`
-  Migrate the existing per-section handlers to call these helpers
-  (the existing inline `.map().collect()` blocks become single-line
-  `let data = to_*_response(raw)`). Per-section endpoint responses
-  remain byte-for-byte identical — verified by visual inspection of
-  the helper call sites.
-  *Complexity: medium — 7 handlers touched, transformation is mechanical.*
+- [ ] **T1** — Add a router-level integration test reproducing the
+  Bybit triggered-TP / SL-trigger-price bug. Location:
+  `crates/router/src/services/integration_tests.rs`, new module
+  `mod fix09_canonical_fill_tests` gated `#[tokio::test] #[ignore]`,
+  `DATABASE_URL` from env.
 
-- [ ] **T2** — Add new types to `routes/journal.rs`:
+  Harness:
+  - Build a `StatefulMockExchangeApi` (existing helper) configured so
+    its REST `fetch_order` mock returns the canonical avg fill price
+    for the TP order ID, and the entry-avg for the entry order ID.
+  - Seed a `journal_trades` row with
+    `needs_reconciliation = TRUE`, `exit_price = 0`,
+    `trade_group_id = $g`, `exchange = 'bybit'`, side = short.
+  - Inject a synthetic `OrderUpdateEvent` shaped like a Bybit
+    triggered-TP fill where `event.price = SL_trigger`,
+    `event.average = None`, `event.id = SL_id`. Drive
+    `FillDetector::handle_event`.
+  - Drive `TradeEventWriter` once. Allow the post-write
+    `FillReconciler` spawn to settle.
+  - Assert `journal_trades.exit_price == REST_TP_avg_price`,
+    NOT `SL_trigger`, NOT `entry_avg`. Today: FAILS (entry_avg wins).
+
+  Cleanup: FK-respecting deletion with `let _ = ...` for idempotent
+  cleanups (per AGENTS.md).
+
+  *Complexity: medium.*
+
+- [ ] **T2** — Verify the reproducer FAILS:
+  `cd testudo-exchange && DATABASE_URL=… cargo test fix09_canonical_fill -- --ignored`.
+  Capture failure output; paste into commit body for baseline audit.
+  *Complexity: trivial.*
+
+  Commit (T1, T2): `test(FIX-09): RED reproducer for Bybit canonical fill (CP-1)`.
+
+### CP-2 — Reconciler discrimination (FR-3, FR-4)
+
+- [ ] **T3** — Add types to
+  `crates/router/src/services/fill_reconciler.rs`:
   ```rust
-  #[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  pub struct CloseCandidates {
+      pub entry_order_id: Option<String>,
+      pub sl_order_id: Option<String>,
+      pub tp_order_id: Option<String>,
+      pub manual_close_order_id: Option<String>,
+      pub group_terminalized_at: DateTime<Utc>,
+      pub expected_qty: Decimal,
+      pub qty_tolerance: Decimal,
+  }
+
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
   #[serde(rename_all = "snake_case")]
-  pub enum SectionKey {
-      Overview, EquityCurve, DailyPnl, SymbolBreakdown,
-      SetupBreakdown, DurationProfit, ReturnDistribution, TimeDistribution,
+  pub enum CloseReason { StopLoss, TakeProfit, Manual }
+
+  impl CloseReason {
+      pub fn as_str(&self) -> &'static str {
+          match self { Self::StopLoss => "sl",
+                       Self::TakeProfit => "tp",
+                       Self::Manual => "manual" }
+      }
   }
 
-  #[derive(Deserialize)]
-  pub struct BatchRequest {
-      pub filter: StatsFilter,
-      /// `None` (or omitted) = compute all sections.
-      #[serde(default)]
-      pub sections: Option<Vec<SectionKey>>,
-  }
-
-  #[derive(Serialize)]
-  #[serde(untagged)]
-  pub enum SectionResult<T: Serialize> {
-      Ok(T),
-      Err { error: String },
-  }
-
-  #[derive(Serialize, Default)]
-  pub struct BatchResponse {
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub overview: Option<SectionResult<OverviewResponse>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub equity_curve: Option<SectionResult<DataWrapper<Vec<EquityCurvePoint>>>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub daily_pnl: Option<SectionResult<DataWrapper<Vec<DailyPnlResponse>>>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub symbol_breakdown: Option<SectionResult<DataWrapper<Vec<SymbolBreakdownResponse>>>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub setup_breakdown: Option<SectionResult<DataWrapper<Vec<SetupBreakdownResponse>>>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub duration_profit: Option<SectionResult<DataWrapper<Vec<DurationProfitResponse>>>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub return_distribution: Option<SectionResult<DataWrapper<Vec<ReturnBucketResponse>>>>,
-      #[serde(skip_serializing_if = "Option::is_none")]
-      pub time_distribution: Option<SectionResult<DataWrapper<Vec<TimeSlotResponse>>>>,
+  #[derive(Debug, Clone)]
+  pub struct CloseFill {
+      pub exit_price: Decimal,
+      pub close_reason: CloseReason,
+      pub matched_order_id: String,
+      pub transaction_time: DateTime<Utc>,
   }
   ```
-  Note: `DataWrapper` envelopes preserved per-section so the wire shape
-  matches what the per-section endpoints already return. Sections not
-  requested are `None` and stripped from JSON via `skip_serializing_if`.
-  *Complexity: simple — pure type definitions.*
+  *Complexity: simple.*
 
-- [ ] **T3** — Implement `analytics_batch` handler in `routes/journal.rs`:
+- [ ] **T4** — Add `filled_qty: Decimal` to `SidecarFetchOrderResponse`
+  in `crates/router/src/services/cex_client.rs:362–375`. Keep
+  existing `filled: String` field untouched. Add via
+  `#[serde(default, deserialize_with = "decimal_from_string_field")]`
+  parsing the same string at deser time. Unit test asserts:
+  `"0.09"` → `dec!(0.09)`, `""` → `Decimal::ZERO`, missing → `Decimal::ZERO`.
+  *Complexity: simple.*
+
+- [ ] **T5** — Refactor `fill_reconciler.rs`'s `fetch_real_price` →
+  `pick_close_leg`:
   ```rust
-  pub async fn analytics_batch(
-      app_state: web::Data<AppState>,
-      user: AuthenticatedUser,
-      body: web::Json<BatchRequest>,
-  ) -> Result<HttpResponse> {
-      let engine = StatsEngine::new(app_state.analytics_pool.clone());
-      let ts = TimeSeriesService::new(app_state.analytics_pool.clone());
-      let filter = body.filter.clone();
-      let user_id = user.user_id;
-      let want = |k: SectionKey| body.sections.as_ref().map_or(true, |s| s.contains(&k));
+  async fn pick_close_leg(
+      &self,
+      exchange: &str,
+      creds: &SidecarCredentials,
+      symbol: &str,
+      candidates: &CloseCandidates,
+  ) -> Option<CloseFill> {
+      let backoffs = [Duration::ZERO, Duration::from_secs(1), Duration::from_secs(4)];
+      let slop = chrono::Duration::seconds(90);
+      let cutoff = candidates.group_terminalized_at - slop;
 
-      let (ov, eq, dp, sb, setb, durp, ret, td) = tokio::join!(
-          run_section_when(want(SectionKey::Overview),         compute_overview(&engine, user_id, &filter)),
-          run_section_when(want(SectionKey::EquityCurve),      compute_equity_curve(&ts, user_id, &filter)),
-          run_section_when(want(SectionKey::DailyPnl),         compute_daily_pnl(&ts, user_id, &filter)),
-          run_section_when(want(SectionKey::SymbolBreakdown),  compute_symbol_breakdown(&ts, user_id, &filter)),
-          run_section_when(want(SectionKey::SetupBreakdown),   compute_setup_breakdown(&ts, user_id, &filter)),
-          run_section_when(want(SectionKey::DurationProfit),   compute_duration_profit(&ts, user_id, &filter)),
-          run_section_when(want(SectionKey::ReturnDistribution), compute_return_distribution(&ts, user_id, &filter)),
-          run_section_when(want(SectionKey::TimeDistribution), compute_time_distribution(&ts, user_id, &filter)),
-      );
+      for (attempt, backoff) in backoffs.iter().enumerate() {
+          if attempt > 0 { tokio::time::sleep(*backoff).await; }
 
-      Ok(HttpResponse::Ok().json(BatchResponse {
-          overview: ov, equity_curve: eq, daily_pnl: dp,
-          symbol_breakdown: sb, setup_breakdown: setb,
-          duration_profit: durp, return_distribution: ret, time_distribution: td,
-      }))
-  }
+          // Exit-only candidate set. Entry deliberately excluded.
+          let exit_candidates: [(Option<&String>, CloseReason); 3] = [
+              (candidates.sl_order_id.as_ref(),           CloseReason::StopLoss),
+              (candidates.tp_order_id.as_ref(),           CloseReason::TakeProfit),
+              (candidates.manual_close_order_id.as_ref(), CloseReason::Manual),
+          ];
 
-  async fn run_section_when<T, Fut>(wanted: bool, fut: Fut) -> Option<SectionResult<T>>
-  where T: Serialize, Fut: Future<Output = Result<T, sqlx::Error>>,
-  {
-      if !wanted { return None }
-      Some(match fut.await {
-          Ok(v) => SectionResult::Ok(v),
-          Err(e) => {
-              tracing::error!("analytics_batch section error: {e}");
-              SectionResult::Err { error: e.to_string() }
+          for (id_opt, reason) in exit_candidates {
+              let Some(id) = id_opt else { continue };
+              let Ok(resp) = self.cex_client
+                  .fetch_order(exchange, creds, false, symbol, id).await
+              else { continue };
+
+              let Some(price) = resp.avg_price else { continue };
+              if price <= Decimal::ZERO { continue; }
+              if (resp.filled_qty - candidates.expected_qty).abs()
+                 > candidates.qty_tolerance { continue; }
+              let tx_time = chrono::DateTime::<Utc>::from_timestamp_millis(resp.timestamp)
+                  .unwrap_or(candidates.group_terminalized_at);
+              if tx_time < cutoff { continue; }
+
+              return Some(CloseFill {
+                  exit_price: price,
+                  close_reason: reason,
+                  matched_order_id: id.clone(),
+                  transaction_time: tx_time,
+              });
           }
-      })
+      }
+      None
   }
   ```
-  Where `compute_overview` / `compute_*` are thin async wrappers that
-  call the service method + the corresponding `to_*_response` helper
-  from T1 — the batch path and per-section path produce identical
-  envelopes by construction. `tokio::join!` (not `try_join!`) so a
-  per-section failure does not short-circuit siblings (FR-4).
-  *Complexity: medium.*
+  Delete old `fetch_real_price`. *Complexity: medium.*
 
-- [ ] **T4** — Wire route in `crates/router/src/main.rs:1093–1124`
-  under the `/journal` scope, immediately after the existing
-  `/analytics/time-distribution` line:
-  ```rust
-  .route("/analytics/batch", web::post().to(journal::analytics_batch))
-  ```
-  *Complexity: trivial.*
-
-- [ ] **T5** — Inline parity test module
-  `#[cfg(test)] mod batch_tests` at the bottom of `routes/journal.rs`:
-  - `#[tokio::test] #[ignore]` gated, `DATABASE_URL` from env.
-  - Seed fixture: insert 3–5 closed `journal_trades` rows for a synthetic
-    `user_id` covering ≥ 2 distinct symbols, ≥ 1 setup tag, ≥ 1 winning
-    + 1 losing trade so every section has data.
-  - Build a `StatsFilter` with no constraints (whole window).
-  - For each section, call the section-specific `compute_*` helper
-    directly (no Actix HTTP layer needed — the helpers are the shared
-    code path) and capture the result.
-  - Call the same `compute_*` helpers via the same `tokio::join!`
-    pattern used by `analytics_batch` for `sections: None`.
-  - Assert each section's `serde_json::Value` is structurally equal
-    via `assert_eq!(serde_json::to_value(&per_section)?,
-    serde_json::to_value(&batch_envelope.overview)?)` etc.
-  - Cleanup: delete seeded rows in FK-respecting order (use `let _ =
-    ...` for idempotent cleanups per AGENTS.md).
-  - Add a partial-failure test: stub one section to return
-    `Err(sqlx::Error::RowNotFound)` (via a wrapped helper that injects
-    the error), assert envelope returns 200 with that section's
-    `SectionResult::Err { error }` populated and other sections `Ok` —
-    FR-4 guarantee.
-  *Complexity: medium.*
-
-- [ ] **T6** — Verification:
-  `cd testudo-exchange && cargo clippy --all-targets && cargo test`
-  (excludes ignored tests, must stay green). Then
-  `cargo test -- --ignored` against a developer-local Postgres for the
-  parity test. Record both runs in the commit message.
-  *Complexity: simple — verification step.*
-
-### CP-2 — Frontend `useCachedBatch` + Overview migration (FR-6, FR-7)
-
-- [ ] **T7** — Extend `testudo-journal/src/lib/cache.ts`:
-  - Add `export type SectionKey = 'overview' | 'equity_curve' | 'daily_pnl'
-    | 'symbol_breakdown' | 'setup_breakdown' | 'duration_profit'
-    | 'return_distribution' | 'time_distribution'` matching the Rust
-    enum's `serde(rename_all = "snake_case")` output.
-  - Add `export function cacheKeyForSection(key: SectionKey, filter:
-    StatsFilter): string` returning the spec-aligned key shape:
-    `'overview:' + stableHash(filter)` for `overview`,
-    `'equity-curve:' + stableHash(filter)` for `equity_curve`, etc.
-    (matches existing per-section call-site keys).
-  - Add `export function prime<T>(key: string, data: T, opts?:
-    { identity?: string | null; persist?: boolean }): void` — writes
-    `{ data, updatedAt: Date.now() }` to `_memCache`, and to
-    `localStorage` when `opts.persist && opts.identity`. No-op if key
-    already has a fresher entry. The narrow primitive the batch hook
-    needs; do not export `_memCache`.
-  *Complexity: simple — additive API extensions.*
-
-- [ ] **T8** — Migrate existing per-section call sites to use
-  `cacheKeyForSection`. One-line change per site (replace inline
-  `'<name>:' + stableHash(filters())` with
-  `cacheKeyForSection('<key>', filters())`):
-  - `src/components/Overview.tsx:41` (overview), `:47` (equity_curve)
-  - `src/components/charts/PnlTreemap.tsx:15`
-  - `src/components/charts/PnlCalendar.tsx:57` (uses `monthFilter()`
-    — keep distinct)
-  - `src/components/charts/DailyPnl.tsx:15`
-  - `src/components/charts/DurationScatter.tsx:15`
-  - `src/components/charts/ReturnHistogram.tsx:15`
-  - `src/components/charts/TimeHeatmap.tsx:18`
-  - `src/pages/Coach.tsx:26`
-  No behavior change — purely centralizes key derivation. Defends spec
-  risk #5 (key skew). *Complexity: simple — repetitive.*
-
-- [ ] **T9** — Add to `testudo-journal/src/api/client.ts`:
-  ```ts
-  export type BatchSection = 'overview' | 'equity_curve' | 'daily_pnl'
-    | 'symbol_breakdown' | 'setup_breakdown' | 'duration_profit'
-    | 'return_distribution' | 'time_distribution'
-
-  export interface BatchAnalyticsResponse {
-    overview?:           OverviewResponse | { error: string }
-    equity_curve?:       { data: EquityPoint[] } | { error: string }
-    daily_pnl?:          { data: DailyPnlPoint[] } | { error: string }
-    symbol_breakdown?:   { data: SymbolBreakdownItem[] } | { error: string }
-    setup_breakdown?:    { data: SetupBreakdownItem[] } | { error: string }
-    duration_profit?:    { data: DurationProfitPoint[] } | { error: string }
-    return_distribution?:{ data: ReturnBucket[] } | { error: string }
-    time_distribution?:  { data: TimeSlot[] } | { error: string }
-  }
-
-  export async function fetchAnalyticsBatch(
-    sections: BatchSection[] | undefined,
-    filter: StatsFilter,
-  ): Promise<BatchAnalyticsResponse> {
-    return postJson<BatchAnalyticsResponse>(
-      '/api/v1/journal/analytics/batch',
-      { filter, sections },
-    )
-  }
-  ```
-  Use the existing JSON-POST helper used by other `client.ts`
-  mutations (confirm exact name during implementation; falls under
-  `fetchApi` per the survey at `client.ts:151–156`).
+- [ ] **T6** — Update `reconcile_trade` signature in
+  `fill_reconciler.rs`:
+  - Old: `pub async fn reconcile_trade(&self, user_id, trade_group_id, exchange, symbol, order_ids: &[String])`.
+  - New: `pub async fn reconcile_trade(&self, user_id, trade_group_id, exchange, symbol, candidates: CloseCandidates)`.
+  - On `Some(close_fill)` from `pick_close_leg`, call new
+    `apply_close_fill(&trade, &close_fill)` (T7).
   *Complexity: simple.*
 
-- [ ] **T10** — New file `testudo-journal/src/lib/cache-batch.ts` (or
-  inlined at the bottom of `cache.ts` if total LOC stays under ~300):
-  ```ts
-  export interface BatchOpts {
-    staleMs?: number
-    persist?: boolean
-    identity?: string | null
-  }
+- [ ] **T7** — Refactor `apply_price_correction` →
+  `apply_close_fill(&self, trade: &JournalTrade, fill: &CloseFill)`.
+  CP-2 scope: write `exit_price = fill.exit_price` and recomputed
+  derived fields exactly as `apply_price_correction` does today; keep
+  `rebuild_daily_stats_for_date` call. `close_reason` write + status
+  upgrade are added in CP-4 (T23, T24). *Complexity: simple.*
 
-  export function useCachedBatch(
-    sections: () => SectionKey[],
-    filter: () => StatsFilter,
-    opts?: BatchOpts,
-  ): {
-    sections: Record<SectionKey, CachedResource<unknown>>
-    anyLoading: () => boolean
-    refetch: () => void
-  }
+- [ ] **T8** — Update `TradeCloseEvent` in
+  `crates/router/src/services/journal_service.rs:17`:
+  - Replace `exchange_order_ids: Vec<String>` with
+    `close_candidates: Option<CloseCandidates>`.
+  - Add `#[serde(default)]` per AGENTS.md.
+  - `record_trade_close` insert SQL is unchanged (the field is not
+    persisted directly on the row).
+  *Complexity: simple.*
+
+- [ ] **T9** — Update emitter in
+  `crates/router/src/services/trade_closed_payload.rs:13–53`:
+  - Drop the flat `exchange_order_ids` Vec construction.
+  - Build `CloseCandidates` from `&OrderGroup`:
+    - `entry_order_id = group.exchange_order_id.clone()`
+    - `sl_order_id = group.exchange_sl_order_id.clone()`
+    - `tp_order_id = group.exchange_tp_order_id.clone()`
+    - `manual_close_order_id`: new param threaded down from
+      `fill_detector::FillKind::ManualClose` (T10).
+    - `group_terminalized_at = chrono::Utc::now()`
+    - `expected_qty = group.quantity`
+    - `qty_tolerance`: pick the stricter of absolute
+      `dec!(0.0000001)` (8-decimal precision rule per AGENTS.md) vs
+      relative `expected_qty * dec!(0.001)` per call. Document
+      choice with `// FR-4` comment.
+  *Complexity: medium.*
+
+- [ ] **T10** — Update `fill_detector.rs` to thread
+  `manual_close_order_id` for `FillKind::ManualClose` into
+  `emit_trade_closed`. Minimal CP-2 wiring; CP-3 collapses the rest
+  of the surrounding logic. *Complexity: simple.*
+
+- [ ] **T11** — Update reconciler dispatch in
+  `crates/router/src/services/trade_event_writer.rs:329–364`:
+  pass `close_event.close_candidates.clone().unwrap_or_else(...)` to
+  `FillReconciler::reconcile_trade` instead of the flat
+  `exchange_order_ids` list. *Complexity: simple.*
+
+- [ ] **T12** — Inline pure-unit tests at the bottom of
+  `fill_reconciler.rs` under `#[cfg(test)] mod pick_close_leg_tests`:
+  - **Entry exclusion:** entry_id only set, mock returns avg_price=100;
+    assert `pick_close_leg → None`.
+  - **Qty mismatch:** TP candidate, expected=0.09, tolerance=0.001,
+    fetched filled_qty=0.05; assert `None`.
+  - **Time slop:** TP candidate, tx_time = terminalized_at − 91s;
+    assert `None`.
+  - **Happy SL:** SL candidate, qty + time match; assert
+    `Some(CloseFill { close_reason: StopLoss, … })`.
+  - **Happy TP:** TP candidate, qty + time match; assert
+    `Some(CloseFill { close_reason: TakeProfit, … })`.
+  - **Manual:** manual_close_order_id present + qty match; assert
+    `Some(CloseFill { close_reason: Manual, … })`.
+  - **SL+TP both, only TP filled:** SL fetch returns avg_price=None;
+    TP returns valid avg; assert TP wins, close_reason=TakeProfit.
+  Use a trait-mocked `CexClient` (existing pattern in the router
+  crate). *Complexity: medium.*
+
+- [ ] **T13** — Verify CP-2:
+  `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
+  All inline unit tests green. Reproducer (T1) remains RED — economics
+  still flow through old WS paths until CP-3. *Complexity: trivial.*
+
+  Commit (T3..T13): `feat(FIX-09): typed CloseCandidates + entry-excluded reconciler discrimination (CP-2)`.
+
+### CP-3 — WS contract shrink + shortcut removal (FR-1, FR-2, FR-7)
+
+- [ ] **T14** — Strip economic fields from `OrderUpdateEvent` in
+  `crates/router/src/services/cex_client.rs:226–250`:
+  - Remove `price`, `amount`, `filled`, `remaining`, `average`.
+  - Compile errors will pinpoint every reader. Expected sites:
+    `fill_detector.rs:265, 310`. Bundling the field removal with
+    reader fixups (T16, T17, T18) is plan-sanctioned per AGENTS.md
+    "Don't commit broken intermediate states".
+  *Complexity: medium.*
+
+- [ ] **T15** — Mirror in `testudo-cex/src/ws-fills.ts:80–115`:
+  - Remove `price`, `amount`, `filled`, `remaining`, `average` from
+    both branches (matched-fill at `:84–95` and
+    unmatched-cancellation at `:104–115`).
+  - Update the `OrderUpdatePayload` TS type to match.
+  - Matching loop logic unchanged (still symbol+side); only emitted
+    payload shape shrinks.
+  *Complexity: simple.*
+
+- [ ] **T16** — Delete `let exit_price = event.average.or(event.price);`
+  at `fill_detector.rs:265`. Delete the `exit_price` field from
+  `FillAction`. *Complexity: simple — coupled with T17.*
+
+- [ ] **T17** — Collapse the three `Some(p) if p > Decimal::ZERO`
+  shortcuts at `fill_detector.rs:430–433, 472–475, 532–535`:
+  - Each becomes
+    `self.emit_trade_closed(group, side, /* needs_reconciliation = */ true);`
+    after dropping the now-dead `exit_price` parameter from
+    `emit_trade_closed`.
+  - Update `emit_trade_closed` signature at `:659` accordingly.
+  - Update `trade_closed_payload::build_trade_closed_payload` to
+    write a literal `"exit_price": "0"` placeholder. Confirm
+    `record_trade_close`'s INSERT against the `exit_price NOT NULL`
+    column (current default is `Decimal::ZERO` — preserves contract).
+  *Complexity: medium.*
+
+- [ ] **T18** — Delete the CEX-08 proximity logic at
+  `fill_detector.rs:342–376` (FR-7). Replace with:
+  `update_group_status(group_id, OrderGroupStatus::Closed)` →
+  `FillKind::ManualClose { filled_order_id }`. Reasoning:
+  classification (SL vs TP vs manual) now lives in the reconciler's
+  `pick_close_leg`. The dispatcher's job is to terminalize the group
+  ("something closed") and emit a placeholder; the reconciler
+  resolves the leg.
+
+  Behavioral note (`// FR-7` comment): for ID-less Bybit brackets, the
+  initial group status is always `Closed` (transient). CP-4's
+  reconciler upgrades to `StoppedOut` or `TookProfit` after REST
+  resolves.
+  *Complexity: medium.*
+
+- [ ] **T19** — Update existing fill_detector tests that asserted on
+  `event.price` / `event.average` reads or on the proximity logic.
+  Per AGENTS.md, treat breakage as the regression guard doing its
+  job. Rewrite to:
+  - "On terminal close, `emit_trade_closed` was called with
+    `needs_reconciliation = true`."
+  - "Group status transitioned to `Closed` (not `StoppedOut` or
+    `TookProfit`) when only the WS path runs without reconciler."
+  Grep target: `cargo test -p router 2>&1 | grep FAILED`.
+  *Complexity: medium.*
+
+- [ ] **T20** — Verify CP-3:
+  `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
+  Reproducer (T1) STILL RED — close_reason / status not yet
+  authoritative until CP-4. *Complexity: trivial.*
+
+  Commit (T14..T20): `refactor(FIX-09): WS contract is transition-only; reconciler is sole exit-price author (CP-3)`.
+
+### CP-4 — close_reason migration + status maturity (FR-5, FR-8)
+
+- [ ] **T21** — New migration
+  `testudo-exchange/crates/sqlx_postgres/migrations/20260427120000_journal_trades_close_reason.up.sql`:
+  ```sql
+  ALTER TABLE journal_trades
+      ADD COLUMN close_reason TEXT NULL;
   ```
-  Implementation flow on each reactive read:
-  1. Compute current per-section keys via
-     `cacheKeyForSection(s, filter())`.
-  2. Partition `sections()` into FRESH (memCache hit, age < staleMs)
-     vs STALE_OR_MISSING. Fresh sections short-circuit — no network.
-  3. If STALE_OR_MISSING is empty, return — FR-7's "warm sections
-     short-circuit" criterion.
-  4. Otherwise issue exactly one
-     `fetchAnalyticsBatch(STALE_OR_MISSING, filter())`.
-  5. On response: for each section in the response, call
-     `prime(cacheKeyForSection(section, filter()), payload, opts)`.
-     Sections with `{ error: ... }` are NOT primed — fall back to the
-     stale entry if any (consistent with `useCachedResource`'s
-     "render-stale-on-error" semantics).
-  6. Return per-section reactive `CachedResource<T>` accessors that
-     read from `_memCache` (build them on top of `useCachedResource`
-     with a no-op fetcher once `prime` populates the entry, OR — the
-     simpler approach — back them with private signals updated as
-     entries arrive). Pick the simpler approach during build.
-  *Complexity: medium — partition/fan-out/prime is the heart of the
-  feature.*
+  Plus `.down.sql` dropping the column. No index needed —
+  `close_reason` is filtered/grouped on rarely.
+  *Complexity: trivial.*
 
-- [ ] **T11** — Unit tests in `src/lib/cache-batch.test.ts`
-  (vitest + jsdom, colocated like `cache.test.ts`):
-  - All-cold: no entries primed → exactly one batched fetch fires
-    for all requested sections.
-  - All-warm: prime every requested section within `staleMs` → zero
-    fetches.
-  - Mixed: prime 4 of 7 sections → exactly one batched fetch fires
-    for the 3 stale sections (verifies FR-7).
-  - Per-section error: mock fetch to return
-    `{ overview: { error: '…' }, equity_curve: { data: […] } }` →
-    `equity_curve` cached, `overview` NOT cached, batch resolves
-    without throwing.
-  - Cross-path key parity: assert
-    `cacheKeyForSection('overview', filter) ===
-    'overview:' + stableHash(filter)` for a fixed filter (defends
-    spec risk #5).
-  - `prime` then `useCachedResource` reads the primed entry without
-    triggering its own fetcher (verifies FR-6).
+- [ ] **T22** — Add `close_reason: Option<String>` to `JournalTrade`
+  in `crates/router/src/models/journal.rs:22–57`. Update the
+  `SELECT … FROM journal_trades` column list in
+  `fill_reconciler.rs:109–115` (loader) and any other site that
+  hand-rolls the column list (grep target:
+  `realized_pnl, realized_pnl_pct`). *Complexity: simple.*
+
+- [ ] **T23** — Extend `apply_close_fill` (T7) to write `close_reason`:
+  ```sql
+  UPDATE journal_trades SET
+      exit_price = $1,
+      realized_pnl = $2,
+      realized_pnl_pct = $3,
+      net_pnl = $4,
+      r_multiple = $5,
+      close_reason = $6,
+      needs_reconciliation = FALSE,
+      updated_at = NOW()
+  WHERE trade_group_id = $7 AND needs_reconciliation = TRUE
+  ```
+  Bind `fill.close_reason.as_str()` for `$6`. *Complexity: simple.*
+
+- [ ] **T24** — Add status maturity in `apply_close_fill`. After the
+  UPDATE succeeds and `rows_updated > 0`, call
+  `engine_handle.update_group_status(trade_group_id, target_status)`:
+  - `CloseReason::StopLoss` → `OrderGroupStatus::StoppedOut`
+  - `CloseReason::TakeProfit` → `OrderGroupStatus::TookProfit`
+  - `CloseReason::Manual` → no-op (stay `Closed`)
+
+  Wiring: add `engine_handle: EngineHandle` field to
+  `FillReconciler`. Today's constructor is
+  `FillReconciler::new(pool, cex_client, exchange_repo)`; add a fourth
+  `engine_handle` arg. Update the spawn site at
+  `trade_event_writer.rs:343`. *Complexity: medium.*
+
+- [ ] **T25** — Surface `status: "reconciling"` in journal API
+  responses (FR-8). In `routes/journal.rs:192–285` (`list_trades`),
+  add a wrapper struct that re-serializes with a derived `status`
+  field (`"reconciling"` when `needs_reconciliation`, else
+  `"final"`). For reconciling rows, set `net_pnl = null` and
+  `r_multiple = null` (use `Option<Decimal>` in the wrapper).
+  Keep `needs_reconciliation` in the payload for backward compat /
+  debug, but `status` is the canonical read field.
+
+  Daily stats endpoints already exclude pending rows
+  (`journal_stats.rs:405`) — no change there.
   *Complexity: medium.*
 
-- [ ] **T12** — Migrate `src/components/Overview.tsx`:
-  - Replace the two `useCachedResource` calls (`overview`,
-    `equity_curve`) with one
-    `useCachedBatch(() => ['overview', 'equity_curve',
-    'symbol_breakdown', 'daily_pnl'], filters,
-    { staleMs: 30_000, persist: true,
-      identity: auth.user()?.id ?? null })`.
-    Including `symbol_breakdown` + `daily_pnl` covers ChartSelector's
-    two default-chart panels (`PnlTreemap` reads `symbol-breakdown`
-    cache; `DailyPnl` chart reads `daily_pnl` cache) — they get cache
-    HITS from the primed batch and skip their own fetches.
-  - Render data from `batch.sections.overview()` and
-    `batch.sections.equity_curve()` (instead of `stats()` /
-    `equity()`); update `loading` / `error` reads to match the new
-    accessors.
-  - **Carve-out:** PnlCalendar (`fetchDailyPnl` with `monthFilter()`)
-    keeps its own `useCachedResource` call — its filter shape differs
-    from `filters()`, so its cache key differs, and the batch
-    endpoint's single-filter shape can't include it. Documented in
-    Discoveries; this is the one expected residual GET on cold paint.
-  *Complexity: medium — Overview reactive flow needs careful
-  re-stitching, data shapes unchanged.*
+- [ ] **T26** — Verify CP-4:
+  `cd testudo-exchange && cargo clippy --all-targets && cargo test`.
+  Run reproducer:
+  `DATABASE_URL=… cargo test fix09_canonical_fill -- --ignored`.
+  **Expected: GREEN.** CP-2 + CP-4 together produce correct
+  exit_price + close_reason; CP-3's WS-transition-only contract
+  feeds the right zero-price → reconciler path. *Complexity: trivial.*
 
-- [ ] **T13** — Verify
-  `cd testudo-journal && bun run typecheck && bun run build && bun
-  run build:check` passes. Main entry chunk gzipped budget (PERF-01's
-  250 KB) holds. *Complexity: simple.*
+  Commit (T21..T26): `feat(FIX-09): close_reason + status maturity in reconciler (CP-4)`.
 
-- [ ] **T14** — Manual browser verification:
-  - DevTools Network on cold Overview: exactly one
-    `POST /analytics/batch` + at most one
-    `GET /analytics/daily-pnl` (PnlCalendar carve-out). Adjusted
-    acceptance: spec's "1 vs 7" framing → "1 batch + 1 calendar GET".
-  - Pre-warm 3 sections via `useCachedResource` (e.g. visit charts
-    that consume them, return to Overview within `staleMs`): the
-    batch request fires only for the still-stale sections.
-  - First-paint Overview wall-clock improvement vs PERF-01 baseline ≥
-    100 ms — record before/after numbers in the commit message and in
-    the spec's LEARNINGS.md.
-  - Inject a 500-error in one section's service handler (temporary):
-    confirm batch returns 200 with that section's `{ error: '…' }`
-    and other panels render normally.
-  *Complexity: medium — purely manual, hard gate before merge.*
+### CP-5 — fetchMyTrades fallback for ID-less brackets (FR-6)
 
-### CP-3 — Service worker + Vite injection plugin (FR-8 through FR-14)
-
-- [ ] **T15** — New file `testudo-journal/public/sw.template.js` —
-  hand-written ~150 LOC, no dependencies. Implements:
-  - `const CACHE = '__CACHE_NAME__'` — placeholder replaced by the
-    Vite plugin at build time. Set per-deploy via injected version
-    (`testudo-journal-v1`, bumped per FR-13).
-  - `const SHELL = "[__SHELL__]"` — placeholder replaced with the
-    JSON list of built asset filenames (`index.html`, the entry
-    chunk, main CSS) by the Vite plugin.
-  - `install` listener:
-    `caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())`.
-  - `activate` listener: enumerate `caches.keys()`, delete every key
-    !== `CACHE`, then `self.clients.claim()` (FR-13).
-  - `fetch` listener:
-    - If `url.searchParams.has('nosw')` → return (no `respondWith`,
-      browser handles natively, FR-12).
-    - If `url.pathname.startsWith('/api/')` →
-      `respondWith(networkFirstWithTimeout(req, 3000))`.
-      `networkFirstWithTimeout`: race `fetch(req)` vs
-      `setTimeout(3000)`; on win-by-network, clone response, write to
-      cache, return; on timeout or fetch throw, return cached response
-      with a `sw-fallback: stale` header injected via
-      `new Response(body, { headers: new Headers([...orig.headers,
-      ['sw-fallback', 'stale']]) })` (FR-9).
-    - If `/\.woff2$/.test(url.pathname)` →
-      `respondWith(cacheFirst(req, 30 * 24 * 3600 * 1000))` —
-      cache-first with 30-day TTL via stored `cached-at` header
-      (FR-10).
-    - If `req.mode === 'navigate'` →
-      `respondWith(cacheFirst(req))` — shell from cache, never
-      re-validate during page load (FR-8).
-    - Otherwise: pass through.
-  - Keep file under 200 LOC. KISS, no Workbox.
-  *Complexity: medium.*
-
-- [ ] **T16** — New Vite plugin in
-  `testudo-journal/scripts/inject-sw-shell.ts` (~30 LOC, plain TS —
-  Vite supports TS plugins natively):
+- [ ] **T27** — New sidecar handler `handleTradesByGroup` in
+  `testudo-cex/src/handlers.ts` (insert near `handleFetchOrder`,
+  ~line 389):
   ```ts
-  import type { Plugin } from 'vite'
-  import { readFileSync, writeFileSync } from 'node:fs'
-  import { resolve } from 'node:path'
+  export async function handleTradesByGroup(req, res) {
+    const env = parseEnvelope(req.body);
+    const { exchange, credentials, symbol,
+            since_ms, until_ms, expected_qty, qty_tolerance,
+            entry_side } = env;
 
-  export function injectSwShell(opts: { version: string }): Plugin {
-    return {
-      name: 'testudo-inject-sw-shell',
-      apply: 'build',
-      writeBundle(outOpts, bundle) {
-        const entry = Object.values(bundle).find(
-          c => c.type === 'chunk' && c.isEntry,
-        ) as any
-        const css = Object.values(bundle).find(
-          c => c.type === 'asset' && /\.css$/.test(c.fileName),
-        ) as any
-        const shell = JSON.stringify([
-          '/', '/index.html',
-          '/' + entry.fileName,
-          ...(css ? ['/' + css.fileName] : []),
-        ])
+    const ex = await gateway.getExchange(exchange, credentials);
+    const trades = await ex.fetchMyTrades(symbol, since_ms, undefined, { until: until_ms });
 
-        const tmpl = readFileSync(
-          resolve(process.cwd(), 'public/sw.template.js'), 'utf8')
-        const out = tmpl
-          .replace('__CACHE_NAME__', `testudo-journal-${opts.version}`)
-          .replace('"[__SHELL__]"', shell)
+    const closeSide = entry_side === 'buy' ? 'sell' : 'buy';
+    const exp = parseFloat(expected_qty);
+    const tol = parseFloat(qty_tolerance);
 
-        const outDir = outOpts.dir ?? resolve(process.cwd(), 'dist')
-        writeFileSync(resolve(outDir, 'sw.js'), out)
+    const candidate = trades
+      .filter(t => t.side === closeSide && Math.abs(t.amount - exp) <= tol)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+    if (!candidate) return res.json({ matched: null });
+    res.json({
+      matched: {
+        order_id: candidate.order ?? candidate.id,
+        avg_price: String(candidate.price),
+        filled_qty: String(candidate.amount),
+        transaction_time_ms: candidate.timestamp,
+        side: candidate.side,
       },
-    }
+    });
   }
   ```
-  Wire into `vite.config.ts` plugins array:
-  `injectSwShell({ version: process.env.VITE_SW_VERSION ?? 'v1' })`.
-  Source `VITE_SW_VERSION` from build env to bump per deploy.
+  Wire in `server.ts`:
+  `app.post("/trades/by-group", handlers.handleTradesByGroup);`.
+  *Complexity: medium.*
+
+- [ ] **T28** — Sidecar test
+  `testudo-cex/tests/trades-by-group.test.ts` (bun:test):
+  - Mock `gateway.getExchange().fetchMyTrades` to return three trades
+    (one matching qty + side, one wrong-side, one wrong-qty).
+  - Assert handler returns the matching one.
+  - Assert `matched: null` when none match.
   *Complexity: simple.*
 
-- [ ] **T17** — Documentation:
-  - Create `testudo-journal/.env.example` with `VITE_API_URL`,
-    `VITE_WS_URL`, `VITE_WALLETCONNECT_PROJECT_ID`,
-    `VITE_ENABLE_SW=false`, `VITE_SW_VERSION=v1`.
-  - Update `testudo-journal/CLAUDE.md`: SW lifecycle (install →
-    skipWaiting → activate → claim → fetch); cache-version bump
-    procedure; manual user recovery (`unregister + clear caches`);
-    `?nosw=1` debugging flag.
-  *Complexity: simple — docs only.*
+- [ ] **T29** — Add `fetch_trades_by_group` method to `CexClient` in
+  `crates/router/src/services/cex_client.rs`. Wire shape:
+  `POST /trades/by-group` with `since_ms`, `until_ms`, `expected_qty`,
+  `qty_tolerance`, `entry_side`. Response struct:
+  ```rust
+  #[derive(Deserialize, Debug)]
+  pub struct SidecarTradesByGroupResponse {
+      pub matched: Option<SidecarTradeMatch>,
+  }
+  #[derive(Deserialize, Debug)]
+  pub struct SidecarTradeMatch {
+      pub order_id: String,
+      #[serde(deserialize_with = "deserialize_decimal")]
+      pub avg_price: Decimal,
+      #[serde(deserialize_with = "deserialize_decimal")]
+      pub filled_qty: Decimal,
+      pub transaction_time_ms: i64,
+      pub side: String,
+  }
+  ```
+  *Complexity: simple.*
 
-- [ ] **T18** — Wire SW registration in `src/index.tsx` after the
-  preconnect block (lines 25–43):
+- [ ] **T30** — Extend `pick_close_leg` (T5) with the fallback path.
+  When `pick_close_leg` returns `None` AND
+  `candidates.sl_order_id.is_none() && candidates.tp_order_id.is_none()`
+  (Bybit ID-less bracket), call `cex_client.fetch_trades_by_group(...)`.
+  On a match, derive `close_reason`:
+  - If only `manual_close_order_id` is set → `Manual`.
+  - Otherwise classify via price-vs-stop / price-vs-target distance
+    on the matched trade's avg_price. Reuse helper
+    `classify_by_price(matched_avg, group.stop_price, group.target_price, group.side)`
+    that returns `CloseReason::StopLoss` or `CloseReason::TakeProfit`.
+
+  `// FR-6` comment: REST avg is canonical for economics;
+  classification is best-effort when IDs are missing.
+  *Complexity: medium.*
+
+- [ ] **T31** — Extend `pick_close_leg_tests` (T12):
+  - **ID-less + qty match:** `sl/tp/manual = None`, mock
+    `fetch_trades_by_group` returns a match. Assert
+    `Some(CloseFill { … })` with `exit_price = matched_avg`.
+  - **ID-less + no match:** mock returns `matched: None`. Assert
+    `None` (reconciler keeps row flagged for next sweep).
+  *Complexity: simple.*
+
+- [ ] **T32** — Verify CP-5:
+  `cd testudo-exchange && cargo clippy --all-targets && cargo test`,
+  `cd testudo-cex && bun test`. Both green. *Complexity: trivial.*
+
+  Commit (T27..T32): `feat(FIX-09): fetchMyTrades fallback for ID-less brackets (CP-5)`.
+
+### CP-6 — UX reconciling state (FR-9)
+
+- [ ] **T33** — Extend `JournalTrade` TS interface in
+  `testudo-journal/src/api/client.ts:259–286`:
   ```ts
-  if (import.meta.env.VITE_ENABLE_SW === 'true' && 'serviceWorker' in navigator) {
-    const register = () => {
-      navigator.serviceWorker.register('/sw.js')
-        .catch(err => console.warn('[sw] register failed', err))
-    }
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(register, { timeout: 2000 })
-    } else {
-      setTimeout(register, 2000)
-    }
-  }
+  needs_reconciliation?: boolean
+  close_reason?: 'sl' | 'tp' | 'manual' | null
+  status?: 'reconciling' | 'final'
   ```
-  Default `VITE_ENABLE_SW=false` — no behavioral change in production
-  on this commit (FR-14). *Complexity: simple.*
+  All optional (legacy rows default to `final`). *Complexity: simple.*
 
-- [ ] **T19** — Extracted URL-routing helper for testability:
-  `src/lib/sw-route.ts` exporting a pure function `classifyRequest(url:
-  string, mode: RequestMode): 'bypass' | 'api' | 'font' | 'navigate' |
-  'passthrough'`. The SW inlines a copy of this logic (KISS — service
-  workers don't import npm modules cleanly without a bundler). Colocated
-  unit test in `src/lib/sw-route.test.ts` exercises each branch
-  (bypass when `?nosw=1`, api for `/api/*`, font for `.woff2`, navigate
-  for `mode === 'navigate'`, passthrough otherwise).
+- [ ] **T34** — Update `testudo-journal/src/components/trades/TradeRow.tsx`
+  rendering at lines 47–54. Each economic cell becomes:
+  ```tsx
+  <Show
+    when={t().status !== 'reconciling'}
+    fallback={<SkeletonBar w="3rem" h="0.875rem" />}
+  >
+    <span class={pnlColor(t().net_pnl)}>{formatCurrency(t().net_pnl)}</span>
+  </Show>
+  ```
+  Apply to `exit_price`, `net_pnl`, `r_multiple` cells. When
+  reconciling, omit win/loss color class on the row container —
+  use a neutral border. *Complexity: medium.*
+
+- [ ] **T35** — Reuse `SkeletonBar` from PERF-01
+  (`src/components/SkeletonBar.tsx`). If it doesn't accept `w`/`h`
+  props, add a tiny `<SyncingCell />` wrapper colocated with
+  TradeRow. *Complexity: trivial.*
+
+- [ ] **T36** — Extension forward-compat: add
+  `needs_reconciliation: z.boolean().optional()` and
+  `close_reason: z.enum(['sl', 'tp', 'manual']).optional().nullable()`
+  to the appropriate Zod schema in `testudo-extension/src/schemas.ts`
+  for closed-trade rows. No visual change. *Complexity: simple.*
+
+- [ ] **T37** — Manual frontend verification:
+  `cd testudo-journal && bun run typecheck && bun run build`. Visual:
+  load the desk on a journal with a known reconciling row (or
+  simulate by toggling `needs_reconciliation = true` for one row in
+  the DB) — confirm skeleton bars render in place of $0.00 / -1.5R /
+  red coloring; row remains in the list, neutrally styled.
   *Complexity: simple.*
 
-- [ ] **T20** — Build + manual verification:
-  - `cd testudo-journal && VITE_ENABLE_SW=false bun run build`
-    produces `dist/sw.js` with placeholders replaced; main entry chunk
-    still under 250 KB gzip (`bun run build:check` passes).
-  - Set `VITE_ENABLE_SW=true` in `.env`, rebuild, `bun run preview`,
-    hard-reload twice. Second visit shows "(ServiceWorker)" in DevTools
-    Network for shell requests (FR-8). Cache Storage panel shows
-    `testudo-journal-v1` populated with `index.html`, the entry chunk,
-    the CSS file (FR-8). `*.woff2` requests on subsequent loads served
-    from Cache Storage (FR-10).
-  - DevTools Network throttling: simulate `/api/*` taking > 3 s.
-    Confirm fallback to cached response with `sw-fallback: stale`
-    response header (FR-9).
-  - Hit `/desk/?nosw=1`: confirm no SW interception (FR-12).
-  - Bump `VITE_SW_VERSION=v2`, rebuild, hard-reload: confirm
-    `testudo-journal-v1` cache deleted on `activate`, `v2` populated
-    (FR-13).
-  - Performance recording on cold load: SW register entry occurs after
-    `domcontentloaded` + idle gap, not before first paint (FR-11).
-  *Complexity: medium — extensive manual verification, no fast
-  iteration loop.*
-
-### CP-4 — Canary + default flip (FR-14, completion-signal items)
-
-- [ ] **T21** — Deploy CP-3 to production with `VITE_ENABLE_SW=true`
-  set ONLY for a beta cohort (route via Cloudflare env or a
-  `?canary=1` opt-in URL). Document the canary plan in
-  `.specify/specs/PERF-02-batch-analytics-and-sw/CANARY.md` (route,
-  rollback procedure, monitoring SLOs). *Complexity: simple — docs +
-  Cloudflare config.*
-
-- [ ] **T22** — Soak for ≥ 7 days. Monitor:
-  - Browser console errors (any SW-related crash).
-  - User-reported "stuck on old shell" issues (Discord / support).
-  - SW cache-version bump applied during soak — verify no users
-    pinned to `testudo-journal-v1` after one full deploy cycle.
-  *Complexity: trivial — observation only.*
-
-- [ ] **T23** — Flip default. One-line change in CI/build env or
-  `.env.production`: `VITE_ENABLE_SW=true`. Commit:
-  `chore(PERF-02): default-enable journal service worker after canary
-  (CP-4)`. *Complexity: trivial.*
-
-- [ ] **T24** — Write
-  `.specify/specs/PERF-02-batch-analytics-and-sw/LEARNINGS.md` with:
-  actual measured first-paint deltas (CP-2 numbers from T14),
-  shell-paint deltas (CP-3 numbers from T20 + canary), gotchas (spec's
-  "8 fetches on Overview" vs reality's 5; PnlCalendar filter-shape
-  collision; Vite plugin `writeBundle` vs `closeBundle` timing),
-  deferred follow-ups (transaction-coalescing for backend pool; batch
-  priming for the 7 unmigrated chart panels; per-section filter
-  overrides if PnlCalendar case multiplies). Update root `MEMORY.md`
-  with one-liner: batch endpoint at `POST /api/v1/journal/analytics/batch`,
-  SW cache-version convention `testudo-journal-v{N}` bumped per deploy.
+- [ ] **T38** — Verify the extension build:
+  `cd testudo-extension && bun run typecheck` (per AGENTS.md, NOT
+  `bun run build` for the extension during verification).
   *Complexity: trivial.*
 
-- [ ] **T25** — Archive spec per repo convention:
-  `.specify/specs/PERF-02-batch-analytics-and-sw/` →
-  `.specify/spec-archive/PERF-02-batch-analytics-and-sw/`. Final
-  `IMPLEMENTATION_PLAN.md` status flip to "COMPLETE — archived".
+  Commit (T33..T38): `feat(FIX-09): journal renders reconciling rows with skeleton state (CP-6)`.
+
+### CP-7 — Verify + backfill + archive
+
+- [ ] **T39** — Re-run reproducer to confirm GREEN:
+  `cd testudo-exchange && DATABASE_URL=… cargo test fix09_canonical_fill -- --ignored`.
   *Complexity: trivial.*
+
+- [ ] **T40** — Full verification matrix per
+  `.specify/memory/constitution.md` §4:
+  ```
+  cd testudo-exchange && cargo clippy --all-targets && cargo test
+  cd testudo-cex && bun test
+  cd testudo-journal && bun run build
+  cd testudo-extension && bun run typecheck
+  ```
+  All green. *Complexity: simple.*
+
+- [ ] **T41** — One-off backfill for the 2026-04-27 ETHUSDT trade
+  per spec §"Completion Signal":
+  - Identify the row:
+    `SELECT id, trade_group_id, exit_price, close_reason FROM
+     journal_trades WHERE exit_price = 2419 AND closed_at::date =
+     '2026-04-27' …`.
+  - Prefer (a) flip `needs_reconciliation = TRUE` and let the new
+    sweep correct it via the production code path — exercises the
+    fix on a real row as a smoke test.
+  - Fallback (b) one-off UPDATE: `exit_price = 2369.78`,
+    recompute derived fields, set `close_reason = 'tp'`, then
+    `rebuild_daily_stats_for_date` for that (user, exchange, date).
+
+  Document the backfill in the commit body. *Complexity: simple.*
+
+- [ ] **T42** — Write
+  `.specify/specs/FIX-09-rest-canonical-fills/LEARNINGS.md`:
+  - Real measurements: `pick_close_leg` first-attempt success rate
+    vs after retry — informs backoff tuning.
+  - Whether `/trades/by-group` fallback ever fired in soak window —
+    informs whether Bybit ID resolution is broken or rare.
+  - Surprising finding: the pre-FIX-09 reconciler silently used
+    entry's avg_price as exit_price for every exchange (latent FR-3
+    bug). Note for future auditors.
+  - Deferred: safe-cex Bybit `mapOrder` in-store display drift.
+  *Complexity: simple.*
+
+- [ ] **T43** — Update root `MEMORY.md` with one-liner: "FIX-09
+  (Apr 27 2026): WS is transition-only; REST `fetchOrder` /
+  `fetchMyTrades` is canonical for journal economics + close_reason.
+  `CloseCandidates` excludes entry from candidate set by construction."
+  Strip any stale references to `exchange_order_ids: Vec<String>` if
+  present. *Complexity: trivial.*
+
+- [ ] **T44** — Archive spec per repo convention:
+  `mv .specify/specs/FIX-09-rest-canonical-fills/
+       .specify/spec-archive/FIX-09-rest-canonical-fills/`.
+  Final `IMPLEMENTATION_PLAN.md` status flip to "COMPLETE — archived".
+  *Complexity: trivial.*
+
+  Commit (T39..T44): `docs(FIX-09): LEARNINGS, MEMORY update, spec archive (CP-7)`.
 
 ---
 
 ## Commit strategy
 
-- **T1 + T2 + T3 + T4 + T5 + T6 bundled** as
-  `feat(PERF-02): batched analytics endpoint + parity test (CP-1)`.
-  T1 (helper extraction) is a precondition for T3 (the batch handler
-  reuses the helpers); T5 (parity test) verifies T1+T3 together —
-  splitting them leaves master in an inconsistent state. T6 is
-  verification, not new code; goes in the commit message body.
-- **T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 bundled** as
-  `feat(PERF-02): useCachedBatch + Overview migration (CP-2)`.
-  T7 (cache extensions) is unused until T10/T12 land; T11 (tests) is
-  TDD for T10. T8 (key-helper migration) ships in the same commit as
-  T7 to avoid leaving inline keys vs centralized keys in a conflicting
-  state.
-- **T15 + T16 + T17 + T18 + T19 + T20 bundled** as
-  `feat(PERF-02): journal service worker (CP-3, default off)`.
-  All six describe one feature behind one flag; default stays `false`
-  per FR-14.
-- **T21 + T22 are not commits** — monitoring/operations.
-- **T23** is its own commit:
-  `chore(PERF-02): default-enable journal service worker after canary
-  (CP-4)`.
-- **T24 + T25** bundled as `docs(PERF-02): LEARNINGS + spec archive`.
-
 Per AGENTS.md: NO `Co-Authored-By: Claude` trailers in this repo.
+Stage specific files; never `git add -A`.
+
+| # | Tasks | Title |
+|---|-------|-------|
+| 1 | T1, T2 | `test(FIX-09): RED reproducer for Bybit canonical fill (CP-1)` |
+| 2 | T3–T13 | `feat(FIX-09): typed CloseCandidates + entry-excluded reconciler discrimination (CP-2)` |
+| 3 | T14–T20 | `refactor(FIX-09): WS contract is transition-only; reconciler is sole exit-price author (CP-3)` |
+| 4 | T21–T26 | `feat(FIX-09): close_reason + status maturity in reconciler (CP-4)` |
+| 5 | T27–T32 | `feat(FIX-09): fetchMyTrades fallback for ID-less brackets (CP-5)` |
+| 6 | T33–T38 | `feat(FIX-09): journal renders reconciling rows with skeleton state (CP-6)` |
+| 7 | T39–T44 | `docs(FIX-09): LEARNINGS, MEMORY update, spec archive (CP-7)` |
+
+Bundling rationale (AGENTS.md "Don't commit broken intermediate states"):
+- CP-2 contains the type definitions, the reconciler logic, the
+  dispatch propagation, and the in-tree tests in one commit because
+  the typed `CloseCandidates` is unused without the dispatch update
+  at T11; splitting them leaves master with a typed field nothing
+  reads.
+- CP-3 bundles the WS field strip with the shortcut removal because
+  removing the fields without removing the readers breaks compile.
+- **Strict ordering: CP-2 must merge before CP-3.** CP-3 makes the
+  reconciler the sole exit-price author; CP-2 fixes the
+  reconciler's entry-as-exit bug. Reversing exposes the latent bug
+  in production.
 
 ---
 
-## Risks (from spec, with concrete mitigations)
+## Risks (with mitigations)
 
-1. **Stale-shell trap.** Mitigated by versioned cache name (T16 +
-   `VITE_SW_VERSION`), `skipWaiting`/`clients.claim` (T15), `?nosw=1`
-   escape hatch (T15), CP-4 one-week canary (T22), and manual-recovery
-   procedure documented in CLAUDE.md (T17).
-2. **Batch correctness drift.** Mitigated structurally — T1 extracts
-   the conversion helpers; both per-section and batch handlers reuse
-   them. Drift is hard to introduce. T5 parity test is the regression
-   net.
-3. **Pool exhaustion under bursts.** Out of scope for code; documented
-   as a future follow-up (transaction-coalescing) only if metrics
-   show analytics_pool contention. Out-of-spec per "Out of Scope"
-   section.
-4. **SW + SWR cache double-staleness.** Mitigated by T15's
-   `sw-fallback: stale` header — the SPA cache layer treats it
-   identically to its own "stale" signal. Manual loop-avoidance test
-   covered in T14 + T20.
-5. **Cache-key skew between batch and per-section paths.** Mitigated
-   by centralizing key derivation in `cacheKeyForSection` (T7) and
-   migrating all existing call sites to use it (T8). Unit-tested in
-   T11 ("cross-path key parity" case).
-6. **`requestIdleCallback` not available in Safari/Firefox.**
-   Mitigated by `setTimeout(register, 2000)` fallback (T18).
-7. **Backend handler not actually faster.** Mitigated by recording
-   real measured deltas in T14 (frontend Overview cold-paint) and T6
-   (backend isolated-handler timing). If delta < 50 ms, document in
-   LEARNINGS and decline to flip CP-4 default — fall back to keeping
-   the batch endpoint additive without forcing the frontend migration.
+1. **Reconciler latency under exchange REST slowness** (spec risk #1)
+   — `fetchOrder` may take 100–500ms. Mitigation: 3-attempt retry
+   with backoff already exists; UX explicitly designed for the wait
+   in CP-6 (skeleton, not phantom-loss). T42 captures real retry-rate
+   for follow-up tuning.
+2. **`fetchMyTrades` rate limit on Bybit** (spec risk #2) — V5 allows
+   600 req/5s. Mitigation: tight `since` window (`entry_time_ms − 1000`);
+   only invoke fallback when ID path fails. T31 covers no-match case.
+3. **Clock-drift slop false positives** (spec risk #3) — 90s. The
+   combined gating (id-priority + qty match + side match + time
+   slop) makes accidental match probability negligible.
+4. **Existing tests break** (spec risk #4) — addressed by T19; treat
+   breakage as the regression guard.
+5. **safe-cex fork drift** (spec risk #5) — vendored bug stays in
+   `node_modules/safe-cex`. Documented in T42 as deferred follow-up.
+6. **Migration ordering** (spec risk #6) — `close_reason` column must
+   exist before reconciler writes it. T21 lands the migration; sqlx
+   migration-at-startup pattern handles deploy ordering.
 
-### Plan-specific risks (added beyond spec)
+### Plan-specific risks
 
-8. **Spec's "Overview fans out 8 fetches" framing is incorrect.**
-   Real cold-paint fan-out is 5 (see Discoveries). Mitigated by
-   adjusting the acceptance criterion in T14 to "exactly one POST + at
-   most one PnlCalendar GET". The win is real, just smaller than
-   spec's framing implies.
-9. **PnlCalendar's monthly-filter shape collides with the spec's
-   single-filter `BatchRequest`.** Mitigated by leaving PnlCalendar
-   on its own GET (carve-out documented in T12). Per-section filter
-   overrides explicitly out of scope.
-10. **Vite plugin `writeBundle` timing.** The hook fires after all
-    assets are emitted but before dev-server / preview hooks. If
-    `outOpts.dir` is undefined in some Vite configurations, the
-    plugin falls back to `resolve(process.cwd(), 'dist')` (T16).
-    Verified in T20.
-11. **The 7 plain-`createResource` chart panels (DrawdownChart,
-    SymbolBreakdown variants) are NOT migrated.** Living outside cold
-    paint, scope-bounded out of PERF-02. Documented in Discoveries as
-    a future cleanup — they don't benefit from batch priming until a
-    future migration.
-12. **Per-section error variant tagging.** The spec sketch uses
-    `#[serde(untagged)]` on `SectionResult`. Untagged enums match by
-    field shape; if the success type happens to have an `error: String`
-    field, deserialization is ambiguous. None of the existing response
-    types contain a top-level `error` field, so the conflict does not
-    arise — but documented here so a future contributor adding such a
-    field doesn't break parsing.
+7. **Latent reconciler bug exposure.** Today's reconciler iterates
+   `[entry, sl, tp]` and returns the first non-zero `avg_price` —
+   typically entry. FIX-08 masks this because nonzero WS price skips
+   reconciliation. **Once CP-3 lands** (`exit_price` always 0 →
+   reconciler always invoked), this latent path becomes the
+   production path. **Mitigation:** strict commit ordering — CP-2
+   merges before CP-3.
+8. **`OrderGroupStatus::AwaitingReconciliation` exists but is unused
+   here.** Per Discoveries: reserved for rehydration. Live-trade
+   transient state is `Closed`; reconciler upgrades to
+   `StoppedOut|TookProfit`.
+9. **`EngineHandle` injection into `FillReconciler` (T24).** Couples
+   the reconciler to the engine actor, but only via a single async
+   call (`update_group_status`). Acceptable per AGENTS.md "Pure /
+   async split"; documented in code.
+10. **Tolerance constant choice** in T9 — qty tolerance balances
+    "exchange precision step" vs "false-negative rejection". Plan
+    elects: stricter of absolute `dec!(0.0000001)` vs relative
+    `expected_qty * dec!(0.001)`. Revisit if T42 shows false
+    negatives.
+11. **PnlCalendar / Overview cache invalidation.** When the
+    reconciler upgrades a row from `reconciling → final`, the journal
+    SWR cache learns of the change on next mount (TTL 30s).
+    Acceptable for MVP. Follow-up: emit a WS event on reconciliation
+    completion that bumps the cache. Out of scope for FIX-09.
 
 ---
 
 ## Blockers
 
-None. PERF-01's cache primitive (`src/lib/cache.ts`) is the substrate
-for CP-2; backend service methods are clean enough that extracting
-conversion helpers (T1) is a mechanical refactor; SW is greenfield
-with no infra constraints (Cloudflare Pages serves `/sw.js` from
-project root by default with `/desk/` scope automatic).
+None. All dependencies are in place: FIX-02 reconciliation pattern,
+FIX-08 `needs_reconciliation` schema, existing `FillReconciler`
+skeleton, `SidecarFetchOrderResponse` shape, `OrderGroupStatus`
+variants, `EngineHandle::update_group_status` API.
 
 ---
 
 ## PLANNING COMPLETE
 
-Spec: PERF-02-batch-analytics-and-sw
-Total Tasks: 25 (T1–T25)
+Spec: FIX-09-rest-canonical-fills
+Total Tasks: 44 (T1–T44)
 Ready for BUILD mode.
 
-Next task: T1 — extract pure response-conversion helpers in
-`crates/router/src/routes/journal.rs` so per-section and batch
-handlers share identical adapter logic.
+Next task: T1 — write the RED reproducer integration test in
+`crates/router/src/services/integration_tests.rs` documenting the
+Bybit triggered-TP / SL-trigger-price bug. Without this, every
+subsequent checkpoint lacks a green-light target.
