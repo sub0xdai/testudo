@@ -31,23 +31,25 @@ export default function TradeManagement() {
     }
   });
 
-  onMount(async () => {
-    try {
-      const res = (await browser.runtime.sendMessage({
-        type: "GET_USER_SETTINGS",
-      })) as UserSettingsResult;
-      if (res?.success) {
-        setDrState(res.data);
-        setDrError(null);
-      } else {
-        setDrError(res?.error || "Failed to load settings");
-      }
-    } catch (e) {
-      setDrError(e instanceof Error ? e.message : "Failed to load settings");
-    } finally {
-      setDrLoading(false);
-    }
-  });
+  // QNT-01b: Dynamic Risk disabled for 1.1.4 — backend endpoints not ready yet.
+  // Uncomment when GET_USER_SETTINGS + PATCH_USER_SETTINGS handlers are wired.
+  // onMount(async () => {
+  //   try {
+  //     const res = (await browser.runtime.sendMessage({
+  //       type: "GET_USER_SETTINGS",
+  //     })) as UserSettingsResult;
+  //     if (res?.success) {
+  //       setDrState(res.data);
+  //       setDrError(null);
+  //     } else {
+  //       setDrError(res?.error || "Failed to load settings");
+  //     }
+  //   } catch (e) {
+  //     setDrError(e instanceof Error ? e.message : "Failed to load settings");
+  //   } finally {
+  //     setDrLoading(false);
+  //   }
+  // });
 
   async function toggleDynamicRisk() {
     const current = drState();
@@ -179,8 +181,10 @@ export default function TradeManagement() {
           <span>10%</span>
         </div>
 
-        {/* QNT-01b (relocated 2026-04-21): Dynamic Risk toggle — Kelly governor over the baseline slider above */}
-        <Show when={!drLoading()}>
+        {/* QNT-01b (relocated 2026-04-21): Dynamic Risk toggle — DISABLED for 1.1.4.
+            Backend endpoints (GET_USER_SETTINGS, PATCH_USER_SETTINGS) not ready yet.
+            Uncomment when background worker + backend routes are wired. */}
+        {/* <Show when={!drLoading()}>
           <div
             class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between gap-3"
             data-testid="dynamic-risk-row"
@@ -229,7 +233,7 @@ export default function TradeManagement() {
               {drError()}
             </p>
           </Show>
-        </Show>
+        </Show> */}
       </div>
 
       <div class="divider" />

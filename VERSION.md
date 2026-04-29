@@ -8,14 +8,24 @@ Rule: every version bump adds an entry here *before* the build is zipped.
 
 ---
 
-## 1.1.4 — 2026-04-19 — **built, pending submission**
+## 1.1.4 — 2026-04-29 — **built, ready for submission** (rebuilt, cleaned)
 
-Bundles review-response UX polish + auth safety patch. Not yet
-submitted to the stores; Phase 2-proper wallet-session bridge was
-originally cut as a 1.1.5 but rolled back into this pending 1.1.4 so a
-single zip addresses both.
+Rebuilt 2026-04-29 to include critical session-resilience fix. Dynamic Risk (QNT-01b) disabled — backend endpoints (GET_USER_SETTINGS, PATCH_USER_SETTINGS) not ready for 1.1.4; will ship in 1.1.5. Zips: `testudo-sniper-chrome-1.1.4.zip` and `testudo-sniper-firefox-1.1.4.zip`.
 
-### Review-response UX patch
+### Critical Auth Fix (Apr 28)
+
+**`171833c` fix(ext): stop unpairing on transient backend failures**
+
+Root cause: `doRefresh()` cleared tokens on ANY non-2xx response (502 during deploy, 429 rate limit, 503 overload, timeouts). Token refresh fires every ~12 minutes (80% of 15-min access-token life), so even brief transient errors silently nuked sessions. Users reported "I have to re-pair too often."
+
+Fix:
+
+- **Classify failures.** 401/403/other 4xx → definitive (clear tokens, require re-pair). 5xx/408/429/network error → transient (keep tokens, retry).
+- **Exponential backoff for transient.** 30s → 2min → 8min. After 3 consecutive transient failures, give up and clear tokens.
+- **SessionState storage flag.** 'ok' | 'refresh_retrying' | 'session_lost' | 'wallet_changed'. Popup renders a context-aware banner instead of silently dropping to PairView with no explanation.
+- **Explicit failure modes.** `session_lost` banner for auth errors; `wallet_changed` banner for wallet switch. Each case now has actionable user guidance.
+
+### Review-response UX patch (Apr 19 baseline)
 
 Addresses the Chrome Web Store reviewer's concerns about functional
 clarity surfaced during the 1.1.3 appeal — the extension's value prop
@@ -59,7 +69,7 @@ Fix delivered as a one-way web → extension session-change bridge:
   tokens + refresh timer if web is logged out or bound to a different
   wallet. Popup reactively drops to the pair screen.
 
-No modal / badge / banner — the session just invalidates silently.
+No modal / badge / banner on wallet mismatch — the session just invalidates silently.
 
 ---
 
