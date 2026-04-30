@@ -101,8 +101,9 @@ export default function TradeForm(props: TradeFormProps) {
     return r >= 2 ? "good" : r >= 1 ? "neutral" : "bad";
   });
 
-  // Balance calculations
-  const usdt = () => props.balance?.find((b) => b.asset === "USDT");
+  // Balance calculations — accept USDT or USDC (Bybit USDC perps settle in USDC)
+  const usdt = () => props.balance?.find((b) => b.asset === "USDT" || b.asset === "USDC");
+  const quoteAsset = () => usdt()?.asset ?? "USDT";
   const available = () => { const b = usdt(); return b ? parseFloat(b.available) : null; };
   const stopDistance = createMemo(() => {
     const e = entry(), s = stop();
@@ -557,15 +558,15 @@ export default function TradeForm(props: TradeFormProps) {
           </div>
           <div class="balance-row">
             <span class="balance-label">Margin</span>
-            <span class="balance-value margin">{margin()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+            <span class="balance-value margin">{margin()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {quoteAsset()}</span>
           </div>
           <div class="balance-row">
             <span class="balance-label">Risk</span>
-            <span class="balance-value risk">{riskAmount()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+            <span class="balance-value risk">{riskAmount()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {quoteAsset()}</span>
           </div>
           <div class="balance-row">
             <span class="balance-label">Available</span>
-            <span class="balance-value">{available()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+            <span class="balance-value">{available()!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {quoteAsset()}</span>
           </div>
         </Show>
       </div>

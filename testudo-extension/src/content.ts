@@ -3,7 +3,7 @@ import { scrapeTradeSetup, scrapeSymbol, scrapeTimeframe } from "./scraper";
 // MV3 provides Promise-based APIs natively — no polyfill needed in content scripts
 const browser = (globalThis as any).browser ?? (globalThis as any).chrome;
 import type { TradeSetup } from "./scraper";
-import { showModal, showOrderToast, showToast, showBanner, isVisible } from "./modal";
+import { showModal, showOrderToast, showToast, showBanner, isVisible, getActiveHost } from "./modal";
 import type { ModalResult } from "./modal";
 import type { ManagementPreset, BalanceResponse, LiveBalanceResponse } from "./types";
 import { DEFAULT_MANAGEMENT_PRESET } from "./types";
@@ -249,6 +249,26 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     triggerTradeModal();
   }
 }, true);
+
+// Stop modal keystrokes from reaching TradingView's document-level hotkeys.
+// Window-capture fires before any document-capture listener, so TV never sees
+// keys typed in our shadow root. stopPropagation does not cancel the browser's
+// default text-input action — characters still land in the focused input.
+// Esc/Enter/Tab and Alt+X must still propagate to the modal's existing handlers
+// (TradeForm document-capture handler, modal container focus trap, Alt+X above).
+function stopModalKeyLeak(e: KeyboardEvent): void {
+  if (!isVisible()) return;
+  const host = getActiveHost();
+  if (!host) return;
+  const root = (e.composedPath()[0] as Node | undefined)?.getRootNode?.();
+  if (root !== host.shadowRoot) return;
+  if (e.key === "Escape" || e.key === "Enter" || e.key === "Tab") return;
+  if (e.altKey && e.key.toLowerCase() === "x") return;
+  e.stopPropagation();
+}
+window.addEventListener("keydown", stopModalKeyLeak, true);
+window.addEventListener("keyup", stopModalKeyLeak, true);
+window.addEventListener("keypress", stopModalKeyLeak, true);
 
 
 function handleModalResult(result: ModalResult, setup: TradeSetup | null): void {

@@ -326,6 +326,10 @@ export function isVisible(): boolean {
   return activeHost !== null;
 }
 
+export function getActiveHost(): HTMLElement | null {
+  return activeHost;
+}
+
 // --- Toast Notifications ---
 
 const TOAST_THEME_VARS = `

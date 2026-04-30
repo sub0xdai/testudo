@@ -8,6 +8,67 @@ Rule: every version bump adds an entry here *before* the build is zipped.
 
 ---
 
+## Unreleased — accumulating for next bump
+
+Fixes landing on `master` since the 1.1.4 zip was sealed. Version bump and
+zip build deferred — these will batch into the next submission once the
+user is ready (Chrome review takes ~3 days per submission).
+
+### Firefox PairView scroll clip
+
+**`9d41d73` fix(ext): allow body scroll fallback so Firefox PairView disclosures aren't clipped**
+
+Root cause: Firefox's WebExtension popup viewport doesn't always honor
+the requested 680px body height, leaving the bottom of PairView (How it
+works / Why these permissions / Privacy & disclaimers) unreachable. The
+modal's internal `pair-scroll` container was pinned to a body parent
+that Firefox couldn't fully display, and `body { overflow: hidden !important }`
+blocked any fallback scroll.
+
+Fix: replaced body `overflow: hidden !important` with `overflow-y: auto`
+in `popup.css`; removed inline `overflow:hidden` from `popup.html`'s
+body. Scrollbars stay visually hidden via existing `scrollbar-width: none`.
+Chrome popup honors 680px and never engages this fallback — zero visual
+change there. `#app` still clips, so MainView's tab-internal scrollers
+are unchanged.
+
+### USDC balance shows 0 in trade modal
+
+**`TradeForm.tsx`** — modal's balance lookup hard-coded `asset === "USDT"`,
+so on Bybit USDC perps (which settle in USDC) the modal couldn't find a
+balance row → `available()` returned null → display read 0 USDT. The
+popup's `MainView.tsx:58` already used the correct `USDT || USDC` pattern;
+the modal was the outlier.
+
+Fix:
+
+- `usdt()` selector now matches `USDT || USDC` (parity with MainView).
+- New `quoteAsset()` accessor returns the actual matched asset.
+- Margin / Risk / Available rows now render `{quoteAsset()}` instead of
+  hard-coded "USDT".
+
+### Setup field keystroke leak to TradingView
+
+**`content.ts`, `modal.tsx`, `TradeForm.tsx`** — typing in the SETUP
+`<textarea>` inside the Alt+X modal also triggered TradingView's chart
+hotkeys (e.g. typing "f" in "falling wedge" toggled TV's "f" shortcut).
+The shadow-DOM modal's existing handlers all sat at or below TV's
+`document`-capture listener in event order, so they couldn't pre-empt.
+
+Fix: added a `window`-capture-phase keydown/keyup/keypress listener in
+`content.ts` that, while the modal is visible AND the event originated
+in our shadow root, calls `e.stopPropagation()`. `window` capture fires
+before any `document` listener regardless of registration order, so TV
+is bypassed. Critical detail: `stopPropagation` halts listener dispatch
+but does NOT cancel the browser's default text-input action — characters
+still land in the focused input. Esc / Enter / Tab / Alt+X are
+exempted so the existing modal handlers (focus trap, double-Enter
+confirm, dismiss, hotkey re-trigger) continue to work. `modal.tsx` now
+exposes `getActiveHost()` for the listener to scope events to the live
+shadow root.
+
+---
+
 ## 1.1.4 — 2026-04-29 — **built, ready for submission** (rebuilt, cleaned)
 
 Rebuilt 2026-04-29 to include critical session-resilience fix. Dynamic Risk (QNT-01b) disabled — backend endpoints (GET_USER_SETTINGS, PATCH_USER_SETTINGS) not ready for 1.1.4; will ship in 1.1.5. Zips: `testudo-sniper-chrome-1.1.4.zip` and `testudo-sniper-firefox-1.1.4.zip`.
