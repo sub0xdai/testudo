@@ -167,33 +167,43 @@ async function doRefresh(): Promise<boolean> {
 }
 
 // --- Scheduled Refresh ---
+//
+// MV3 background workers (Chrome SW, Firefox event page) suspend when idle,
+// taking setTimeout with them. Alarms persist across restarts and wake the
+// worker when they fire — this is the only timer that survives suspension.
 
-let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+const REFRESH_ALARM = "testudo-refresh";
+
+function scheduleAlarm(delayMs: number): void {
+  // Browser alarms enforce a minimum delay (~1 min on some Firefox versions);
+  // values below the minimum are silently rounded up. Acceptable for our
+  // 30s/2min/8min backoffs and 12-min refresh cadence.
+  const delayInMinutes = Math.max(0.5, delayMs / 60000);
+  browser.alarms.create(REFRESH_ALARM, { delayInMinutes });
+}
 
 export function scheduleTokenRefresh(expiresIn: number): void {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  const refreshDelay = calculateRefreshDelay(expiresIn);
-  refreshTimer = setTimeout(() => {
-    refreshAccessToken();
-  }, refreshDelay);
+  scheduleAlarm(calculateRefreshDelay(expiresIn));
 }
 
 // Schedule a raw refresh after `delayMs` — used by the transient-failure
 // backoff path to retry without recomputing from `expires_in`.
 function scheduleRawRefresh(delayMs: number): void {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => {
-    refreshAccessToken();
-  }, delayMs);
+  scheduleAlarm(delayMs);
 }
 
 export function clearRefreshTimer(): void {
-  if (refreshTimer) {
-    clearTimeout(refreshTimer);
-    refreshTimer = null;
-  }
+  browser.alarms.clear(REFRESH_ALARM);
   consecutiveTransientFailures = 0;
 }
+
+// Top-level alarm listener — must be registered synchronously at module init
+// so the worker re-registers it on every cold start.
+browser.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === REFRESH_ALARM) {
+    refreshAccessToken();
+  }
+});
 
 // --- Auth Status ---
 

@@ -14,6 +14,30 @@ Fixes landing on `master` since the 1.1.4 zip was sealed. Version bump and
 zip build deferred — these will batch into the next submission once the
 user is ready (Chrome review takes ~3 days per submission).
 
+### Firefox session timeouts forcing re-pair
+
+**`auth.ts`, `manifest.json`** — the scheduled token refresh used
+`setTimeout`, which doesn't survive MV3 background-worker suspension.
+Locally-loaded Chrome extensions get an artificially long worker
+lifetime (devtools / unpacked mode), masking the bug; Firefox AMO
+production suspends aggressively, so the 12-minute refresh timer dies
+and tokens silently expire. The 401-fallback in `api.ts` recovers in
+the happy path, but during transient backend hiccups the backoff chain
+can exhaust and force re-pair.
+
+Fix: migrated refresh scheduling to `browser.alarms`. Alarms persist
+across worker restarts AND wake the worker when they fire — the
+canonical MV3 pattern. Added `"alarms"` permission to manifest.
+`scheduleTokenRefresh` / `scheduleRawRefresh` / `clearRefreshTimer`
+now create / clear a `testudo-refresh` alarm. A top-level
+`browser.alarms.onAlarm` listener (registered at module init so it
+re-binds on every cold start) calls `refreshAccessToken()` when the
+alarm fires.
+
+Note: alarm `delayInMinutes` has a per-browser minimum (~1 min on some
+Firefox versions). The 30s transient-backoff retry will round up to
+~1 min in those cases — acceptable.
+
 ### Firefox PairView scroll clip
 
 **`9d41d73` fix(ext): allow body scroll fallback so Firefox PairView disclosures aren't clipped**
