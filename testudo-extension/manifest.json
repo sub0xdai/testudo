@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Testudo",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "TradingView companion. Press Alt+X on a chart to size a trade from your stop and route the order to your exchange.",
   "permissions": [
     "storage"
