@@ -10,9 +10,16 @@ Rule: every version bump adds an entry here *before* the build is zipped.
 
 ## Unreleased — accumulating for next bump
 
-Fixes landing on `master` since the 1.1.4 zip was sealed. Version bump and
-zip build deferred — these will batch into the next submission once the
-user is ready (Chrome review takes ~3 days per submission).
+Fixes landing on `master` since the 1.1.5 Firefox zip was sealed. Chrome
+remains on 1.1.4 — these will roll into the next Chrome submission
+together with any further fixes.
+
+---
+
+## 1.1.5 — 2026-05-01 — **Firefox-only zip built**
+
+Firefox-targeted release. Chrome submission deferred — Chrome 1.1.4 still
+in store; will batch with future fixes. Zip: `testudo-sniper-firefox-1.1.5.zip`.
 
 ### Firefox session timeouts forcing re-pair
 
