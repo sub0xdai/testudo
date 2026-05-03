@@ -553,6 +553,13 @@ export function createHandlers(gateway: ExchangeGateway) {
               const nextCursor: string | undefined = data?.result?.nextPageCursor;
 
               for (const exec of list) {
+                // Filter non-Trade execTypes: Funding/Settle have side+price populated
+                // but are NOT actual fills. Persisting them poisons reconstruct_trades.
+                // Keep BustTrade/AdlTrade — they ARE real liquidation fills.
+                const execType = String(exec.execType ?? 'Trade');
+                if (execType !== 'Trade' && execType !== 'BustTrade' && execType !== 'AdlTrade') {
+                  continue;
+                }
                 const backendSymbol = toBackendSymbol(exec.symbol, exchange.store.markets);
                 if (symbol && backendSymbol !== symbol) continue;
                 allFills.push({
