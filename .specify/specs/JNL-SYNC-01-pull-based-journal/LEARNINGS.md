@@ -49,3 +49,13 @@ than tested because `reconstruct_trades` is pure and cannot observe prior calls.
 **`exchange_label` is canonical name in `raw_fills` query:** `raw_fill_repo.fetch_for_account(user_id, &self.exchange_label)` uses the label string directly. The `exchange_label` in `JournalSyncer` must be the canonical (lowercase) exchange name to match what `raw_fills` stores. `CcxtFillSource.fetch_since` applies `canonical_exchange_name` before setting `fill.exchange`, so as long as the syncer's `exchange_label` matches, the fetch is correct.
 
 **Pre-existing test failure:** `routes::auth::tests::test_me_returns_user_info` was already failing before CP-4 (the `me` handler returns `body["user"]["id"]` but the test asserts `body["user_id"]`). Not introduced by this checkpoint.
+
+## 2026-05-03 — CP-5
+
+**Symbol convention confirmed:** `format!("{}_USDT", fill.coin)` is the correct HL symbol format, consistent with `ws_fills.rs:555` (`"s": format!("{}_USDT", fill.coin)`) and `AssetUniverse::from_hl_coin` (`universe.rs:213`). The `convert_hl_fill` implementation matches.
+
+**HL SDK pagination:** `info.user_fills_by_time(address, since_ms, None, None)` returns all fills in one call — the SDK has no documented page-size cap in the current version. Consistent with how `ws_fills.rs:444` uses it in production. No pagination loop needed at this time.
+
+**`hl_fill_journal.rs` already absent:** the file was never created in this codebase (plan referenced it as an existing WS-driven HL journal path to delete in CP-6, but it does not exist). CP-6 does not need to delete it; only the WS-driven CCXT path exists to remove.
+
+**Spawn gated on both `syncer_enabled && hl_enabled`:** HL syncer requires both flags to avoid spawning a live-data poller when HL integration is disabled. Mirrors the CCXT pattern (`syncer_enabled && ccxt_enabled`).
