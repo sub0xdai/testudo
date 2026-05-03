@@ -1,5 +1,5 @@
 import { createSignal, createResource, Show, For } from 'solid-js'
-import { fetchTrades, type TradeListParams, type KellyInputs } from '../../api/client'
+import { fetchTrades, triggerJournalSync, type TradeListParams, type KellyInputs } from '../../api/client'
 import { useFilters } from '../filterContext'
 import { TradeRow } from './TradeRow'
 import { TradeFilters, type TradeFilterState } from './TradeFilters'
@@ -28,6 +28,9 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
   const [sort, setSort] = createSignal<SortState>({ field: 'closed_at', order: 'desc' })
   const [localFilters, setLocalFilters] = createSignal<TradeFilterState>({})
   const [kellyInputs, setKellyInputs] = createSignal<KellyInputs | null>(null)
+  const [syncing, setSyncing] = createSignal(false)
+  const [syncMessage, setSyncMessage] = createSignal<string | undefined>(undefined)
+  let syncDebounceTimer: ReturnType<typeof setTimeout> | undefined
 
   const params = (): TradeListParams => ({
     page: page(),
@@ -71,9 +74,32 @@ export function TradeTable(props: { onSelectTrade: (id: string) => void }) {
     setPage(1)
   }
 
+  async function handleSync() {
+    if (syncing()) return
+    setSyncing(true)
+    setSyncMessage(undefined)
+    clearTimeout(syncDebounceTimer)
+    try {
+      await triggerJournalSync()
+      setSyncMessage('Synced')
+    } catch (err: unknown) {
+      const code = (err as { code?: number }).code
+      setSyncMessage(code === 409 ? 'Already running' : 'Sync failed')
+    } finally {
+      setSyncing(false)
+      syncDebounceTimer = setTimeout(() => setSyncMessage(undefined), 5000)
+    }
+  }
+
   return (
     <div>
-      <TradeFilters filters={localFilters()} onChange={handleFilterChange} />
+      <TradeFilters
+        filters={localFilters()}
+        onChange={handleFilterChange}
+        onSync={handleSync}
+        syncing={syncing()}
+        syncMessage={syncMessage()}
+      />
 
       <div class="overflow-x-auto">
         <table class="w-full">

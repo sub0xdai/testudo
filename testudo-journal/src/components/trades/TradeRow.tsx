@@ -1,7 +1,6 @@
 import { For, Show } from 'solid-js'
 import type { JournalTrade, JournalTag } from '../../api/client'
 import { formatCurrency, formatPrice, formatDuration, formatDate, pnlColor, rColor, sideColor } from '../../lib/formatters'
-import { SkeletonBar } from '../SkeletonBar'
 
 export function TradeRow(props: {
   trade: JournalTrade
@@ -10,7 +9,6 @@ export function TradeRow(props: {
   onKellyBadgeClick?: () => void
 }) {
   const t = () => props.trade
-  const reconciling = () => t().status === 'reconciling'
   const rMultiple = () => {
     const r = t().r_multiple
     if (!r) return '—'
@@ -22,11 +20,7 @@ export function TradeRow(props: {
     <tr
       tabIndex={0}
       role="button"
-      class={`border-b cursor-pointer transition-colors even:bg-text-primary/[0.02] outline-none ${
-        reconciling()
-          ? 'border-container-border/20 hover:bg-elevated/50 focus:bg-elevated/50'
-          : 'border-container-border/30 hover:bg-elevated focus:bg-elevated'
-      }`}
+      class="border-b border-container-border/30 cursor-pointer transition-colors even:bg-text-primary/[0.02] outline-none hover:bg-elevated focus:bg-elevated"
       onClick={props.onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -51,30 +45,19 @@ export function TradeRow(props: {
         {formatPrice(t().entry_price)}
       </td>
       <td class="px-3 py-2.5 text-xs font-mono text-text-primary whitespace-nowrap text-right">
-        <Show when={!reconciling()} fallback={<SkeletonBar width="3.5rem" height="0.75rem" />}>
-          {formatPrice(t().exit_price)}
-        </Show>
+        {formatPrice(t().exit_price)}
       </td>
-      <td class={`px-3 py-2.5 text-xs font-mono whitespace-nowrap text-right ${reconciling() ? 'text-text-tertiary' : pnlColor(t().net_pnl)}`}>
-        <Show when={!reconciling()} fallback={<SkeletonBar width="3rem" height="0.75rem" />}>
-          {formatCurrency(t().net_pnl)}
-        </Show>
+      <td class={`px-3 py-2.5 text-xs font-mono whitespace-nowrap text-right ${pnlColor(t().net_pnl)}`}>
+        {formatCurrency(t().net_pnl)}
       </td>
-      <td class={`px-3 py-2.5 text-xs font-mono whitespace-nowrap text-right ${reconciling() ? 'text-text-tertiary' : rColor(t().r_multiple)}`}>
-        <Show when={!reconciling()} fallback={<SkeletonBar width="2rem" height="0.75rem" />}>
-          {rMultiple()}
-        </Show>
+      <td class={`px-3 py-2.5 text-xs font-mono whitespace-nowrap text-right ${rColor(t().r_multiple)}`}>
+        {rMultiple()}
       </td>
       <td class="px-3 py-2.5 text-xs font-mono text-text-secondary whitespace-nowrap text-right">
         {formatDuration(t().duration_secs)}
       </td>
       <td class="px-3 py-2.5 whitespace-nowrap">
         <div class="flex items-center gap-1.5">
-          <Show when={reconciling()}>
-            <span class="text-[10px] font-mono text-text-tertiary" title="Fetching canonical fill from exchange">
-              syncing…
-            </span>
-          </Show>
           <Show when={t().kelly_inputs != null}>
             <button
               class="inline-flex items-center gap-0.5 px-1 py-0 text-[10px] font-mono border border-signal-green/40 text-signal-green/80 hover:border-signal-green hover:text-signal-green transition-colors"

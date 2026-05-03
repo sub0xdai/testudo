@@ -104,8 +104,6 @@ export const TradeGroupResponseSchema = z.object({
   status: z.string(),
   break_even_enabled: z.boolean().optional().default(false),
   break_even_triggered: z.boolean().optional().default(false),
-  needs_reconciliation: z.boolean().optional(),
-  close_reason: z.enum(['sl', 'tp', 'manual']).optional().nullable(),
 });
 
 export const TradeListResponseSchema = z.object({

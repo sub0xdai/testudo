@@ -283,9 +283,6 @@ export interface JournalTrade {
   kelly_inputs: KellyInputs | null
   created_at: string
   updated_at: string
-  needs_reconciliation?: boolean
-  close_reason?: 'sl' | 'tp' | 'manual' | null
-  status?: 'reconciling' | 'final'
 }
 
 export interface JournalTag {
@@ -531,6 +528,15 @@ export async function saveDraftNotes(tradeGroupId: string, notes: string | null)
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ notes }),
   })
+}
+
+export async function triggerJournalSync(): Promise<void> {
+  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (res.status === 409) throw Object.assign(new Error('Sync already running'), { code: 409 })
+  if (!res.ok) throw new Error(`Sync error: ${res.status}`)
 }
 
 // ─── Exchange Management API ───

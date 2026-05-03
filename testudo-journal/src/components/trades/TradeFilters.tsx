@@ -1,3 +1,5 @@
+import { Show } from 'solid-js'
+
 export interface TradeFilterState {
   side?: string
   tag?: string
@@ -6,6 +8,9 @@ export interface TradeFilterState {
 export function TradeFilters(props: {
   filters: TradeFilterState
   onChange: (f: TradeFilterState) => void
+  onSync?: () => Promise<void>
+  syncing?: boolean
+  syncMessage?: string
 }) {
   function toggleSide(side: string) {
     props.onChange({
@@ -62,6 +67,22 @@ export function TradeFilters(props: {
           CLEAR
         </button>
       )}
+
+      {/* Sync now */}
+      <Show when={props.onSync}>
+        <div class="ml-auto flex items-center gap-2">
+          <Show when={props.syncMessage}>
+            <span class="text-[10px] font-mono text-text-tertiary">{props.syncMessage}</span>
+          </Show>
+          <button
+            class="px-2 py-1 text-[10px] font-mono border border-container-border text-text-secondary hover:border-text-secondary hover:text-text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={props.syncing}
+            onClick={() => props.onSync?.()}
+          >
+            {props.syncing ? 'SYNCING…' : 'SYNC NOW'}
+          </button>
+        </div>
+      </Show>
     </div>
   )
 }
