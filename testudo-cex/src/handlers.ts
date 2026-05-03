@@ -508,6 +508,179 @@ export function createHandlers(gateway: ExchangeGateway) {
     }
   }
 
+  // ── POST /trades/since — fetch all fills since watermark (JNL-SYNC-01 FR-1) ──
+  // Supports: bybit (cursor pagination, 7-day windows), woo (page pagination), binance (per-symbol).
+  // Returns normalized RawFill array; all numerics as strings.
+  async function handleTradesSince(req: Request, res: Response) {
+    try {
+      const envelope = parseEnvelope(req.body);
+      const { symbol, since_ms, until_ms } = envelope.params;
+      const sinceMs = Number(since_ms ?? 0);
+      const untilMs = until_ms !== undefined ? Number(until_ms) : Date.now();
+
+      const exchange = await gateway.getOrCreate(
+        envelope.exchangeId,
+        envelope.credentials,
+        envelope.sandbox,
+        () => {}
+      );
+
+      const allFills: any[] = [];
+      const MAX_PAGES = 50;
+
+      switch (envelope.exchangeId) {
+        case 'bybit': {
+          // Bybit: max 7-day query windows, cursor-based pagination per window.
+          const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+          let windowStart = sinceMs;
+
+          while (windowStart < untilMs) {
+            const windowEnd = Math.min(windowStart + MAX_WINDOW_MS, untilMs);
+            let cursor: string | undefined;
+            let pages = 0;
+
+            while (pages < MAX_PAGES) {
+              const params: Record<string, string> = {
+                category: 'linear',
+                startTime: String(windowStart),
+                endTime: String(windowEnd),
+                limit: '100',
+              };
+              if (cursor) params.cursor = cursor;
+
+              const { data } = await (exchange as any).xhr.get('/v5/execution/list', { params });
+              const list: any[] = data?.result?.list ?? [];
+              const nextCursor: string | undefined = data?.result?.nextPageCursor;
+
+              for (const exec of list) {
+                const backendSymbol = toBackendSymbol(exec.symbol, exchange.store.markets);
+                if (symbol && backendSymbol !== symbol) continue;
+                allFills.push({
+                  exec_id: String(exec.execId ?? exec.exec_id ?? ''),
+                  symbol: backendSymbol,
+                  side: String(exec.side ?? '').toLowerCase(),
+                  price: stringify(exec.execPrice) ?? '0',
+                  qty: stringify(exec.execQty) ?? '0',
+                  fee: stringify(exec.execFee ?? '0') ?? '0',
+                  fee_asset: exec.feeCurrency ?? 'USDT',
+                  exec_time_ms: Number(exec.execTime ?? 0),
+                  order_id: exec.orderId ? String(exec.orderId) : null,
+                  raw_json: exec,
+                });
+              }
+
+              // Break when: no next cursor, stuck cursor (same as current), or partial page.
+              if (!nextCursor || nextCursor === cursor || list.length < 100) break;
+              cursor = nextCursor;
+              pages++;
+            }
+
+            windowStart = windowEnd;
+          }
+          break;
+        }
+
+        case 'woo': {
+          // WOO: page-based pagination via /v1/client/hist_trades.
+          let page = 1;
+
+          while (page <= MAX_PAGES) {
+            const params: Record<string, string> = {
+              start_t: String(sinceMs),
+              end_t: String(untilMs),
+              size: '500',
+              page: String(page),
+            };
+
+            const { data } = await (exchange as any).xhr.get('/v1/client/hist_trades', { params });
+            const rows: any[] = data?.data?.rows ?? (Array.isArray(data?.data) ? data.data : []);
+
+            for (const trade of rows) {
+              if (!trade.symbol?.startsWith('PERP_')) continue;
+              const rawSymbol = String(trade.symbol).replace('PERP_', '');
+              if (symbol && rawSymbol !== symbol) continue;
+              const tsMs = Math.round(parseFloat(String(trade.executed_timestamp ?? '0')) * 1000);
+              allFills.push({
+                exec_id: String(trade.id),
+                symbol: rawSymbol,
+                side: String(trade.side ?? '').toLowerCase(),
+                price: stringify(trade.executed_price) ?? '0',
+                qty: stringify(trade.executed_quantity) ?? '0',
+                fee: stringify(trade.fee ?? '0') ?? '0',
+                fee_asset: 'USDT',
+                exec_time_ms: tsMs,
+                order_id: trade.order_id ? String(trade.order_id) : null,
+                raw_json: trade,
+              });
+            }
+
+            if (rows.length < 500) break;
+            page++;
+          }
+          break;
+        }
+
+        case 'binance': {
+          // Binance: /fapi/v1/userTrades requires a symbol.
+          // If none given, iterate all markets from the exchange store.
+          const symbols: string[] = symbol
+            ? [toExchangeSymbol(symbol)]
+            : (exchange.store.markets as any[]).map((m: any) => m.symbol).filter(Boolean);
+
+          for (const sym of symbols) {
+            let fromId: number | undefined;
+            let pages = 0;
+
+            while (pages < MAX_PAGES) {
+              const params: Record<string, string> = {
+                symbol: sym,
+                startTime: String(sinceMs),
+                endTime: String(untilMs),
+                limit: '1000',
+              };
+              if (fromId !== undefined) params.fromId = String(fromId);
+
+              const { data } = await (exchange as any).xhr.get('/fapi/v1/userTrades', { params });
+              const trades: any[] = Array.isArray(data) ? data : [];
+
+              for (const trade of trades) {
+                const backendSymbol = toBackendSymbol(trade.symbol ?? sym, exchange.store.markets);
+                allFills.push({
+                  exec_id: String(trade.id),
+                  symbol: backendSymbol,
+                  side: trade.buyer ? 'buy' : 'sell',
+                  price: stringify(trade.price) ?? '0',
+                  qty: stringify(trade.qty) ?? '0',
+                  fee: stringify(trade.commission ?? '0') ?? '0',
+                  fee_asset: trade.commissionAsset ?? 'USDT',
+                  exec_time_ms: Number(trade.time ?? 0),
+                  order_id: trade.orderId ? String(trade.orderId) : null,
+                  raw_json: trade,
+                });
+              }
+
+              if (trades.length < 1000) break;
+              fromId = Number(trades[trades.length - 1].id) + 1;
+              pages++;
+            }
+          }
+          break;
+        }
+
+        default:
+          return res.status(501).json({
+            error: `trades/since not implemented for ${envelope.exchangeId}`,
+            code: 'NotImplemented',
+          });
+      }
+
+      return res.json(allFills);
+    } catch (err) {
+      const mapped = mapError(err);
+      return res.status(mapped.status).json(mapped.body);
+    }
+  }
+
   // ── POST /orders/open — reads from Store (FR-7) ──
 
   async function handleOpenOrders(req: Request, res: Response) {
@@ -549,6 +722,7 @@ export function createHandlers(gateway: ExchangeGateway) {
     handleOrder,
     handleFetchOrder,
     handleTradesByGroup,
+    handleTradesSince,
     handleEditOrder,
     handleCancelOrder,
     handleCancelAllOrders,

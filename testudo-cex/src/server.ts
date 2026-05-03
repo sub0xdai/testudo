@@ -32,6 +32,7 @@ app.post("/order/edit", handlers.handleEditOrder);
 app.post("/order/cancel", handlers.handleCancelOrder);
 app.post("/order/fetch", handlers.handleFetchOrder);
 app.post("/trades/by-group", handlers.handleTradesByGroup);
+app.post("/trades/since", handlers.handleTradesSince);
 app.post("/orders/cancel-all", handlers.handleCancelAllOrders);
 app.post("/orders/open", handlers.handleOpenOrders);
 app.post("/position", handlers.handlePosition);
