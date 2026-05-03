@@ -9,11 +9,12 @@ import { useAuth } from '../../context/AuthContext'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-/** Format compact P&L: <1000 → $XXX, >=1000 → $X.XK */
+/** Format compact P&L: <$1 → $X.XX, <$1000 → $XXX, >=$1000 → $X.XK */
 function compactPnl(value: number): string {
   const abs = Math.abs(value)
   const sign = value > 0 ? '+' : value < 0 ? '-' : ''
   if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}K`
+  if (abs > 0 && abs < 1) return `${sign}$${abs.toFixed(2)}`
   return `${sign}$${abs.toFixed(0)}`
 }
 
