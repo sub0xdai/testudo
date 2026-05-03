@@ -56,6 +56,20 @@ than tested because `reconstruct_trades` is pure and cannot observe prior calls.
 
 **HL SDK pagination:** `info.user_fills_by_time(address, since_ms, None, None)` returns all fills in one call — the SDK has no documented page-size cap in the current version. Consistent with how `ws_fills.rs:444` uses it in production. No pagination loop needed at this time.
 
-**`hl_fill_journal.rs` already absent:** the file was never created in this codebase (plan referenced it as an existing WS-driven HL journal path to delete in CP-6, but it does not exist). CP-6 does not need to delete it; only the WS-driven CCXT path exists to remove.
+**`hl_fill_journal.rs` still exists and must NOT be deleted:** the file exists and is used by `import_worker.rs` (HIST-02 batch HL import). CP-6 removed its usage from `ws_fills.rs` (the WS-driven live path) but kept the file. `build_trade_close_event` and `timestamp_to_datetime` remain for the importer.
 
 **Spawn gated on both `syncer_enabled && hl_enabled`:** HL syncer requires both flags to avoid spawning a live-data poller when HL integration is disabled. Mirrors the CCXT pattern (`syncer_enabled && ccxt_enabled`).
+
+## 2026-05-03 — CP-6
+
+**`reconciliation.rs` also emitted TradeClosed (FIX-08 FR-10 path):** plan said to delete `fill_reconciler.rs` + `emit_trade_closed` in `fill_detector.rs`, but `reconciliation.rs` had its own `emit_trade_closed_on_terminal: Option<(OrderGroup, Decimal, String)>` field on `ReconcileAction` and a corresponding block that sent TradeClosed events for missed WS fills. This was also deleted in CP-6; if missed in future similar specs, grep for `TradeClosed` and `build_trade_closed_payload` across all services.
+
+**`WsSubscriptionManager.with_journal` renamed to `with_hl_notify_pool`:** the journal reference from `with_journal(journal, pool)` was forwarded to `HyperliquidFillSubscriber.with_journal(journal, user_id, pool)`. After CP-6, the subscriber only needs `user_id` + `pool` for group reconciliation. `WsSubscriptionManager` was updated to `with_hl_notify_pool(pool)` and `HyperliquidFillSubscriber` to `with_user(user_id, pool)`. The call site in `main.rs` changed from `with_journal(journal_service.clone(), pg_pool.clone())` to `with_hl_notify_pool(pg_pool.clone())`.
+
+**Balance snapshot extraction wired to JournalSyncer:** `JournalSyncer` gained a `pool: PgPool` field and `cex_client: Option<Arc<CexClient>>` field. `spawn_balance_snapshot` free function added to `balance_snapshot.rs`. In `tick()`, fires after `new_count > 0`. HL syncers use `cex_client = None` (no CCXT for HL balance). Balance snapshot delay is ≤30s (syncer cadence) rather than immediate — acceptable for fire-and-forget.
+
+**Pre-existing test failure confirmed:** `routes::auth::tests::test_me_returns_user_info` still failing after CP-6 (same root cause as CP-4: handler returns `body["user"]["id"]` but test asserts `body["user_id"]`). Not introduced by this spec.
+
+**`hyperliquid.rs` was untracked after CP-5 commit:** `pub mod hyperliquid;` was declared in `mod.rs` and the file existed on disk (so compilation succeeded) but the file was never staged. A fresh clone would have failed to compile. Bundled into CP-6 commit. When staging journal_syncer modules, always `git status --short | grep journal_syncer` to catch any untracked additions.
+
+**Stale comment cleanup required for acceptance criteria:** 7 files had comment references to `FillReconciler`, `emit_trade_closed`, or `needs_reconciliation=TRUE` even after functional deletion. The acceptance criterion `grep -r "FillReconciler|emit_trade_closed|fill_reconciler|reconcile_pending_fills"` would have failed on these. Cleaned in the same CP-6 commit: `fill_detector.rs`, `cex_client.rs`, `journal_service.rs`, `journal_syncer/mod.rs`, `routes/internal.rs`, `routes/journal.rs`, `models/journal.rs`.
