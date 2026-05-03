@@ -17,6 +17,10 @@ export function loadWallet(): Promise<AppKit> {
       adapters: [new EthersAdapter(), new SolanaAdapter()],
       networks: [networks.mainnet, networks.arbitrum, networks.base, networks.polygon, networks.solana],
       projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '',
+      features: {
+        socials: false,
+        email: false,
+      },
       metadata: {
         name: 'Testudo',
         description: 'Automated risk management for crypto trading',
