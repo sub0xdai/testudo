@@ -4,6 +4,7 @@
 [submodule "testudo-exchange"]
 	path = testudo-exchange
 	url = https://github.com/sub0xdai/testudo-exchange.git
+	ignore = untracked
 [submodule "testudo-web"]
 	path = testudo-web
 	url = https://github.com/sub0xdai/testudo-web.git

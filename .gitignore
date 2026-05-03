@@ -82,3 +82,21 @@ scripts/.pids/
 # bv (beads viewer) local config and caches
 .bv/
 .specify/AGENTS.md.bloated
+
+# Extension dev builds (unpacked Chrome dirs + packaged uploads)
+tmp_chrome/
+tmp_chrome_*/
+tmp_sniper_chrome/
+testudo-extension/*.zip
+
+# Typst / log scratch
+debug.pdf
+debug.typ
+catppuccin.typ
+git_log_*.txt
+most.md
+testudo-journal/stats.html
+
+# claude-mem auto-generated CLAUDE.md files (untracked; regenerate per session)
+**/CLAUDE.md
+CLAUDE.md
