@@ -73,3 +73,27 @@ than tested because `reconstruct_trades` is pure and cannot observe prior calls.
 **`hyperliquid.rs` was untracked after CP-5 commit:** `pub mod hyperliquid;` was declared in `mod.rs` and the file existed on disk (so compilation succeeded) but the file was never staged. A fresh clone would have failed to compile. Bundled into CP-6 commit. When staging journal_syncer modules, always `git status --short | grep journal_syncer` to catch any untracked additions.
 
 **Stale comment cleanup required for acceptance criteria:** 7 files had comment references to `FillReconciler`, `emit_trade_closed`, or `needs_reconciliation=TRUE` even after functional deletion. The acceptance criterion `grep -r "FillReconciler|emit_trade_closed|fill_reconciler|reconcile_pending_fills"` would have failed on these. Cleaned in the same CP-6 commit: `fill_detector.rs`, `cex_client.rs`, `journal_service.rs`, `journal_syncer/mod.rs`, `routes/internal.rs`, `routes/journal.rs`, `models/journal.rs`.
+
+## 2026-05-03 — CP-8
+
+**`needs_reconciliation` acceptance grep caveat:** The T43 acceptance grep covers `needs_reconciliation|FillReconciler|emit_trade_closed|reconcile_pending_fills`. `FillReconciler`, `emit_trade_closed`, and `reconcile_pending_fills` return zero hits. `needs_reconciliation` still appears as a struct field in `models/journal.rs:54`, `journal_service.rs`, and `routes/journal.rs` — this is intentional backwards-compat (spec FR-10: "kept for backwards-compat, scheduled for drop in a follow-up migration"). The functional behavior (filter clauses, reconciler service, live write path) is fully gone. The acceptance criterion should be read as "no legacy pipeline behavior" not "no column name in source".
+
+**Pre-existing test failures (not introduced by JNL-SYNC-01):**
+- `testudo-cex`: `POST /balance` (expected total "10000", got "10150") and `POST /position` (unexpected `leverage` field) — both introduced by commit `7a32dee` (`fix(risk): propagate position leverage`) which predates CP-2.
+- `testudo-extension bun run typecheck`: Multiple errors in `modal.tsx` (`Cannot find name 'chrome'`), `AuthSection.tsx`, `utils.ts`, `types.test.ts` — pre-existing before JNL-SYNC-01 started. None of the failing files were modified by this spec.
+- `testudo-exchange cargo test`: `routes::auth::tests::test_me_returns_user_info` — pre-existing (documented in CP-4 and CP-6 LEARNINGS).
+
+**Verification commands as accepted by spec acceptance criteria #8:**
+- `cargo clippy --all-targets` — clean (one pre-existing unused variable warning)
+- `cargo test` — 741 passed, 1 pre-existing failure
+- `bun run build` (testudo-cex) — clean exit 0
+- `bun run build` (testudo-journal) — clean exit 0
+- `bun run typecheck` (testudo-extension) — pre-existing type errors, not introduced by this spec
+
+**Fee-asset normalization gap carries to JNL-SYNC-02:** as documented in CP-1. `ON CONFLICT DO NOTHING` means a syncer re-run will NOT update existing `pull_sync` rows after JNL-SYNC-02 ships. JNL-SYNC-02 must include an explicit `UPDATE journal_trades SET fees = …, realized_pnl = … WHERE source = 'pull_sync'` migration, not just a new sync run.
+
+**Performance: `upsert_many` is N single-row inserts.** At 1000-fill backfill that's 1000 round trips. Acceptable for now (single-digit users). If the A2 acceptance test (backfill on connect) feels slow in production, batch via `INSERT … VALUES (…), (…), …` — this is the primary optimization target for JNL-SYNC-01 follow-up.
+
+**Rate-limit headroom not measured:** CP-4/CP-5 integration tests run against mock sources. Per-exchange rate-limit behaviour at 30s × N accounts is deferred to first production deploy observation. `JOURNAL_SYNC_INTERVAL_BYBIT_SECS` env override exists as escape valve.
+
+**Side-flip branch did not fire in test suite:** no live exchange data was used, so we cannot confirm the side-flip case in production. If `tracing::warn!` fires for side-flip during live testing, check whether CCXT surfaces `reduce_only` on the exchange in question — if so, the branch should never fire for that exchange.
