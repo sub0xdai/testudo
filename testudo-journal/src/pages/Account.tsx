@@ -185,11 +185,11 @@ export default function Account() {
             </div>
           </div>
 
-          <div class="max-w-7xl mx-auto w-full px-8 pb-10 space-y-12">
+          <div class="max-w-7xl mx-auto w-full px-8 pb-10">
             <CoachBanner />
-            <div class="pt-12 border-t border-container-border/30">
+            {/* <div class="pt-12 border-t border-container-border/30">
               <IdentitySettings />
-            </div>
+            </div> */}
           </div>
         </Show>
       </Show>
