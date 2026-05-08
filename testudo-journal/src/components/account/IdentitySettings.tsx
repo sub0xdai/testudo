@@ -165,230 +165,101 @@ export function IdentitySettings() {
     prefs.can_change_handle_at === null || new Date(prefs.can_change_handle_at) <= new Date()
 
   return (
-    <section class="border border-container-border bg-container-bg">
-      <div class="px-6 py-4 border-b border-container-border/50">
-        <div class="font-mono text-[10px] tracking-widest text-text-tertiary">
-          // IDENTITY
-        </div>
-        <h2 class="font-mono text-sm font-bold text-text-primary tracking-wider mt-1">
-          PUBLIC PROFILE
+    <section class="opacity-80 hover:opacity-100 transition-opacity">
+      <div class="mb-8 flex items-center gap-4">
+        <h2 class="font-mono text-[10px] font-bold text-text-tertiary tracking-[0.2em] uppercase whitespace-nowrap">
+          // IDENTITY_PROFILE
         </h2>
+        <div class="h-[1px] w-full bg-container-border/30" />
       </div>
 
       <Show when={!identity.loading} fallback={
-        <div class="flex items-center justify-center py-10">
-          <div class="w-4 h-4 border-2 border-text-secondary border-t-text-primary rounded-full animate-spin" />
+        <div class="py-4">
+          <div class="w-3 h-3 border border-text-tertiary border-t-text-primary rounded-full animate-spin" />
         </div>
       }>
         <Show when={identity()}>
           {(prefs) => (
-            <div class="px-6 py-6 space-y-8">
-
-              {/* ── No handle: claim form ── */}
-              <Show when={!prefs().handle}>
-                <div>
-                  <p class="font-mono text-xs text-text-secondary mb-4 leading-relaxed">
-                    Claim a globally-unique handle to create a shareable public profile at{' '}
-                    <span class="text-text-primary">/desk/d/&lt;handle&gt;</span>.{' '}
-                    Default is fully private — your handle reservation reveals nothing until you opt in.
-                  </p>
-
-                  <form onSubmit={handleClaim} class="space-y-4">
-                    <div>
-                      <label for="handle-input" class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
-                        HANDLE
-                      </label>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+              
+              {/* ── Identity Context ── */}
+              <div class="lg:col-span-7 space-y-8">
+                <Show when={!prefs().handle}>
+                  <div class="max-w-md">
+                    <p class="font-mono text-[10px] text-text-tertiary mb-4 leading-relaxed uppercase tracking-wider">
+                      RESERVE A UNIQUE HANDLE TO ENABLE PUBLIC PERFORMANCE TRACKING.
+                    </p>
+                    <form onSubmit={handleClaim} class="flex gap-2">
                       <input
                         id="handle-input"
                         type="text"
                         value={claimInput()}
                         onInput={(e) => { setClaimInput(e.currentTarget.value); setClaimError('') }}
-                        placeholder="e.g. 0xwhale"
+                        placeholder="HANDLE"
                         maxlength={24}
-                        autocomplete="off"
-                        spellcheck={false}
-                        class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary focus:border-text-secondary focus:outline-none placeholder:text-text-tertiary"
+                        class="flex-1 px-3 py-1.5 bg-transparent border border-container-border/50 font-mono text-[10px] text-text-primary focus:border-text-secondary focus:outline-none placeholder:text-text-tertiary/50"
                       />
-                      <Show when={handleInputHint()}>
-                        <p class="font-mono text-[10px] text-signal-amber mt-1">{handleInputHint()}</p>
-                      </Show>
+                      <button
+                        type="submit"
+                        disabled={claiming() || !claimInput().trim()}
+                        class="px-4 py-1.5 border border-text-tertiary/50 font-mono text-[10px] text-text-tertiary hover:text-text-primary hover:border-text-primary transition-colors"
+                      >
+                        CLAIM
+                      </button>
+                    </form>
+                  </div>
+                </Show>
+
+                <Show when={prefs().handle}>
+                  <div class="flex flex-col md:flex-row md:items-start gap-8 md:gap-16">
+                    <div class="shrink-0">
+                      <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2 uppercase">HANDLE</div>
+                      <div class="flex items-center gap-3">
+                        <span class="font-mono text-sm font-bold text-text-secondary">@{prefs().handle}</span>
+                        <Show when={canChangeHandle(prefs())}>
+                          <button onClick={handleRelease} class="font-mono text-[10px] text-text-tertiary/50 hover:text-signal-red transition-colors">
+                            [×]
+                          </button>
+                        </Show>
+                      </div>
                     </div>
 
-                    <div>
-                      <label for="claim-bio" class="block font-mono text-[10px] tracking-widest text-text-tertiary mb-2">
-                        BIO <span class="text-text-tertiary/60">(optional · max 140)</span>
-                      </label>
-                      <textarea
-                        id="claim-bio"
-                        value={claimBio()}
-                        onInput={(e) => setClaimBio(e.currentTarget.value)}
-                        placeholder="One line about your edge"
-                        maxlength={140}
-                        rows={2}
-                        class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary focus:border-text-secondary focus:outline-none placeholder:text-text-tertiary resize-none"
-                      />
-                      <p class="font-mono text-[10px] text-text-tertiary text-right mt-1">
-                        {claimBio().length}/140
+                    <div class="flex-1">
+                      <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2 uppercase">BIO</div>
+                      <p class="font-mono text-xs text-text-tertiary leading-relaxed max-w-xl">
+                        {prefs().bio ?? <span class="italic opacity-30">No biometric data recorded.</span>}
                       </p>
                     </div>
-
-                    <Show when={claimError()}>
-                      <p class="font-mono text-xs text-signal-red">{claimError()}</p>
-                    </Show>
-
-                    <button
-                      type="submit"
-                      disabled={claiming() || !claimInput().trim()}
-                      class="px-6 py-2 border border-text-primary font-mono text-xs font-bold tracking-wider text-text-primary hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {claiming() ? 'CLAIMING…' : 'CLAIM HANDLE'}
-                    </button>
-                  </form>
-                </div>
-              </Show>
-
-              {/* ── Has handle: management panel ── */}
-              <Show when={prefs().handle}>
-                {/* Handle row */}
-                <div class="flex items-center justify-between gap-4">
-                  <div>
-                    <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-1">HANDLE</div>
-                    <div class="font-mono text-lg font-bold text-text-primary">{prefs().handle}</div>
-                    <div class="font-mono text-[10px] text-text-tertiary mt-0.5">
-                      /desk/d/{prefs().handle}
-                    </div>
                   </div>
+                </Show>
+              </div>
 
-                  <div class="flex flex-col items-end gap-1">
-                    <Show when={releaseError()}>
-                      <p class="font-mono text-[10px] text-signal-red">{releaseError()}</p>
-                    </Show>
-                    <Show
-                      when={canChangeHandle(prefs())}
-                      fallback={
-                        <span class="font-mono text-[10px] text-text-tertiary text-right max-w-48">
-                          can change after {formatRetryAt(prefs().can_change_handle_at!)}
-                        </span>
-                      }
-                    >
-                      <Show
-                        when={confirmRelease()}
-                        fallback={
-                          <button
-                            onClick={() => setConfirmRelease(true)}
-                            class="font-mono text-[10px] tracking-wider text-text-tertiary hover:text-signal-red transition-colors"
-                          >
-                            RELEASE
-                          </button>
-                        }
-                      >
-                        <div class="flex items-center gap-3">
-                          <span class="font-mono text-[10px] text-signal-red">confirm release?</span>
-                          <button
-                            onClick={handleRelease}
-                            disabled={releasing()}
-                            class="font-mono text-[10px] tracking-wider text-signal-red hover:underline disabled:opacity-50"
-                          >
-                            YES
-                          </button>
-                          <button
-                            onClick={() => setConfirmRelease(false)}
-                            class="font-mono text-[10px] tracking-wider text-text-tertiary hover:text-text-primary"
-                          >
-                            NO
-                          </button>
-                        </div>
-                      </Show>
-                    </Show>
-                  </div>
+              {/* ── Controls ── */}
+              <div class="lg:col-span-5">
+                <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4 uppercase">VISIBILITY_PROTOCOL</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+                  <ToggleRow
+                    label="DIGNITAS_SCORE"
+                    enabled={prefs().show_score}
+                    onToggle={() => toggleVisibility('show_score')}
+                  />
+                  <ToggleRow
+                    label="90D_SPARKLINE"
+                    enabled={prefs().show_sparkline}
+                    onToggle={() => toggleVisibility('show_sparkline')}
+                  />
+                  <ToggleRow
+                    label="DISCIPLINE_STREAK"
+                    enabled={prefs().show_streak}
+                    onToggle={() => toggleVisibility('show_streak')}
+                  />
+                  <ToggleRow
+                    label="INDEXING"
+                    enabled={prefs().allow_indexing}
+                    onToggle={toggleIndexing}
+                  />
                 </div>
-
-                {/* Bio */}
-                <div>
-                  <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-2">BIO</div>
-                  <Show
-                    when={bioEdit() !== null}
-                    fallback={
-                      <div class="flex items-start justify-between gap-4">
-                        <p class="font-mono text-sm text-text-secondary">
-                          {prefs().bio ?? <span class="text-text-tertiary italic">no bio</span>}
-                        </p>
-                        <button
-                          onClick={startBioEdit}
-                          class="font-mono text-[10px] tracking-wider text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-                        >
-                          EDIT
-                        </button>
-                      </div>
-                    }
-                  >
-                    <div class="space-y-2">
-                      <textarea
-                        value={bioEdit() ?? ''}
-                        onInput={(e) => setBioEdit(e.currentTarget.value)}
-                        maxlength={140}
-                        rows={2}
-                        class="w-full px-4 py-3 bg-main-bg/50 border border-container-border font-mono text-sm text-text-primary focus:border-text-secondary focus:outline-none resize-none"
-                      />
-                      <div class="flex items-center justify-between gap-4">
-                        <p class="font-mono text-[10px] text-text-tertiary">{(bioEdit() ?? '').length}/140</p>
-                        <div class="flex items-center gap-3">
-                          <Show when={bioError()}>
-                            <span class="font-mono text-[10px] text-signal-red">{bioError()}</span>
-                          </Show>
-                          <button
-                            onClick={() => setBioEdit(null)}
-                            class="font-mono text-[10px] tracking-wider text-text-tertiary hover:text-text-primary"
-                          >
-                            CANCEL
-                          </button>
-                          <button
-                            onClick={saveBio}
-                            disabled={bioSaving()}
-                            class="font-mono text-[10px] tracking-wider text-text-primary hover:underline disabled:opacity-50"
-                          >
-                            {bioSaving() ? 'SAVING…' : 'SAVE'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </Show>
-                </div>
-
-                {/* Visibility toggles */}
-                <div>
-                  <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">VISIBILITY</div>
-                  <div class="space-y-3">
-                    <ToggleRow
-                      label="Show Dignitas score"
-                      hint="Displays your current score on the public profile"
-                      enabled={prefs().show_score}
-                      onToggle={() => toggleVisibility('show_score')}
-                    />
-                    <ToggleRow
-                      label="Show 90-day sparkline"
-                      hint="Shows score history chart on the public profile"
-                      enabled={prefs().show_sparkline}
-                      onToggle={() => toggleVisibility('show_sparkline')}
-                    />
-                    <ToggleRow
-                      label="Show discipline streak"
-                      hint="Displays days-clean and longest-ever counters on the public profile"
-                      enabled={prefs().show_streak}
-                      onToggle={() => toggleVisibility('show_streak')}
-                    />
-                    <ToggleRow
-                      label="Allow search engine indexing"
-                      hint="Opts profile in to JS-crawler indexing (noindex default)"
-                      enabled={prefs().allow_indexing}
-                      onToggle={toggleIndexing}
-                    />
-                  </div>
-                  <Show when={visError()}>
-                    <p class="font-mono text-[10px] text-signal-red mt-2">{visError()}</p>
-                  </Show>
-                </div>
-              </Show>
+              </div>
 
             </div>
           )}
@@ -398,32 +269,20 @@ export function IdentitySettings() {
   )
 }
 
-interface ToggleRowProps {
-  label: string
-  hint: string
-  enabled: boolean
-  onToggle: () => void
-}
-
-function ToggleRow(props: ToggleRowProps) {
+function ToggleRow(props: { label: string, enabled: boolean, onToggle: () => void }) {
   return (
-    <div class="flex items-center justify-between gap-4">
-      <div>
-        <div class="font-mono text-xs text-text-primary">{props.label}</div>
-        <div class="font-mono text-[10px] text-text-tertiary mt-0.5">{props.hint}</div>
-      </div>
+    <div class="flex items-center justify-between py-1 border-b border-container-border/10">
+      <span class="font-mono text-[10px] text-text-tertiary uppercase">{props.label}</span>
       <button
         onClick={props.onToggle}
-        role="switch"
-        aria-checked={props.enabled}
-        class="font-mono text-[10px] tracking-wider px-3 py-1.5 border transition-colors shrink-0"
-        classList={{
-          'border-text-primary text-text-primary': props.enabled,
-          'border-container-border text-text-tertiary hover:text-text-primary': !props.enabled,
-        }}
+        class={`font-mono text-[10px] hover:text-text-primary transition-colors ${
+          props.enabled ? 'text-signal-green' : 'text-text-tertiary/40'
+        }`}
       >
-        {props.enabled ? 'ON' : 'OFF'}
+        {props.enabled ? '[ON]' : '[OFF]'}
       </button>
     </div>
   )
 }
+
+
