@@ -139,19 +139,18 @@ This expression cannot match the index. Every `setup_breakdown` call force-scans
 
 > **Specs created:** [DBA-01-engine-tuning](.specify/specs/DBA-01-engine-tuning/spec.md) · [DBA-02-index-remediation](.specify/specs/DBA-02-index-remediation/spec.md) · [PERF-03-sql-side-minmax](.specify/specs/PERF-03-sql-side-minmax/spec.md)
 
-### Action 1: Engine Tuning → Spec: DBA-01
+### Action 1: Engine Tuning → Spec: DBA-01 ✅ (completed 2026-05-10)
 
-```sql
--- Zero-risk, instant effect. Apply via ConfigMap env or ALTER SYSTEM.
--- Assumes 2 Gi container with SSD-backed PVC.
-ALTER SYSTEM SET shared_buffers = '512MB';        -- 25% of 2 Gi
-ALTER SYSTEM SET work_mem = '32MB';               -- prevents disk spills up to ~5K-row sorts
-ALTER SYSTEM SET random_page_cost = 1.1;           -- SSD
-ALTER SYSTEM SET effective_cache_size = '1GB';     -- let planner see OS page cache
-SELECT pg_reload_conf();
-```
+Applied to dev Postgres (PG16, port 5000) via `ALTER SYSTEM` + container restart for `shared_buffers`.
 
-> Prefer ConfigMap-driven env vars (`PGOPTIONS`) or a `postgresql.conf` ConfigMap mount over `ALTER SYSTEM` for infrastructure-as-code reproducibility. The values above are safe defaults; tune upward if the container has more RAM.
+| Parameter | Before | After |
+|---|---|---|
+| `shared_buffers` | 128 MB | **512 MB** |
+| `work_mem` | 4 MB | **32 MB** |
+| `random_page_cost` | 4.0 | **1.1** |
+| `effective_cache_size` | 4 GB | **1 GB** |
+
+Documented in `testudo-ops/postgres-db/config-map.yml` as comments for infra-as-code reference.
 
 ### Action 2: Add `managed_positions` Indexes → Spec: DBA-02
 

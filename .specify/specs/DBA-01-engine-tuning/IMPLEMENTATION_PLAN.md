@@ -51,7 +51,7 @@ All six gaps are resolved by two operational checkpoints: one database connectio
 - **Verification**: `SHOW shared_buffers` returns `512MB`; `SHOW work_mem` returns `32MB`; `SHOW random_page_cost` returns `1.1`; `SHOW effective_cache_size` returns `1GB`
 - **Commit message**: `ops: tune PostgreSQL runtime parameters (shared_buffers, work_mem, random_page_cost, effective_cache_size)`
 
-### CP-2: Document in ConfigMap → ✅ (docs-only)
+### CP-2: Document in ConfigMap ✅ (docs-only)
 
 - **Touches**: `testudo-ops/postgres-db/config-map.yml`, `DATABASE_AUDIT.md`
 - **Tasks**:
