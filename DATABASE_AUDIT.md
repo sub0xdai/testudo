@@ -152,7 +152,9 @@ Applied to dev Postgres (PG16, port 5000) via `ALTER SYSTEM` + container restart
 
 Documented in `testudo-ops/postgres-db/config-map.yml` as comments for infra-as-code reference.
 
-### Action 2: Add `managed_positions` Indexes → Spec: DBA-02
+### Action 2: Add `managed_positions` Indexes → Spec: DBA-02 ✅ (completed 2026-05-10)
+
+Applied to dev and prod. Maintenance scripts in `testudo-ops/postgres-db/dba-02_add_indexes.sql`.
 
 ```sql
 CREATE INDEX CONCURRENTLY idx_managed_positions_state
@@ -162,23 +164,23 @@ CREATE INDEX CONCURRENTLY idx_managed_positions_account
     ON managed_positions(exchange_account_id);
 ```
 
-> `CONCURRENTLY` avoids locking writes during index creation. Run these during low-traffic windows. `CREATE INDEX CONCURRENTLY` cannot run inside a transaction.
+### Action 3: Add `cache_entries` Expiry Index → Spec: DBA-02 ✅ (completed 2026-05-10)
 
-### Action 3: Add `cache_entries` Expiry Index → Spec: DBA-02
+Applied to dev and prod.
 
 ```sql
 CREATE INDEX CONCURRENTLY idx_cache_expires
     ON cache_entries(expires_at);
 ```
 
-### Action 4: Drop Redundant Indexes → Spec: DBA-02
+### Action 4: Drop Redundant Indexes → Spec: DBA-02 ✅ (completed 2026-05-10)
+
+Applied to dev and prod. Maintenance scripts in `testudo-ops/postgres-db/dba-02_drop_indexes.sql`. Verified via `EXPLAIN` — no queries reference these indexes by name.
 
 ```sql
 DROP INDEX CONCURRENTLY IF EXISTS idx_exchange_accounts_user_id;
 DROP INDEX CONCURRENTLY IF EXISTS idx_dignitas_history_user_date;
 ```
-
-> Verify with `EXPLAIN` on typical queries before dropping. The redundant indexes are guaranteed safe to drop but confirmation is free.
 
 ### Action 5: Fix `fetch_rolling_extremes` Wire Transfer → Spec: PERF-03
 

@@ -65,7 +65,7 @@ The dev PostgreSQL instance (PG16, port 5000) has 67 indexes across 24 tables. T
   ```
 - **Commit message**: `ops(db): add missing indexes, drop redundant indexes (DBA-02)`
 
-### CP-2: Create Maintenance Scripts in testudo-ops
+### CP-2: Create Maintenance Scripts in testudo-ops ✅
 
 - **Touches**: `testudo-ops/postgres-db/dba-02_add_indexes.sql`, `testudo-ops/postgres-db/dba-02_drop_indexes.sql`, `DATABASE_AUDIT.md`
 - **Tasks**:
