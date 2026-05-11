@@ -50,7 +50,3 @@
   │ OBS-01               │ Obsidian plugin (one-way push)                  │ Any time (orthogonal)                                       │
   └──────────────────────┴─────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────┘
 
-Deferred to tomorrow morning:
-  - ENG-01b AC #13 manual QA (incognito browser: claim handle, toggle visibility, /desk/d/<handle>, 404 on fake, 429 on curl-spam — 10 min with coffee)
-  - ENG-01c (streak counter) — unblocked now, depends on 01a + 01b + RSK-03 (all live)
-  - HIST-04 build (P1, but cosmetic; Dignitas inputs are process-based so over-counted HL doesn't corrupt scores)

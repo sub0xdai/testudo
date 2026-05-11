@@ -182,7 +182,7 @@ DROP INDEX CONCURRENTLY IF EXISTS idx_exchange_accounts_user_id;
 DROP INDEX CONCURRENTLY IF EXISTS idx_dignitas_history_user_date;
 ```
 
-### Action 5: Fix `fetch_rolling_extremes` Wire Transfer → Spec: PERF-03
+### Action 5: Fix `fetch_rolling_extremes` Wire Transfer → Spec: PERF-03 ✅ COMPLETE
 
 In `testudo-exchange/crates/router/src/services/journal_stats.rs`, replace the `fetch_rolling_extremes` method:
 

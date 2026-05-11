@@ -79,6 +79,9 @@ test-results/
 # Runtime
 scripts/.pids/
 
+# AI analysis output (graphify, etc.)
+graphify-out/
+
 # bv (beads viewer) local config and caches
 .bv/
 .specify/AGENTS.md.bloated
