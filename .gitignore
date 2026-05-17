@@ -82,6 +82,9 @@ scripts/.pids/
 # AI analysis output (graphify, etc.)
 graphify-out/
 
+# Archived documentation (local only)
+archive-docs/
+
 # bv (beads viewer) local config and caches
 .bv/
 .specify/AGENTS.md.bloated
