@@ -4,28 +4,28 @@ Overlays a trading panel on TradingView. Draw a position tool → Alt+X → trad
 
 ## Install
 
-1. Clone and build:
-   ```
-   bun install && bun run build
-   ```
-2. Chrome: `chrome://extensions` → Developer mode → Load unpacked → pick `dist/chrome`
-3. Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → pick `dist/firefox/manifest.json`
+```sh
+bun install && bun run build
+```
+
+- Chrome: `chrome://extensions` → Developer mode → Load unpacked → pick `dist/chrome`
+- Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → pick `dist/firefox/manifest.json`
 
 ## Usage
 
-- Draw a **long position** or **short position** tool on TradingView
-- Hit **Alt+X** — the panel opens with your take-profit and stop-loss pre-filled from the chart
-- Your risk config (account %, max size, leverage) is pulled from Testudo
-- Hit submit. The engine validates, sizes, and routes the order to your connected exchange
+1. Draw a long position or short position tool on TradingView
+2. Hit Alt+X — the panel opens with take-profit and stop-loss pre-filled
+3. Your risk config is pulled from Testudo (account %, max size, leverage)
+4. Submit. The engine validates, sizes, and routes the order.
 
 ## Dev
 
-```
+```sh
 bun run build      # Chrome + Firefox
 bun run test       # Vitest
 ```
 
-The extension talks to a Testudo API instance. Set `VITE_API_URL` if your backend isn't at `http://localhost:8080`.
+Set `VITE_API_URL` if your backend isn't at `http://localhost:8080`.
 
 ## License
 

@@ -1,40 +1,37 @@
 # Testudo
 
-A trading overlay that validates, sizes, and manages positions across any exchange.
+A trading overlay that validates, sizes, and manages positions across any exchange — before the order ever leaves your machine.
 
-Draw a position on TradingView → Alt+X → the engine sizes it against your risk config, routes it to your exchange, and manages exits automatically.
+Draw a position on TradingView. Hit Alt+X. The engine sizes the trade against your risk rules, routes it to your exchange, and manages exits automatically.
 
-## What's in here
+## What's in this repo
 
-| Directory | What |
-|-----------|------|
-| [`testudo-exchange/`](testudo-exchange) | Rust backend — engine, router, risk service, shadow order matching |
+| Directory | Description |
+|-----------|-------------|
+| [`testudo-exchange/`](testudo-exchange) | Rust backend — engine, matching, risk, order management |
 | [`testudo-extension/`](testudo-extension) | Browser extension — TradingView overlay, trade submission |
 | `testudo-journal/` | Trading journal and analytics dashboard |
-| `testudo-cex/` | CCXT sidecar for CEX connectivity |
-| `testudo-web/` | Landing page (submodule) |
-| `testudo-ops/` | Kubernetes deployment configs (submodule) |
+| `testudo-cex/` | CCXT sidecar for centralized exchange connectivity |
 
-## Quick start
+## Running it
+
+Backend (needs Rust and PostgreSQL):
 
 ```sh
-# Backend
 cd testudo-exchange
-cp .env.example .env
-cargo run --bin router
-
-# Extension
-cd ../testudo-extension
-bun install && bun run build
-# Load dist/chrome as unpacked extension
+cp .env.example .env     # set DATABASE_URL, JWT secrets, encryption key
+cargo run --bin router   # API on :8080
+cargo run --bin ws-stream  # WebSocket on :4000
 ```
 
-## Deploy
+Extension:
 
 ```sh
-ssh your-server 'bash -s' < scripts/deploy.sh
+cd testudo-extension
+bun install && bun run build
+# Load dist/chrome as an unpacked Chrome extension
 ```
 
 ## License
 
-Backend and extension are AGPL-3.0. See [testudo-exchange/LICENSE](testudo-exchange/LICENSE) and [testudo-extension/LICENSE](testudo-extension/LICENSE).
+Backend and extension are AGPL-3.0.
