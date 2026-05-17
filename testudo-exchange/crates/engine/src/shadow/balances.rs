@@ -57,8 +57,8 @@ impl ShadowBalance {
         self.available -= amount;
         self.reserved += amount;
         // Financial invariant: balances must never go negative
-        debug_assert!(self.available >= Decimal::ZERO, "available balance negative after reserve");
-        debug_assert!(self.reserved >= Decimal::ZERO, "reserved balance negative after reserve");
+        assert!(self.available >= Decimal::ZERO, "available balance negative after reserve");
+        assert!(self.reserved >= Decimal::ZERO, "reserved balance negative after reserve");
         Ok(())
     }
 
@@ -72,8 +72,8 @@ impl ShadowBalance {
         }
         self.reserved -= amount;
         self.available += amount;
-        debug_assert!(self.available >= Decimal::ZERO, "available balance negative after release");
-        debug_assert!(self.reserved >= Decimal::ZERO, "reserved balance negative after release");
+        assert!(self.available >= Decimal::ZERO, "available balance negative after release");
+        assert!(self.reserved >= Decimal::ZERO, "reserved balance negative after release");
         Ok(())
     }
 
@@ -86,14 +86,14 @@ impl ShadowBalance {
             )));
         }
         self.reserved -= amount;
-        debug_assert!(self.reserved >= Decimal::ZERO, "reserved balance negative after deduct");
+        assert!(self.reserved >= Decimal::ZERO, "reserved balance negative after deduct");
         Ok(())
     }
 
     /// Add to available balance
     pub fn add(&mut self, amount: Decimal) {
         self.available += amount;
-        debug_assert!(self.available >= Decimal::ZERO, "available balance negative after add");
+        assert!(self.available >= Decimal::ZERO, "available balance negative after add");
     }
 }
 

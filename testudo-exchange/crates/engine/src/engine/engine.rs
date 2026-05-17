@@ -335,9 +335,9 @@ impl Engine {
                     let total_before = balance.available + balance.locked;
                     balance.available -= total_cost;
                     balance.locked += total_cost;
-                    debug_assert!(balance.available >= Decimal::ZERO, "available negative after lock BUY");
-                    debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after lock BUY");
-                    debug_assert_eq!(
+                    assert!(balance.available >= Decimal::ZERO, "available negative after lock BUY");
+                    assert!(balance.locked >= Decimal::ZERO, "locked negative after lock BUY");
+                    assert_eq!(
                         total_before,
                         balance.available + balance.locked,
                         "Balance conservation violated in lock BUY"
@@ -365,9 +365,9 @@ impl Engine {
                     let total_before = balance.available + balance.locked;
                     balance.available -= order.quantity;
                     balance.locked += order.quantity;
-                    debug_assert!(balance.available >= Decimal::ZERO, "available negative after lock SELL");
-                    debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after lock SELL");
-                    debug_assert_eq!(
+                    assert!(balance.available >= Decimal::ZERO, "available negative after lock SELL");
+                    assert!(balance.locked >= Decimal::ZERO, "locked negative after lock SELL");
+                    assert_eq!(
                         total_before,
                         balance.available + balance.locked,
                         "Balance conservation violated in lock SELL"
@@ -493,8 +493,8 @@ impl Engine {
             AmountType::LOCKED => balance.locked += amount,
         }
 
-        debug_assert!(balance.available >= Decimal::ZERO, "available negative after balance update");
-        debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after balance update");
+        assert!(balance.available >= Decimal::ZERO, "available negative after balance update");
+        assert!(balance.locked >= Decimal::ZERO, "locked negative after balance update");
 
         Ok(())
     }

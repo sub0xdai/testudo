@@ -293,7 +293,7 @@ impl ShadowOrder {
 
     /// Fill this order at the given price
     pub fn fill(&mut self, fill_price: Decimal) {
-        debug_assert!(
+        assert!(
             self.is_open(),
             "Cannot fill order {} — status is {:?}",
             self.id,
@@ -309,7 +309,7 @@ impl ShadowOrder {
 
     /// Cancel this order
     pub fn cancel(&mut self) {
-        debug_assert!(
+        assert!(
             self.is_open(),
             "Cannot cancel order {} — status is {:?}",
             self.id,
