@@ -26,3 +26,7 @@ bun run test       # Vitest
 ```
 
 The extension talks to a Testudo API instance. Set `VITE_API_URL` if your backend isn't at `http://localhost:8080`.
+
+## License
+
+AGPL-3.0. See [LICENSE](LICENSE).

@@ -222,4 +222,4 @@ cargo clippy --all-targets && cargo test
 
 ## License
 
-MIT
+AGPL-3.0. See [LICENSE](LICENSE).
