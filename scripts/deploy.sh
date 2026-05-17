@@ -17,8 +17,8 @@ cd "$TESTUDO_DIR"
 git checkout -- testudo-journal/dist/ testudo-journal/bun.lock 2>/dev/null || true
 git pull --ff-only
 
-# Pull submodules that are proper repos (not empty submodule stubs)
-for sub in testudo-exchange testudo-journal testudo-cex safe-cex-sub0; do
+# Pull submodules that are proper repos (testudo-exchange is now part of main repo)
+for sub in testudo-journal testudo-cex safe-cex-sub0; do
   if [ -d "$TESTUDO_DIR/$sub/.git" ]; then
     echo "  ↳ pulling $sub"
     cd "$TESTUDO_DIR/$sub" && git pull --ff-only
