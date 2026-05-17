@@ -16,10 +16,10 @@ echo "[1/6] Pulling latest code..."
 cd "$TESTUDO_DIR"
 git checkout -- testudo-journal/dist/ testudo-journal/bun.lock 2>/dev/null || true
 
-# One-time: if testudo-exchange is still an old submodule stub, remove it
-# so the new regular-directory version can be cleanly checked out.
-if [ -f "$TESTUDO_DIR/testudo-exchange/.git" ]; then
-  echo "  ↳ removing old testudo-exchange submodule stub"
+# One-time: if testudo-exchange is still an old untracked submodule directory
+# (not a proper git-tracked directory), blast it so the merge succeeds.
+if [ -d "$TESTUDO_DIR/testudo-exchange" ] && ! git ls-files --error-unmatch testudo-exchange/Cargo.toml >/dev/null 2>&1; then
+  echo "  ↳ removing old untracked testudo-exchange directory"
   rm -rf "$TESTUDO_DIR/testudo-exchange"
 fi
 
