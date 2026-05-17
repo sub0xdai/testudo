@@ -17,8 +17,11 @@ use super::handle::{
     ENGINE_CHANNEL_CAPACITY,
 };
 use super::{
-    OrderGroup, OrderGroupStatus, ShadowEngine,
+    OrderGroupStatus, ShadowEngine,
 };
+// OrderGroup is needed by tests via `use super::*`
+#[allow(unused_imports)]
+use super::OrderGroup;
 use super::trade_event::{TradeEvent, TradeEventType};
 /// Sequential command processor for the ShadowEngine.
 ///
@@ -1002,7 +1005,7 @@ mod tests {
 
         // 1. Place order → should emit TradeCreated
         let order = test_order(user_id);
-        let placed = handle.place_order(user_id, order).await.unwrap();
+        let _placed = handle.place_order(user_id, order).await.unwrap();
 
         let event = event_rx.recv().await.unwrap();
         assert_eq!(event.event_type, TradeEventType::TradeCreated);

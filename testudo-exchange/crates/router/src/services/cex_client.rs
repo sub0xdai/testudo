@@ -805,7 +805,7 @@ impl CexClient {
         let msg_text = serde_json::to_string(&sub_msg)
             .map_err(|e| CexClientError::WebSocketError(e.to_string()))?;
         write
-            .send(WsMessage::Text(msg_text.into()))
+            .send(WsMessage::Text(msg_text))
             .await
             .map_err(|e| CexClientError::WebSocketError(e.to_string()))?;
 

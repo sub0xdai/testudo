@@ -185,9 +185,7 @@ mod tests {
 
         let actions = evaluate(&pos, dec!(51500));
         // No MoveStopToEntry action since already triggered
-        assert!(!actions
-            .iter()
-            .any(|a| *a == ManagementAction::MoveStopToEntry));
+        assert!(!actions.contains(&ManagementAction::MoveStopToEntry));
     }
 
     #[test]

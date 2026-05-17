@@ -332,10 +332,16 @@ impl Engine {
 
                 let total_cost = order.price * order.quantity;
                 if balance.available >= total_cost {
+                    let total_before = balance.available + balance.locked;
                     balance.available -= total_cost;
                     balance.locked += total_cost;
                     debug_assert!(balance.available >= Decimal::ZERO, "available negative after lock BUY");
                     debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after lock BUY");
+                    debug_assert_eq!(
+                        total_before,
+                        balance.available + balance.locked,
+                        "Balance conservation violated in lock BUY"
+                    );
                 } else {
                     return Err(CoreEngineError::InsufficientFunds {
                         user_id: user_id.clone(),
@@ -356,10 +362,16 @@ impl Engine {
                     })?;
 
                 if balance.available >= order.quantity {
+                    let total_before = balance.available + balance.locked;
                     balance.available -= order.quantity;
                     balance.locked += order.quantity;
                     debug_assert!(balance.available >= Decimal::ZERO, "available negative after lock SELL");
                     debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after lock SELL");
+                    debug_assert_eq!(
+                        total_before,
+                        balance.available + balance.locked,
+                        "Balance conservation violated in lock SELL"
+                    );
                 } else {
                     return Err(CoreEngineError::InsufficientQuantity {
                         user_id: user_id.clone(),
