@@ -15,6 +15,14 @@ echo ""
 echo "[1/6] Pulling latest code..."
 cd "$TESTUDO_DIR"
 git checkout -- testudo-journal/dist/ testudo-journal/bun.lock 2>/dev/null || true
+
+# One-time: if testudo-exchange is still an old submodule stub, remove it
+# so the new regular-directory version can be cleanly checked out.
+if [ -f "$TESTUDO_DIR/testudo-exchange/.git" ]; then
+  echo "  ↳ removing old testudo-exchange submodule stub"
+  rm -rf "$TESTUDO_DIR/testudo-exchange"
+fi
+
 git pull --ff-only
 
 # Pull submodules that are proper repos (testudo-exchange is now part of main repo)
