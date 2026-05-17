@@ -17,7 +17,7 @@ use super::handle::{
     ENGINE_CHANNEL_CAPACITY,
 };
 use super::{
-    OrderGroupStatus, ShadowEngine,
+    OrderGroup, OrderGroupStatus, ShadowEngine,
 };
 use super::trade_event::{TradeEvent, TradeEventType};
 /// Sequential command processor for the ShadowEngine.

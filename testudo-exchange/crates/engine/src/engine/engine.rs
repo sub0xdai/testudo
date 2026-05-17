@@ -334,6 +334,8 @@ impl Engine {
                 if balance.available >= total_cost {
                     balance.available -= total_cost;
                     balance.locked += total_cost;
+                    debug_assert!(balance.available >= Decimal::ZERO, "available negative after lock BUY");
+                    debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after lock BUY");
                 } else {
                     return Err(CoreEngineError::InsufficientFunds {
                         user_id: user_id.clone(),
@@ -356,6 +358,8 @@ impl Engine {
                 if balance.available >= order.quantity {
                     balance.available -= order.quantity;
                     balance.locked += order.quantity;
+                    debug_assert!(balance.available >= Decimal::ZERO, "available negative after lock SELL");
+                    debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after lock SELL");
                 } else {
                     return Err(CoreEngineError::InsufficientQuantity {
                         user_id: user_id.clone(),
@@ -476,6 +480,9 @@ impl Engine {
             AmountType::AVAILABLE => balance.available += amount,
             AmountType::LOCKED => balance.locked += amount,
         }
+
+        debug_assert!(balance.available >= Decimal::ZERO, "available negative after balance update");
+        debug_assert!(balance.locked >= Decimal::ZERO, "locked negative after balance update");
 
         Ok(())
     }

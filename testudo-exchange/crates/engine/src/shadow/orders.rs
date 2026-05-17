@@ -293,6 +293,12 @@ impl ShadowOrder {
 
     /// Fill this order at the given price
     pub fn fill(&mut self, fill_price: Decimal) {
+        debug_assert!(
+            self.is_open(),
+            "Cannot fill order {} — status is {:?}",
+            self.id,
+            self.status
+        );
         self.filled_quantity = self.quantity;
         self.average_fill_price = Some(fill_price);
         self.status = ShadowOrderStatus::Filled;
@@ -303,6 +309,12 @@ impl ShadowOrder {
 
     /// Cancel this order
     pub fn cancel(&mut self) {
+        debug_assert!(
+            self.is_open(),
+            "Cannot cancel order {} — status is {:?}",
+            self.id,
+            self.status
+        );
         self.status = ShadowOrderStatus::Cancelled;
         self.updated_at = Utc::now();
         self.completed_at = Some(Instant::now());
