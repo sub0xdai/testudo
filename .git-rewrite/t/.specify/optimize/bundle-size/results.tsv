@@ -1,0 +1,4 @@
+iteration	hypothesis	metric	delta	status
+0	baseline	368141	0	baseline
+1	Remove Zod from scraper.ts — replace 4 trivial schemas with plain runtime validators	57984	-310157	accepted
+2	Remove webextension-polyfill from content scripts — use native MV3 Promise-based APIs	47832	-10152	accepted

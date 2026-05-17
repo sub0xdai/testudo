@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+target/
+
+# Framework caches
+.astro/
+.next/
+.nuxt/
+.turbo/
+
+# Python
+__pycache__/
+.venv/
+venv/
+
+# Rust
+target/
+
+# Source maps
+*.map
+
+# Large binary assets
+*.woff2
+*.ttf
+*.woff
+
+# Lock files (large, not useful for context)
+bun.lockb
+Cargo.lock
+package-lock.json
+yarn.lock

@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  workflow_dispatch:  # manual trigger only — re-enable push trigger when moving to k8s
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push router
+        uses: docker/build-push-action@v6
+        with:
+          context: testudo-exchange
+          file: testudo-exchange/docker/Dockerfile.router
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/exchange-router:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/exchange-router:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push ws-stream
+        uses: docker/build-push-action@v6
+        with:
+          context: testudo-exchange
+          file: testudo-exchange/docker/Dockerfile.ws-stream
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/exchange-ws-stream:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/exchange-ws-stream:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push engine
+        uses: docker/build-push-action@v6
+        with:
+          context: testudo-exchange
+          file: testudo-exchange/docker/Dockerfile.engine
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/exchange-engine:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/exchange-engine:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push db-processor
+        uses: docker/build-push-action@v6
+        with:
+          context: testudo-exchange
+          file: testudo-exchange/docker/Dockerfile.db-processor
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/exchange-db-processor:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/exchange-db-processor:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push ccxt-sidecar
+        uses: docker/build-push-action@v6
+        with:
+          context: testudo-ccxt
+          file: testudo-ccxt/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/exchange-ccxt-sidecar:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/exchange-ccxt-sidecar:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

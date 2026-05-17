@@ -1,0 +1,321 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- Theme Tokens (space-separated RGB for Tailwind opacity support) --- */
+:root, [data-theme="amoled"] {
+  color-scheme: dark;
+  /* Cool marble palette — blue-shifted to read as stone/silver */
+  --bg-core: 9 10 13;           /* cool black with blue bias */
+  --bg-panel: 19 21 26;         /* cool charcoal — sidebar, cards */
+  --bg-elevated: 26 28 35;      /* cool raised — calendar, radar */
+  --bg-hover: 35 38 46;         /* cool hover */
+  --border: 45 48 58;           /* cool dividers */
+  --border-active-accent: 237 237 237;
+  --accent-steel: 148 163 184;  /* #94A3B8 — cool blue-grey */
+  --accent-steel-hover: 203 213 225;
+  --accent-primary: 180 155 220; /* #B49BDC — soft amethyst, stands off charcoal */
+  --signal-green: 34 197 94;    /* #22C55E — standard green-500 */
+  --signal-red: 239 68 68;      /* #EF4444 — standard red-500 */
+  --signal-amber: 245 158 11;   /* #F59E0B — amber-500 */
+  --text-primary: 235 237 242;  /* cool off-white */
+  --text-secondary: 185 190 200; /* cool silver */
+  --text-tertiary: 115 120 130; /* cool muted */
+
+  /* Layout */
+  --header-h: 57px;
+  --subheader-h: 49px;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  /* Carrara marble — cool silver-grey, matches Hadrian's Wall stone */
+  --bg-core: 238 240 244;         /* #EEF0F4 — cool marble ground, paper between cards */
+  --bg-panel: 250 251 253;        /* #FAFBFD — refined off-white card (not pure white — preserves elevation headroom) */
+  --bg-elevated: 225 228 234;     /* #E1E4EA — cool stone recessed well */
+  --bg-hover: 232 235 241;        /* #E8EBF1 — cool hover */
+  --border: 192 198 210;          /* #C0C6D2 — cool stone divider */
+  --border-active-accent: 10 15 30;
+  --accent-steel: 55 65 81;       /* #374151 — dark slate */
+  --accent-steel-hover: 35 45 60; /* #232D3C */
+  --accent-primary: 95 75 135;    /* #5F4B87 — aged amethyst, reads on cool marble */
+  --signal-green: 4 120 87;       /* #047857 — emerald, professional on cool marble */
+  --signal-red: 185 28 28;        /* #B91C1C — deep crimson, readable on cool marble */
+  --signal-amber: 180 110 0;      /* #B46E00 — rich amber */
+  --text-primary: 18 22 30;       /* #12161E — cool near-black */
+  --text-secondary: 58 66 80;     /* #3A4250 — cool dark grey, WCAG AA */
+  --text-tertiary: 100 108 122;   /* #646C7A — cool muted grey */
+}
+
+/* --- Crest logo (white-on-transparent, invert for light) --- */
+[data-theme="light"] .crest-logo {
+  filter: invert(1);
+}
+
+/* --- Background overlay (Hadrian's Wall — marble texture seep) --- */
+.bg-overlay {
+  background: rgb(var(--bg-core) / 0.90);
+}
+[data-theme="light"] .bg-overlay {
+  /* Let the marble breathe in light mode — warm paper tint mixes with stone */
+  background: rgb(var(--bg-core) / 0.70);
+}
+
+/* --- Light theme: soft cast shadow on card surfaces for paper-on-paper lift --- */
+[data-theme="light"] .bg-container-bg {
+  box-shadow:
+    0 1px 2px rgba(20, 28, 45, 0.05),
+    0 4px 12px rgba(20, 28, 45, 0.06);
+}
+
+/* --- Native form elements (dark theme compat) --- */
+select, option {
+  background-color: rgb(var(--bg-panel));
+  color: rgb(var(--text-primary));
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  scrollbar-width: none;
+  overflow-y: auto;
+}
+body::-webkit-scrollbar { display: none; }
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar { display: none; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  background-color: rgb(var(--bg-core));
+  color: rgb(var(--text-primary));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgb(var(--accent-steel));
+  color: rgb(var(--bg-core));
+}
+
+/* Markdown preview styles */
+.markdown-preview h1 { font-size: 1.25rem; font-weight: 700; color: rgb(var(--text-primary)); margin: 1rem 0 0.5rem; }
+.markdown-preview h2 { font-size: 1.1rem; font-weight: 600; color: rgb(var(--text-primary)); margin: 0.75rem 0 0.5rem; }
+.markdown-preview h3 { font-size: 1rem; font-weight: 600; color: rgb(var(--text-primary)); margin: 0.5rem 0 0.25rem; }
+.markdown-preview p { margin: 0.5rem 0; }
+.markdown-preview strong { color: rgb(var(--text-primary)); font-weight: 600; }
+.markdown-preview em { font-style: italic; }
+.markdown-preview del { text-decoration: line-through; color: rgb(var(--text-tertiary)); }
+.markdown-preview ul, .markdown-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+.markdown-preview li { margin: 0.25rem 0; }
+.markdown-preview blockquote { border-left: 2px solid rgb(var(--border)); padding-left: 1rem; color: rgb(var(--text-secondary)); margin: 0.5rem 0; }
+.markdown-preview code { font-family: 'Space Mono', monospace; background: rgb(var(--bg-panel)); padding: 0.15rem 0.4rem; border-radius: 0; font-size: 0.85em; }
+.markdown-preview pre { background: rgb(var(--bg-panel)); border: 1px solid rgb(var(--border)); border-radius: 0; padding: 1rem; margin: 0.5rem 0; overflow-x: auto; }
+.markdown-preview pre code { background: none; padding: 0; }
+.markdown-preview a { color: rgb(var(--accent-steel)); text-decoration: underline; }
+.markdown-preview a:hover { opacity: 0.8; }
+.markdown-preview img { max-width: 100%; height: auto; margin: 0.5rem 0; border: 1px solid rgb(var(--border)); }
+.markdown-preview hr { border: none; border-top: 1px solid rgb(var(--border)); margin: 1rem 0; }
+
+/* ── Skeleton Shimmer ────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--border) / 0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Overlay Animations ───────────────────────────── */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes scale-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+@keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes dropdown-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+.animate-fade-in { animation: fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-out { animation: fade-out 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in { animation: scale-in 150ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-out { animation: scale-out 150ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-in-right { animation: slide-in-right 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-out-right { animation: slide-out-right 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-dropdown-in { animation: dropdown-in 120ms ease-out both; }
+
+/* ── Pulsing Silver Glow (CONNECT button) ─────────── */
+
+@keyframes glow-pulse {
+  0%, 100% { text-shadow: 0 0 4px rgba(148, 163, 184, 0.3); }
+  50% { text-shadow: 0 0 12px rgba(148, 163, 184, 0.7), 0 0 24px rgba(148, 163, 184, 0.3); }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+/* ── Global Focus Ring ────────────────────────────── */
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--bg-core)), 0 0 0 4px rgb(var(--text-primary) / 0.4);
+}
+
+/* ── Hero P&L emissive glow ──────────────────────── */
+.hero-glow-green {
+  text-shadow: 0 0 20px rgba(34, 197, 94, 0.25), 0 0 40px rgba(34, 197, 94, 0.08);
+}
+.hero-glow-red {
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.25), 0 0 40px rgba(239, 68, 68, 0.08);
+}
+[data-theme="light"] .hero-glow-green,
+[data-theme="light"] .hero-glow-red {
+  text-shadow: none;
+}
+
+/* ── Button Hierarchy — UX-07 ────────────────────── */
+
+.btn-primary {
+  background: rgb(var(--text-primary));
+  color: rgb(var(--bg-core));
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.75rem 2rem;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:disabled {
+  background: rgb(var(--text-tertiary));
+  color: rgb(var(--bg-core));
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  border: 1px solid rgb(var(--text-primary));
+  color: rgb(var(--text-primary));
+  background: transparent;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.btn-secondary:hover {
+  background: rgb(var(--text-primary));
+  color: rgb(var(--bg-core));
+}
+.btn-secondary:disabled {
+  border-style: dashed;
+  border-color: rgb(var(--text-tertiary));
+  color: rgb(var(--text-tertiary));
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  color: rgb(var(--text-secondary));
+  background: transparent;
+  border: none;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+.btn-ghost:hover { color: rgb(var(--text-primary)); }
+.btn-ghost:disabled {
+  color: rgb(var(--text-tertiary) / 0.5);
+  cursor: not-allowed;
+}
+
+.btn-destructive {
+  border: 1px solid rgb(var(--signal-red));
+  color: rgb(var(--signal-red));
+  background: transparent;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.btn-destructive:hover {
+  background: rgb(var(--signal-red));
+  color: rgb(var(--bg-core));
+}
+
+/* ── Help Tooltips ── */
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.help-tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  line-height: 1;
+  color: rgb(var(--text-tertiary));
+  border: 1px solid rgb(var(--border));
+  cursor: help;
+  transition: color 150ms, border-color 150ms;
+}
+.help-tip:hover .help-tip-trigger,
+.help-tip:focus-within .help-tip-trigger {
+  color: rgb(var(--text-secondary));
+  border-color: rgb(var(--text-tertiary));
+}
+.help-tip-popup {
+  z-index: 9999;
+  width: max-content;
+  max-width: 280px;
+  padding: 8px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  text-transform: none;
+  color: rgb(var(--text-primary));
+  background: rgb(var(--bg-elevated));
+  border: 1px solid rgb(var(--border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

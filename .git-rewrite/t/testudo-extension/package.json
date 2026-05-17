@@ -1,0 +1,40 @@
+{
+  "name": "testudo-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testudo — risk management overlay for crypto traders",
+  "scripts": {
+    "build": "bun run build.ts",
+    "build:dev": "BACKEND_URL=http://localhost:8080 WS_URL=ws://127.0.0.1:4000 WEB_APP_URL=http://localhost:3001 DESK_URL=http://localhost:3002/desk bun run build.ts",
+    "build:chrome": "bun run build.ts --chrome",
+    "build:firefox": "bun run build.ts --firefox",
+    "dev": "bun run build.ts --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npx playwright test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.11",
+    "webextension-polyfill": "^0.12.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@playwright/test": "^1.58.2",
+    "@solidjs/testing-library": "^0.8.10",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/webextension-polyfill": "^0.12.1",
+    "autoprefixer": "^10.4.24",
+    "babel-preset-solid": "^1.9.10",
+    "esbuild": "^0.28.0",
+    "esbuild-plugin-solid": "^0.6.0",
+    "jsdom": "^28.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.7.0",
+    "vite-plugin-solid": "^2.11.10",
+    "vitest": "^3.2.4"
+  }
+}

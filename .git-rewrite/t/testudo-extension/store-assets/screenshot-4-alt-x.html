@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280,height=800">
+<title>Testudo — Store Screenshot 4: Alt+X Workflow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-core: #0a0a0a;
+    --bg-panel: #161616;
+    --bg-elevated: #1e1e1e;
+    --bg-hover: #282828;
+    --border-subtle: #323232;
+    --text-primary: #ededed;
+    --text-secondary: #999999;
+    --text-dim: #666666;
+    --signal-green: #22C55E;
+    --signal-red: #EF4444;
+    --signal-orange: #f59e0b;
+    --accent-steel: #94a3b8;
+  }
+
+  body {
+    width: 1280px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--bg-core);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Background: radial gradient */
+  .bg-gradient {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 900px 600px at 50% 45%, rgba(30,30,30,0.8) 0%, rgba(10,10,10,1) 100%);
+  }
+
+  /* Subtle grid */
+  .bg-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(50,50,50,0.15) 79px, rgba(50,50,50,0.15) 80px),
+      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(50,50,50,0.15) 79px, rgba(50,50,50,0.15) 80px);
+  }
+
+  /* Main layout */
+  .workflow-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+    margin-top: -40px;
+  }
+
+  /* Steps row */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* Step */
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 260px;
+  }
+
+  .step-circle {
+    width: 64px;
+    height: 64px;
+    border: 2px solid var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .step-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-primary);
+  }
+
+  /* Step illustrations */
+  .step-illustration {
+    width: 200px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Step 1: Position tool drawing */
+  .drawing-mockup {
+    width: 160px;
+    height: 120px;
+    position: relative;
+    border: 1px solid var(--border-subtle);
+    background: rgba(22,22,22,0.5);
+    overflow: hidden;
+  }
+
+  .drawing-mockup .entry-marker {
+    position: absolute;
+    left: 20px;
+    top: 55%;
+    right: 20px;
+    height: 1px;
+    background: var(--text-primary);
+    opacity: 0.8;
+  }
+
+  .drawing-mockup .entry-marker::after {
+    content: 'ENTRY';
+    position: absolute;
+    right: 0;
+    top: -14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+  }
+
+  .drawing-mockup .sl-marker {
+    position: absolute;
+    left: 20px;
+    bottom: 12%;
+    right: 20px;
+    height: 1px;
+    background: var(--signal-red);
+    opacity: 0.8;
+  }
+
+  .drawing-mockup .sl-marker::after {
+    content: 'SL';
+    position: absolute;
+    right: 0;
+    top: -14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--signal-red);
+    letter-spacing: 0.05em;
+  }
+
+  .drawing-mockup .tp-marker {
+    position: absolute;
+    left: 20px;
+    top: 12%;
+    right: 20px;
+    height: 1px;
+    background: var(--signal-green);
+    opacity: 0.8;
+  }
+
+  .drawing-mockup .tp-marker::after {
+    content: 'TP';
+    position: absolute;
+    right: 0;
+    top: -14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--signal-green);
+    letter-spacing: 0.05em;
+  }
+
+  /* Diagonal line connecting SL to TP */
+  .drawing-mockup .diag-line {
+    position: absolute;
+    left: 35px;
+    top: 12%;
+    width: 2px;
+    bottom: 12%;
+    background: linear-gradient(180deg, var(--signal-green) 0%, var(--text-primary) 50%, var(--signal-red) 100%);
+    opacity: 0.5;
+    transform: rotate(-15deg);
+    transform-origin: top center;
+  }
+
+  /* Green zone */
+  .drawing-mockup .tp-zone {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: 12%;
+    height: 43%;
+    background: rgba(34,197,94,0.06);
+    border-left: 1px solid rgba(34,197,94,0.2);
+  }
+
+  /* Red zone */
+  .drawing-mockup .sl-zone {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: 55%;
+    bottom: 12%;
+    background: rgba(239,68,68,0.06);
+    border-left: 1px solid rgba(239,68,68,0.2);
+  }
+
+  /* Step 2: Keyboard shortcut */
+  .key-combo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .key {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 12px 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    box-shadow:
+      0 4px 0 0 var(--bg-core),
+      0 5px 0 0 var(--border-subtle),
+      0 8px 16px rgba(0,0,0,0.4);
+    min-width: 56px;
+    text-align: center;
+  }
+
+  .key-plus {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    color: var(--text-dim);
+  }
+
+  /* Step 3: Confirm buttons */
+  .confirm-mockup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn-mock-arm {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px 24px;
+    background: rgba(239,68,68,0.15);
+    border: 1px solid var(--signal-red);
+    color: var(--signal-red);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .arrow-down {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    color: var(--text-dim);
+  }
+
+  .btn-mock-confirm {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px 24px;
+    background: rgba(34,197,94,0.15);
+    border: 1px solid var(--signal-green);
+    color: var(--signal-green);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Connecting lines */
+  .connector {
+    width: 80px;
+    height: 2px;
+    border-top: 1px dashed var(--border-subtle);
+    align-self: center;
+    margin-top: -80px;
+  }
+
+  /* Subtitle */
+  .workflow-subtitle {
+    font-size: 15px;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 640px;
+    line-height: 1.6;
+  }
+
+  /* Screenshot caption overlay */
+  .caption {
+    position: absolute;
+    bottom: 24px;
+    left: 40px;
+    z-index: 20;
+  }
+
+  .caption h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  }
+
+  .caption p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-gradient"></div>
+
+<!-- Workflow Container -->
+<div class="workflow-container">
+  <div class="steps">
+    <!-- Step 1: Draw -->
+    <div class="step">
+      <div class="step-circle">1</div>
+      <span class="step-label">Draw</span>
+      <div class="step-illustration">
+        <div class="drawing-mockup">
+          <div class="tp-zone"></div>
+          <div class="sl-zone"></div>
+          <div class="tp-marker"></div>
+          <div class="entry-marker"></div>
+          <div class="sl-marker"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connector -->
+    <div class="connector"></div>
+
+    <!-- Step 2: Alt+X -->
+    <div class="step">
+      <div class="step-circle">2</div>
+      <span class="step-label">Alt+X</span>
+      <div class="step-illustration">
+        <div class="key-combo">
+          <div class="key">Alt</div>
+          <span class="key-plus">+</span>
+          <div class="key">X</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connector -->
+    <div class="connector"></div>
+
+    <!-- Step 3: Confirm -->
+    <div class="step">
+      <div class="step-circle">3</div>
+      <span class="step-label">Confirm</span>
+      <div class="step-illustration">
+        <div class="confirm-mockup">
+          <div class="btn-mock-arm">ARM</div>
+          <span class="arrow-down">&darr;</span>
+          <div class="btn-mock-confirm">CONFIRM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="workflow-subtitle">
+    Entry, stop-loss, and take-profit scraped directly from your TradingView chart drawing.
+  </p>
+</div>
+
+<!-- Caption -->
+<div class="caption">
+  <h2>Alt+X: Trade in Seconds</h2>
+  <p>Draw your levels on TradingView. Testudo does the rest.</p>
+</div>
+
+</body>
+</html>

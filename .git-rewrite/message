@@ -1,0 +1,22 @@
+plan(eng-01b): Gate 1 edits — FR-9 header layer + T6 matrix + bundle split
+
+Advisor flagged 1 blocker + 3 clarifications:
+
+- FR-9 blocker: SPA imperative meta-robots only covers JS-executing
+  crawlers (Googlebot); static HTML scrapers (Archive.org, Facebook OG,
+  SEO bots) bypass it. New T13b adds Cloudflare Pages _headers entry
+  (X-Robots-Tag: noindex, nofollow for /d/*) — two-layer defence.
+  Discovery #8 updated to document both layers and the gap between
+  'JS-crawler opt-in' and 'full web indexing' (latter deferred).
+
+- T6 visibility matrix enumerated: 4 cases (show_score × show_sparkline)
+  including FR-10 empty-carcass (both off → 200 with nulls). Advisor
+  noted original 'covers visibility matrix' was ambiguous.
+
+- RateLimiter ambiguity: Discovery #2 and T6 now explicit — reuse the
+  struct, instantiate a DEDICATED instance for public profile. Prevents
+  coupling public-profile quota to auth-endpoint traffic.
+
+- Bundle split: T5 + wiring ships alone (authed endpoints curl-testable),
+  T6+T7 as a separate bundle (public scope + dedicated rate limiter).
+  Gives JWT path a smoke-test window before the public surface opens.

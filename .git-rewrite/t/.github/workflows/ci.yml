@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  backend:
+    name: Backend (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: testudo-exchange
+      - name: Clippy
+        run: cd testudo-exchange && cargo clippy --all-targets -- -D warnings
+        env:
+          SQLX_OFFLINE: "true"
+      - name: Tests
+        run: cd testudo-exchange && cargo test
+        env:
+          SQLX_OFFLINE: "true"
+
+  extension:
+    name: Extension (Solid.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: cd testudo-extension && bun install && bun run build
+
+  sidecar:
+    name: CCXT Sidecar (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: cd testudo-ccxt && bun install && bun test

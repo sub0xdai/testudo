@@ -1,0 +1,268 @@
+{
+  "project": "Testudo Hybrid Trading System",
+  "version": "1.0",
+  "prd": {
+    "system_definition": "A dual-state trading engine decoupling Decision (User/Strategy) from Execution (Shadow/Binance), utilizing a unified Risk Engine gatekeeper.",
+    "functional_logic": {
+      "data_arbitration": "Normalize external data (e.g., BTCUSDT -> BTC_USDC). Downstream services consume normalized format.",
+      "shadow_matching": {
+        "buy_limit": "Fills if Low Price <= Limit Price",
+        "buy_market": "Fills immediately at Best Ask"
+      },
+      "risk_policy": "Conservative Wins: Enforce smallest result among Account %, Fixed Risk Amount, and Max Size inputs."
+    },
+    "slas": {
+      "data_latency": "< 50ms overhead for internal processing (Binance -> Redis -> API)",
+      "risk_validation": "< 200ms for Decision Loop completion"
+    }
+  },
+  "user_stories": {
+    "epic_a_market_data": [
+      {
+        "id": "A.1",
+        "role": "Developer",
+        "goal": "Implement BinanceDataService to poll Ticker, Depth, and Kline data to Redis",
+        "benefit": "Prevent rate limits across multiple user sessions",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "A.2",
+        "role": "Trader",
+        "goal": "UI gracefully handles connection drops",
+        "benefit": "Prevent acting on stale data",
+        "status": "complete",
+        "layer": "frontend"
+      }
+    ],
+    "epic_b_shadow_execution": [
+      {
+        "id": "B.1",
+        "role": "Trader",
+        "goal": "Shadow limit orders remain Open until price crossing",
+        "benefit": "Practice realistic entry timing",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "B.2",
+        "role": "System",
+        "goal": "Calculate Shadow P&L using Mark Price",
+        "benefit": "Avoid P&L noise from spread flickering",
+        "status": "complete",
+        "layer": "backend"
+      }
+    ],
+    "epic_c_risk_guardrails": [
+      {
+        "id": "C.1",
+        "role": "Risk Manager",
+        "goal": "Set Daily Max Drawdown limit to block new entries",
+        "benefit": "Prevent catastrophic loss",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "C.2",
+        "role": "Trader",
+        "goal": "Auto-calculate position size based on Entry vs Stop Loss",
+        "benefit": "Ensure fixed fractional risk (exact $X loss)",
+        "status": "complete",
+        "layer": "backend"
+      }
+    ],
+    "epic_d_trade_management": [
+      {
+        "id": "D.0",
+        "role": "Trader",
+        "goal": "Use a visual long/short position tool on the chart to set entry, SL, and TP by dragging",
+        "benefit": "Intuitive trade planning with real-time position sizing and R:R calculation",
+        "status": "complete",
+        "layer": "frontend"
+      },
+      {
+        "id": "D.1",
+        "role": "Trader",
+        "goal": "Have SL/TP orders auto-create when entry fills (not when entry is placed)",
+        "benefit": "Never forget to set protective orders after getting filled",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "D.2",
+        "role": "Trader",
+        "goal": "Cancel entry and have linked SL/TP orders auto-cancel",
+        "benefit": "Prevent orphaned orders cluttering the order book",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "D.3",
+        "role": "Trader",
+        "goal": "Enable break-even automation that moves SL to entry at X% profit",
+        "benefit": "Lock in risk-free trade without manual monitoring",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "D.4",
+        "role": "Trader",
+        "goal": "Set multiple take-profit targets to scale out of positions",
+        "benefit": "Capture profits at different levels (e.g., 50% at T1, 25% at T2)",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "D.5",
+        "role": "System",
+        "goal": "When SL or TP fills, auto-cancel sibling orders",
+        "benefit": "Prevent double-execution and maintain position integrity",
+        "status": "complete",
+        "layer": "backend"
+      }
+    ],
+    "epic_e_live_execution": [
+      {
+        "id": "E.1",
+        "role": "Trader",
+        "goal": "Securely connect Binance API keys to enable live trading",
+        "benefit": "Execute real trades on Binance exchange",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "E.2",
+        "role": "System",
+        "goal": "Implement Decision Loop that validates shadow orders before live execution",
+        "benefit": "Ensure all trades pass risk checks before hitting exchange",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "E.3",
+        "role": "System",
+        "goal": "Execute validated orders on Binance via authenticated API",
+        "benefit": "Real order placement with proper error handling",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "E.4",
+        "role": "System",
+        "goal": "Sync shadow positions with actual Binance positions",
+        "benefit": "Maintain consistency between paper and live state",
+        "status": "complete",
+        "layer": "backend"
+      },
+      {
+        "id": "E.5",
+        "role": "Trader",
+        "goal": "Toggle between Shadow-only and Live execution modes",
+        "benefit": "Practice safely before going live, switch seamlessly",
+        "status": "pending",
+        "layer": "frontend"
+      }
+    ]
+  },
+  "acceptance_criteria": {
+    "A.1": {
+      "polling_frequency": "Matches config (e.g., 1000ms)",
+      "ttl_check": "Redis keys expire automatically if service crashes",
+      "health_check": "Log warning if Binance API latency > 500ms"
+    },
+    "B.1": {
+      "limit_fill": "Buy Limit @ 90,000 fills when Low drops to 89,999",
+      "limit_hold": "Buy Limit @ 90,000 remains OPEN if Low is 90,001",
+      "ui_update": "Positions table updates instantly on fill without refresh"
+    },
+    "C.2": {
+      "auto_fill_scenario": {
+        "account": 10000,
+        "risk_percent": 0.01,
+        "entry": 50000,
+        "stop_loss": 49000,
+        "expected_qty": 0.1
+      },
+      "violation_check": "Manual override to 0.2 triggers 'Risk Violation' warning"
+    },
+    "D.0": {
+      "position_tool": {
+        "interaction": "Click and drag on chart to create long/short position box",
+        "displays": ["Entry price", "Stop price with % and $ amount", "Target price with % and $ amount", "Position size (auto-calculated)", "R:R ratio (auto-calculated)", "Open P&L"],
+        "real_time_update": "All values recalculate as user drags any level"
+      },
+      "position_sizing_integration": "Uses Risk Engine (Phase C) to calculate size from entry-stop distance"
+    },
+    "D.1": {
+      "sl_tp_creation": {
+        "entry": 50000,
+        "stop_loss": 49000,
+        "take_profit": 52000,
+        "scenario": "Entry FILLS at 50000 -> SL order at 49000 and TP order at 52000 auto-created"
+      },
+      "timing": "SL/TP orders created ONLY after entry fills, not when entry is placed",
+      "order_group_tracking": "All linked orders share same order_group_id"
+    },
+    "D.2": {
+      "cascade_cancel": "Cancel entry order -> All linked SL/TP orders cancelled",
+      "partial_fill": "If entry partially filled, only create SL/TP for filled quantity"
+    },
+    "D.3": {
+      "break_even_scenario": {
+        "entry": 50000,
+        "initial_sl": 49000,
+        "trigger_percent": 1.0,
+        "scenario": "Price reaches 50500 (1% profit) -> SL moves from 49000 to 50000"
+      },
+      "offset_option": "Optional offset to move SL slightly above entry (e.g., entry + 10)"
+    },
+    "D.4": {
+      "multi_target_scenario": {
+        "entry_size": 1.0,
+        "targets": [
+          {"price": 52000, "percent": 50, "result": "Close 0.5 at T1"},
+          {"price": 55000, "percent": 25, "result": "Close 0.25 at T2"},
+          {"price": null, "percent": 25, "result": "Let 0.25 run with trailing SL"}
+        ]
+      }
+    },
+    "D.5": {
+      "sl_fill_cancels_tp": "SL fills at 49000 -> All TP orders auto-cancelled",
+      "tp_fill_cancels_sl": "TP fills at 52000 -> SL order auto-cancelled",
+      "partial_tp": "Partial TP fill reduces SL quantity proportionally"
+    },
+    "E.1": {
+      "key_storage": "API keys encrypted at rest, never logged",
+      "key_validation": "Test connection validates read permissions before saving",
+      "key_permissions": "Minimum required: Spot trading, read balances"
+    },
+    "E.2": {
+      "decision_flow": {
+        "step_1": "Shadow order created and validated",
+        "step_2": "Risk Engine approves (position size, drawdown check)",
+        "step_3": "If live mode enabled, forward to Binance executor",
+        "step_4": "Binance response updates shadow state"
+      },
+      "rejection_handling": "Failed risk check returns detailed reason, order stays in shadow only"
+    },
+    "E.3": {
+      "order_mapping": "Shadow order -> Binance order format conversion",
+      "error_handling": {
+        "insufficient_balance": "Return error, do not retry",
+        "rate_limit": "Exponential backoff, max 3 retries",
+        "network_error": "Retry with timeout, alert user if persistent"
+      },
+      "confirmation": "Wait for Binance fill confirmation before updating shadow"
+    },
+    "E.4": {
+      "sync_trigger": "On app start, after each trade, every 60s background",
+      "discrepancy_handling": "If Binance position != shadow position, alert user and offer reconciliation",
+      "balance_sync": "Update shadow balances from Binance on sync"
+    },
+    "E.5": {
+      "mode_toggle": "UI switch: Shadow Only | Live Trading",
+      "confirmation": "Live mode requires explicit confirmation dialog",
+      "visual_indicator": "Clear badge showing current mode (green=shadow, red=live)"
+    }
+  }
+}

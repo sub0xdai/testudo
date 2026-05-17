@@ -1,0 +1,73 @@
+{
+  "manifest_version": 3,
+  "name": "Testudo",
+  "version": "1.1.4",
+  "description": "TradingView companion. Press Alt+X on a chart to size a trade from your stop and route the order to your exchange.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.tradingview.com/*",
+    "*://*.dexscreener.com/*",
+    "*://*.gmx.io/*",
+    "*://*.bybit.com/*",
+    "*://*.binance.com/*",
+    "*://*.okx.com/*",
+    "*://*.bitget.com/*",
+    "*://*.gate.io/*",
+    "*://*.phemex.com/*",
+    "*://*.blofin.com/*",
+    "*://app.hyperliquid.xyz/*",
+    "*://api.testudo.vip/*",
+    "*://ws.testudo.vip/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.tradingview.com/*",
+        "*://*.dexscreener.com/*",
+        "*://*.gmx.io/*",
+        "*://*.bybit.com/*",
+        "*://*.binance.com/*",
+        "*://*.okx.com/*",
+        "*://*.bitget.com/*",
+        "*://*.gate.io/*",
+        "*://*.phemex.com/*",
+        "*://*.blofin.com/*",
+        "*://app.hyperliquid.xyz/*",
+        "*://desk.testudo.vip/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "trigger-trade": {
+      "suggested_key": {
+        "default": "Alt+X"
+      },
+      "description": "Open trade confirmation modal"
+    }
+  },
+  "web_accessible_resources": [{
+    "resources": ["popup/fonts/*.woff2", "page-bridge.js", "widget-hook.js"],
+    "matches": ["<all_urls>"]
+  }]
+}

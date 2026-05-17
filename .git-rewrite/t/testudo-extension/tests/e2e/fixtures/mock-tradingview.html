@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock TradingView</title>
+  <style>
+    body { background: #131722; color: #d1d4dc; font-family: sans-serif; }
+    #header-toolbar-symbol-search { padding: 8px; font-size: 16px; font-weight: bold; }
+    #header-toolbar-intervals button { background: #1e222d; border: 1px solid #363a45; color: #888; padding: 4px 8px; cursor: pointer; }
+    #header-toolbar-intervals button[aria-checked="true"] { color: #2962ff; border-color: #2962ff; }
+    .dialog-mock { background: #1e222d; border: 1px solid #363a45; padding: 16px; margin: 16px; max-width: 360px; }
+    .dialog-mock label { display: block; font-size: 11px; color: #888; margin: 8px 0 2px; }
+    .dialog-mock input { background: #131722; border: 1px solid #363a45; color: #d1d4dc; padding: 4px 8px; width: 120px; }
+  </style>
+</head>
+<body>
+  <!-- Symbol search bar -->
+  <div id="header-toolbar-symbol-search">BTCUSDT</div>
+
+  <!-- Timeframe bar -->
+  <div id="header-toolbar-intervals">
+    <button data-value="15" aria-checked="false">15m</button>
+    <button data-value="60" aria-checked="true">1H</button>
+    <button data-value="240" aria-checked="false">4H</button>
+    <button data-value="1D" aria-checked="false">1D</button>
+  </div>
+
+  <!-- Properties dialog (mimics TradingView's Risk/Reward dialog structure) -->
+  <div class="dialog-mock" data-name="source-properties-editor" role="dialog">
+    <div id="dialog-title">Long Position</div>
+
+    <label>Account size</label>
+    <input type="text" data-name="Risk/RewardlongAccountSize" value="1000">
+
+    <label>Entry price</label>
+    <input type="text" data-name="Risk/RewardlongEntryPrice" value="95000">
+
+    <label>Profit level — Price</label>
+    <input type="text" data-name="Risk/RewardlongProfitLevelPrice" value="99000">
+
+    <label>Stop level — Price</label>
+    <input type="text" data-name="Risk/RewardlongStopLevelPrice" value="93000">
+  </div>
+
+  <!-- Overlay root (empty in modern TradingView — position tools are canvas-rendered) -->
+  <div id="overlap-manager-root"></div>
+
+  <script>
+    // --- Mock TradingView API (Strategy 0 support) ---
+    // Simulates window.TradingViewApi.activeChart().getAllShapes() / getShapeById()
+
+    var _mockShapes = [];
+    var _mockShapeData = {};
+    var _mockTickSize = 1; // default: integer prices
+
+    window.TradingViewApi = {
+      activeChart: function() {
+        return {
+          getAllShapes: function() { return _mockShapes; },
+          getShapeById: function(id) {
+            var data = _mockShapeData[id];
+            if (!data) return null;
+            return {
+              getPoints: function() { return data.points; },
+              getProperties: function() { return data.properties; },
+            };
+          },
+          priceFormatter: function() {
+            return { _minMove: _mockTickSize * 100, _priceScale: 100 };
+          },
+          getSeries: function() { return null; },
+        };
+      }
+    };
+
+    // Helper: update position tool values from test code
+    window.__setPositionTool = function(entry, stop, target, symbol, timeframe, side) {
+      if (symbol) {
+        document.getElementById("header-toolbar-symbol-search").textContent = symbol;
+      }
+      if (timeframe) {
+        document.querySelectorAll("#header-toolbar-intervals button").forEach(b => {
+          b.setAttribute("aria-checked", b.getAttribute("data-value") === timeframe ? "true" : "false");
+        });
+      }
+
+      var s = (side || "long").toLowerCase();
+      var prefix = "Risk/Reward" + s;
+
+      // --- Update mock TradingView API ---
+      var shapeName = s === "short" ? "short_position" : "long_position";
+      var shapeId = "mock-shape-1";
+
+      // Calculate tick-based stop/profit levels from prices
+      var tickSize = _mockTickSize;
+      var stopLevel = Math.round(Math.abs(entry - stop) / tickSize);
+      var profitLevel = Math.round(Math.abs(target - entry) / tickSize);
+
+      _mockShapes = [{ id: shapeId, name: shapeName }];
+      _mockShapeData[shapeId] = {
+        points: [{ price: entry, time: Date.now() / 1000 }],
+        properties: {
+          stopLevel: stopLevel,
+          profitLevel: profitLevel,
+          qty: 1,
+          amountStop: Math.abs(entry - stop),
+          amountTarget: Math.abs(target - entry),
+        },
+      };
+
+      // --- Update dialog DOM (Strategy 1 fallback) ---
+      var dialog = document.querySelector('[data-name="source-properties-editor"]');
+
+      // Update title
+      var title = document.getElementById("dialog-title");
+      if (title) title.textContent = s === "short" ? "Short Position" : "Long Position";
+
+      // Swap data-name prefixes if side changed
+      var inputs = dialog.querySelectorAll("input[data-name]");
+      inputs.forEach(function(inp) {
+        var name = inp.getAttribute("data-name");
+        if (name.startsWith("Risk/Reward")) {
+          inp.setAttribute("data-name", name.replace(/Risk\/Reward(long|short)/, prefix));
+        }
+      });
+
+      // Set values
+      var entryInput = dialog.querySelector('input[data-name="' + prefix + 'EntryPrice"]');
+      var targetInput = dialog.querySelector('input[data-name="' + prefix + 'ProfitLevelPrice"]');
+      var stopInput = dialog.querySelector('input[data-name="' + prefix + 'StopLevelPrice"]');
+
+      if (entryInput) entryInput.value = String(entry);
+      if (targetInput) targetInput.value = String(target);
+      if (stopInput) stopInput.value = String(stop);
+    };
+
+    // Initialize default shape data matching the dialog defaults
+    window.__setPositionTool(95000, 93000, 99000, null, null, "long");
+  </script>
+</body>
+</html>

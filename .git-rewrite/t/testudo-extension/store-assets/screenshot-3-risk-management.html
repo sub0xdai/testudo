@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280,height=800">
+<title>Testudo — Store Screenshot 3: Risk Management</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-core: #0a0a0a;
+    --bg-panel: #161616;
+    --bg-elevated: #1e1e1e;
+    --bg-hover: #282828;
+    --border-subtle: #323232;
+    --text-primary: #ededed;
+    --text-secondary: #999999;
+    --text-dim: #666666;
+    --signal-green: #22C55E;
+    --signal-red: #EF4444;
+    --signal-orange: #f59e0b;
+    --accent-steel: #94a3b8;
+  }
+
+  body {
+    width: 1280px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--bg-core);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  /* Background: subtle chart grid */
+  .chart-background {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    opacity: 0.5;
+  }
+
+  .chart-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 79px, #1a2332 79px, #1a2332 80px),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #1a2332 39px, #1a2332 40px);
+    opacity: 0.3;
+  }
+
+  /* Feature callout cards */
+  .callout-cards {
+    position: absolute;
+    left: 40px;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 580px;
+    z-index: 5;
+  }
+
+  .callout-card {
+    background: rgba(22,22,22,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-subtle);
+    padding: 20px 24px;
+    position: relative;
+  }
+
+  .callout-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+  }
+
+  .callout-card.green::before { background: var(--signal-green); }
+  .callout-card.orange::before { background: var(--signal-orange); }
+  .callout-card.white::before { background: var(--text-primary); }
+
+  .callout-card .card-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .callout-card .card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ========== EXTENSION POPUP ========== */
+  .popup {
+    position: absolute;
+    top: 60px;
+    right: 40px;
+    width: 520px;
+    height: 680px;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(50,50,50,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  /* Header */
+  .popup-header {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .popup-header .wordmark {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-primary);
+  }
+
+  .popup-header .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .popup-header .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  .popup-header .icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* Balance Panel */
+  .balance-panel {
+    padding: 24px 20px 20px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .balance-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.65) 100%);
+    z-index: 1;
+  }
+
+  .balance-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+    opacity: 0.5;
+  }
+
+  .balance-panel > * { position: relative; z-index: 2; }
+
+  .balance-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .balance-label .exch {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: white;
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .balance-amount {
+    font-family: 'Space Mono', monospace;
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 40px rgba(237,237,237,0.15);
+    margin-bottom: 6px;
+  }
+
+  .balance-delta {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .balance-delta .avail { color: var(--signal-green); }
+
+  /* Tab Bar */
+  .tab-bar {
+    display: flex;
+    background: var(--bg-panel);
+    padding: 4px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+
+  .tab.active {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-top: 2px solid var(--text-primary);
+  }
+
+  .tab.inactive {
+    color: var(--text-dim);
+  }
+
+  .tab .count {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    margin-left: 4px;
+  }
+
+  .tab .count.green {
+    background: rgba(34,197,94,0.1);
+    color: var(--signal-green);
+  }
+
+  /* Content Area */
+  .content {
+    flex: 1;
+    background: var(--bg-panel);
+    padding: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Trade Controls */
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .control-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .control-input {
+    width: 60px;
+    padding: 7px 10px;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: right;
+  }
+
+  .control-unit {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    width: 20px;
+  }
+
+  /* Range Slider (static mockup) */
+  .range-track {
+    flex: 1;
+    height: 4px;
+    position: relative;
+  }
+
+  .range-track.risk-gradient {
+    background: linear-gradient(90deg, var(--signal-green) 0%, var(--signal-orange) 50%, var(--signal-red) 100%);
+  }
+
+  .range-track.steel-gradient {
+    background: linear-gradient(90deg, var(--border-subtle) 0%, var(--accent-steel) 100%);
+  }
+
+  .range-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: var(--text-primary);
+    border: 2px solid var(--bg-core);
+    cursor: pointer;
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .toggle-switch {
+    width: 40px;
+    height: 20px;
+    background: rgba(34,197,94,0.25);
+    border: 1px solid var(--signal-green);
+    position: relative;
+    cursor: pointer;
+  }
+
+  .toggle-switch .toggle-knob {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    background: var(--signal-green);
+  }
+
+  /* Compact input row */
+  .compact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .compact-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .compact-input {
+    width: 50px;
+    padding: 6px 8px;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: right;
+  }
+
+  .compact-unit {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0;
+  }
+
+  /* Footer */
+  .popup-footer {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-core);
+    flex-shrink: 0;
+  }
+
+  .popup-footer .wallet {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  /* Screenshot caption overlay */
+  .caption {
+    position: absolute;
+    bottom: 24px;
+    left: 40px;
+    z-index: 20;
+  }
+
+  .caption h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  }
+
+  .caption p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="chart-background"></div>
+
+<!-- Feature Callout Cards -->
+<div class="callout-cards">
+  <div class="callout-card green">
+    <div class="card-title">Position Sizing</div>
+    <div class="card-desc">Risk-based sizing calculates optimal position from your stop distance</div>
+  </div>
+
+  <div class="callout-card orange">
+    <div class="card-title">Circuit Breakers</div>
+    <div class="card-desc">Auto break-even and trailing stops protect profits</div>
+  </div>
+
+  <div class="callout-card white">
+    <div class="card-title">One-Click Rules</div>
+    <div class="card-desc">Set once, apply everywhere &mdash; every trade follows your playbook</div>
+  </div>
+</div>
+
+<!-- Extension Popup -->
+<div class="popup">
+  <!-- Header -->
+  <div class="popup-header">
+    <span class="wordmark">TESTUDO</span>
+    <div class="controls">
+      <span class="badge">Hyperliquid</span>
+      <div class="icon-btn">&#9776;</div>
+    </div>
+  </div>
+
+  <!-- Balance -->
+  <div class="balance-panel">
+    <div class="balance-label">
+      Balance
+      <span class="exch">HL</span>
+    </div>
+    <div class="balance-amount">$32,847.62</div>
+    <div class="balance-delta">
+      <span class="avail">$28,412.30 available</span> &middot; $4,435.32 locked
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <div class="tab active">Trade</div>
+    <div class="tab inactive">Positions <span class="count green">2</span></div>
+    <div class="tab inactive">Account</div>
+  </div>
+
+  <!-- Trade Controls Content -->
+  <div class="content">
+    <!-- Risk Per Trade -->
+    <div class="control-group">
+      <span class="control-label">Risk Per Trade</span>
+      <div class="control-row">
+        <div class="control-input">2.0</div>
+        <span class="control-unit">%</span>
+        <div class="range-track risk-gradient">
+          <div class="range-thumb" style="left:20%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leverage -->
+    <div class="control-group">
+      <span class="control-label">Leverage</span>
+      <div class="control-row">
+        <div class="control-input">5</div>
+        <span class="control-unit">x</span>
+        <div class="range-track steel-gradient">
+          <div class="range-thumb" style="left:25%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Break-Even Trigger -->
+    <div class="toggle-row">
+      <span class="control-label">Break-Even Trigger</span>
+      <div class="toggle-switch">
+        <div class="toggle-knob"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Trailing Stop -->
+    <div class="compact-row">
+      <span class="control-label">Trailing Stop</span>
+      <div class="compact-input-group">
+        <div class="compact-input">30</div>
+        <span class="compact-unit">%</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Partial Take Profit -->
+    <div class="compact-row">
+      <span class="control-label">Partial Take Profit</span>
+      <div class="compact-input-group">
+        <div class="compact-input">50</div>
+        <span class="compact-unit">%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="popup-footer">
+    <span class="wallet">0x3014...1b76</span>
+  </div>
+</div>
+
+<!-- Caption -->
+<div class="caption">
+  <h2>Automated Risk Management</h2>
+  <p>Set your risk rules once. Every trade follows your playbook automatically.</p>
+</div>
+
+</body>
+</html>

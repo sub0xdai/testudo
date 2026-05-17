@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280,height=800">
+<title>Testudo — Store Screenshot 5: Multi-Exchange Support</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-core: #0a0a0a;
+    --bg-panel: #161616;
+    --bg-elevated: #1e1e1e;
+    --bg-hover: #282828;
+    --border-subtle: #323232;
+    --text-primary: #ededed;
+    --text-secondary: #999999;
+    --text-dim: #666666;
+    --signal-green: #22C55E;
+    --signal-red: #EF4444;
+    --signal-orange: #f59e0b;
+    --accent-steel: #94a3b8;
+  }
+
+  body {
+    width: 1280px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--bg-core);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Background: diagonal grid pattern */
+  .bg-pattern {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #0a0a0a 50%, #0d1117 100%);
+  }
+
+  .bg-pattern::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 59px,
+        rgba(50,50,50,0.1) 59px,
+        rgba(50,50,50,0.1) 60px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 59px,
+        rgba(50,50,50,0.1) 59px,
+        rgba(50,50,50,0.1) 60px
+      );
+  }
+
+  /* Subtle radial glow */
+  .bg-pattern::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 700px 500px at 50% 45%, rgba(30,30,30,0.4) 0%, transparent 100%);
+  }
+
+  /* Main Card */
+  .main-card {
+    position: relative;
+    z-index: 10;
+    width: 800px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(50,50,50,0.2);
+  }
+
+  /* Exchange Badges Row */
+  .exchange-row {
+    display: flex;
+    gap: 12px;
+    padding: 28px 32px 20px;
+  }
+
+  .exchange-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 10px 20px;
+    background: var(--bg-core);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  .exchange-badge::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  .exchange-badge.hl::before { background: var(--signal-green); }
+  .exchange-badge.binance::before { background: var(--signal-orange); }
+  .exchange-badge.woo::before { background: var(--accent-steel); }
+
+  /* CCXT subtitle */
+  .ccxt-note {
+    padding: 0 32px 20px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: normal;
+  }
+
+  /* Divider */
+  .card-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 0 32px;
+  }
+
+  /* Feature Grid */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 8px 0;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 32px;
+  }
+
+  .feature-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--signal-green);
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .feature-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .feature-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .feature-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* Screenshot caption overlay */
+  .caption {
+    position: absolute;
+    bottom: 24px;
+    left: 40px;
+    z-index: 20;
+  }
+
+  .caption h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  }
+
+  .caption p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-pattern"></div>
+
+<!-- Main Card -->
+<div class="main-card">
+  <!-- Exchange Badges -->
+  <div class="exchange-row">
+    <div class="exchange-badge hl">HYPERLIQUID</div>
+    <div class="exchange-badge binance">BINANCE</div>
+    <div class="exchange-badge woo">WOO X</div>
+  </div>
+
+  <div class="ccxt-note">+ any CCXT-compatible exchange</div>
+
+  <div class="card-divider"></div>
+
+  <!-- Feature Grid -->
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">
+        <span class="feature-title">Shadow Engine</span>
+        <span class="feature-desc">Paper trade with real market data</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">
+        <span class="feature-title">Position Sizing</span>
+        <span class="feature-desc">MIN(risk%, fixed, max, margin)</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">
+        <span class="feature-title">Order Groups</span>
+        <span class="feature-desc">Entry + SL + TP as atomic unit</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">
+        <span class="feature-title">Fill Detection</span>
+        <span class="feature-desc">WebSocket real-time order updates</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">
+        <span class="feature-title">Rehydration</span>
+        <span class="feature-desc">Positions survive browser restarts</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">
+        <span class="feature-title">Double-Enter</span>
+        <span class="feature-desc">Two-stage confirmation prevents accidents</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Caption -->
+<div class="caption">
+  <h2>Multi-Exchange Support</h2>
+  <p>One interface for Hyperliquid, Binance, WOO, and any CCXT-compatible exchange.</p>
+</div>
+
+</body>
+</html>

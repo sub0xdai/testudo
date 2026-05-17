@@ -1,0 +1,37 @@
+{
+  "name": "testudo-journal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@reown/appkit": "^1.8.19",
+    "@reown/appkit-adapter-ethers": "^1.8.19",
+    "@reown/appkit-adapter-solana": "^1.8.19",
+    "@solidjs/router": "^0.15.3",
+    "bs58": "^6.0.0",
+    "dompurify": "^3.3.3",
+    "echarts": "5",
+    "ethers": "^6.16.0",
+    "lightweight-charts": "^5.0.0",
+    "marked": "^17.0.4",
+    "solid-js": "^1.9.5"
+  },
+  "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
+    "@types/dompurify": "^3.2.0",
+    "@types/jsdom": "^28.0.1",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^29.0.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.8",
+    "vite-plugin-solid": "^2.11.6",
+    "vitest": "^3.2.4"
+  }
+}

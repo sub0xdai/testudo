@@ -1,0 +1,11 @@
+82c4c12ff0a31b5e381c73391d48f9b655c0e10e commit	refs/heads/master
+3b4006e272e95622694f1950317140aad3757c82 commit	refs/heads/worktree-agent-a2617f4d
+5e0df2fbf3a498cf64a0b936f5fb9a1cc027efea commit	refs/heads/worktree-agent-a26f3ab5
+0b65d432dbd316b949213b18de2dffdac7fd8cf6 commit	refs/heads/worktree-agent-a3bce7fc
+50b4a6adc62d8f73782eb6c1b2449e1a420a686d commit	refs/heads/worktree-agent-a9fe3fc3
+ae45d2138f70bd9aa0aece0c0c2840c3b7f4d481 commit	refs/heads/worktree-agent-aabf7229
+c2d6f27f082f59c7af47afe5aaf39625cdfb72dd commit	refs/heads/worktree-agent-afcd16465788be266
+59a985d7acdb33935a8510fba252f59e531842d0 commit	refs/original/refs/heads/master
+dbb658ea43e3927188a3b590c6ebfd569849ed98 commit	refs/remotes/origin/HEAD
+dbb658ea43e3927188a3b590c6ebfd569849ed98 commit	refs/remotes/origin/master
+ac9ed092f24b91e8cb18a862f6216191e91d0da0 commit	refs/tags/pre-parallel-merge

@@ -1,0 +1,480 @@
+[
+  {
+    "id": "RISK-01",
+    "description": "Create user risk config types and storage in backend",
+    "file_context": ["testudo-exchange/crates/common_utils/src/risk/"],
+    "acceptance_criteria": "RiskConfig struct with all fields, save/load functions, cargo test passes",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-02",
+    "description": "Add GET/PUT /api/v1/risk-config endpoints",
+    "file_context": ["testudo-exchange/crates/router/src/routes/risk_config.rs"],
+    "acceptance_criteria": "Endpoints return/update user config, tested with curl",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-03",
+    "description": "Modify decision_loop to load user's risk config instead of default",
+    "file_context": ["testudo-exchange/crates/router/src/routes/order.rs"],
+    "acceptance_criteria": "Decision loop fetches config per user_id, falls back to default",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-04",
+    "description": "Create account_state adapter to fetch real balances",
+    "file_context": ["testudo-exchange/crates/common_utils/src/adapters/account_state.rs"],
+    "acceptance_criteria": "Returns shadow balance or Binance balance based on mode",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-05",
+    "description": "Replace hardcoded account state in order.rs with real data",
+    "file_context": ["testudo-exchange/crates/router/src/routes/order.rs"],
+    "acceptance_criteria": "Order route uses account_state adapter, no hardcoded $10k",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-06",
+    "description": "Create /settings/risk page component in frontend",
+    "file_context": ["testudo-web/apps/web/src/pages/RiskSettings.tsx"],
+    "acceptance_criteria": "Page renders with form for all config options, styled consistently",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-07",
+    "description": "Add /settings/risk route to App.tsx",
+    "file_context": ["testudo-web/apps/web/src/App.tsx"],
+    "acceptance_criteria": "Navigation to /settings/risk works, page loads",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-08",
+    "description": "Connect RiskSettings page to backend API",
+    "file_context": ["testudo-web/apps/web/src/pages/RiskSettings.tsx", "testudo-web/apps/web/src/utils/requests.ts"],
+    "acceptance_criteria": "Settings persist after save, load on page open",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-09",
+    "description": "Create useRiskCalculation hook for position sizing",
+    "file_context": ["testudo-web/apps/web/src/hooks/useRiskCalculation.ts"],
+    "acceptance_criteria": "Hook calculates size from entry/SL/risk%, updates on input change",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-10",
+    "description": "Create RiskDisplay component showing calculated values",
+    "file_context": ["testudo-web/apps/web/src/components/RiskDisplay.tsx"],
+    "acceptance_criteria": "Shows Size, Risk $, Risk %, Profit $, R:R ratio",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-11",
+    "description": "Create RiskAutomaton main component with entry/SL/TP inputs",
+    "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
+    "acceptance_criteria": "Component renders with all inputs, uses useRiskCalculation",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-12",
+    "description": "Wire RiskAutomaton order submission to backend",
+    "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
+    "acceptance_criteria": "BUY/SELL buttons submit orders, success/error toasts work",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-13",
+    "description": "Replace SwapInterface with RiskAutomaton in Trade.tsx",
+    "file_context": ["testudo-web/apps/web/src/pages/Trade.tsx"],
+    "acceptance_criteria": "Trade page shows RiskAutomaton instead of SwapInterface",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-14",
+    "description": "Remove or deprecate old SwapInterface component",
+    "file_context": ["testudo-web/apps/web/src/components/SwapInterface.tsx"],
+    "acceptance_criteria": "File deleted or marked deprecated, no import errors",
+    "status": "completed"
+  },
+  {
+    "id": "RISK-15",
+    "description": "End-to-end testing: place trade through Risk Automaton",
+    "file_context": ["testudo-web/apps/web/", "testudo-exchange/"],
+    "acceptance_criteria": "Can place limit order with calculated size, appears in open orders",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-01",
+    "description": "Add mouse event handlers to ChartManager for coordinate-to-price conversion",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "ChartManager exposes coordinateToPrice() and priceToCoordinate() methods, mouse events captured",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-02",
+    "description": "Create PositionDrawingTool component with drawing state machine",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "State machine handles: idle → drawing_entry → drawing_sl → drawing_tp → complete",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-03",
+    "description": "Create PositionZoneOverlay component for visual profit/loss zones",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
+    "acceptance_criteria": "Green zone for profit, red zone for loss, labels show price/percentage/amount",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-04",
+    "description": "Add horizontal price lines to chart for entry/SL/TP levels",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "Dashed entry line, red SL line, green TP line render on chart",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-05",
+    "description": "Integrate PositionDrawingTool into TradeView with toggle button",
+    "file_context": ["testudo-web/apps/web/src/components/trade_interface/TradeView.tsx"],
+    "acceptance_criteria": "Position Tool button in toolbar, clicking activates drawing mode",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-06",
+    "description": "Add draggable handles to adjust SL/TP levels after drawing",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
+    "acceptance_criteria": "User can drag handles to adjust levels, position recalculates in real-time",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-07",
+    "description": "Wire drawing completion to order execution via createOrder()",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "Execute button on overlay submits order, success/error toast appears",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-08",
+    "description": "Convert RiskAutomaton panel to risk config settings only",
+    "file_context": ["testudo-web/apps/web/src/components/RiskAutomaton.tsx"],
+    "acceptance_criteria": "Panel shows risk %, max position size, require SL toggle - no entry/SL/TP inputs",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-09",
+    "description": "Add keyboard shortcuts (Escape to cancel, Enter to execute)",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "Escape cancels drawing, Enter executes order when complete",
+    "status": "completed"
+  },
+  {
+    "id": "DRAW-10",
+    "description": "Create position-tool-dataflow.md diagram in docs/diagrams",
+    "file_context": ["testudo-web/apps/web/docs/diagrams/position-tool-dataflow.md"],
+    "acceptance_criteria": "ASCII diagram shows full dataflow from user interaction to order execution",
+    "status": "completed"
+  },
+  {
+    "id": "V5-01",
+    "description": "Upgrade lightweight-charts from v4.2.1 to v5.x",
+    "file_context": [
+      "testudo-web/apps/web/package.json",
+      "testudo-web/bun.lock"
+    ],
+    "acceptance_criteria": "bun install succeeds, lightweight-charts@5.x in lock file, no npm audit critical issues",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": []
+  },
+  {
+    "id": "V5-02",
+    "description": "Migrate chart_manager.ts series creation to V5 API",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "Replace addCandlestickSeries() with addSeries(CandlestickSeries, options), chart renders correctly",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-01"]
+  },
+  {
+    "id": "V5-03",
+    "description": "Update all series type imports in chart_manager.ts",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "Import CandlestickSeries, LineSeries etc from lightweight-charts, no TypeScript errors",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-01"]
+  },
+  {
+    "id": "V5-04",
+    "description": "Verify existing chart functionality works after V5 upgrade",
+    "file_context": [
+      "testudo-web/apps/web/src/utils/chart_manager.ts",
+      "testudo-web/apps/web/src/components/trade_interface/TradeView.tsx"
+    ],
+    "acceptance_criteria": "Candlestick chart renders, real-time updates work, price lines functional, bun run build passes",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-02", "V5-03"]
+  },
+  {
+    "id": "V5-05",
+    "description": "Create PositionZonePrimitive class implementing IPanePrimitive interface",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Class implements paneViews(), attached(), detached() methods, TypeScript compiles",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-04"]
+  },
+  {
+    "id": "V5-06",
+    "description": "Create PositionZoneRenderer with canvas drawing logic for zones",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Renderer draws filled rectangles for profit (green) and loss (red) zones on canvas",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-05"]
+  },
+  {
+    "id": "V5-07",
+    "description": "Implement price line rendering in PositionZoneRenderer",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Canvas renders entry (dashed white), SL (solid red), TP (solid green) lines at correct Y coordinates",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-06"]
+  },
+  {
+    "id": "V5-08",
+    "description": "Add updateLevels() method to primitive with requestUpdate() trigger",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Calling updateLevels(entry, sl, tp) triggers canvas repaint with new zone positions",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-07"]
+  },
+  {
+    "id": "V5-09",
+    "description": "Integrate primitive into ChartManager with attach/detach lifecycle",
+    "file_context": [
+      "testudo-web/apps/web/src/utils/chart_manager.ts",
+      "testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"
+    ],
+    "acceptance_criteria": "ChartManager has attachPositionPrimitive() and detachPositionPrimitive() methods, primitive attaches to main pane",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-08"]
+  },
+  {
+    "id": "V5-10",
+    "description": "Verify zones pan and zoom correctly with chart",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Dragging chart left/right moves zones, zooming price axis scales zone heights correctly",
+    "status": "completed",
+    "priority": "critical",
+    "depends_on": ["V5-09"]
+  },
+  {
+    "id": "V5-11",
+    "description": "Create hybrid DOM overlay for interactive handles only",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionHandleOverlay.tsx"],
+    "acceptance_criteria": "New lightweight component renders only drag handles (no zones), positioned via priceToCoordinate()",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-10"]
+  },
+  {
+    "id": "V5-12",
+    "description": "Add handle drag events that update primitive via updateLevels()",
+    "file_context": [
+      "testudo-web/apps/web/src/components/chart/PositionHandleOverlay.tsx",
+      "testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"
+    ],
+    "acceptance_criteria": "Dragging handle updates primitive, canvas zones update in real-time without lag",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-11"]
+  },
+  {
+    "id": "V5-13",
+    "description": "Implement handle position sync on chart pan/zoom events",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionHandleOverlay.tsx"],
+    "acceptance_criteria": "Handles re-position when chart scrolls by subscribing to timeScale/priceScale visible range changes",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-12"]
+  },
+  {
+    "id": "V5-14",
+    "description": "Create compact stats panel component positioned inside profit zone",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionStatsPanel.tsx"],
+    "acceptance_criteria": "Shows qty, risk $, R:R, and execute button, positioned relative to entry line Y coordinate",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["V5-13"]
+  },
+  {
+    "id": "V5-15",
+    "description": "Refactor PositionDrawingTool to use hybrid primitive + DOM architecture",
+    "file_context": [
+      "testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx",
+      "testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"
+    ],
+    "acceptance_criteria": "PositionDrawingTool creates primitive for zones, uses PositionHandleOverlay for drag handles",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-14"]
+  },
+  {
+    "id": "V5-16",
+    "description": "Delete or archive old PositionZoneOverlay.tsx (DOM-only version)",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionZoneOverlay.tsx"],
+    "acceptance_criteria": "Old file removed or moved to archive/, no import errors in project",
+    "status": "completed",
+    "priority": "low",
+    "depends_on": ["V5-15"]
+  },
+  {
+    "id": "V5-17",
+    "description": "Add canvas hit-testing for zone click detection",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Clicking inside zone area focuses the position tool, clicking outside deselects",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["V5-15"]
+  },
+  {
+    "id": "V5-18",
+    "description": "Implement z-order so zones render behind candlesticks but above grid",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Set zOrder property so candles are visible on top of zones, grid lines behind zones",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["V5-15"]
+  },
+  {
+    "id": "V5-19",
+    "description": "Add price labels to right edge of canvas via priceAxisViews",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Entry/SL/TP prices shown as labels on price axis, styled to match TradingView",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["V5-15"]
+  },
+  {
+    "id": "V5-20",
+    "description": "Write unit tests for PositionZonePrimitive coordinate calculations",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.test.ts"],
+    "acceptance_criteria": "Tests verify zone height calculation, line positions, updateLevels behavior",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["V5-08"]
+  },
+  {
+    "id": "V5-21",
+    "description": "End-to-end test: draw position, pan chart, verify zones follow",
+    "file_context": ["testudo-web/apps/web/"],
+    "acceptance_criteria": "Manual test confirms zones and lines move with chart pan, handles stay aligned",
+    "status": "completed",
+    "priority": "critical",
+    "depends_on": ["V5-15"]
+  },
+  {
+    "id": "V5-22",
+    "description": "Performance profiling: ensure no jank on rapid pan/zoom",
+    "file_context": ["testudo-web/apps/web/"],
+    "acceptance_criteria": "Chrome DevTools shows <16ms frame time during pan, no dropped frames",
+    "status": "done",
+    "priority": "medium",
+    "depends_on": ["V5-21"]
+  },
+  {
+    "id": "V5-23",
+    "description": "Update HANDOFF.md with V5 hybrid architecture documentation",
+    "file_context": ["HANDOFF.md"],
+    "acceptance_criteria": "Documents primitive API, hybrid approach rationale, key files added",
+    "status": "done",
+    "priority": "low",
+    "depends_on": ["V5-21"]
+  },
+  {
+    "id": "V5-24",
+    "description": "Create position-primitive-architecture.md diagram",
+    "file_context": ["testudo-web/apps/web/docs/diagrams/position-primitive-architecture.md"],
+    "acceptance_criteria": "ASCII diagram shows canvas primitive + DOM overlay interaction flow",
+    "status": "done",
+    "priority": "low",
+    "depends_on": ["V5-21"]
+  },
+  {
+    "id": "GEOM-01",
+    "description": "Update PositionLevels interface with startTime and optional endTime",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "PositionLevels has startTime: Time and endTime?: Time fields, TypeScript compiles",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["V5-21"]
+  },
+  {
+    "id": "GEOM-02",
+    "description": "Add ITimeScaleApi reference to renderer for time coordinate conversion",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Renderer has setTimeScale() method, attached() passes timeScale from chart",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-01"]
+  },
+  {
+    "id": "GEOM-03",
+    "description": "Update renderer to draw time-anchored bounded zones",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Zones start at timeToCoordinate(startTime), extend to chart right edge",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-02"]
+  },
+  {
+    "id": "GEOM-04",
+    "description": "Update line styling: all dashed, 1px, orange entry color",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.ts"],
+    "acceptance_criteria": "Entry line orange (#f0b90b), all lines dashed [5,5], all 1px width",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-03"]
+  },
+  {
+    "id": "GEOM-05",
+    "description": "Capture startTime in PositionDrawingTool on first click",
+    "file_context": ["testudo-web/apps/web/src/components/chart/PositionDrawingTool.tsx"],
+    "acceptance_criteria": "First click captures time via coordinateToTime(), passed to updateLevels()",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-04"]
+  },
+  {
+    "id": "GEOM-06",
+    "description": "Pass timeScale from ChartManager to primitive on attach",
+    "file_context": ["testudo-web/apps/web/src/utils/chart_manager.ts"],
+    "acceptance_criteria": "attachPositionPrimitive() passes chart.timeScale() to primitive",
+    "status": "completed",
+    "priority": "high",
+    "depends_on": ["GEOM-05"]
+  },
+  {
+    "id": "GEOM-07",
+    "description": "Update unit tests for time-anchored zone calculations",
+    "file_context": ["testudo-web/apps/web/src/primitives/PositionZonePrimitive.test.ts"],
+    "acceptance_criteria": "Tests verify startTime handling, bounded zone width calculation",
+    "status": "completed",
+    "priority": "medium",
+    "depends_on": ["GEOM-06"]
+  },
+  {
+    "id": "GEOM-08",
+    "description": "End-to-end verification: zones anchor at click time, expand on pan left",
+    "file_context": ["testudo-web/apps/web/"],
+    "acceptance_criteria": "Manual test: draw position, pan left - zone expands; pan right past start - zone disappears",
+    "status": "done",
+    "priority": "critical",
+    "depends_on": ["GEOM-07"]
+  }
+]

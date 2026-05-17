@@ -1,0 +1,84 @@
+# Testudo Exchange - Root .gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Package managers
+node_modules/
+.npm/
+.yarn/
+.pnp.*
+.pnpm-store/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Docker data (should not be committed)
+**/postgres-data/
+**/redis-data/
+**/docker-data/
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.csr
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.nfs*
+
+# Test artifacts
+test-results/
+
+# Runtime
+scripts/.pids/
+
+# bv (beads viewer) local config and caches
+.bv/
+.specify/AGENTS.md.bloated

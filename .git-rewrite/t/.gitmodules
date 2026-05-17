@@ -1,0 +1,12 @@
+[submodule "safe-cex-sub0"]
+	path = safe-cex-sub0
+	url = https://github.com/sub0xdai/safe-cex-sub0.git
+[submodule "testudo-exchange"]
+	path = testudo-exchange
+	url = https://github.com/sub0xdai/testudo-exchange.git
+[submodule "testudo-web"]
+	path = testudo-web
+	url = https://github.com/sub0xdai/testudo-web.git
+[submodule "testudo-ops"]
+	path = testudo-ops
+	url = https://github.com/sub0xdai/testudo-ops.git
