@@ -1,0 +1,30 @@
+target/
+.env
+*.pem
+
+# Docker data directories
+docker/postgres-data/
+docker/redis-data/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# claude-mem auto-generated CLAUDE.md files
+**/CLAUDE.md
+CLAUDE.md

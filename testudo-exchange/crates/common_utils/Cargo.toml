@@ -1,0 +1,42 @@
+[package]
+name = "common_utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+uuid = { version = "1.0", features = ["v4", "serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+validator = { version = "0.20", features = ["derive"] }
+thiserror = "1.0"
+jsonwebtoken = "9.3"
+async-trait = "0.1"
+rust_decimal = { version = "1.35", features = ["serde"] }
+rust_decimal_macros = "1.35"
+tokio = { version = "1.0", features = ["time"] }
+
+# CCXT integration dependencies
+reqwest = { version = "0.12", features = ["json"] }
+
+# PostgreSQL queue/cache (unified data layer)
+pg_queue = { path = "../pg_queue" }
+
+# Cryptography dependencies for secure API key encryption
+aes-gcm = "0.10"
+rand = "0.8"
+pbkdf2 = "0.12"
+zeroize = { version = "1.7", features = ["derive"] }
+hex = "0.4"
+sha2 = "0.10"
+base64 = "0.22.1"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full"] }
+wiremock = "0.6"
+
+[features]
+default = []
+# Real API integration for Phase 2 - reqwest now always included
+real-api = []

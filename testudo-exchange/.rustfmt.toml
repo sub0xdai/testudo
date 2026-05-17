@@ -1,0 +1,13 @@
+# # Set the indent style to spaces and number of spaces per tab
+# hard_tabs = false
+# tab_spaces = 4
+
+# # Specify the maximum line width
+# max_width = 100
+
+# # Customize the style of struct and enum formatting
+# struct_lit_single_line = false
+# struct_lit_width = 80
+
+# # Force multi-line match arms to use blocks
+# match_block_trailing_comma = true

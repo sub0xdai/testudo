@@ -1,0 +1,15 @@
+# Data directories
+docker/postgres-data/
+docker/redis-data/
+target/
+.git/
+
+# Rust specific
+**/*.rs.bk
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo 

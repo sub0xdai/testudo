@@ -1,0 +1,71 @@
+version: "3"
+
+services:
+  router:
+    container_name: exchange-router
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.router
+    restart: always
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "7000:8080"
+    networks:
+      - gateway
+
+  engine:
+    container_name: exchange-engine
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.engine
+    restart: always
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "7001:8081"
+    networks:
+      - gateway
+
+  ws-stream:
+    container_name: exchange-ws-stream
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ws-stream
+    restart: always
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "7002:4000"
+    networks:
+      - gateway
+
+  db-processor:
+    container_name: exchange-db-processor
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.db-processor
+    restart: always
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "7003:8083"
+    networks:
+      - gateway
+
+networks:
+  gateway:
+    name: exchange
+    external: true

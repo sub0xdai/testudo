@@ -1,0 +1,122 @@
+# Production Docker Compose — network-isolated sidecar + PSK authentication
+# Usage: docker compose -f docker-compose.production.yml up
+#
+# Network topology:
+#   frontend (host-exposed): router:8080, ws-stream:4000
+#   internal (no host ports): sidecar:3100, db-processor:8083, postgres:5432
+
+services:
+  db:
+    container_name: exchange-postgres
+    image: postgres:16-alpine
+    command: -c 'max_connections=800'
+    shm_size: 1gb
+    restart: always
+    env_file: .env.production
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  router:
+    container_name: exchange-router
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.router
+    restart: always
+    env_file: .env.production
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "8080:8080"
+    networks:
+      - frontend
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ws-stream:
+    container_name: exchange-ws-stream
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ws-stream
+    restart: always
+    env_file: .env.production
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "4000:4000"
+    networks:
+      - frontend
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "cat < /dev/tcp/localhost/4000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-processor:
+    container_name: exchange-db-processor
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.db-processor
+    restart: always
+    env_file: .env.production
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    networks:
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
+
+  exchange-sidecar:
+    container_name: exchange-sidecar
+    build:
+      context: ../..
+      dockerfile: testudo-cex/Dockerfile
+    restart: always
+    environment:
+      - PORT=3100
+      - SIDECAR_PSK=${SIDECAR_PSK}
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3100/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  frontend:
+    name: exchange-frontend
+  internal:
+    name: exchange-internal

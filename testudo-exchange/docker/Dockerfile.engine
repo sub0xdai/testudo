@@ -1,0 +1,37 @@
+# Build stage
+FROM rust:1.87-slim AS builder
+
+WORKDIR /app
+COPY . .
+
+# Prepare sqlx query cache before running the build
+# SQLX_OFFLINE=false cargo sqlx prepare --workspace
+
+
+# Set SQLX to offline mode to skip compile-time query verification
+ENV SQLX_OFFLINE=true
+
+# Build the engine binary
+RUN cargo build --release --bin engine
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the binary from builder
+COPY --from=builder /app/target/release/engine /app/engine
+
+# Set environment variables
+ENV RUST_LOG=info
+
+# Expose the port
+EXPOSE 8081
+
+# Run the binary
+CMD ["/app/engine"] 

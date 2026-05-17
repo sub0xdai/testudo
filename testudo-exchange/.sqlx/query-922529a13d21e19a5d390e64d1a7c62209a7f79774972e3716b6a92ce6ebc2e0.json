@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH timeseries_data AS (\n            SELECT\n                date_trunc($1, to_timestamp(timestamp / 1000)) AS bucket,\n                price,\n                quantity,\n                trade_id,\n                to_timestamp(timestamp / 1000) AS trade_time,\n                ROW_NUMBER() OVER (PARTITION BY date_trunc($1, to_timestamp(timestamp / 1000)) ORDER BY timestamp ASC) AS row_num_asc,\n                ROW_NUMBER() OVER (PARTITION BY date_trunc($1, to_timestamp(timestamp / 1000)) ORDER BY timestamp DESC) AS row_num_desc\n            FROM trades\n            WHERE timestamp >= $2\n              AND market = $3\n        )\n        , aggregated_data AS (\n            SELECT\n                bucket,\n                MAX(price) AS high,\n                MIN(price) AS low,\n                SUM(quantity) AS volume,\n                COUNT(trade_id) AS trades,\n                SUM(price * quantity) AS quote_volume,\n                MIN(trade_time) AS start_time,\n                MAX(trade_time) AS end_time,\n                MAX(CASE WHEN row_num_asc = 1 THEN price END) AS open,\n                MAX(CASE WHEN row_num_desc = 1 THEN price END) AS close\n            FROM timeseries_data\n            GROUP BY bucket\n        )\n        SELECT\n            open,\n            bucket AS end,\n            high,\n            low,\n            close,\n            quote_volume,\n            start_time AS start,\n            trades,\n            volume\n        FROM aggregated_data\n        ORDER BY bucket ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "open",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "end",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "high",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "low",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "close",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "quote_volume",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "start",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "trades",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "volume",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "922529a13d21e19a5d390e64d1a7c62209a7f79774972e3716b6a92ce6ebc2e0"
+}

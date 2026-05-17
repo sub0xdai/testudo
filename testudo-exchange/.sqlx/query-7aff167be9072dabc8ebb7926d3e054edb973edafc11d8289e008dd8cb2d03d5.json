@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH aggregated_trades AS (\n            SELECT\n                market AS symbol,\n                MIN(price) FILTER (WHERE row_num_asc = 1) AS first_price,\n                MAX(price) AS high,\n                MIN(price) AS low,\n                MIN(price) FILTER (WHERE row_num_desc = 1) AS last_price,\n                MAX(price) FILTER (WHERE row_num_desc = 1) - MIN(price) FILTER (WHERE row_num_asc = 1) AS price_change,\n                (MAX(price) FILTER (WHERE row_num_desc = 1) - MIN(price) FILTER (WHERE row_num_asc = 1)) / MIN(price) FILTER (WHERE row_num_asc = 1) AS price_change_percent,\n                SUM(quantity) AS volume,\n                SUM(price * quantity) AS quote_volume,\n                COUNT(trade_id) AS trades\n            FROM (\n                SELECT\n                    market,\n                    price,\n                    quantity,\n                    trade_id,\n                    ROW_NUMBER() OVER (PARTITION BY market ORDER BY timestamp ASC) AS row_num_asc,\n                    ROW_NUMBER() OVER (PARTITION BY market ORDER BY timestamp DESC) AS row_num_desc\n                FROM trades\n                WHERE timestamp >= $1\n            ) trade_data\n            GROUP BY market\n        )\n        SELECT \n            symbol, \n            first_price, \n            high, \n            low, \n            last_price, \n            price_change, \n            price_change_percent, \n            quote_volume, \n            trades, \n            volume\n        FROM aggregated_trades\n        ORDER BY symbol ASC;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "symbol",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "high",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "low",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "price_change",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "price_change_percent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "quote_volume",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "trades",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "volume",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7aff167be9072dabc8ebb7926d3e054edb973edafc11d8289e008dd8cb2d03d5"
+}

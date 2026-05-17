@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.dependencies]
+actix-cors = "0.6"
+actix-files = "0.6"
+actix-multipart = "0.7"
+actix-web = "4"
+async-trait = "0.1.83"
+chrono = { version = "0.4.38", features = ["serde"] }
+confik = "0.11"
+dotenvy = "0.15"
+env_logger = "0.10.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+tracing-actix-web = "0.7"
+futures-util = "0.3.30"
+rand = "0.8.5"
+rust_decimal = "1.36.0"
+rust_decimal_macros = "1.36.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0.117", features = ["raw_value"] }
+sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio", "bigdecimal", "rust_decimal", "time", "uuid", "chrono"] }
+tokio = { version = "1.10.0", features = ["full"] }
+tokio-tungstenite = { version = "0.24.0", features = ["native-tls"] }
+uuid = { version = "1.10.0", features = ["v4", "v5", "serde"] }

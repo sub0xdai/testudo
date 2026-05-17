@@ -1,0 +1,23 @@
+[package]
+name = "sqlx_postgres"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sqlx.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+futures-util.workspace = true
+
+# Dependencies not in workspace - need to add explicit versions
+thiserror = "1.0"
+
+# Internal dependencies
+common_utils = { path = "../common_utils" }
+
+[dev-dependencies]
+tokio-test = "0.4"

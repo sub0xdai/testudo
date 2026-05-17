@@ -1,0 +1,39 @@
+services:
+  db:
+    container_name: exchange-postgres
+    image: postgres:16-alpine
+    command: -c 'max_connections=800'
+    shm_size: 1gb
+    restart: always
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "5000:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - gateway
+      
+  redis:
+    container_name: exchange-redis
+    image: redis:6.2-alpine
+    command: redis-server --save 20 1 --loglevel warning
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./redis-data:/var/lib/redis/data
+    networks:
+      - gateway
+
+networks:
+  gateway:
+    name: exchange
+    external: false
