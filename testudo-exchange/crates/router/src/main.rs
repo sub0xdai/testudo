@@ -1313,9 +1313,11 @@ async fn main() -> std::io::Result<()> {
                     ),
             )
             // JNL-SYNC-01 CP-6: /internal/reconcile-pending-fills removed
-            // Serve uploaded journal images
+            // Serve uploaded journal images (authenticated)
             .service(
-                actix_files::Files::new("/uploads/journal", "./uploads/journal"),
+                web::scope("/uploads/journal")
+                    .wrap(JwtMiddleware::new(token_service.clone()))
+                    .service(actix_files::Files::new("", "./uploads/journal")),
             )
     })
     .bind(config.server_addr.clone())?

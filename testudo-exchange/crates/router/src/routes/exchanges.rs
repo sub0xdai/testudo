@@ -1413,6 +1413,7 @@ mod tests {
                 wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
                 exp: (Utc::now().timestamp() + 3600) as i64,
                 iat: Utc::now().timestamp() as i64,
+                iss: "https://api.testudo.vip".to_string(),
                 token_type: TokenType::Access,
             })
         }

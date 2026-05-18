@@ -355,6 +355,7 @@ mod tests {
             wallet_address: wallet.to_string(),
             exp: (Utc::now().timestamp() + 3600) as i64,
             iat: Utc::now().timestamp() as i64,
+            iss: "https://api.testudo.vip".to_string(),
             token_type: TokenType::Access,
         }
     }

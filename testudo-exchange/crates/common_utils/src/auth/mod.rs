@@ -11,6 +11,7 @@ pub struct TokenClaims {
     pub wallet_address: String, // 0x-prefixed Ethereum address
     pub exp: i64,               // expiration timestamp
     pub iat: i64,               // issued at timestamp
+    pub iss: String,            // token issuer URL (SEC-01)
     pub token_type: TokenType,
 }
 
@@ -78,11 +79,15 @@ impl JwtTokenService {
         let now = Utc::now();
         let exp = (now + expires_in).timestamp();
 
+        let issuer = std::env::var("JWT_ISSUER")
+            .unwrap_or_else(|_| "https://api.testudo.vip".to_string());
+
         let claims = TokenClaims {
             sub: user_id.to_string(),
             wallet_address: wallet_address.to_string(),
             exp,
             iat: now.timestamp(),
+            iss: issuer,
             token_type,
         };
 
@@ -100,7 +105,11 @@ impl JwtTokenService {
         expected_type: TokenType,
     ) -> Result<TokenClaims, AuthError> {
         let decoding_key = DecodingKey::from_secret(secret.as_ref());
-        let validation = Validation::default();
+        let expected_issuer = std::env::var("JWT_ISSUER")
+            .unwrap_or_else(|_| "https://api.testudo.vip".to_string());
+        let mut validation = Validation::default();
+        validation.set_issuer(&[&expected_issuer]);
+        validation.validate_exp = true;
 
         let token_data = jsonwebtoken::decode::<TokenClaims>(token, &decoding_key, &validation)
             .map_err(|_| AuthError::InvalidToken)?;
