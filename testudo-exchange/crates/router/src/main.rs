@@ -29,8 +29,8 @@ use dotenvy::dotenv;
 use engine::{EngineActor, ShadowEngine};
 use routes::{
     auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines, market_data,
-    order, paper_balance, public_profile, risk, risk_config, sync, tickers, trade, trade_events,
-    trade_management, user_settings,
+    order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers, trade,
+    trade_events, trade_management, user_settings,
 };
 use sqlx_postgres::PostgresDb;
 use std::sync::Arc;
@@ -1290,6 +1290,12 @@ async fn main() -> std::io::Result<()> {
                             ) // GET /trades/{id}/events (019f)
                             .route("/{id}", web::delete().to(trade_management::cancel_trade)) // DELETE /trades/{id}
                             .route("/cleanup", web::post().to(trade_management::cleanup_stale_trades)), // POST /trades/cleanup (HL-09)
+                    )
+                    // Agent signal endpoint — programmatic trade execution
+                    .service(
+                        web::scope("/signals")
+                            .wrap(JwtMiddleware::new(token_service.clone()))
+                            .route("", web::post().to(signal::create_signal)),
                     )
                     .service(
                         web::scope("/paper")

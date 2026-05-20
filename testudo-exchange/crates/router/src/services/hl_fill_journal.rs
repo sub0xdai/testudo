@@ -90,6 +90,8 @@ pub fn build_trade_close_event(
         trade_group_id: None,
         source: Some(source.to_string()),
         exchange_fill_id: Some(fill.tid as i64),
+        reasoning: None,
+        confidence: None,
         setup_tag: None,
         kelly_inputs: None,
         needs_reconciliation: false,

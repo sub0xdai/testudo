@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod coach;
+pub mod signal;
 pub mod context;
 pub mod dignitas;
 pub mod internal;

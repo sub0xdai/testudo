@@ -44,6 +44,12 @@ pub struct JournalTrade {
     pub trade_group_id: Option<Uuid>,
     pub notes: Option<String>,
     pub source: String,
+    /// AGENT-01: Agent's free-text reasoning for the trade signal.
+    #[serde(default)]
+    pub reasoning: Option<String>,
+    /// AGENT-01: Agent confidence 0.0–1.0 for Kelly calibration.
+    #[serde(default)]
+    pub confidence: Option<Decimal>,
     pub exchange_fill_id: Option<i64>,
     pub setup_tag: Option<String>,
     /// QNT-01a: calibration snapshot at entry, populated only for Dynamic Risk

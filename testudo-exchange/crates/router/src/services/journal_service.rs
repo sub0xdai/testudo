@@ -38,6 +38,10 @@ pub struct TradeCloseEvent {
     pub source: Option<String>,
     pub exchange_fill_id: Option<i64>,
     pub setup_tag: Option<String>,
+    /// AGENT-01: Agent's free-text reasoning for the signal (e.g. TA, on-chain, sentiment).
+    pub reasoning: Option<String>,
+    /// AGENT-01: Agent's confidence 0.0–1.0 for future Kelly criterion calibration.
+    pub confidence: Option<Decimal>,
     /// QNT-01a: entry-time calibration snapshot built by `create_trade` when
     /// Dynamic Risk is on and a `setup_tag` is present. `None` otherwise.
     pub kelly_inputs: Option<serde_json::Value>,
@@ -200,8 +204,9 @@ impl JournalService {
                 "SELECT id, user_id, exchange, symbol, side, entry_price, exit_price, quantity, \
                  leverage, realized_pnl, realized_pnl_pct, fees, net_pnl, stop_price, \
                  target_price, risk_amount, r_multiple, opened_at, closed_at, duration_secs, \
-                 trade_group_id, notes, source, exchange_fill_id, setup_tag, kelly_inputs, \
-                 needs_reconciliation, close_reason, created_at, updated_at \
+                 trade_group_id, notes, source, reasoning, confidence, exchange_fill_id, \
+                 setup_tag, kelly_inputs, needs_reconciliation, close_reason, \
+                 created_at, updated_at \
                  FROM journal_trades WHERE trade_group_id = $1",
             )
             .bind(group_id)
@@ -231,18 +236,19 @@ impl JournalService {
              (user_id, exchange, symbol, side, entry_price, exit_price, quantity, leverage, \
               realized_pnl, realized_pnl_pct, fees, net_pnl, stop_price, target_price, \
               risk_amount, r_multiple, opened_at, closed_at, trade_group_id, \
-              exchange_order_ids, source, exchange_fill_id, setup_tag, kelly_inputs, \
-              needs_reconciliation) \
+              exchange_order_ids, source, reasoning, confidence, exchange_fill_id, \
+              setup_tag, kelly_inputs, needs_reconciliation) \
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, \
-                     $17, $18, $19, $20, $21, $22, $23, $24, $25) \
+                     $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) \
              ON CONFLICT (user_id, exchange, exchange_fill_id) \
                  WHERE exchange_fill_id IS NOT NULL \
              DO NOTHING \
              RETURNING id, user_id, exchange, symbol, side, entry_price, exit_price, quantity, \
                        leverage, realized_pnl, realized_pnl_pct, fees, net_pnl, stop_price, \
                        target_price, risk_amount, r_multiple, opened_at, closed_at, \
-                       duration_secs, trade_group_id, notes, source, exchange_fill_id, \
-                       setup_tag, kelly_inputs, needs_reconciliation, close_reason, created_at, updated_at",
+                       duration_secs, trade_group_id, notes, source, reasoning, confidence, \
+                       exchange_fill_id, setup_tag, kelly_inputs, needs_reconciliation, \
+                       close_reason, created_at, updated_at",
         )
         .bind(event.user_id)
         .bind(&exchange_canon)
@@ -270,6 +276,8 @@ impl JournalService {
             ids
         })
         .bind(source)
+        .bind(event.reasoning.as_deref())
+        .bind(event.confidence)
         .bind(event.exchange_fill_id)
         .bind(event.setup_tag.as_deref())
         .bind(&event.kelly_inputs)
@@ -585,6 +593,8 @@ mod tests {
             source: None,
             exchange_fill_id: None,
             setup_tag: None,
+            reasoning: None,
+            confidence: None,
             kelly_inputs: None,
             needs_reconciliation: false,
         }
@@ -727,6 +737,74 @@ mod tests {
         // 24 hours expressed in the timestamp delta the DB will record.
         assert_eq!((event.closed_at - event.opened_at).num_seconds(), 86400);
     }
+
+    // --- AGENT-01 CP-2: Agent attribution on TradeCloseEvent ---
+
+    #[test]
+    fn agent_attribution_fields_on_trade_close_event() {
+        let mut event = make_event("LONG", dec!(50000), dec!(51000), dec!(0.1));
+        event.reasoning = Some("BTC broke above 50k resistance on 4h".to_string());
+        event.confidence = Some(dec!(0.85));
+        event.source = Some("agent:hermes_v1.2".to_string());
+
+        assert_eq!(
+            event.reasoning.as_deref(),
+            Some("BTC broke above 50k resistance on 4h")
+        );
+        assert_eq!(event.confidence, Some(dec!(0.85)));
+        assert_eq!(event.source.as_deref(), Some("agent:hermes_v1.2"));
+    }
+
+    #[test]
+    fn agent_attribution_fields_default_to_none() {
+        let event = make_event("LONG", dec!(50000), dec!(51000), dec!(0.1));
+        assert!(event.reasoning.is_none());
+        assert!(event.confidence.is_none());
+    }
+
+    #[test]
+    fn journal_trade_serde_includes_agent_attribution() {
+        use crate::models::journal::JournalTrade;
+        let json = serde_json::json!({
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "user_id": "550e8400-e29b-41d4-a716-446655440001",
+            "exchange": "shadow",
+            "symbol": "BTC_USDT",
+            "side": "LONG",
+            "entry_price": "50000",
+            "exit_price": "51000",
+            "quantity": "0.1",
+            "leverage": 10,
+            "realized_pnl": "100",
+            "realized_pnl_pct": "20",
+            "fees": "5",
+            "net_pnl": "95",
+            "stop_price": null,
+            "target_price": null,
+            "risk_amount": null,
+            "r_multiple": null,
+            "opened_at": "2026-03-18T10:00:00Z",
+            "closed_at": "2026-03-18T14:30:00Z",
+            "duration_secs": 16200,
+            "trade_group_id": null,
+            "notes": null,
+            "source": "agent:hermes_v1.2",
+            "reasoning": "BTC broke above 50k on 4h",
+            "confidence": "0.85",
+            "exchange_fill_id": null,
+            "setup_tag": null,
+            "kelly_inputs": null,
+            "needs_reconciliation": false,
+            "close_reason": null,
+            "created_at": "2026-03-18T14:30:00Z",
+            "updated_at": "2026-03-18T14:30:00Z"
+        });
+
+        let trade: JournalTrade = serde_json::from_value(json).expect("deserialize");
+        assert_eq!(trade.source, "agent:hermes_v1.2");
+        assert_eq!(trade.reasoning.as_deref(), Some("BTC broke above 50k on 4h"));
+        assert_eq!(trade.confidence, Some(dec!(0.85)));
+    }
 }
 
 /// HIST-03 CP-4: integration tests for idempotent re-import.
@@ -812,6 +890,8 @@ mod hist03_idempotency {
             source: Some("import_ccxt".to_string()),
             exchange_fill_id: Some(fill_id),
             setup_tag: None,
+            reasoning: None,
+            confidence: None,
             kelly_inputs: None,
             needs_reconciliation: false,
         }
