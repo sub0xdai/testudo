@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Integration Blueprint — Testudo Exchange</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-alt: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-dim: #1f6feb;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --orange: #db6d28;
+    --radius: 8px;
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.65;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 40%, #1a2332 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 64px 32px 56px;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #58a6ff 0%, #79c0ff 50%, #a5d6ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+
+  .hero .subtitle {
+    font-size: 18px;
+    color: var(--text-muted);
+    max-width: 640px;
+    margin: 0 auto 24px;
+  }
+
+  .hero .meta {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .hero .meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hero .meta .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .badge-impact-high { background: #1a3a2a; color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-impact-medium { background: #2a2816; color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+  .badge-effort-low { background: #1a2a3a; color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-effort-medium { background: #2a1a2a; color: #bc8cff; border: 1px solid rgba(188,140,255,0.3); }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin: 40px auto;
+    max-width: 880px;
+  }
+
+  .toc h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+  }
+
+  .toc li {
+    counter-increment: toc;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(48,54,61,0.4);
+  }
+
+  .toc li:last-child { border-bottom: none; }
+
+  .toc li a {
+    color: var(--text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: color 0.15s;
+    font-size: 14px;
+  }
+
+  .toc li a:hover { color: var(--accent); }
+
+  .toc li a::before {
+    content: counter(toc);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .toc .toc-badges {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  section {
+    max-width: 880px;
+    margin: 0 auto 56px;
+    padding: 0 24px;
+  }
+
+  section h2 {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  section h2 .section-num {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+    background: rgba(88,166,255,0.1);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+  }
+
+  section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 28px 0 10px;
+    color: var(--accent);
+  }
+
+  section h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 20px 0 8px;
+    color: var(--text);
+  }
+
+  section p {
+    margin: 10px 0;
+    color: var(--text-muted);
+  }
+
+  section ul, section ol {
+    margin: 10px 0 10px 24px;
+    color: var(--text-muted);
+  }
+
+  section li { margin: 4px 0; }
+
+  .box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+
+  .box-title {
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .box-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  @media (max-width: 640px) {
+    .box-grid { grid-template-columns: 1fr; }
+  }
+
+  .box-grid-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+
+  .box-grid-item .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .box-grid-item .value {
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  pre {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  :not(pre) > code {
+    background: var(--surface-alt);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface-alt);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  td { color: var(--text-muted); }
+
+  .checklist {
+    list-style: none;
+    margin-left: 0;
+  }
+
+  .checklist li {
+    padding: 4px 0;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .checklist li::before {
+    content: '☐';
+    color: var(--text-muted);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .roadmap {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin: 20px 0;
+    font-size: 12px;
+  }
+
+  @media (max-width: 640px) {
+    .roadmap { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .roadmap-week {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+  }
+
+  .roadmap-week .week-num {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .roadmap-week .week-title {
+    font-weight: 700;
+    margin: 6px 0 2px;
+    color: var(--accent);
+  }
+
+  .roadmap-week .week-days {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  .roadmap-week .week-items {
+    margin-top: 8px;
+    text-align: left;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .architecture {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 20px 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--text-muted);
+  }
+
+  .architecture .hl { color: var(--accent); }
+  .architecture .hl2 { color: var(--green); }
+  .architecture .hl3 { color: var(--orange); }
+  .architecture .dim { color: #484f58; }
+
+  footer {
+    text-align: center;
+    padding: 48px 24px 40px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  .flow-step {
+    display: flex;
+    gap: 14px;
+    padding: 10px 0;
+    border-left: 2px solid var(--border);
+    margin-left: 8px;
+    padding-left: 20px;
+  }
+
+  .flow-step:last-child { border-left-color: transparent; }
+
+  .flow-step .step-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 24px;
+  }
+
+  .flow-step .step-content { color: var(--text-muted); }
+
+  .flow-step .step-content strong { color: var(--text); }
+
+  .tag-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+  }
+
+  .tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Agent Integration Blueprint</h1>
+  <p class="subtitle">High-impact, low-effort integration vectors for coding agents — Hermes, OpenClaw, pi — to trade autonomously on the Testudo exchange.</p>
+  <div class="meta">
+    <span>📅 May 2026</span>
+    <span>🏷️ Architecture Analysis</span>
+    <span>⏱️ ~2 weeks to build</span>
+    <span class="badge badge-impact-high">3 Vectors</span>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s1">Signal Endpoint <span class="toc-badges"><span class="badge badge-impact-high">High Impact</span><span class="badge badge-effort-low">Low Effort</span></span></a></li>
+    <li><a href="#s2">Agent WebSocket Alerts <span class="toc-badges"><span class="badge badge-impact-medium">Medium Impact</span><span class="badge badge-effort-low">Low Effort</span></span></a></li>
+    <li><a href="#s3">Journal as Agent Memory <span class="toc-badges"><span class="badge badge-impact-medium">Medium Impact</span><span class="badge badge-effort-medium">Low-Medium Effort</span></span></a></li>
+    <li><a href="#s4">Implementation Roadmap</a></li>
+    <li><a href="#s5">Agent Onboarding Flow</a></li>
+  </ol>
+</div>
+
+<section>
+  <h2>Quick Context</h2>
+  <p>Testudo is a <strong>Rust-based crypto exchange platform</strong> with a comprehensive REST API (<code>/api/v1/</code>), WebSocket real-time streaming, a shadow (paper) trading engine, a risk engine with 8 validation checks + multi-method sizing, and an AI coach pipeline.</p>
+
+  <p>The exchange supports both <strong>CEX</strong> (Binance, Bybit, OKX via a Node.js sidecar on port 3100) and <strong>DEX</strong> (Hyperliquid via native Rust SDK).</p>
+
+  <p class="box" style="border-left: 3px solid var(--accent); padding-left: 20px;">
+    <strong>🔑 Key insight:</strong> The platform already has <strong>agent wallet support</strong> for Hyperliquid — cryptographic keypairs that trade on behalf of a user via EIP-712 approval. This is the primary foot-in-the-door for coding agents.
+  </p>
+
+  <div class="box" style="margin-top: 24px;">
+    <div class="box-title">Existing Infrastructure We Reuse</div>
+    <div class="tag-row">
+      <span class="tag">DecisionLoop</span>
+      <span class="tag">RiskService (8 checks)</span>
+      <span class="tag">CexExchangeApi</span>
+      <span class="tag">HyperliquidExchangeApi</span>
+      <span class="tag">ShadowExchangeApi</span>
+      <span class="tag">pg_queue (LISTEN/NOTIFY)</span>
+      <span class="tag">ws-stream (WebSocket)</span>
+      <span class="tag">StatsEngine (analytics)</span>
+      <span class="tag">CoachDigest</span>
+      <span class="tag">journal_service</span>
+      <span class="tag">SIWE auth</span>
+      <span class="tag">Agent wallets (HL)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== SECTION 1: SIGNAL ENDPOINT ==================== -->
+
+<section id="s1">
+  <h2><span class="section-num">01</span> Signal Endpoint</h2>
+
+  <div class="box-grid">
+    <div class="box-grid-item">
+      <div class="label">Impact</div>
+      <div class="value" style="color:var(--green)">High</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">Unlocks programmatic trading for all agents</div>
+    </div>
+    <div class="box-grid-item">
+      <div class="label">Effort</div>
+      <div class="value" style="color:var(--accent)">Low</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">~3 new files, ~2 modified</div>
+    </div>
+  </div>
+
+  <h3>The Gap</h3>
+  <p>Today, trading can only be initiated through the browser extension (Alt+X on TradingView → DOM scrape → modal → confirm). There is <strong>no programmatic way</strong> for an external agent to submit a trade signal. A coding agent working from chart analysis, an on-chain event, or a sentiment signal has no API to act on it.</p>
+
+  <h3>The Solution</h3>
+  <p>A dedicated signal endpoint that agents call directly, bypassing TradingView entirely:</p>
+
+<pre><span style="color:var(--accent)">POST</span> /api/v1/signals
+<span style="color:var(--text-muted)">Authorization: Bearer &lt;token&gt;</span>
+
+{
+  <span style="color:var(--text-muted)">"symbol"</span>: <span style="color:#a5d6ff">"BTC_USDT"</span>,
+  <span style="color:var(--text-muted)">"side"</span>: <span style="color:#a5d6ff">"LONG"</span>,
+  <span style="color:var(--text-muted)">"entry_price"</span>: <span style="color:#a5d6ff">"50000.00"</span>,
+  <span style="color:var(--text-muted)">"stop_loss"</span>: <span style="color:#a5d6ff">"49000.00"</span>,
+  <span style="color:var(--text-muted)">"take_profit"</span>: [
+    { <span style="color:var(--text-muted)">"price"</span>: <span style="color:#a5d6ff">"51500.00"</span>, <span style="color:var(--text-muted)">"quantity"</span>: <span style="color:#a5d6ff">"0.25"</span> },
+    { <span style="color:var(--text-muted)">"price"</span>: <span style="color:#a5d6ff">"53000.00"</span>, <span style="color:var(--text-muted)">"quantity"</span>: <span style="color:#a5d6ff">"0.25"</span> }
+  ],
+  <span style="color:var(--text-muted)">"exchange_account_id"</span>: <span style="color:#a5d6ff">"uuid"</span>,
+  <span style="color:var(--text-muted)">"execution_mode"</span>: <span style="color:#a5d6ff">"shadow"</span>,           <span style="color:#484f58">// or "live"</span>
+  <span style="color:var(--text-muted)">"reasoning"</span>: <span style="color:#a5d6ff">"RSI divergence 4H + volume spike"</span>,
+  <span style="color:var(--text-muted)">"source"</span>: <span style="color:#a5d6ff">"agent:hermes_v1.2"</span>,        <span style="color:#484f58">// attribution</span>
+  <span style="color:var(--text-muted)">"confidence"</span>: <span style="color:#79c0ff">0.72</span>,                   <span style="color:#484f58">// stored in journal</span>
+  <span style="color:var(--text-muted)">"idempotency_key"</span>: <span style="color:#a5d6ff">"uuid"</span>
+}</pre>
+
+  <h3>What Reuses Existing Infrastructure</h3>
+  <table>
+    <tr><th>Existing Component</th><th>Reused For</th></tr>
+    <tr><td><code>DecisionLoop::execute()</code></td><td>Risk validation + position sizing</td></tr>
+    <tr><td><code>RiskService::validate()</code></td><td>All 8 safety checks</td></tr>
+    <tr><td><code>CexExchangeApi::place_order()</code></td><td>CEX order routing</td></tr>
+    <tr><td><code>HyperliquidExchangeApi::place_order()</code></td><td>HL order routing</td></tr>
+    <tr><td><code>ShadowExchangeApi::place_order()</code></td><td>Paper trading</td></tr>
+    <tr><td><code>journal_service.rs</code></td><td>Recording trades with source attribution</td></tr>
+    <tr><td><code>TradePayloadSchema</code> (Zod)</td><td>Base schema, extended with agent fields</td></tr>
+  </table>
+
+  <h3>New Surface Area</h3>
+<pre>crates/router/src/
+├── <span style="color:var(--green)">routes/signal.rs</span>          <span style="color:#484f58"># POST /api/v1/signals handler</span>
+├── <span style="color:var(--green)">services/agent_signal.rs</span>  <span style="color:#484f58"># Orchestrates signal → trade</span>
+└── <span style="color:var(--green)">models/agent_signal.rs</span>    <span style="color:#484f58"># SignalInput, SignalResult types</span></pre>
+
+  <h3>Acceptance Criteria</h3>
+  <ul class="checklist">
+    <li>Any agent with valid auth can submit a signal</li>
+    <li>Signal passes through DecisionLoop (never bypasses risk engine)</li>
+    <li>Shadow mode supported for strategy testing</li>
+    <li><code>reasoning</code> and <code>source</code> fields stored in journal for attribution</li>
+    <li><code>confidence</code> field stored for future Kelly calibration</li>
+    <li>Idempotency key prevents double-execution</li>
+    <li>Response includes trade_group_id, entry order ID, sizing method, and warnings</li>
+  </ul>
+</section>
+
+<!-- ==================== SECTION 2: AGENT WEBSOCKET ALERTS ==================== -->
+
+<section id="s2">
+  <h2><span class="section-num">02</span> Agent WebSocket Alerts</h2>
+
+  <div class="box-grid">
+    <div class="box-grid-item">
+      <div class="label">Impact</div>
+      <div class="value" style="color:var(--yellow)">Medium</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">Real-time awareness for agents</div>
+    </div>
+    <div class="box-grid-item">
+      <div class="label">Effort</div>
+      <div class="value" style="color:var(--accent)">Low</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">~2 new files, ~1 modified</div>
+    </div>
+  </div>
+
+  <h3>The Gap</h3>
+  <p>Agents today have <strong>no real-time awareness</strong> of exchange state. They must poll REST endpoints to check if an order filled, if a stop-loss triggered, or if a drawdown limit was breached. This is inefficient and slow — an agent may act on stale data.</p>
+
+  <h3>The Solution</h3>
+  <p>Dedicated WebSocket channels for agent-critical events:</p>
+
+<pre><span style="color:#484f58">// Agent alert: risk breach</span>
+{
+  <span style="color:var(--text-muted)">"stream"</span>: <span style="color:#a5d6ff">"agent.alert.550e8400-..."</span>,
+  <span style="color:var(--text-muted)">"data"</span>: {
+    <span style="color:var(--text-muted)">"type"</span>: <span style="color:#a5d6ff">"risk_breach"</span>,
+    <span style="color:var(--text-muted)">"severity"</span>: <span style="color:#a5d6ff">"warning"</span>,
+    <span style="color:var(--text-muted)">"message"</span>: <span style="color:#a5d6ff">"Daily drawdown at 4.2% — approaching 5% limit"</span>,
+    <span style="color:var(--text-muted)">"current_drawdown_pct"</span>: <span style="color:#79c0ff">4.2</span>,
+    <span style="color:var(--text-muted)">"limit_pct"</span>: <span style="color:#79c0ff">5.0</span>
+  }
+}
+
+<span style="color:#484f58">// Agent execution report</span>
+{
+  <span style="color:var(--text-muted)">"stream"</span>: <span style="color:#a5d6ff">"agent.execution.550e8400-..."</span>,
+  <span style="color:var(--text-muted)">"data"</span>: {
+    <span style="color:var(--text-muted)">"type"</span>: <span style="color:#a5d6ff">"execution_report"</span>,
+    <span style="color:var(--text-muted)">"trade_group_id"</span>: <span style="color:#a5d6ff">"uuid"</span>,
+    <span style="color:var(--text-muted)">"order_id"</span>: <span style="color:#a5d6ff">"12345"</span>,
+    <span style="color:var(--text-muted)">"status"</span>: <span style="color:#a5d6ff">"filled"</span>,
+    <span style="color:var(--text-muted)">"fill_price"</span>: <span style="color:#a5d6ff">"50000.00"</span>,
+    <span style="color:var(--text-muted)">"latency_ms"</span>: <span style="color:#79c0ff">342</span>,
+    <span style="color:var(--text-muted)">"exchange"</span>: <span style="color:#a5d6ff">"hyperliquid"</span>
+  }
+}</pre>
+
+  <h3>Channels</h3>
+  <table>
+    <tr><th>Channel</th><th>Event Types</th></tr>
+    <tr><td><code>agent.alert.{user_id}</code></td><td>Risk breaches, drawdown warnings, margin calls, agent wallet expiry</td></tr>
+    <tr><td><code>agent.execution.{user_id}</code></td><td>Fill confirmations, rejections, latency breakdowns, cancellation reports</td></tr>
+    <tr><td><code>agent.order.{user_id}</code></td><td>Order lifecycle: placed → partially filled → filled → cancelled</td></tr>
+    <tr><td><code>agent.balance.{user_id}</code></td><td>Balance snapshots after each fill, daily PnL updates</td></tr>
+  </table>
+
+  <div class="box" style="border-left: 3px solid var(--green); padding-left: 20px;">
+    <strong>💡 Why pg_queue makes this cheap:</strong> The WebSocket server already subscribes to PostgreSQL <code>LISTEN/NOTIFY</code> channels. The router calls <code>pg_notify('order_events', payload)</code> after every event. Agent alert channels are just additional notification channels — no new infrastructure needed.
+  </div>
+</section>
+
+<!-- ==================== SECTION 3: JOURNAL AS AGENT MEMORY ==================== -->
+
+<section id="s3">
+  <h2><span class="section-num">03</span> Journal as Agent Memory</h2>
+
+  <div class="box-grid">
+    <div class="box-grid-item">
+      <div class="label">Impact</div>
+      <div class="value" style="color:var(--yellow)">Medium</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">Gives agents trading history awareness</div>
+    </div>
+    <div class="box-grid-item">
+      <div class="label">Effort</div>
+      <div class="value" style="color:#bc8cff">Low-Medium</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">~2 new files, ~2 modified</div>
+    </div>
+  </div>
+
+  <h3>The Gap</h3>
+  <p>The journal stores every trade, fill, tag, note, and management decision. The analytics layer computes equity curves, win rates, R-multiples, symbol breakdowns, and time distributions. But an agent can't ask <em>"how did my ETH breakouts perform in Q1?"</em> without parsing raw analytics JSON themselves.</p>
+
+  <h3>The Solution</h3>
+
+  <h4>Agent Summary Endpoint</h4>
+<pre><span style="color:var(--accent)">GET</span> /api/v1/journal/agent/summary
+<span style="color:var(--text-muted)">Authorization: Bearer &lt;token&gt;</span>
+<span style="color:var(--text-muted)">Content-Type: application/json</span>
+
+{
+  <span style="color:var(--text-muted)">"query"</span>: <span style="color:#a5d6ff">"ETH setups with win rate above 50% last 90 days"</span>,
+  <span style="color:var(--text-muted)">"timeframe"</span>: <span style="color:#a5d6ff">"90d"</span>,
+  <span style="color:var(--text-muted)">"format"</span>: <span style="color:#a5d6ff">"llm"</span>          <span style="color:#484f58">// "json" or "llm" (markdown for LLM context)</span>
+}</pre>
+
+  <p>Response (<code>format: "llm"</code>) returns structured markdown with citation-linked trade IDs, setup breakdowns, and actionable insights — ready to feed directly into an LLM context window.</p>
+
+  <table>
+    <tr><th>Endpoint</th><th>Description</th></tr>
+    <tr><td><code>GET /journal/agent/summary</code></td><td>Structured summary with filters, LLM-ready or JSON</td></tr>
+    <tr><td><code>GET /journal/agent/insights</code></td><td>Actionable insights: low WR setups, stop distance issues, session timing</td></tr>
+    <tr><td><code>GET /journal/agent/compare</code></td><td>Compare two time periods or strategies side by side</td></tr>
+  </table>
+
+  <h3>What Reuses Existing Infrastructure</h3>
+  <table>
+    <tr><th>Existing Component</th><th>Reused For</th></tr>
+    <tr><td><code>journal_stats.rs</code> <code>StatsEngine</code></td><td>All analytics computation</td></tr>
+    <tr><td><code>journal_timeseries.rs</code></td><td>Equity curve, time distribution</td></tr>
+    <tr><td><code>CoachDigest</code> types</td><td>Ad-hoc digest format</td></tr>
+    <tr><td><code>journal_service.rs</code></td><td>Raw trade data</td></tr>
+    <tr><td>Tag system (<code>/journal/tags</code>)</td><td>Setup-based filtering</td></tr>
+  </table>
+</section>
+
+<!-- ==================== SECTION 4: ROADMAP ==================== -->
+
+<section id="s4">
+  <h2><span class="section-num">04</span> Implementation Roadmap</h2>
+
+  <div class="roadmap">
+    <div class="roadmap-week">
+      <div class="week-num">Week 1</div>
+      <div class="week-title">Signal Endpoint</div>
+      <div class="week-days">~3 days</div>
+      <div class="week-items">POST /signals<br>DecisionLoop integration<br>Shadow/Live mode<br>Journal attribution</div>
+    </div>
+    <div class="roadmap-week">
+      <div class="week-num">Week 2</div>
+      <div class="week-title">Agent WS Alerts</div>
+      <div class="week-days">~2 days</div>
+      <div class="week-items">agent.alert.* channels<br>agent.execution.*<br>pg_queue notify wiring<br>Latency breakdowns</div>
+    </div>
+    <div class="roadmap-week">
+      <div class="week-num">Week 3</div>
+      <div class="week-title">Journal Memory</div>
+      <div class="week-days">~5 days</div>
+      <div class="week-items">/agent/summary<br>/agent/insights<br>LLM format output<br>Period comparison</div>
+    </div>
+    <div class="roadmap-week">
+      <div class="week-num">Week 4</div>
+      <div class="week-title">Integration</div>
+      <div class="week-days">~3 days</div>
+      <div class="week-items">Hermes SDK example<br>E2E tests<br>Documentation<br>Verification pass</div>
+    </div>
+  </div>
+
+  <h3>Risk-Mitigated Rollout</h3>
+  <div class="flow-step"><div class="step-num">1</div><div class="step-content"><strong>Shadow-first:</strong> All agent functionality launches in shadow mode. No real money at risk.</div></div>
+  <div class="flow-step"><div class="step-num">2</div><div class="step-content"><strong>Agent-only risk config:</strong> Agents get stricter limits than the human user — lower max positions, smaller sizes, tighter drawdown.</div></div>
+  <div class="flow-step"><div class="step-num">3</div><div class="step-content"><strong>Journal audit trail:</strong> Every agent action recorded with <code>source: "agent:..."</code> for full traceability.</div></div>
+  <div class="flow-step"><div class="step-num">4</div><div class="step-content"><strong>Graduated live:</strong> Agent graduates after shadow performance meets thresholds (configurable: 50+ trades, &gt;45% WR, positive avg-R).</div></div>
+
+  <h3>Verification Commands</h3>
+<pre><span style="color:#484f58"># Backend</span>
+<span style="color:var(--text)">cd testudo-exchange && cargo clippy --all-targets && cargo test</span>
+
+<span style="color:#484f58"># Agent SDK (if TypeScript)</span>
+<span style="color:var(--text)">cd packages/testudo-agent-sdk && bun run build && bun test</span>
+
+<span style="color:#484f58"># Extension</span>
+<span style="color:var(--text)">cd testudo-extension && bun run build</span></pre>
+</section>
+
+<!-- ==================== SECTION 5: ONBOARDING FLOW ==================== -->
+
+<section id="s5">
+  <h2><span class="section-num">05</span> Agent Onboarding Flow</h2>
+
+  <p>The complete 7-step flow for a coding agent to start trading on Testudo:</p>
+
+  <h3>Step 1: Auth — Get API Access</h3>
+<pre><span style="color:#484f58"># Get SIWE nonce</span>
+<span style="color:var(--text)">curl -s https://api.testudo.vip/api/v1/auth/nonce</span>
+
+<span style="color:#484f58"># Verify signature, get bearer token</span>
+<span style="color:var(--text)">curl -X POST https://api.testudo.vip/api/v1/auth/verify-siwe \</span>
+<span style="color:var(--text)">  -H "Content-Type: application/json" \</span>
+<span style="color:var(--text)">  -d '{"message": "...", "signature": "0x..."}'</span>
+
+<span style="color:#484f58"># Response → { tokens: { access_token, refresh_token, expires_in: 900 } }</span></pre>
+
+  <h3>Step 2: Configure Exchange Account</h3>
+<pre><span style="color:#484f58"># Hyperliquid (agent wallet path)</span>
+<span style="color:var(--text)">curl -X POST https://api.testudo.vip/api/v1/exchanges/agent-wallet/init</span>
+
+<span style="color:#484f58"># User approves via MetaMask (EIP-712)</span>
+<span style="color:var(--text)">curl -X POST .../api/v1/exchanges/agent-wallet/approve \</span>
+<span style="color:var(--text)">  -d '{"agent_address":"0x...","signature":"0x...","nonce":1710600000000}'</span>
+
+<span style="color:#484f58"># Or CEX (API key path)</span>
+<span style="color:var(--text)">curl -X POST .../api/v1/exchanges/accounts \</span>
+<span style="color:var(--text)">  -d '{"exchange_name":"binance","api_key":"...","secret":"..."}'</span></pre>
+
+  <h3>Step 3: Set Conservative Risk Config</h3>
+<pre><span style="color:var(--text)">curl -X PUT .../api/v1/risk-config -d '{</span>
+<span style="color:var(--text)">  "account_risk_percent": 0.5,</span>
+<span style="color:var(--text)">  "max_risk_amount": 25.0,</span>
+<span style="color:var(--text)">  "max_position_size": 0.1,</span>
+<span style="color:var(--text)">  "max_leverage": 3,</span>
+<span style="color:var(--text)">  "daily_max_drawdown_percent": 3.0,</span>
+<span style="color:var(--text)">  "max_open_positions": 2,</span>
+<span style="color:var(--text)">  "require_stop_loss": true,</span>
+<span style="color:var(--text)">  "min_risk_reward_ratio": 2.0</span>
+<span style="color:var(--text)">}'</span></pre>
+
+  <h3>Step 4: Trade in Shadow Mode</h3>
+<pre><span style="color:var(--text)">curl -X POST .../api/v1/signals -d '{</span>
+<span style="color:var(--text)">  "symbol": "BTC_USDT",</span>
+<span style="color:var(--text)">  "side": "LONG",</span>
+<span style="color:var(--text)">  "entry_price": "50000.00",</span>
+<span style="color:var(--text)">  "stop_loss": "49000.00",</span>
+<span style="color:var(--text)">  "take_profit": [{"price":"52000.00","quantity":"1.0"}],</span>
+<span style="color:var(--text)">  "execution_mode": "shadow",</span>
+<span style="color:var(--text)">  "reasoning": "Testing breakout strategy on 4H",</span>
+<span style="color:var(--text)">  "source": "agent:hermes_v0.1",</span>
+<span style="color:var(--text)">  "confidence": 0.65,</span>
+<span style="color:var(--text)">  "idempotency_key": "550e8400-..."</span>
+<span style="color:var(--text)">}'</span></pre>
+
+  <h3>Step 5: Analyze Journal Performance</h3>
+<pre><span style="color:#484f58"># Check shadow performance</span>
+<span style="color:var(--text)">curl .../api/v1/journal/agent/summary -d '{"timeframe":"90d","format":"llm"}'</span>
+
+<span style="color:#484f58"># Get actionable insights</span>
+<span style="color:var(--text)">curl .../api/v1/journal/agent/insights</span>
+
+<span style="color:#484f58"># Compare before/after strategy change</span>
+<span style="color:var(--text)">curl .../api/v1/journal/agent/compare -d '{</span>
+<span style="color:var(--text)">  "period_a":{"from":"2026-01-01","to":"2026-03-01"},</span>
+<span style="color:var(--text)">  "period_b":{"from":"2026-03-01","to":"2026-05-01"}}</span>
+<span style="color:var(--text)">}'</span></pre>
+
+  <h3>Step 6: Graduate to Live</h3>
+<pre><span style="color:#484f58"># Same signal, execution_mode: "live"</span>
+<span style="color:var(--text)">curl -X POST .../api/v1/signals -d '{</span>
+<span style="color:var(--text)">  "execution_mode": "live",</span>
+<span style="color:var(--text)">  "reasoning": "Confirmed breakout. Shadow: 58% WR, 1.9 avg R.",</span>
+<span style="color:var(--text)">  ...</span>
+<span style="color:var(--text)">}'</span></pre>
+
+  <h3>Step 7: Monitor via WebSocket</h3>
+<pre><span style="color:var(--text)">const ws = new WebSocket('wss://api.testudo.vip:4000');
+ws.send(JSON.stringify({
+  method: 'SUBSCRIBE',
+  params: ['agent.alert.&lt;user_id&gt;', 'agent.execution.&lt;user_id&gt;'],
+  id: 1
+}));
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  if (msg.stream.startsWith('agent.alert'))
+    console.warn(`⚠️ Alert: ${msg.data.message}`);
+  if (msg.stream.startsWith('agent.execution'))
+    console.log(`✅ ${msg.data.status}: ${msg.data.fill_price}`);
+};</span></pre>
+</section>
+
+<!-- ==================== ARCHITECTURE FIT ==================== -->
+
+<section>
+  <h2><span class="section-num">A</span> Architecture Fit</h2>
+  <p>All three vectors slot cleanly into the existing architecture without new databases, message systems, or auth flows:</p>
+
+<div class="architecture">
+<span class="dim">                          Signal Endpoint</span>
+<span class="dim">                               │</span>
+<span class="dim">                               ▼</span>
+┌──────────────────────────────────────────────────────────────┐
+│                         <span class="hl">Router</span> (Actix-web)                            │
+│                                                               │
+│  <span class="hl">routes/signal.rs</span> ──► <span class="hl">services/agent_signal.rs</span>                │
+│                              │                                │
+│                              ▼                                │
+│                      <span class="hl">DecisionLoop::execute()</span>                      │
+│                              │                                │
+│                    ┌─────────┼─────────┐                     │
+│                    ▼         ▼         ▼                      │
+│              <span class="hl2">RiskService</span>  <span class="hl2">Shadow</span>   <span class="hl2">Live</span>                       │
+│              (8 checks)  Engine   (<span class="hl2">CexExchangeApi</span> /           │
+│                         (paper)   <span class="hl2">HyperliquidExchangeApi</span>)     │
+│                              │                                │
+│                              ▼                                │
+│                     <span class="hl3">pg_notify</span>('agent_events', ...)            │
+│                              │                                │
+└──────────────────────────────┼────────────────────────────────┘
+<span class="dim">                               │</span>
+<span class="dim">                               ▼</span>
+┌──────────────────────────────────────────────────────────────┐
+│                  <span class="hl">WebSocket Server</span> (port 4000)                      │
+│                                                               │
+│  <span class="hl">agent.alert</span>.{user_id}  ◄── <span class="hl3">pg_queue</span> LISTEN                  │
+│  <span class="hl">agent.execution</span>.{user_id}                                  │
+│  <span class="hl">agent.order</span>.{user_id}                                      │
+└──────────────────────────────────────────────────────────────┘
+<span class="dim">                               │
+                               ▼
+                        Coding Agent</span>
+<span class="dim">                    (Hermes / OpenClaw / pi)</span>
+
+<span class="dim">                          Journal Memory
+                               │
+                               ▼</span>
+┌──────────────────────────────────────────────────────────────┐
+│  <span class="hl">routes/journal.rs</span>                                            │
+│                                                               │
+│  GET /journal/agent/summary  ──► <span class="hl">StatsEngine</span>                  │
+│  GET /journal/agent/insights ──► <span class="hl">CoachDigest</span> patterns         │
+│  GET /journal/agent/compare  ──► <span class="hl">TimeSeriesService</span>            │
+└──────────────────────────────────────────────────────────────┘
+<span class="dim">                               │
+                               ▼
+                        Coding Agent
+              (Analyzes performance, adjusts strategy)</span>
+</div>
+</section>
+
+<section style="margin-bottom: 80px;">
+  <h2>Summary</h2>
+
+  <div class="box-grid">
+    <div class="box-grid-item" style="border-left: 3px solid var(--green);">
+      <div class="label">01 Signal Endpoint</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+        The biggest unlock. Agents can't trade programmatically today. One new route, reuses DecisionLoop entirely.
+      </div>
+    </div>
+    <div class="box-grid-item" style="border-left: 3px solid var(--accent);">
+      <div class="label">02 Agent WS Alerts</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+        pg_queue LISTEN/NOTIFY already does the heavy lifting. Adding agent channels is configuration, not architecture.
+      </div>
+    </div>
+    <div class="box-grid-item" style="border-left: 3px solid var(--yellow);">
+      <div class="label">03 Journal Memory</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+        Rich journal data — 11 chart types, CoachDigest patterns, tag filtering. LLM-ready output gives agents the feedback loop they need.
+      </div>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:24px; border-left: 3px solid var(--accent); padding-left: 20px;">
+    <strong>⏱️ Timelines:</strong> All three can be built in <strong>~2 weeks</strong>. They build on existing, battle-tested infrastructure. No new databases, no new messaging systems, no new auth flows. They extend what Testudo already does well — risk-managed execution, real-time streaming, and comprehensive journaling — into the agent domain.
+  </div>
+</section>
+
+<footer>
+  Agent Integration Blueprint · Testudo Exchange · May 2026<br>
+  Generated from full architecture analysis of <code>testudo-exchange</code>, <code>testudo-extension</code>, and <code>testudo-journal</code><br><br>
+  <a href="https://github.com">Repository</a> &nbsp;·&nbsp; <a href="#">Documentation</a>
+</footer>
+
+</body>
+</html>

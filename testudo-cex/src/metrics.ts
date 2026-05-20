@@ -2,7 +2,7 @@
  * Prometheus metrics for testudo-cex sidecar.
  */
 
-import { Registry, Counter, Histogram } from "prom-client";
+gN { Registry, Counter, Histogram } from "prom-client";
 
 export const registry = new Registry();
 

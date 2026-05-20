@@ -4,10 +4,24 @@
 # "God spoke and it was."
 #
 # Usage:
-#   ./scripts/vox.sh plan <spec-name>    # Planning mode (no code)
+#   ./scripts/vox.sh plan <spec-name>    # Planning mode (gap analysis, no code)
 #   ./scripts/vox.sh build <spec-name>   # Building mode (one task per iteration)
 #   ./scripts/vox.sh --help              # Show help
 #
+# Two Vox modalities — pick the one that fits your workflow:
+#
+#   scripts/vox.sh        Autonomous. Fire and walk away. Loops until DONE or
+#                          max iterations. Best when you trust the spec and
+#                          want unattended execution.
+#
+#   /skill:vox (in pi)    Attended. One checkpoint per invocation, you stay in
+#                          the pi session. Review each checkpoint. Intervene if
+#                          needed. Best for complex specs or tight control.
+#
+# Agent detection (precedence):
+#   1. --agent <name>             Explicit override
+#   2. $AGENT_CMD                 Env override
+#   3. Auto-detect: pi if available, else claude (fallback)
 
 set -euo pipefail
 
@@ -20,39 +34,85 @@ AGENTS_MD=".specify/AGENTS.md"
 CONSTITUTION=".specify/memory/constitution.md"
 
 MAX_ITERATIONS="${MAX_ITERATIONS:-15}"
+SLEEP_INTERVAL=15
 
-# Split defaults by mode:
-#   - plan is a ONE-SHOT call whose output gates every downstream build
-#     iteration; a flawed plan can burn 15 iterations. Run on Opus.
-#   - build is mechanical task execution against a fully-specified plan.
-#     Run on Sonnet (~3x cheaper input, ~5x cheaper output).
-#
-# Overrides (in precedence order):
-#   AGENT_MODEL_PLAN=<id>    # plan only
-#   AGENT_MODEL_BUILD=<id>   # build only
-#   AGENT_MODEL=<id>         # legacy — overrides BOTH (e.g. force all-Sonnet)
-AGENT_MODEL_PLAN="${AGENT_MODEL_PLAN:-claude-opus-4-7}"
-AGENT_MODEL_BUILD="${AGENT_MODEL_BUILD:-claude-sonnet-4-6}"
-if [[ -n "${AGENT_MODEL:-}" ]]; then
-    AGENT_MODEL_PLAN="$AGENT_MODEL"
-    AGENT_MODEL_BUILD="$AGENT_MODEL"
+# --- AGENT DETECTION ---
+# Order: --agent flag > $AGENT_CMD env > auto-detect
+
+auto_detect_agent() {
+    if command -v pi &>/dev/null && [[ -n "${PI_CODING_AGENT_DIR:-}" ]]; then
+        echo "pi"
+    elif command -v claude &>/dev/null; then
+        echo "claude"
+    else
+        echo ""
+    fi
+}
+
+detected_agent=$(auto_detect_agent)
+
+AGENT="${AGENT_CMD:-${AGENT_EXPLICIT:-$detected_agent}}"
+
+# Validate
+if [[ -z "$AGENT" ]]; then
+    echo "ERROR: No agent found. Install pi (npm i -g @earendil-works/pi) or claude CLI."
+    exit 1
 fi
 
-# Effort defaults:
-#   - plan: Opus doesn't need the boost; leave unset so it runs at its default.
-#   - build: Sonnet benefits from high effort — we're paying cheap input/output
-#     rates, the extra thinking tokens lift code quality where it matters.
-# Override: AGENT_EFFORT_BUILD=medium  (or empty string to disable)
-AGENT_EFFORT_PLAN="${AGENT_EFFORT_PLAN:-}"
-AGENT_EFFORT_BUILD="${AGENT_EFFORT_BUILD:-high}"
+# --- MODEL SELECTION ---
+# Models are set via env vars, not hardcoded.
+# Plan and build can use different models.
+# Sensible defaults per agent but never forced.
+#
+#   AGENT_MODEL_PLAN=<id>     Plan-only model (default per agent below)
+#   AGENT_MODEL_BUILD=<id>    Build-only model (default per agent below)
+#   AGENT_MODEL=<id>          Legacy — overrides BOTH
 
-AGENT_CMD_PLAN="claude --model ${AGENT_MODEL_PLAN}"
-[[ -n "$AGENT_EFFORT_PLAN" ]] && AGENT_CMD_PLAN="$AGENT_CMD_PLAN --effort ${AGENT_EFFORT_PLAN}"
+case "$AGENT" in
+    pi)
+        # pi uses its configured model by default (no --model flag needed).
+        # To override: AGENT_MODEL_PLAN="google/gemini-2.5-pro"
+        AGENT_BIN="pi"
+        AGENT_FLAGS=""                         # pi reads from config
+        DEFAULT_MODEL_PLAN=""                  # uses pi's configured model
+        DEFAULT_MODEL_BUILD=""                 # uses pi's configured model
+        ;;
+    claude|claude-cli)
+        # claude CLI needs explicit model flags.
+        # Override: AGENT_MODEL_PLAN="claude-sonnet-4-6"
+        AGENT_BIN="claude"
+        AGENT_FLAGS="-p --dangerously-skip-permissions"
+        DEFAULT_MODEL_PLAN="${AGENT_MODEL_PLAN:-claude-opus-4-7}"
+        DEFAULT_MODEL_BUILD="${AGENT_MODEL_BUILD:-claude-sonnet-4-6}"
+        ;;
+    *)
+        echo "ERROR: Unknown agent '$AGENT'. Supported: pi, claude"
+        exit 1
+        ;;
+esac
 
-AGENT_CMD_BUILD="claude --model ${AGENT_MODEL_BUILD}"
-[[ -n "$AGENT_EFFORT_BUILD" ]] && AGENT_CMD_BUILD="$AGENT_CMD_BUILD --effort ${AGENT_EFFORT_BUILD}"
+# Apply model selection (env overrides or defaults)
+MODEL_PLAN="${AGENT_MODEL_PLAN:-$DEFAULT_MODEL_PLAN}"
+MODEL_BUILD="${AGENT_MODEL_BUILD:-$DEFAULT_MODEL_BUILD}"
 
-SLEEP_INTERVAL=15
+# AGENT_MODEL overrides both
+if [[ -n "${AGENT_MODEL:-}" ]]; then
+    MODEL_PLAN="$AGENT_MODEL"
+    MODEL_BUILD="$AGENT_MODEL"
+fi
+
+# Build the command strings
+if [[ -n "$MODEL_PLAN" ]]; then
+    AGENT_CMD_PLAN="$AGENT_BIN --model $MODEL_PLAN $AGENT_FLAGS"
+else
+    AGENT_CMD_PLAN="$AGENT_BIN $AGENT_FLAGS"
+fi
+
+if [[ -n "$MODEL_BUILD" ]]; then
+    AGENT_CMD_BUILD="$AGENT_BIN --model $MODEL_BUILD $AGENT_FLAGS"
+else
+    AGENT_CMD_BUILD="$AGENT_BIN $AGENT_FLAGS"
+fi
 
 # --- COLORS ---
 RED='\033[0;31m'
@@ -67,24 +127,24 @@ print_help() {
     echo "Vox Builder Loop - Autonomous AI Development"
     echo ""
     echo "Usage:"
-    echo "  $0 plan <spec-name>     Run planning mode (gap analysis, no code)"
-    echo "  $0 build <spec-name>    Run build mode (one task per iteration)"
-    echo "  $0 --help               Show this help"
+    echo "  $0 plan <spec-name>      Run planning mode (gap analysis, no code)"
+    echo "  $0 build <spec-name>     Run build mode (one task per iteration)"
+    echo "  $0 --help                Show this help"
     echo ""
-    echo "Examples:"
-    echo "  $0 plan 001-first-feature"
-    echo "  $0 build 001-first-feature"
-    echo ""
-    echo "Options:"
-    echo "  --max-iterations N      Set max iterations (default: 15; env MAX_ITERATIONS overrides)"
+    echo "Agent: $AGENT (auto-detected | override with --agent or \$AGENT_CMD)"
+    if [[ "$AGENT" == "claude" ]]; then
+        echo "  Plan model:  $MODEL_PLAN  (override: AGENT_MODEL_PLAN=<id>)"
+        echo "  Build model: $MODEL_BUILD (override: AGENT_MODEL_BUILD=<id>)"
+    else
+        echo "  Model: uses pi's configured model  (override: AGENT_MODEL=<id>)"
+    fi
     echo ""
     echo "Env:"
-    echo "  AGENT_MODEL_PLAN=<id>   Plan-mode model (default: claude-opus-4-7)"
-    echo "  AGENT_MODEL_BUILD=<id>  Build-mode model (default: claude-sonnet-4-6)"
-    echo "  AGENT_MODEL=<id>        Legacy — overrides BOTH plan and build"
-    echo "  AGENT_EFFORT_PLAN=<lvl> Plan effort (low/medium/high/xhigh/max; default: unset)"
-    echo "  AGENT_EFFORT_BUILD=<lvl> Build effort (default: high — lifts Sonnet code quality)"
-    echo "  MAX_ITERATIONS=N        Same as --max-iterations"
+    echo "  AGENT_CMD=<name>         Agent binary (pi, claude)"
+    echo "  AGENT_MODEL_PLAN=<id>    Plan-mode model"
+    echo "  AGENT_MODEL_BUILD=<id>   Build-mode model"
+    echo "  AGENT_MODEL=<id>         Legacy — overrides BOTH plan and build"
+    echo "  MAX_ITERATIONS=N         Max iterations (default: 15)"
     echo ""
     echo "Available specs:"
     list_specs
@@ -110,7 +170,7 @@ build_context() {
     echo "## Spec: $spec"
     echo ""
 
-    # 1. Stable Instructions first (best for caching)
+    # 1. Instructions (stable, cache-friendly)
     echo "---"
     echo "## Instructions"
     echo ""
@@ -121,7 +181,7 @@ build_context() {
     fi
     echo ""
 
-    # 2. Constitution (stable per-project)
+    # 2. Constitution
     if [[ -f "$CONSTITUTION" ]]; then
         echo "---"
         echo "## Constitution"
@@ -130,7 +190,7 @@ build_context() {
         echo ""
     fi
 
-    # 3. Specification (stable per-spec)
+    # 3. Specification
     if [[ -f "$SPECS_DIR/$spec/spec.md" ]]; then
         echo "---"
         echo "## Specification: $spec"
@@ -139,18 +199,16 @@ build_context() {
         echo ""
     fi
 
-    # 4. Cross-cutting operational rules (curated — stays small + stable)
+    # 4. Operational rules
     if [[ -f "$AGENTS_MD" ]]; then
         echo "---"
-        echo "## Operational Rules (cross-cutting)"
+        echo "## Operational Rules"
         echo ""
         cat "$AGENTS_MD"
         echo ""
     fi
 
-    # 4b. Per-spec learnings (append-only by build iterations; scoped to this
-    # spec only — avoids cross-spec pollution that bloats context as the
-    # global AGENTS.md used to).
+    # 5. Per-spec learnings
     local spec_learnings="$SPECS_DIR/$spec/LEARNINGS.md"
     if [[ -f "$spec_learnings" ]]; then
         echo "---"
@@ -160,7 +218,7 @@ build_context() {
         echo ""
     fi
 
-    # 5. Implementation Plan (most volatile, last)
+    # 6. Implementation plan (most volatile, last)
     if [[ -f "$IMPLEMENTATION_PLAN" ]]; then
         echo "---"
         echo "## Implementation Plan"
@@ -197,6 +255,7 @@ run_planning() {
     echo -e "${BLUE}=========================================="
     echo "Vox: PLANNING MODE"
     echo "Spec: $spec"
+    echo "Agent: $AGENT"
     echo -e "==========================================${NC}"
 
     if ! spec_exists "$spec"; then
@@ -210,13 +269,13 @@ run_planning() {
     echo ""
 
     local output
-    output=$(build_context "$spec" "plan" | $AGENT_CMD_PLAN -p --dangerously-skip-permissions 2>&1) || true
+    output=$(build_context "$spec" "plan" | $AGENT_CMD_PLAN 2>&1) || true
 
     echo "$output"
 
     echo ""
     echo -e "${GREEN}Planning complete. Review IMPLEMENTATION_PLAN.md${NC}"
-    echo "Next: ./scripts/vox.sh build $spec"
+    echo "Next: $0 build $spec"
 }
 
 run_building() {
@@ -226,6 +285,7 @@ run_building() {
     echo -e "${BLUE}=========================================="
     echo "Vox: BUILD MODE"
     echo "Spec: $spec"
+    echo "Agent: $AGENT"
     echo "Max iterations: $MAX_ITERATIONS"
     echo -e "==========================================${NC}"
 
@@ -244,7 +304,7 @@ run_building() {
         echo -e "${YELLOW}Vox speaks...${NC}"
 
         local output
-        output=$(build_context "$spec" "build" | $AGENT_CMD_BUILD -p --dangerously-skip-permissions 2>&1) || true
+        output=$(build_context "$spec" "build" | $AGENT_CMD_BUILD 2>&1) || true
 
         echo "$output"
 
@@ -300,6 +360,11 @@ while [[ $# -gt 0 ]]; do
             MODE="$1"
             shift
             ;;
+        --agent)
+            AGENT_EXPLICIT="$2"
+            AGENT="$2"
+            shift 2
+            ;;
         --max-iterations)
             MAX_ITERATIONS="$2"
             shift 2
@@ -342,8 +407,7 @@ if [[ ! -f "$PROMPT_BUILD" ]]; then
 fi
 
 echo "Vox Builder Loop"
-echo "Plan agent:  $AGENT_CMD_PLAN"
-echo "Build agent: $AGENT_CMD_BUILD"
+echo "Agent:  $AGENT"
 echo ""
 
 if [[ "$MODE" == "plan" ]]; then
