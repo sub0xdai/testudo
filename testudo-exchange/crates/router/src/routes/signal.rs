@@ -1,29 +1,66 @@
 //! Agent Signal Endpoint
 //!
 //! POST /api/v1/signals accepts a trade signal from an external agent,
-//! runs it through the DecisionLoop risk engine, and places a shadow order
-//! on approval. This is the programmatic counterpart to the browser
-//! extension's POST /api/v1/trades.
+//! runs it through the DecisionLoop risk engine, and places an order.
+//! Supports shadow (paper) and live (CEX/Hyperliquid) execution.
 
 use actix_web::{web, HttpResponse};
 use rust_decimal::Decimal;
+use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::decision_loop::{DecisionInputBuilder, DecisionLoop, DecisionOrderSide, DecisionOrderType};
+use crate::decision_loop::{
+    DecisionInputBuilder, DecisionLoop, DecisionOrderSide, DecisionOrderType, DecisionResult,
+};
 use crate::middleware::auth::AuthenticatedUser;
-use crate::decision_loop::DecisionResult;
 use crate::models::agent_signal::{ExecutionMode, SignalInput, SignalResult, SignalSide};
 use crate::services::exchange_api::{
-    ApiOrderType, ExchangeApi, OrderSide as ExchangeOrderSide, PlaceOrderRequest, ShadowExchangeApi,
+    ApiOrderType, CexExchangeApi, ExchangeApi, ExchangeApiError,
+    OrderSide as ExchangeOrderSide, PlaceOrderRequest, ShadowExchangeApi,
 };
+use crate::services::hyperliquid::exchange_api::HyperliquidExchangeApi;
 use common_utils::risk::{RiskConfig, SizingMethod};
+
+/// Classify an exchange name into a routing target.
+fn classify_exchange(exchange_name: &str) -> Option<&'static str> {
+    match exchange_name.to_lowercase().as_str() {
+        "hyperliquid" => Some("hyperliquid"),
+        "binance" | "woo" | "bybit" | "woox" => Some("cex"),
+        _ => None,
+    }
+}
+
+/// Return true if the exchange error is definitive (order was NOT placed).
+/// Ambiguous errors (timeout, parse errors) should NOT trigger rollback.
+fn is_definitive_rejection(e: &ExchangeApiError) -> bool {
+    match e {
+        ExchangeApiError::AgentWalletInactive { .. } => true,
+        ExchangeApiError::InsufficientBalance { .. } => true,
+        ExchangeApiError::Exchange(msg) => {
+            let lower = msg.to_lowercase();
+            lower.contains("insufficient")
+                || lower.contains("authentication")
+                || lower.contains("invalid")
+                || lower.contains("not allowed")
+                || lower.contains("does not exist")
+                || lower.contains("not found")
+        }
+        _ => false,
+    }
+}
+
+fn exchange_order_side(side: &SignalSide) -> ExchangeOrderSide {
+    match side {
+        SignalSide::Long => ExchangeOrderSide::Buy,
+        SignalSide::Short => ExchangeOrderSide::Sell,
+    }
+}
 
 /// POST /api/v1/signals
 ///
 /// Accepts a SignalInput payload, validates it through the DecisionLoop
-/// risk engine, and places a shadow order on approval. Returns a
-/// SignalResult with trade_group_id on success or rejection details on
-/// failure.
+/// risk engine, and places an order. Shadow mode uses the paper engine;
+/// live mode routes to CEX or Hyperliquid based on the exchange account.
 pub async fn create_signal(
     _user: AuthenticatedUser,
     body: web::Json<SignalInput>,
@@ -31,29 +68,20 @@ pub async fn create_signal(
 ) -> HttpResponse {
     let input = body.into_inner();
 
-    // Validate: symbol must be non-empty
     if input.symbol.trim().is_empty() {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "error": "symbol is required"
         }));
     }
 
-    // Convert SignalSide → DecisionOrderSide
     let decision_side = match input.side {
         SignalSide::Long => DecisionOrderSide::Long,
         SignalSide::Short => DecisionOrderSide::Short,
     };
 
-    // CP-1: shadow mode only — reject live for now
-    if matches!(input.execution_mode, ExecutionMode::Live) {
-        return HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "live execution mode not yet implemented"
-        }));
-    }
-
+    let is_live = matches!(input.execution_mode, ExecutionMode::Live);
     let leverage = input.leverage.unwrap_or(1);
 
-    // Build DecisionInput
     let decision_input = match DecisionInputBuilder::new()
         .user_id(_user.user_id)
         .symbol(&input.symbol)
@@ -72,8 +100,6 @@ pub async fn create_signal(
         }
     };
 
-    // Get account state for risk validation.
-    // CP-1: derive from shadow engine balances.
     let account_state = {
         let balances = _app_state.engine_handle.get_balances(_user.user_id).await;
         let usdt_balance = balances
@@ -81,9 +107,7 @@ pub async fn create_signal(
             .find(|b| b.asset == "USDT")
             .map(|b| b.available + b.reserved)
             .unwrap_or(Decimal::from(10000));
-
         let positions = _app_state.engine_handle.get_positions(_user.user_id).await;
-
         common_utils::risk::AccountState {
             balance: usdt_balance,
             open_position_count: positions.len() as u32,
@@ -92,7 +116,6 @@ pub async fn create_signal(
         }
     };
 
-    // Run DecisionLoop
     let decision_loop = DecisionLoop::new(RiskConfig::default());
     let decision_result = decision_loop.execute(&decision_input, &account_state, None);
 
@@ -102,33 +125,51 @@ pub async fn create_signal(
         let code = rejection
             .map(|r| format!("{:?}", r))
             .unwrap_or_else(|| "unknown".to_string());
-
         return HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY)
-            .json(SignalResult::rejected(
-                reason,
-                code,
-                ExecutionMode::Shadow,
-            ));
+            .json(SignalResult::rejected(reason, code, input.execution_mode));
     }
 
     let position_size = decision_result.position_size.unwrap_or(Decimal::ZERO);
     let sizing_method = decision_result.sizing_method.unwrap_or(SizingMethod::FixedFractional);
     let warnings: Vec<String> = decision_result
-        .warnings
-        .iter()
-        .map(|w| w.to_string())
-        .collect();
+        .warnings.iter().map(|w| w.to_string()).collect();
 
-    // CP-1: Place shadow order
-    let shadow_api = ShadowExchangeApi::new(_app_state.engine_handle.clone());
+    if is_live {
+        return execute_live(
+            _user.user_id,
+            input,
+            position_size,
+            sizing_method,
+            warnings,
+            _app_state,
+        ).await;
+    }
+
+    execute_shadow(
+        _user.user_id,
+        input,
+        position_size,
+        sizing_method,
+        warnings,
+        &_app_state.engine_handle,
+    ).await
+}
+
+async fn execute_shadow(
+    user_id: Uuid,
+    input: SignalInput,
+    position_size: Decimal,
+    sizing_method: SizingMethod,
+    warnings: Vec<String>,
+    engine_handle: &engine::EngineHandle,
+) -> HttpResponse {
+    let shadow_api = ShadowExchangeApi::new(engine_handle.clone());
+    let leverage = input.leverage.unwrap_or(1);
     let order_result = shadow_api
         .place_order(PlaceOrderRequest {
-            user_id: _user.user_id,
+            user_id,
             symbol: input.symbol.clone(),
-            side: match input.side {
-                SignalSide::Long => ExchangeOrderSide::Buy,
-                SignalSide::Short => ExchangeOrderSide::Sell,
-            },
+            side: exchange_order_side(&input.side),
             order_type: ApiOrderType::Limit,
             quantity: position_size,
             price: Some(input.entry_price),
@@ -143,20 +184,216 @@ pub async fn create_signal(
         .await;
 
     match order_result {
-        Ok(result) => {
-            let trade_group_id = Uuid::new_v4();
-            HttpResponse::Ok().json(SignalResult::success(
-                trade_group_id,
-                result.id,
-                position_size,
-                sizing_method,
-                ExecutionMode::Shadow,
-                warnings,
-            ))
-        }
+        Ok(result) => HttpResponse::Ok().json(SignalResult::success(
+            Uuid::new_v4(),
+            result.id,
+            position_size,
+            sizing_method,
+            ExecutionMode::Shadow,
+            warnings,
+        )),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
             "error": format!("failed to place shadow order: {}", e)
         })),
+    }
+}
+
+async fn execute_live(
+    user_id: Uuid,
+    input: SignalInput,
+    position_size: Decimal,
+    sizing_method: SizingMethod,
+    warnings: Vec<String>,
+    state: web::Data<crate::types::app::AppState>,
+) -> HttpResponse {
+    let account_id = match input.exchange_account_id {
+        Some(id) => id,
+        None => {
+            return HttpResponse::BadRequest().json(SignalResult::rejected(
+                "exchange_account_id is required for live execution".to_string(),
+                "missing_account".to_string(),
+                ExecutionMode::Live,
+            ));
+        }
+    };
+
+    // Look up the account and verify ownership.
+    let accounts = match state.exchange_account_repo.list_by_user(user_id).await {
+        Ok(a) => a,
+        Err(e) => {
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("failed to list exchange accounts: {}", e)
+            }));
+        }
+    };
+
+    let account = match accounts.iter().find(|a| a.id == account_id) {
+        Some(a) => a,
+        None => {
+            return HttpResponse::BadRequest().json(SignalResult::rejected(
+                format!("exchange account {} not found or does not belong to user", account_id),
+                "account_not_found".to_string(),
+                ExecutionMode::Live,
+            ));
+        }
+    };
+
+    let exchange_name = account.exchange_name.clone();
+    let routing = classify_exchange(&exchange_name);
+
+    match routing {
+        Some("cex") => {
+            execute_live_cex(user_id, input, position_size, sizing_method, warnings, state, account_id, &exchange_name).await
+        }
+        Some("hyperliquid") => {
+            execute_live_hl(user_id, input, position_size, sizing_method, warnings, state, account_id).await
+        }
+        _ => {
+            HttpResponse::BadRequest().json(SignalResult::rejected(
+                format!("unsupported exchange: {}", exchange_name),
+                "unsupported_exchange".to_string(),
+                ExecutionMode::Live,
+            ))
+        }
+    }
+}
+
+async fn execute_live_cex(
+    user_id: Uuid,
+    input: SignalInput,
+    position_size: Decimal,
+    sizing_method: SizingMethod,
+    mut warnings: Vec<String>,
+    state: web::Data<crate::types::app::AppState>,
+    account_id: Uuid,
+    exchange_name: &str,
+) -> HttpResponse {
+    let cex_api = CexExchangeApi::new(
+        state.cex_client.clone(),
+        state.exchange_account_repo.clone(),
+        state.cex_sandbox,
+    );
+
+    let leverage = input.leverage.unwrap_or(1);
+    let result = cex_api
+        .place_order(PlaceOrderRequest {
+            user_id,
+            symbol: input.symbol.clone(),
+            side: exchange_order_side(&input.side),
+            order_type: ApiOrderType::Limit,
+            quantity: position_size,
+            price: Some(input.entry_price),
+            stop_price: None,
+            leverage: leverage.max(1),
+            exchange_account_id: Some(account_id),
+            reduce_only: false,
+            client_order_id: None,
+            stop_loss_trigger: input.stop_loss,
+            take_profit_trigger: input.take_profit.first().map(|tp| tp.price),
+        })
+        .await;
+
+    match result {
+        Ok(order) => HttpResponse::Ok().json(SignalResult::success(
+            Uuid::new_v4(),
+            order.id,
+            position_size,
+            sizing_method,
+            ExecutionMode::Live,
+            warnings,
+        )),
+        Err(ref e) if is_definitive_rejection(e) => {
+            HttpResponse::BadGateway().json(SignalResult::rejected(
+                format!("Exchange rejected: {}", e),
+                format!("exchange_reject_{}", exchange_name),
+                ExecutionMode::Live,
+            ))
+        }
+        Err(e) => {
+            warnings.push(format!("Exchange response unclear: {}. Order may have been placed.", e));
+            HttpResponse::Ok().json(SignalResult::success(
+                Uuid::new_v4(),
+                "unknown".to_string(),
+                position_size,
+                sizing_method,
+                ExecutionMode::Live,
+                warnings,
+            ))
+        }
+    }
+}
+
+async fn execute_live_hl(
+    user_id: Uuid,
+    input: SignalInput,
+    position_size: Decimal,
+    sizing_method: SizingMethod,
+    mut warnings: Vec<String>,
+    state: web::Data<crate::types::app::AppState>,
+    account_id: Uuid,
+) -> HttpResponse {
+    let hl_api = match (&state.hl_universe, &state.hl_auth_cache) {
+        (Some(universe), Some(auth_cache)) => HyperliquidExchangeApi::new(
+            universe.clone(),
+            auth_cache.clone(),
+            state.exchange_account_repo.clone(),
+            state.hl_network,
+        ),
+        _ => {
+            return HttpResponse::ServiceUnavailable().json(SignalResult::rejected(
+                "Hyperliquid is not configured".to_string(),
+                "hl_not_configured".to_string(),
+                ExecutionMode::Live,
+            ));
+        }
+    };
+
+    let leverage = input.leverage.unwrap_or(1);
+    let result = hl_api
+        .place_order(PlaceOrderRequest {
+            user_id,
+            symbol: input.symbol.clone(),
+            side: exchange_order_side(&input.side),
+            order_type: ApiOrderType::Limit,
+            quantity: position_size,
+            price: Some(input.entry_price),
+            stop_price: None,
+            leverage: leverage.max(1),
+            exchange_account_id: Some(account_id),
+            reduce_only: false,
+            client_order_id: None,
+            stop_loss_trigger: input.stop_loss,
+            take_profit_trigger: input.take_profit.first().map(|tp| tp.price),
+        })
+        .await;
+
+    match result {
+        Ok(order) => HttpResponse::Ok().json(SignalResult::success(
+            Uuid::new_v4(),
+            order.id,
+            position_size,
+            sizing_method,
+            ExecutionMode::Live,
+            warnings,
+        )),
+        Err(ref e) if is_definitive_rejection(e) => {
+            HttpResponse::BadGateway().json(SignalResult::rejected(
+                format!("Hyperliquid rejected: {}", e),
+                "hl_rejected".to_string(),
+                ExecutionMode::Live,
+            ))
+        }
+        Err(e) => {
+            warnings.push(format!("HL response unclear: {}. Order may have been placed.", e));
+            HttpResponse::Ok().json(SignalResult::success(
+                Uuid::new_v4(),
+                "unknown".to_string(),
+                position_size,
+                sizing_method,
+                ExecutionMode::Live,
+                warnings,
+            ))
+        }
     }
 }
 
@@ -383,5 +620,54 @@ mod tests {
         assert!(json.contains("Stop loss required"));
         assert!(json.contains("StopLossRequired"));
         assert!(!json.contains("trade_group_id"), "trade_group_id should be absent on rejection");
+    }
+
+    // --- CP-3: Live-mode routing logic ---
+
+    /// Classification: given an exchange_name, is it Hyperliquid or CEX?
+    fn classify_exchange(exchange_name: &str) -> Option<&'static str> {
+        match exchange_name.to_lowercase().as_str() {
+            "hyperliquid" => Some("hyperliquid"),
+            name if name == "binance" || name == "woo" || name == "bybit" => Some("cex"),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn signal_routes_hyperliquid_to_hl_api() {
+        assert_eq!(classify_exchange("hyperliquid"), Some("hyperliquid"));
+    }
+
+    #[test]
+    fn signal_routes_binance_to_cex_api() {
+        assert_eq!(classify_exchange("binance"), Some("cex"));
+    }
+
+    #[test]
+    fn signal_routes_woo_to_cex_api() {
+        assert_eq!(classify_exchange("woo"), Some("cex"));
+    }
+
+    #[test]
+    fn signal_routes_unknown_exchange_to_none() {
+        assert_eq!(classify_exchange("unknown_exchange"), None);
+    }
+
+    #[test]
+    fn signal_result_live_mode_serializes_correctly() {
+        let trade_group_id = Uuid::parse_str("660e8400-e29b-41d4-a716-446655440000").unwrap();
+        let result = SignalResult::success(
+            trade_group_id,
+            "binance-order-123".to_string(),
+            dec!(0.25),
+            SizingMethod::FixedFractional,
+            ExecutionMode::Live,
+            vec!["Approaching drawdown limit".to_string()],
+        );
+
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("\"success\":true"));
+        assert!(json.contains("\"execution_mode\":\"LIVE\""));
+        assert!(json.contains("binance-order-123"));
     }
 }

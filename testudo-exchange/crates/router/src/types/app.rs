@@ -45,6 +45,8 @@ pub struct AppState {
     pub analytics_pool: sqlx::Pool<sqlx::Postgres>,
     /// RSK-03: Weekly AI trade coach orchestrator.
     pub coach_service: Arc<CoachService>,
+    /// Whether the CEX sidecar is in sandbox mode (testnet).
+    pub cex_sandbox: bool,
     /// QNT-01a: Calibration engine — loads per-setup + global priors for the
     /// Calibrated Kelly sizing path. Consumed by `create_trade` when the
     /// user has `dynamic_risk_enabled = true` on their `user_settings` blob.

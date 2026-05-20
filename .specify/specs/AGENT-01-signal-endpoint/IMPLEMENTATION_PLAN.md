@@ -41,7 +41,9 @@ Completed 2026-05-20 by /skill:vox build.
 - **Verification**: `cargo test -p router` passes; manual test: POST a signal with reasoning/source/confidence, read the trade back via GET /api/v1/journal/trades and confirm the three fields are present.
 - **Commit message**: `feat: agent attribution (reasoning, source, confidence) in journal`
 
-### CP-3: Live-mode routing (CEX + Hyperliquid)
+### CP-3: Live-mode routing (CEX + Hyperliquid) ✅
+
+Completed 2026-05-20 by /skill:vox build.
 
 - **Touches**: `crates/router/src/routes/signal.rs`, `crates/router/src/main.rs` (AppState wiring)
 - **Tasks**:

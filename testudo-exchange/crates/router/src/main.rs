@@ -459,6 +459,7 @@ async fn main() -> std::io::Result<()> {
         hl_http_client: hl_http_client.clone(),
         hl_network,
         analytics_pool,
+        cex_sandbox: sandbox,
         coach_service: coach_service.clone(),
         calibration_engine: calibration_engine.clone(),
         journal_syncer_notifiers: journal_syncer_notifiers.clone(),
