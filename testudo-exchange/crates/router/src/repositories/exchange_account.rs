@@ -92,6 +92,9 @@ pub struct ExchangeAccountRow {
     pub last_used_at: Option<chrono::DateTime<chrono::Utc>>,
     pub auth_mode: String,
     pub wallet_address: Option<String>,
+    /// AGENT-02 CP-4: When this agent wallet was last approved (NULL for api_key accounts).
+    #[sqlx(default)]
+    pub agent_approved_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Row type for loading encrypted credentials.
@@ -521,7 +524,7 @@ impl ExchangeAccountRepository {
         user_id: Uuid,
     ) -> Result<bool, RepoError> {
         let result = sqlx::query_scalar::<_, Uuid>(
-            "UPDATE exchange_accounts SET is_active = true, \
+            "UPDATE exchange_accounts SET is_active = true, agent_approved_at = NOW(), \
              permissions = jsonb_set(COALESCE(permissions, '{}'::jsonb), '{agent_approved}', 'true') \
              WHERE id = $1 AND user_id = $2 AND auth_mode = $3 AND is_active = false \
              RETURNING id",

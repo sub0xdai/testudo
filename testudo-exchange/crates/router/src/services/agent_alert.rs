@@ -4,12 +4,15 @@
 //! RiskRejection) into AgentAlert structs and broadcast them via
 //! PostgreSQL NOTIFY on the agent_alert and agent_execution channels.
 
-use chrono::Utc;
+use chrono::{DateTime, Duration, Utc};
 use common_utils::agent::{AgentAlert, AlertSeverity, AlertType, ExecutionReport};
 use common_utils::risk::{RiskRejection, RiskWarning};
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
+
+/// Default TTL for agent wallet approvals (30 days on Hyperliquid L1).
+const AGENT_WALLET_TTL_DAYS: i64 = 30;
 
 /// Build an AgentAlert from a RiskWarning, if the warning is alert-worthy.
 pub fn alert_from_warning(warning: &RiskWarning, _user_id: Uuid) -> Option<AgentAlert> {
@@ -101,6 +104,63 @@ pub async fn emit_alert(pool: &PgPool, user_id: Uuid, alert: &AgentAlert) {
     {
         tracing::warn!(channel = %channel, error = %e, "pg_notify agent_alert failed");
     }
+}
+
+/// Check if an agent wallet is approaching expiry or has expired.
+///
+/// Returns an `AgentAlert` if the wallet is within 24h of expiry,
+/// within 1h of expiry (escalated severity), or already expired.
+pub fn check_agent_wallet_expiry(
+    agent_approved_at: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> Option<AgentAlert> {
+    let ttl = Duration::days(AGENT_WALLET_TTL_DAYS);
+    let expires_at = agent_approved_at + ttl;
+    let remaining = expires_at - now;
+
+    if remaining.num_seconds() <= 0 {
+        return Some(AgentAlert {
+            alert_type: AlertType::AgentWalletExpired,
+            severity: AlertSeverity::Concerning,
+            message: "Agent wallet has expired. Re-authorize in Account settings.".to_string(),
+            current_value: None,
+            limit_value: None,
+            timestamp: now,
+        });
+    }
+
+    let one_hour = Duration::hours(1);
+    let twenty_four_hours = Duration::hours(24);
+
+    if remaining <= one_hour {
+        return Some(AgentAlert {
+            alert_type: AlertType::AgentWalletExpiring,
+            severity: AlertSeverity::Concerning,
+            message: format!(
+                "Agent wallet expires in {} minutes. Re-authorize now.",
+                remaining.num_minutes()
+            ),
+            current_value: None,
+            limit_value: None,
+            timestamp: now,
+        });
+    }
+
+    if remaining <= twenty_four_hours {
+        return Some(AgentAlert {
+            alert_type: AlertType::AgentWalletExpiring,
+            severity: AlertSeverity::Notable,
+            message: format!(
+                "Agent wallet expires in {:.0} hours. Plan re-authorization.",
+                remaining.num_hours()
+            ),
+            current_value: None,
+            limit_value: None,
+            timestamp: now,
+        });
+    }
+
+    None
 }
 
 /// Emit an execution report via PostgreSQL NOTIFY on the agent_execution channel.
@@ -218,5 +278,46 @@ mod tests {
         assert!(json.contains("latency_ms\":150"));
         // fill_price should be absent for rejected orders
         assert!(!json.contains("fill_price"));
+    }
+
+    // --- CP-4: Agent wallet expiry detection ---
+
+    #[test]
+    fn wallet_approved_29_days_ago_is_expiring_notable() {
+        let now = Utc::now();
+        let approved_at = now - Duration::days(29);
+        let alert = check_agent_wallet_expiry(approved_at, now)
+            .expect("29 days should trigger expiry warning");
+        assert_eq!(alert.alert_type, AlertType::AgentWalletExpiring);
+        assert_eq!(alert.severity, AlertSeverity::Notable);
+        assert!(alert.message.contains("24 hours"));
+    }
+
+    #[test]
+    fn wallet_approved_30_days_ago_is_expired() {
+        let now = Utc::now();
+        let approved_at = now - Duration::days(30) - Duration::minutes(1);
+        let alert = check_agent_wallet_expiry(approved_at, now)
+            .expect("30+ days should trigger expired alert");
+        assert_eq!(alert.alert_type, AlertType::AgentWalletExpired);
+        assert_eq!(alert.severity, AlertSeverity::Concerning);
+    }
+
+    #[test]
+    fn wallet_approved_30_days_minus_30_minutes_is_expiring_concerning() {
+        let now = Utc::now();
+        let approved_at = now - Duration::days(30) + Duration::minutes(30);
+        let alert = check_agent_wallet_expiry(approved_at, now)
+            .expect("30 min remaining should trigger expiry");
+        assert_eq!(alert.alert_type, AlertType::AgentWalletExpiring);
+        assert_eq!(alert.severity, AlertSeverity::Concerning);
+        assert!(alert.message.contains("minutes"));
+    }
+
+    #[test]
+    fn wallet_approved_7_days_ago_returns_none() {
+        let now = Utc::now();
+        let approved_at = now - Duration::days(7);
+        assert!(check_agent_wallet_expiry(approved_at, now).is_none());
     }
 }

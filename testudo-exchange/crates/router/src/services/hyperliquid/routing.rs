@@ -195,6 +195,7 @@ mod tests {
             last_used_at: None,
             auth_mode: "api_key".to_string(),
             wallet_address: None,
+            agent_approved_at: None,
         }
     }
 

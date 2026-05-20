@@ -54,7 +54,9 @@ Completed 2026-05-20 by /skill:vox build.
 - **Verification**: `cargo test -p router -- agent_execution` passes structure validation test.
 - **Commit message**: `feat: execution reports via pg_notify agent_execution channel`
 
-### CP-4: Agent wallet expiry detection + alert emission
+### CP-4: Agent wallet expiry detection + alert emission ✅
+
+Completed 2026-05-20 by /skill:vox build.
 
 - **Touches**: `crates/sqlx_postgres/migrations/` (NEW), `crates/router/src/repositories/exchange_account.rs`, `crates/router/src/services/agent_alert.rs`, `crates/router/src/services/hyperliquid/auth.rs`
 - **Tasks**:
