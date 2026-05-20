@@ -1,7 +1,4 @@
-use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsResponse {
@@ -150,56 +147,15 @@ impl SupportedAssetPairs {
 }
 
 // ---------------------------------------------------------------------------
-// AGENT-02: Agent alert & execution report payloads
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentAlert {
-    pub alert_type: AlertType,
-    pub severity: AlertSeverity,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub current_value: Option<Decimal>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit_value: Option<Decimal>,
-    pub timestamp: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AlertType {
-    RiskBreach,
-    DrawdownWarning,
-    DrawdownLimit,
-    MarginCall,
-    AgentWalletExpiring,
-    AgentWalletExpired,
-    MaxPositionsReached,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AlertSeverity {
-    Info,
-    Notable,
-    Concerning,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionReport {
-    pub trade_group_id: Uuid,
-    pub order_id: String,
-    pub status: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fill_price: Option<Decimal>,
-    pub exchange: String,
-    pub latency_ms: u64,
-    pub timestamp: DateTime<Utc>,
-}
+// Re-export agent types from common_utils (single source of truth).
+pub use common_utils::agent::{AgentAlert, AlertSeverity, AlertType, ExecutionReport};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
+    use rust_decimal::Decimal;
+    use uuid::Uuid;
 
     #[test]
     fn parse_agent_alert_subscription() {

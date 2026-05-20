@@ -2,6 +2,7 @@
 //!
 //! Background services and service layer for the router.
 
+pub mod agent_alert;
 pub mod auth;
 pub mod balance_snapshot;
 pub mod calibration;

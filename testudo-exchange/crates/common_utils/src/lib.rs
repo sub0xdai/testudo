@@ -2,6 +2,7 @@
 #![allow(clippy::new_without_default)]
 
 pub mod adapters;
+pub mod agent;
 pub mod journal;
 pub mod auth;
 pub mod columnar;
@@ -35,6 +36,9 @@ pub use services::{
 
 // Re-export exchange adapter types
 pub use adapters::{BinanceExecutor, CredentialValidator};
+
+// Re-export agent types (AGENT-02)
+pub use agent::{AgentAlert, AlertSeverity, AlertType, ExecutionReport};
 
 // Re-export risk management types
 pub use risk::{

@@ -27,7 +27,9 @@ Completed 2026-05-20 by /skill:vox build.
 - **Verification**: `cargo test -p ws-stream` passes; SUBSCRIBE to `agent.alert.{uuid}` is recognized and routed.
 - **Commit message**: `feat: agent channel types and ws-stream subscription parsing`
 
-### CP-2: Risk breach alert emission via pg_notify
+### CP-2: Risk breach alert emission via pg_notify ✅
+
+Completed 2026-05-20 by /skill:vox build.
 
 - **Touches**: `crates/router/src/services/agent_alert.rs` (NEW), `crates/router/src/routes/signal.rs`, `crates/router/src/services/trade_manager/evaluator.rs`
 - **Tasks**:

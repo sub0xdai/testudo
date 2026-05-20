@@ -14,6 +14,7 @@ use crate::decision_loop::{
 };
 use crate::middleware::auth::AuthenticatedUser;
 use crate::models::agent_signal::{ExecutionMode, SignalInput, SignalResult, SignalSide};
+use crate::services::agent_alert::{alert_from_rejection, alert_from_warning, emit_alert};
 use crate::services::exchange_api::{
     ApiOrderType, CexExchangeApi, ExchangeApi, ExchangeApiError,
     OrderSide as ExchangeOrderSide, PlaceOrderRequest, ShadowExchangeApi,
@@ -133,6 +134,14 @@ pub async fn create_signal(
         let code = rejection
             .map(|r| format!("{:?}", r))
             .unwrap_or_else(|| "unknown".to_string());
+
+        // CP-2: Emit risk breach alert via pg_notify
+        if let Some(rej) = rejection {
+            if let Some(alert) = alert_from_rejection(rej, _user.user_id) {
+                emit_alert(&_app_state.pool, _user.user_id, &alert).await;
+            }
+        }
+
         let result = SignalResult::rejected(reason, code, input.execution_mode);
         if let Some(ref idem_key) = input.idempotency_key {
             if let Ok(cached) = serde_json::to_value(&result) {
@@ -141,6 +150,13 @@ pub async fn create_signal(
         }
         return HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY)
             .json(result);
+    }
+
+    // CP-2: Emit alerts for drawdown warnings on approval
+    for warning in &decision_result.warnings {
+        if let Some(alert) = alert_from_warning(warning, _user.user_id) {
+            emit_alert(&_app_state.pool, _user.user_id, &alert).await;
+        }
     }
 
     let position_size = decision_result.position_size.unwrap_or(Decimal::ZERO);
