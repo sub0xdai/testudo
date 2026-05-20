@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = { workspace = true, features = ["serde"] }
+rust_decimal = { workspace = true, features = ["serde"] }
 dotenvy.workspace = true
 futures-util.workspace = true
 serde.workspace = true

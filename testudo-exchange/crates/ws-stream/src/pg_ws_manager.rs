@@ -69,15 +69,15 @@ impl PgWsManager {
             return None;
         }
 
-        let (subscription_type, topic) = match message.parse_subscription() {
-            Some(result) => result,
+        let target = match message.parse_subscription() {
+            Some(t) => t,
             None => {
                 tracing::warn!(params = ?message.params, "Invalid subscription format");
                 return None;
             }
         };
 
-        let subscription_id = format!("{:?}.{}", subscription_type, topic);
+        let subscription_id = target.subscription_id();
 
         if let Some(subscriptions) = self.subscriptions.get_mut(user_id) {
             subscriptions.push(subscription_id.clone());
@@ -104,15 +104,15 @@ impl PgWsManager {
             return None;
         }
 
-        let (subscription_type, topic) = match message.parse_subscription() {
-            Some(result) => result,
+        let target = match message.parse_subscription() {
+            Some(t) => t,
             None => {
                 tracing::warn!(params = ?message.params, "Invalid unsubscription format");
                 return None;
             }
         };
 
-        let subscription_id = format!("{:?}.{}", subscription_type, topic);
+        let subscription_id = target.subscription_id();
 
         if let Some(subscriptions) = self.subscriptions.get_mut(user_id) {
             subscriptions.retain(|id| id != &subscription_id);
