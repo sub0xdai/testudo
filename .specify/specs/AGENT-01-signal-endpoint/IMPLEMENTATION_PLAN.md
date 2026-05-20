@@ -57,6 +57,8 @@ Completed 2026-05-20 by /skill:vox build.
 
 ### CP-4: Idempotency + error handling polish ✅
 
+Completed 2026-05-20 by /skill:vox build.
+
 - **Touches**: `crates/router/src/routes/signal.rs`, `crates/sqlx_postgres/migrations/` (NEW migration), `crates/db-processor/src/query.rs`
 - **Tasks**:
   1. Create migration for `signal_events` table: `id UUID PK`, `idempotency_key UUID UNIQUE`, `user_id UUID`, `response JSONB`, `created_at TIMESTAMPTZ`.

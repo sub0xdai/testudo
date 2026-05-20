@@ -32,6 +32,7 @@ use routes::{
     order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers, trade,
     trade_events, trade_management, user_settings,
 };
+use dashmap::DashMap;
 use sqlx_postgres::PostgresDb;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
@@ -443,6 +444,9 @@ async fn main() -> std::io::Result<()> {
     let journal_syncer_last_notified: Arc<dashmap::DashMap<uuid::Uuid, std::time::Instant>> =
         Arc::new(dashmap::DashMap::new());
 
+    let signal_idempotency: Arc<DashMap<String, serde_json::Value>> =
+        Arc::new(DashMap::new());
+
     let app_state = web::Data::new(AppState {
         postgres_db,
         pool: pg_pool.clone(),
@@ -464,6 +468,7 @@ async fn main() -> std::io::Result<()> {
         calibration_engine: calibration_engine.clone(),
         journal_syncer_notifiers: journal_syncer_notifiers.clone(),
         journal_syncer_last_notified: journal_syncer_last_notified.clone(),
+        signal_idempotency: signal_idempotency.clone(),
     });
 
     let cex_exchange_api: Option<Arc<services::CexExchangeApi>> = if ccxt_enabled {

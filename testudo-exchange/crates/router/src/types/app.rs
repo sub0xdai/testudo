@@ -56,4 +56,7 @@ pub struct AppState {
     pub journal_syncer_notifiers: Arc<DashMap<Uuid, Arc<Notify>>>,
     /// JNL-SYNC-01: Debounce tracker for manual sync (5s minimum between triggers).
     pub journal_syncer_last_notified: Arc<DashMap<Uuid, std::time::Instant>>,
+    /// AGENT-01 CP-4: Idempotency store for signal events.
+    /// Key = idempotency_key, value = cached SignalResult JSON.
+    pub signal_idempotency: Arc<DashMap<String, serde_json::Value>>,
 }
