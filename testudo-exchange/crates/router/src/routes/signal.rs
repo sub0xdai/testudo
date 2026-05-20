@@ -6,6 +6,7 @@
 
 use actix_web::{web, HttpResponse};
 use rust_decimal::Decimal;
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -14,7 +15,10 @@ use crate::decision_loop::{
 };
 use crate::middleware::auth::AuthenticatedUser;
 use crate::models::agent_signal::{ExecutionMode, SignalInput, SignalResult, SignalSide};
-use crate::services::agent_alert::{alert_from_rejection, alert_from_warning, emit_alert};
+use crate::services::agent_alert::{
+    alert_from_rejection, alert_from_warning, build_execution_report,
+    emit_alert, emit_execution_report,
+};
 use crate::services::exchange_api::{
     ApiOrderType, CexExchangeApi, ExchangeApi, ExchangeApiError,
     OrderSide as ExchangeOrderSide, PlaceOrderRequest, ShadowExchangeApi,
@@ -172,7 +176,7 @@ pub async fn create_signal(
 
     execute_shadow(
         _user.user_id, input, position_size, sizing_method, warnings,
-        &_app_state.engine_handle,
+        &_app_state.engine_handle, &_app_state.pool,
     ).await
 }
 
@@ -183,6 +187,7 @@ async fn execute_shadow(
     sizing_method: SizingMethod,
     warnings: Vec<String>,
     engine_handle: &engine::EngineHandle,
+    pool: &PgPool,
 ) -> HttpResponse {
     let shadow_api = ShadowExchangeApi::new(engine_handle.clone());
     let leverage = input.leverage.unwrap_or(1);
@@ -204,15 +209,19 @@ async fn execute_shadow(
         })
         .await;
 
+    let trade_group_id = Uuid::new_v4();
     match order_result {
-        Ok(result) => HttpResponse::Ok().json(SignalResult::success(
-            Uuid::new_v4(),
-            result.id,
-            position_size,
-            sizing_method,
-            ExecutionMode::Shadow,
-            warnings,
-        )),
+        Ok(result) => {
+            let report = build_execution_report(
+                trade_group_id, &result.id, "open",
+                result.average, "shadow", 0,
+            );
+            emit_execution_report(pool, user_id, &report).await;
+            HttpResponse::Ok().json(SignalResult::success(
+                trade_group_id, result.id, position_size,
+                sizing_method, ExecutionMode::Shadow, warnings,
+            ))
+        }
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
             "error": format!("failed to place shadow order: {}", e)
         })),

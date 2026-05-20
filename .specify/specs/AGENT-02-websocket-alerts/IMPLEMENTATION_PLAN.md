@@ -41,7 +41,9 @@ Completed 2026-05-20 by /skill:vox build.
 - **Verification**: `cargo test -p router -- agent_alert` passes 2 alert emission tests.
 - **Commit message**: `feat: risk breach alerts via pg_notify agent_alert channel`
 
-### CP-3: Execution report emission via pg_notify
+### CP-3: Execution report emission via pg_notify ✅
+
+Completed 2026-05-20 by /skill:vox build.
 
 - **Touches**: `crates/router/src/services/agent_alert.rs`, `crates/router/src/services/trade_manager/service.rs`, `crates/router/src/routes/signal.rs`
 - **Tasks**:

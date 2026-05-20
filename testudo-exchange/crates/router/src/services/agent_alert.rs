@@ -61,6 +61,26 @@ pub fn alert_from_rejection(rejection: &RiskRejection, _user_id: Uuid) -> Option
     }
 }
 
+/// Build an ExecutionReport from order placement result fields.
+pub fn build_execution_report(
+    trade_group_id: Uuid,
+    order_id: &str,
+    status: &str,
+    fill_price: Option<Decimal>,
+    exchange: &str,
+    latency_ms: u64,
+) -> ExecutionReport {
+    ExecutionReport {
+        trade_group_id,
+        order_id: order_id.to_string(),
+        status: status.to_string(),
+        fill_price,
+        exchange: exchange.to_string(),
+        latency_ms,
+        timestamp: Utc::now(),
+    }
+}
+
 /// Emit an alert via PostgreSQL NOTIFY on the agent_alert channel.
 /// Fire-and-forget: errors are logged, not propagated.
 pub async fn emit_alert(pool: &PgPool, user_id: Uuid, alert: &AgentAlert) {
@@ -158,5 +178,45 @@ mod tests {
     fn non_alert_rejections_return_none() {
         let rejection = RiskRejection::StopLossRequired;
         assert!(alert_from_rejection(&rejection, Uuid::new_v4()).is_none());
+    }
+
+    // --- CP-3: Execution report construction ---
+
+    #[test]
+    fn execution_report_has_required_fields() {
+        let report = build_execution_report(
+            Uuid::new_v4(),
+            "binance-order-42",
+            "filled",
+            Some(dec!(50000)),
+            "binance",
+            342,
+        );
+        assert_eq!(report.status, "filled");
+        assert_eq!(report.exchange, "binance");
+        assert_eq!(report.latency_ms, 342);
+        assert_eq!(report.fill_price, Some(dec!(50000)));
+        assert_eq!(report.order_id, "binance-order-42");
+    }
+
+    #[test]
+    fn execution_report_serializes_as_valid_json() {
+        let report = build_execution_report(
+            Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap(),
+            "hl-order-99",
+            "rejected",
+            None,
+            "hyperliquid",
+            150,
+        );
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("trade_group_id"));
+        assert!(json.contains("550e8400"));
+        assert!(json.contains("hl-order-99"));
+        assert!(json.contains("rejected"));
+        assert!(json.contains("hyperliquid"));
+        assert!(json.contains("latency_ms\":150"));
+        // fill_price should be absent for rejected orders
+        assert!(!json.contains("fill_price"));
     }
 }
