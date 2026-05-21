@@ -106,6 +106,14 @@ export default function Coach() {
         >
           {coachEnabled() ? 'COACH ON' : 'COACH OFF'}
         </button>
+        <a
+          href="https://github.com/sub0xdai/testudo/blob/master/AGENT_TRADING.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="font-mono text-xs tracking-wider px-3 py-1.5 border border-container-border text-text-tertiary hover:text-text-primary transition-colors"
+        >
+          AGENT SETUP
+        </a>
       </div>
 
       <div class="flex-1 min-h-0 max-w-5xl mx-auto w-full px-8 py-8 flex flex-col gap-10">
@@ -203,32 +211,6 @@ export default function Coach() {
             flagged by the pattern detectors — is sent. Raw trade history outside the flagged set
             never leaves the server. You can disable the coach at any time with the toggle above.
           </p>
-        </section>
-
-        {/* Agent setup link */}
-        <section class="border border-container-border bg-container-bg px-6 py-5">
-          <div class="flex items-center gap-2 mb-3">
-            <p class="font-mono text-[10px] tracking-wider text-text-tertiary uppercase">
-              // AGENT_SETUP
-            </p>
-            <HelpTip text={HELP['coach.agent_setup'] ?? ''} />
-          </div>
-          <p class="font-display text-sm text-text-secondary leading-relaxed mb-4">
-            AI agents (Claude, Hermes, OpenClaw, pi) can trade autonomously on Testudo using the
-            same infrastructure. The agent reads its journal, submits signals, monitors fills via
-            WebSocket, and writes theses and postmortems back — a complete closed loop.
-          </p>
-          <a
-            href="https://github.com/m0xu/testudo/blob/master/AGENT_TRADING.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 px-4 py-2 border border-text-primary text-text-primary font-mono text-xs tracking-wider hover:bg-text-primary hover:text-main-bg transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-            </svg>
-            VIEW ON GITHUB
-          </a>
         </section>
       </div>
     </div>
