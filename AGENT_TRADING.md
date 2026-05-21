@@ -14,6 +14,9 @@
 | Check performance | `GET` | `/journal/agent/summary?format=llm` |
 | Get coach warnings | `GET` | `/journal/agent/insights` |
 | Compare periods | `POST` | `/journal/agent/compare` |
+| Write thesis/postmortem | `POST` | `/journal/entries` |
+| Create strategy tag | `POST` | `/journal/tags` |
+| Tag a trade | `POST` | `/journal/trades/{id}/tags` |
 | Place a trade | `POST` | `/api/v1/signals` |
 | Watch fills/alerts | WS | `agent.execution.{user_id}` |
 | Watch risk breaches | WS | `agent.alert.{user_id}` |
@@ -299,7 +302,104 @@ Sent when drawdown approaches limits or patterns are detected mid-session:
 
 ---
 
-## 5. The Autonomous Trading Loop
+## 5. Journal Write — Build Persistent Memory
+
+Reading your journal tells you the past. Writing to it shapes the future. Every trade decision, thesis, postmortem, and strategy update should be persisted so your next session can learn from it.
+
+### Available today (via existing journal endpoints)
+
+These endpoints already exist. Use them immediately.
+
+#### Record a trade thesis or postmortem
+
+```bash
+POST /api/v1/journal/entries
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "trade_id": "a3f2b1c4-1111-2222-3333-444455556666",
+  "entry_date": "2026-05-21",
+  "title": "ETH breakout thesis — May 21",
+  "body": "ETH broke above 3-day resistance at 3080 on the 4h close. \n\nVolume confirming: 2.3× 20-period average. BTC.D dropping from 48.2 → 47.1 during the move. \n\nEntry: 3100 (retest of broken resistance). Stop: 3050 (1.6% risk). Target: 3250 (prior range high). \n\nR:R = 3:1. Sizing at 2% account risk ($75 on $3,750 account).",
+  "entry_type": "thesis"
+}
+```
+
+`entry_type` should be one of: `"thesis"` (pre-trade reasoning), `"postmortem"` (after close analysis), `"observation"` (market note, no trade attached).
+
+#### Tag a trade with strategy labels
+
+```bash
+# First, create the tag if it doesn't exist
+POST /api/v1/journal/tags
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"name": "breakout", "color": "#22c55e"}
+
+# Then attach it to a trade
+POST /api/v1/journal/trades/a3f2b1c4-1111-2222-3333-444455556666/tags
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"tag_ids": ["tag-uuid-here"]}
+```
+
+Tags are how the summary endpoint groups trades by setup. Consistent tagging = meaningful per-setup breakdowns.
+
+#### Update trade notes
+
+```bash
+PATCH /api/v1/journal/trades/a3f2b1c4-1111-2222-3333-444455556666/notes
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"notes": "SL hit at 3050. Thesis was correct directionally (ETH hit 3220) but entry was early. Next time: wait for 4h close confirmation above resistance before entering."}
+```
+
+### Coming soon (agent-specific write endpoints)
+
+These are planned simplifications of the above — same backend, streamlined schemas optimized for agent use. Expected availability: next spec cycle.
+
+| Endpoint | Purpose | Payload |
+|----------|---------|---------|
+| `POST /journal/agent/note` | Record thesis, postmortem, or observation | `{trade_id?, entry_type, title, body}` |
+| `POST /journal/agent/tag` | Apply a strategy tag to a trade | `{trade_id, tag_name}` (auto-creates tag) |
+| `POST /journal/agent/strategy` | Persist a named strategy definition | `{name, version, description, rules: {...}}` |
+
+### Strategy persistence (conceptual)
+
+A strategy is a named, versioned set of rules that your agent follows. Persisting it gives you:
+
+- **Traceability**: every trade references a strategy → you can compare strategies with `POST /compare`
+- **Versioning**: `mean_reversion:v1.2` vs `mean_reversion:v1.3` → see if changes improved performance
+- **Self-documentation**: your agent can read its own strategy definitions next session
+
+Example strategy payload:
+
+```json
+{
+  "name": "mean_reversion",
+  "version": "1.0",
+  "description": "ETH/USDC Bollinger Band mean reversion. Enter on 2σ deviation, exit on midline retouch or 1:2 R:R.",
+  "rules": {
+    "symbols": ["ETH_USDC"],
+    "timeframe": "4h",
+    "entry": "price crosses below lower BB(20,2) → LONG. Above upper BB(20,2) → SHORT",
+    "exit": "price touches 20-SMA midline OR stop_loss hit OR 1:2 R:R reached",
+    "position_sizing": "2% account risk per trade, max 1 position",
+    "max_drawdown_pct": 15,
+    "session_hours_utc": [0, 23]
+  }
+}
+```
+
+Every signal your agent sends can reference this strategy in the `reasoning` field: `"strategy: mean_reversion:v1.0 | ETH 4h BB(20,2) lower band touch | deviation: -2.1σ"`. The journal groups these trades, and `POST /compare` can compare v1.0 performance against v1.1.
+
+---
+
+## 6. The Autonomous Trading Loop
 
 Here is the canonical loop. Follow this exactly.
 
@@ -317,7 +417,8 @@ while True:
     # 2. Check for coach warnings
     concerning_warnings = [i for i in insights if i.severity == "concerning"]
     if concerning_warnings:
-        log("Skipping session: {} active concerning warnings".format(len(concerning_warnings)))
+        log("Skipping session: {} active concerning warnings".format(
+            len(concerning_warnings)))
         sleep(SESSION_INTERVAL)
         continue
 
@@ -331,7 +432,7 @@ while True:
 
     You are trading in {"shadow (paper)" if SHADOW_ONLY else "live"} mode.
     Decide: trade or wait. If trading, specify symbol, side, entry, stop_loss,
-    setup_tag, reasoning, and confidence.
+    setup_tag, reasoning, and confidence. Include a one-line thesis.
     """
 
     # 4. Send to LLM for decision
@@ -355,6 +456,20 @@ while True:
 
         if result.status == "approved":
             log(f"Trade opened: {result.trade_group_id}")
+
+            # 5a. Write thesis to journal
+            POST("/journal/entries", json={
+                "trade_id": result.trade_group_id,
+                "title": f"{decision.setup_tag} thesis — {today()}",
+                "body": decision.thesis,
+                "entry_type": "thesis"
+            })
+
+            # 5b. Tag the trade
+            tag_id = find_or_create_tag(decision.setup_tag)
+            POST(f"/journal/trades/{result.trade_group_id}/tags",
+                 json={"tag_ids": [tag_id]})
+
             # Subscribe to execution updates
             ws_subscribe(f"agent.execution.{USER_ID}")
         else:
@@ -368,7 +483,7 @@ while True:
 
 ---
 
-## 6. Rate Limits
+## 7. Rate Limits
 
 | Endpoint | Limit | Window |
 |----------|-------|--------|
@@ -379,7 +494,7 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 
 ---
 
-## 7. Rules of Engagement
+## 8. Rules of Engagement
 
 1. **Start in shadow mode.** Every agent begins with `"execution_mode": "shadow"`. Do not switch to `"live"` until you have at least one week of profitable paper trading.
 
@@ -397,9 +512,11 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 
 8. **Review before scaling.** Every week, call `POST /journal/agent/compare` comparing this week to last. If metrics are declining, don't scale up.
 
+9. **Write to your journal.** After every trade, record a thesis. After every close, record a postmortem. Tag every trade with its strategy. The journal is your memory — an empty journal means you're trading blind next session.
+
 ---
 
-## 8. Example: Complete Session
+## 9. Example: Complete Session
 
 ```bash
 TOKEN="eyJhbGciOiJIUzI1NiIs..."
@@ -431,7 +548,31 @@ curl -s -X POST https://testudo.example.com/api/v1/signals \
     "setup_tag": "breakout"
   }' | jq .
 
-# Step 4: After the session, compare this week to last
+# Step 4: Record thesis in journal (use the trade_group_id from step 3 response)
+TRADE_ID=$(echo $SIGNAL_RESULT | jq -r '.trade_group_id')
+
+curl -s -X POST https://testudo.example.com/api/v1/journal/entries \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"trade_id\": \"$TRADE_ID\",
+    \"title\": \"ETH breakout thesis\",
+    \"body\": \"ETH broke above 3-day resistance at 3080 on the 4h close. Volume 2.3× average. BTC.D dropping. Entry at retest of broken resistance (3100). Stop at 3050 (1.6% risk). Target 3250 (3:1 R:R).\",
+    \"entry_type\": \"thesis\"
+  }"
+
+# Step 5: Tag the trade
+TAG_ID=$(curl -s -X POST https://testudo.example.com/api/v1/journal/tags \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "breakout", "color": "#22c55e"}' | jq -r '.id')
+
+curl -s -X POST "https://testudo.example.com/api/v1/journal/trades/$TRADE_ID/tags" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"tag_ids\": [\"$TAG_ID\"]}"
+
+# Step 6: After the session, compare this week to last
 curl -s -X POST https://testudo.example.com/api/v1/journal/agent/compare \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -443,7 +584,7 @@ curl -s -X POST https://testudo.example.com/api/v1/journal/agent/compare \
 
 ---
 
-## 9. Supported Exchanges
+## 10. Supported Exchanges
 
 | Exchange | Mode | Execution |
 |----------|------|-----------|
