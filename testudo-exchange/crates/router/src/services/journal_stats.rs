@@ -59,6 +59,12 @@ pub struct StatsFilter {
     pub date_from: Option<NaiveDate>,
     pub date_to: Option<NaiveDate>,
     pub tags: Option<Vec<String>>,
+    /// AGENT-03: Filter trades by source field (e.g., "agent:hermes_v1.2").
+    pub source: Option<String>,
+    /// AGENT-03: Filter trades by setup_tag (case-insensitive match).
+    pub setup_tag: Option<String>,
+    /// AGENT-03: Filter trades by side ("LONG" or "SHORT").
+    pub side: Option<String>,
 }
 
 // ── Internal row types for SQL queries ────────────────────────────────
@@ -396,13 +402,19 @@ impl StatsEngine {
                 AND ($2::TEXT IS NULL OR exchange = $2) \
                 AND ($3::TEXT IS NULL OR symbol = $3) \
                 AND ($4::DATE IS NULL OR closed_at >= $4) \
-                AND ($5::DATE IS NULL OR closed_at <= $5)",
+                AND ($5::DATE IS NULL OR closed_at <= $5) \
+                AND ($6::TEXT IS NULL OR source = $6) \
+                AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                AND ($8::TEXT IS NULL OR side = $8)",
         )
         .bind(user_id)
         .bind(&filter.exchange)
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_one(&self.pool)
         .await?;
 
@@ -427,6 +439,9 @@ impl StatsEngine {
                     AND ($3::TEXT IS NULL OR symbol = $3) \
                     AND ($4::DATE IS NULL OR closed_at >= $4) \
                     AND ($5::DATE IS NULL OR closed_at <= $5) \
+                    AND ($6::TEXT IS NULL OR source = $6) \
+                    AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                    AND ($8::TEXT IS NULL OR side = $8) \
             ), \
             groups AS ( \
                 SELECT is_win, \
@@ -453,6 +468,9 @@ impl StatsEngine {
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_one(&self.pool)
         .await?;
 
@@ -476,6 +494,9 @@ impl StatsEngine {
                     AND ($3::TEXT IS NULL OR symbol = $3) \
                     AND ($4::DATE IS NULL OR closed_at >= $4) \
                     AND ($5::DATE IS NULL OR closed_at <= $5) \
+                    AND ($6::TEXT IS NULL OR source = $6) \
+                    AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                    AND ($8::TEXT IS NULL OR side = $8) \
             ), \
             peaks AS ( \
                 SELECT cum_pnl, \
@@ -492,6 +513,9 @@ impl StatsEngine {
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_one(&self.pool)
         .await?;
 

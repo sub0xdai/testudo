@@ -28,9 +28,9 @@ use confik::{Configuration as _, EnvSource};
 use dotenvy::dotenv;
 use engine::{EngineActor, ShadowEngine};
 use routes::{
-    auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines, market_data,
-    order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers, trade,
-    trade_events, trade_management, user_settings,
+    agent_journal, auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines,
+    market_data, order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers,
+    trade, trade_events, trade_management, user_settings,
 };
 use dashmap::DashMap;
 use sqlx_postgres::PostgresDb;
@@ -447,6 +447,21 @@ async fn main() -> std::io::Result<()> {
     let signal_idempotency: Arc<DashMap<String, serde_json::Value>> =
         Arc::new(DashMap::new());
 
+    // AGENT-01: Per-user rate limiter for signals (30 req / 60s by default).
+    let signal_rate_limit_max: usize = std::env::var("SIGNAL_RATE_LIMIT_MAX")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(30);
+    let signal_rate_limit_window_secs: u64 = std::env::var("SIGNAL_RATE_LIMIT_WINDOW_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(60);
+    let signal_rate_limiter: Arc<DashMap<uuid::Uuid, Vec<std::time::Instant>>> =
+        Arc::new(DashMap::new());
+    let signal_rate_limit_max = Arc::new(signal_rate_limit_max);
+    let signal_rate_limit_window = std::time::Duration::from_secs(signal_rate_limit_window_secs);
+    let signal_rate_limit_window = Arc::new(signal_rate_limit_window);
+
     let app_state = web::Data::new(AppState {
         postgres_db,
         pool: pg_pool.clone(),
@@ -469,6 +484,9 @@ async fn main() -> std::io::Result<()> {
         journal_syncer_notifiers: journal_syncer_notifiers.clone(),
         journal_syncer_last_notified: journal_syncer_last_notified.clone(),
         signal_idempotency: signal_idempotency.clone(),
+        signal_rate_limiter: signal_rate_limiter.clone(),
+        signal_rate_limit_max: *signal_rate_limit_max,
+        signal_rate_limit_window: *signal_rate_limit_window,
     });
 
     let cex_exchange_api: Option<Arc<services::CexExchangeApi>> = if ccxt_enabled {
@@ -1250,6 +1268,14 @@ async fn main() -> std::io::Result<()> {
                             .route("/upload", web::post().to(journal::upload_journal_image))
                             .route("/storage", web::get().to(journal::storage_usage))
                             .route("/images/{id}", web::delete().to(journal::delete_image)),
+                    )
+                    // AGENT-03: Agent journal memory endpoints
+                    .service(
+                        web::scope("/journal/agent")
+                            .wrap(JwtMiddleware::new(token_service.clone()))
+                            .route("/summary", web::get().to(agent_journal::get_summary))
+                            .route("/insights", web::get().to(agent_journal::get_insights))
+                            .route("/compare", web::post().to(agent_journal::post_compare)),
                     )
                     // HIST-01: Trade history import routes
                     .service(

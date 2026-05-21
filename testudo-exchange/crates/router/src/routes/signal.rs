@@ -67,16 +67,41 @@ fn exchange_order_side(side: &SignalSide) -> ExchangeOrderSide {
 /// risk engine, and places an order. Shadow mode uses the paper engine;
 /// live mode routes to CEX or Hyperliquid based on the exchange account.
 pub async fn create_signal(
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     body: web::Json<SignalInput>,
-    _app_state: web::Data<crate::types::app::AppState>,
+    app_state: web::Data<crate::types::app::AppState>,
 ) -> HttpResponse {
     let input = body.into_inner();
+
+    // AGENT-01: Per-user rate limit check (before idempotency — reject
+    // duplicates fast, then check if they'd be rate-limited anyway).
+    {
+        let mut bucket = app_state.signal_rate_limiter
+            .entry(user.user_id)
+            .or_default();
+        let now = std::time::Instant::now();
+        let cutoff = now - app_state.signal_rate_limit_window;
+        bucket.retain(|t| *t > cutoff);
+        if bucket.len() >= app_state.signal_rate_limit_max {
+            return HttpResponse::TooManyRequests().json(serde_json::json!({
+                "code": "signal_rate_limited",
+                "message": format!(
+                    "Signal rate limit exceeded: {} requests per {}s. Retry after {:.0}s.",
+                    app_state.signal_rate_limit_max,
+                    app_state.signal_rate_limit_window.as_secs(),
+                    bucket.first().map(|t| {
+                        (*t + app_state.signal_rate_limit_window - now).as_secs_f64()
+                    }).unwrap_or(1.0)
+                )
+            }));
+        }
+        bucket.push(now);
+    }
 
     // CP-4: Idempotency check — if a key is provided and already processed, return 409.
     if let Some(ref idem_key) = input.idempotency_key {
         let key_str = idem_key.to_string();
-        if let Some(cached) = _app_state.signal_idempotency.get(&key_str) {
+        if let Some(cached) = app_state.signal_idempotency.get(&key_str) {
             return HttpResponse::Conflict().json(cached.clone());
         }
     }
@@ -96,7 +121,7 @@ pub async fn create_signal(
     let leverage = input.leverage.unwrap_or(1);
 
     let decision_input = match DecisionInputBuilder::new()
-        .user_id(_user.user_id)
+        .user_id(user.user_id)
         .symbol(&input.symbol)
         .side(decision_side)
         .order_type(DecisionOrderType::Limit)
@@ -114,13 +139,13 @@ pub async fn create_signal(
     };
 
     let account_state = {
-        let balances = _app_state.engine_handle.get_balances(_user.user_id).await;
+        let balances = app_state.engine_handle.get_balances(user.user_id).await;
         let usdt_balance = balances
             .iter()
             .find(|b| b.asset == "USDT")
             .map(|b| b.available + b.reserved)
             .unwrap_or(Decimal::from(10000));
-        let positions = _app_state.engine_handle.get_positions(_user.user_id).await;
+        let positions = app_state.engine_handle.get_positions(user.user_id).await;
         common_utils::risk::AccountState {
             balance: usdt_balance,
             open_position_count: positions.len() as u32,
@@ -141,15 +166,15 @@ pub async fn create_signal(
 
         // CP-2: Emit risk breach alert via pg_notify
         if let Some(rej) = rejection {
-            if let Some(alert) = alert_from_rejection(rej, _user.user_id) {
-                emit_alert(&_app_state.pool, _user.user_id, &alert).await;
+            if let Some(alert) = alert_from_rejection(rej, user.user_id) {
+                emit_alert(&app_state.pool, user.user_id, &alert).await;
             }
         }
 
         let result = SignalResult::rejected(reason, code, input.execution_mode);
         if let Some(ref idem_key) = input.idempotency_key {
             if let Ok(cached) = serde_json::to_value(&result) {
-                _app_state.signal_idempotency.insert(idem_key.to_string(), cached);
+                app_state.signal_idempotency.insert(idem_key.to_string(), cached);
             }
         }
         return HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY)
@@ -158,8 +183,8 @@ pub async fn create_signal(
 
     // CP-2: Emit alerts for drawdown warnings on approval
     for warning in &decision_result.warnings {
-        if let Some(alert) = alert_from_warning(warning, _user.user_id) {
-            emit_alert(&_app_state.pool, _user.user_id, &alert).await;
+        if let Some(alert) = alert_from_warning(warning, user.user_id) {
+            emit_alert(&app_state.pool, user.user_id, &alert).await;
         }
     }
 
@@ -170,13 +195,13 @@ pub async fn create_signal(
 
     if is_live {
         return execute_live(
-            _user.user_id, input, position_size, sizing_method, warnings, _app_state,
+            user.user_id, input, position_size, sizing_method, warnings, app_state,
         ).await;
     }
 
     execute_shadow(
-        _user.user_id, input, position_size, sizing_method, warnings,
-        &_app_state.engine_handle, &_app_state.pool,
+        user.user_id, input, position_size, sizing_method, warnings,
+        &app_state.engine_handle, &app_state.pool,
     ).await
 }
 

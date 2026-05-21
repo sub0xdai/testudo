@@ -1,3 +1,4 @@
+pub mod agent_journal;
 pub mod auth;
 pub mod coach;
 pub mod signal;

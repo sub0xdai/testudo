@@ -59,4 +59,11 @@ pub struct AppState {
     /// AGENT-01 CP-4: Idempotency store for signal events.
     /// Key = idempotency_key, value = cached SignalResult JSON.
     pub signal_idempotency: Arc<DashMap<String, serde_json::Value>>,
+    /// AGENT-01: Per-user rate limiter for POST /api/v1/signals.
+    /// Key = user_id, value = Vec of timestamps.
+    pub signal_rate_limiter: Arc<DashMap<Uuid, Vec<std::time::Instant>>>,
+    /// AGENT-01: Max requests per window for signal rate limiter.
+    pub signal_rate_limit_max: usize,
+    /// AGENT-01: Time window for signal rate limiter.
+    pub signal_rate_limit_window: std::time::Duration,
 }

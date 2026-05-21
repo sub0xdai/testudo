@@ -334,6 +334,9 @@ impl TimeSeriesService {
                 AND ($3::TEXT IS NULL OR symbol = $3) \
                 AND ($4::DATE IS NULL OR closed_at >= $4) \
                 AND ($5::DATE IS NULL OR closed_at <= $5) \
+                AND ($6::TEXT IS NULL OR source = $6) \
+                AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                AND ($8::TEXT IS NULL OR side = $8) \
             GROUP BY symbol \
             ORDER BY trade_count DESC",
         )
@@ -342,6 +345,9 @@ impl TimeSeriesService {
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_all(&self.pool)
         .await?;
 
@@ -381,6 +387,9 @@ impl TimeSeriesService {
                 AND ($3::TEXT IS NULL OR symbol = $3) \
                 AND ($4::DATE IS NULL OR closed_at >= $4) \
                 AND ($5::DATE IS NULL OR closed_at <= $5) \
+                AND ($6::TEXT IS NULL OR source = $6) \
+                AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                AND ($8::TEXT IS NULL OR side = $8) \
             GROUP BY COALESCE(NULLIF(LOWER(setup_tag), ''), '(untagged)') \
             ORDER BY expectancy DESC",
         )
@@ -389,6 +398,9 @@ impl TimeSeriesService {
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_all(&self.pool)
         .await?;
 
@@ -419,6 +431,9 @@ impl TimeSeriesService {
                 AND ($3::TEXT IS NULL OR symbol = $3) \
                 AND ($4::DATE IS NULL OR closed_at >= $4) \
                 AND ($5::DATE IS NULL OR closed_at <= $5) \
+                AND ($6::TEXT IS NULL OR source = $6) \
+                AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                AND ($8::TEXT IS NULL OR side = $8) \
             ORDER BY closed_at",
         )
         .bind(user_id)
@@ -426,6 +441,9 @@ impl TimeSeriesService {
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_all(&self.pool)
         .await?;
 
@@ -470,6 +488,9 @@ impl TimeSeriesService {
                 AND ($3::TEXT IS NULL OR symbol = $3) \
                 AND ($4::DATE IS NULL OR closed_at >= $4) \
                 AND ($5::DATE IS NULL OR closed_at <= $5) \
+                AND ($6::TEXT IS NULL OR source = $6) \
+                AND ($7::TEXT IS NULL OR LOWER(setup_tag) = LOWER($7)) \
+                AND ($8::TEXT IS NULL OR side = $8) \
             GROUP BY hour, day_of_week \
             ORDER BY day_of_week, hour",
         )
@@ -478,6 +499,9 @@ impl TimeSeriesService {
         .bind(&filter.symbol)
         .bind(filter.date_from)
         .bind(filter.date_to)
+        .bind(&filter.source)
+        .bind(&filter.setup_tag)
+        .bind(&filter.side)
         .fetch_all(&self.pool)
         .await?;
 
