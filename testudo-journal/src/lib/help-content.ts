@@ -17,6 +17,9 @@ export const HELP: Record<string, string> = {
   'coach.patterns.correlation_stack': 'Three or more same-direction positions in the same asset family held concurrently for more than 4 hours.',
   'coach.patterns.streak_risk': 'Three or more consecutive losses, or five or more consecutive wins with non-decreasing position size (pyramiding on a hot run).',
 
+  // ── Agent Setup ──
+  'coach.agent_setup': 'AI agents (Hermes, Claude, OpenClaw) can trade autonomously on Testudo. This link opens the full agent onboarding guide — authentication, signal submission, WebSocket monitoring, journal-as-memory queries, and the complete autonomous trading loop. Start in shadow (paper) mode.',
+
   // ── Dignitas Radar ──
   'radar.dignitas': 'Five discipline axes: drawdown, sizing, setup, coach, and journal. Higher score = stronger formation. Tap an axis on the breakdown page for its full definition.',
 
