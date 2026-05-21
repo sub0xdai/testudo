@@ -18,13 +18,17 @@ But this data is locked behind dashboard UI endpoints designed for human chart r
 1. Calling multiple analytics endpoints and correlating the results manually
 2. Parsing raw trade lists and computing stats itself
 
-The agent needs a **query interface** that:
-- Returns consolidated summaries filtered by symbol, timeframe, setup tag, side
+Further, the agent cannot **write** to the journal. It can't annotate a winning trade with the strategy that produced it, tag setups for future filtering, or persist its strategy thesis alongside the trade record. Without write access, the journal is a read-only performance dashboard — not a persistent memory system the agent can build over time. Every new session, the agent starts from zero context about why past trades were made.
+
+The agent needs a **bidirectional journal interface** that:
+- **Reads**: consolidated summaries filtered by symbol, timeframe, setup tag, side
+- **Writes**: agent-authored notes, strategy tags, and thesis annotations on trades
 - Supports multiple output formats: JSON (for programmatic use) and LLM-ready markdown (for feeding directly into an LLM's context window)
 - Surfaces actionable insights from the coach pipeline's pattern detection
 - Enables period-over-period comparison for strategy evaluation
+- Persists agent memory across sessions so the agent can reference its own past reasoning
 
-All the underlying computation already exists. `StatsEngine`, `TimeSeriesService`, and `CoachDigest` do the heavy lifting. The missing pieces are API endpoints that compose these into agent-friendly responses and a formatter that produces LLM-optimized markdown.
+All the underlying computation already exists. `StatsEngine`, `TimeSeriesService`, and `CoachDigest` do the heavy lifting. The `journal_notes` and `journal_tags` tables already exist for human-authored content. The missing pieces are API endpoints that compose these into agent-friendly responses, a formatter that produces LLM-optimized markdown, and write endpoints that let the agent annotate trades with its own memory.
 
 ---
 
@@ -34,6 +38,9 @@ All the underlying computation already exists. `StatsEngine`, `TimeSeriesService
 - **As a coding agent**, I want an LLM-ready markdown summary of my recent performance, so that I can include it in my reasoning context for the next trade decision.
 - **As a strategy developer**, I want to compare my performance between two time periods, so that I can determine if a strategy change improved results.
 - **As a user**, I want my agent to know which setups are working and which are failing, so that the agent can adapt its behavior based on real data.
+- **As a coding agent**, I want to annotate a trade with my strategy thesis, setup tag, and confidence notes, so that I can recall why I entered a trade when reviewing it weeks later.
+- **As a coding agent**, I want to tag trades with custom labels (e.g., "momentum", "mean-reversion", "news-event"), so that I can filter my journal by strategy type.
+- **As a coding agent**, I want to persist named strategies with rules and parameters, so that I can compare their performance over time and evolve them based on data.
 
 ---
 
@@ -51,6 +58,11 @@ All the underlying computation already exists. `StatsEngine`, `TimeSeriesService
 | FR-8 | All agent journal endpoints require authentication (SIWE bearer token) | High | Router |
 | FR-9 | Trade citation IDs in LLM output use format `[T-{short_id}]` matching the coach pipeline's citation token convention | Medium | Router |
 | FR-10 | Agent journal endpoints support filtering by `source` field (e.g., `?source=agent:hermes_v1.2`) to isolate a specific agent's trades | Medium | Router |
+| FR-11 | `POST /api/v1/journal/agent/note` adds an agent-authored note to a specific trade, persisted alongside human notes in `journal_notes` | High | Router |
+| FR-12 | Note includes: `trade_group_id`, `content` (markdown string), `source` (agent identity), `note_type` ("thesis", "postmortem", "observation", "general") | High | Router |
+| FR-13 | `POST /api/v1/journal/agent/tag` adds custom tags to a trade for strategy classification, persisted in `journal_tags` | High | Router |
+| FR-14 | Tags are free-form strings (e.g., "momentum", "mean-reversion", "news-event", "high-confidence") — the agent defines its own taxonomy | Medium | Router |
+| FR-15 | `POST /api/v1/journal/agent/strategy` registers or updates a named strategy with description, rules, and parameters, persisted in a new `agent_strategies` table | Medium | Router |
 
 ---
 
@@ -65,6 +77,8 @@ All the underlying computation already exists. `StatsEngine`, `TimeSeriesService
 | CP-3 | `GET /journal/agent/insights` — wire coach pattern detectors to ad-hoc insights | Returns sizing drift, frequency spike, session anomaly flags |
 | CP-4 | `POST /journal/agent/compare` — side-by-side period comparison | Returns delta table with all key metrics |
 | CP-5 | Filter by `source` field from AGENT-01 | Agent can isolate its own trades |
+| CP-6 | Write endpoints: `POST /journal/agent/note`, `POST /journal/agent/tag`, `POST /journal/agent/strategy` | Agent annotates trades, tags setups, persists strategy definitions |
+| CP-7 | Integration: read + write in agent decision loop | Agent reads context → trades → writes notes/tags → later session reads its own annotations |
 
 ### Key Types
 
@@ -185,6 +199,86 @@ pub enum DeltaDirection {
 }
 ```
 
+### Agent Write Types
+
+```rust
+// crates/router/src/models/agent_journal.rs
+
+/// Agent-authored note on a specific trade.
+#[derive(Debug, Deserialize)]
+pub struct AgentNoteRequest {
+    pub trade_group_id: Uuid,
+    pub content: String,                // Markdown content
+    pub note_type: AgentNoteType,       // Thesis, postmortem, observation, general
+    pub source: String,                 // "agent:hermes_v1.2"
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentNoteType {
+    Thesis,         // Why the trade was entered
+    Postmortem,     // What was learned after the trade closed
+    Observation,    // Market observation at time of trade
+    General,        // Any other note
+}
+
+#[derive(Debug, Serialize)]
+pub struct AgentNoteResponse {
+    pub note_id: Uuid,
+    pub trade_group_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Agent-authored tag on a trade for strategy classification.
+#[derive(Debug, Deserialize)]
+pub struct AgentTagRequest {
+    pub trade_group_id: Uuid,
+    pub tag: String,                    // Free-form: "momentum", "mean-reversion", "high-confidence"
+    pub source: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AgentTagResponse {
+    pub tag_id: Uuid,
+    pub tag: String,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Agent-defined strategy with rules and parameters.
+#[derive(Debug, Deserialize)]
+pub struct AgentStrategyRequest {
+    pub name: String,                   // "ETH Mean Reversion v2"
+    pub description: String,            // Markdown strategy description
+    pub rules: serde_json::Value,       // Flexible JSON: entry conditions, exit rules, filters
+    pub source: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgentStrategy {
+    pub id: Uuid,
+    pub name: String,
+    pub description: String,
+    pub rules: serde_json::Value,
+    pub source: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub is_active: bool,
+}
+
+/// Agent strategies table (new migration).
+/// CREATE TABLE agent_strategies (
+///     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+///     user_id UUID NOT NULL REFERENCES users(id),
+///     name VARCHAR(255) NOT NULL,
+///     description TEXT,
+///     rules JSONB NOT NULL DEFAULT '{}',
+///     source VARCHAR(255),           -- "agent:hermes_v1.2"
+///     is_active BOOLEAN NOT NULL DEFAULT true,
+///     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+///     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+/// );
+```
+
 ### LLM Markdown Format
 
 When `format=llm`, the response body is a structured markdown string. The router sets `Content-Type: text/markdown`:
@@ -238,8 +332,10 @@ When `format=llm`, the response body is a structured markdown string. The router
 - `crates/router/src/services/agent_journal.rs` — **NEW** — orchestrates StatsEngine + TimeSeriesService + CoachDigest → AgentSummary, AgentInsight, ComparisonResult
 - `crates/router/src/services/agent_journal_formatter.rs` — **NEW** — formats AgentSummary → LLM markdown with citation tokens and per-setup tables
 - `crates/router/src/models/agent_journal.rs` — **NEW** — types: AgentSummaryQuery, AgentSummary, AgentInsight, CompareRequest, ComparisonResult, etc.
-- `crates/router/src/routes/mod.rs` — route registration for three new endpoints
+- `crates/router/src/routes/mod.rs` — route registration for six new endpoints (3 read + 3 write)
 - `crates/router/src/routes/journal.rs` — no changes needed; agent endpoints are separate routes
+- `crates/sqlx_postgres/migrations/20260521000001_add_agent_strategies.up.sql` — **NEW**
+- `crates/sqlx_postgres/migrations/20260521000001_add_agent_strategies.down.sql` — **NEW**
 
 ### Dependencies Added
 
@@ -249,6 +345,7 @@ None.
 
 ## Acceptance Criteria
 
+### Read Endpoints
 - [ ] `GET /journal/agent/summary?format=json` returns overall stats, per-setup breakdown, top trades, and equity points
 - [ ] `GET /journal/agent/summary?format=llm` returns valid markdown with `[T-xxxxxxxx]` citation tokens
 - [ ] LLM markdown includes per-setup table with trade_count, win_rate, avg_r, total_pnl
@@ -259,10 +356,23 @@ None.
 - [ ] Insights include sizing drift, frequency spike, session anomaly, and setup fatigue patterns
 - [ ] `POST /journal/agent/compare` returns side-by-side stats with delta calculations
 - [ ] Compare endpoint correctly identifies improved/declined/neutral directions per metric
-- [ ] Unauthenticated requests return 401
+
+### Write Endpoints
+- [ ] `POST /journal/agent/note` persists agent-authored markdown note on a trade
+- [ ] Note includes `trade_group_id`, `content`, `note_type` (thesis/postmortem/observation/general), `source`
+- [ ] `POST /journal/agent/tag` persists free-form tag on a trade for strategy classification
+- [ ] Agent tags are queryable via the summary endpoint (`GET /journal/agent/summary?setup_tag=momentum`)
+- [ ] `POST /journal/agent/strategy` creates a named strategy with description, rules JSON, and source
+- [ ] `GET /journal/agent/strategies` lists all strategies for the authenticated user
+- [ ] `PUT /journal/agent/strategy/:id` updates an existing strategy
+- [ ] Agent notes and tags are included in the LLM markdown summary (under trade citations)
+
+### General
+- [ ] Unauthenticated requests return 401 on all endpoints
 - [ ] Invalid date ranges or missing required fields return 400 with clear error
 - [ ] `cargo clippy --all-targets && cargo test` passes in testudo-exchange
-- [ ] Unit tests cover: JSON format, LLM format generation, filtering, comparison deltas
+- [ ] Unit tests cover: JSON format, LLM format generation, filtering, comparison deltas, note/tag CRUD, strategy CRUD
+- [ ] Agent strategies table migration applies cleanly (up and down)
 
 ---
 
@@ -271,15 +381,19 @@ None.
 1. **LLM format token budget** — The markdown response could be large if an agent has hundreds of trades. Mitigation: limit top trades to 10, per-setup table to top 10 setups. Add `limit` query parameter (default 10, max 50) if needed.
 2. **Coach pattern freshness** — Insights from the coach pipeline are weekly. Ad-hoc queries may return patterns from the last cached digest, not real-time. Mitigation: document this. Future enhancement: compute patterns on-demand for ad-hoc queries.
 3. **Comparison computation cost** — Two full StatsEngine runs per comparison request. Mitigation: cache StatsEngine results with 60s TTL (reuse pg_queue cache). Comparison endpoint is not called at high frequency.
+4. **Agent note/tag spam** — Agent could write hundreds of notes per trade. Mitigation: limit 10 notes per trade per agent per 24h. Server-side rate limiting (reuse existing JWT middleware).
+5. **Strategy JSON schema drift** — Agent-defined strategy `rules` field is free-form JSONB. Mitigation: no server-side validation of strategy rules content. Agent SDK validates on client side. Document that strategies are agent-owned schemas.
 
 ---
 
 ## Completion Signal
 
 This spec is complete when:
-1. Three agent journal endpoints are implemented and return correct data
-2. LLM markdown format renders properly with citation tokens, per-setup tables, and actionable insights
-3. Comparison endpoint produces accurate delta calculations
-4. All 14 acceptance criteria met
-5. `cargo clippy --all-targets && cargo test` passes
-6. Code committed to master
+1. Three read endpoints (summary, insights, compare) implemented and return correct data
+2. Three write endpoints (note, tag, strategy) implemented and persist agent memory
+3. LLM markdown format renders properly with citation tokens, per-setup tables, actionable insights, and agent annotations
+4. Comparison endpoint produces accurate delta calculations
+5. Agent strategies table migration applied
+6. All 22 acceptance criteria met
+7. `cargo clippy --all-targets && cargo test` passes
+8. Code committed to master

@@ -18,6 +18,13 @@ Workflow:
 
 - [ ] **AGENT-01-signal-endpoint** — `POST /api/v1/signals`, programmatic trade execution via DecisionLoop. Shadow + live modes, agent attribution in journal.
 - [ ] **AGENT-02-websocket-alerts** — `agent.alert.*`, `agent.execution.*` WebSocket channels. Risk breaches, execution reports, wallet expiry via pg_notify.
-- [ ] **AGENT-03-journal-memory** — `GET /journal/agent/summary`, `GET /journal/agent/insights`, `POST /journal/agent/compare`. JSON + LLM markdown formats.
+- [ ] **AGENT-03-journal-memory** — Bidirectional journal API. **Read**: `GET /journal/agent/summary` (JSON + LLM markdown), `/insights` (coach patterns), `POST /compare` (period-over-period). **Write**: `POST /journal/agent/note` (thesis/postmortem/observation), `/tag` (strategy labels), `/strategy` (named strategy persistence). Agents build persistent memory across sessions.
+
+## Hackathon Delivery Series (AGENT-04 → AGENT-05)
+
+Agora Agents Hackathon (deadline: May 25). Arc Network = Circle's EVM L1, USDC native gas, Chain ID `5042002`, testnet only (mainnet beta TBA 2026).
+
+- [ ] **AGENT-04-circle-adapter** — `AuthMode::CircleAgent`, `CircleExchangeApi` via Bun sidecar (port 3101). Circle dev wallets → USDC settlement on Arc testnet. Same delegate-key pattern as Hyperliquid AW series.
+- [ ] **AGENT-05-agent-sdk** — Agent integration kit (Python CLI, port 3102). `agent context` → `agent signal` → `agent listen` → `agent review` → `agent note/tag/strategy`. Ships with AGENTS.md template for any external AI agent (Claude, Hermes, OpenClaw). Testudo is the execution platform; the AI agent brings the intelligence.
 
 

@@ -20,6 +20,10 @@ Overlays a panel on TradingView. Draw a position tool, hit Alt+X, done. Your ris
 
 Every trade, every fill, every management decision is recorded. See what's working across setups, timeframes, and market conditions. Not just P&L — why trades closed, when break-even triggered, how your sizing held up. The data that turns trading from gambling into a repeatable process.
 
+### [Agent Trading](AGENT_TRADING.md) — programmatic access
+
+AI agents (Hermes, OpenClaw, pi, Claude Code) can trade autonomously on Testudo using the same infrastructure. A REST API for trade execution, WebSocket channels for real-time fill and risk alerts, and a journal-as-memory interface that lets agents read their own performance history. Full paper-trading sandbox included. **Start in shadow mode. Graduate to live when your edge is confirmed.**
+
 ## The idea
 
 Most trading tools are either too simple (a calculator) or too complex (a full automation platform with a PhD-level learning curve). Testudo sits in the middle: you stay in control of what to trade, but the math, the risk checks, and the exit management happen automatically. The engine is conservative by design — if your account can't handle the position, the order never leaves your machine. When real money is on the line, the safest answer wins.
