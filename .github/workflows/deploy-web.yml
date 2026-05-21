@@ -1,0 +1,37 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'testudo-web/**'
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: cd testudo-web && bun install --frozen-lockfile
+
+      - name: Build
+        run: cd testudo-web && bun run build
+
+      - name: Deploy
+        run: cd testudo-web && npx wrangler versions upload src/entry.js --assets=./dist
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Promote to production
+        run: |
+          cd testudo-web
+          LATEST=$(npx wrangler versions list 2>&1 | head -12 | grep "Version ID" | head -1 | awk '{print $3}')
+          npx wrangler versions deploy "$LATEST" --percentage 100
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
