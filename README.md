@@ -20,7 +20,21 @@ Every trade, every fill, every management decision is recorded. See what's worki
 
 AI agents (Hermes, OpenClaw, pi, Claude Code) can trade autonomously on Testudo using the same infrastructure. A REST API for trade execution, WebSocket channels for real-time fill and risk alerts, and a journal-as-memory interface that lets agents read their own performance history. Full paper-trading sandbox included.
 
+## Beyond crypto
 
+The exchange backend is not a crypto trading engine — it's a general-purpose financial infrastructure platform. The adapter layer abstracts venues; everything else is venue-agnostic.
+
+| If you swapped the adapter layer... | You'd get |
+|---|---|
+| Interactive Brokers / Alpaca | **Equities/futures trading platform** — same risk engine, same journal, same coach |
+| Stripe / Braintree | **Payment orchestration** — risk validator screens transaction amounts instead of position sizes |
+| Prediction market (Polymarket/Kalshi API) | **Betting/forecasting platform** — Dignitas scores become forecaster reputation |
+| In-game economy (EVE-style) | **Game marketplace** — matching engine runs buy/sell orders for virtual items |
+| DeFi protocol (Uniswap pool) | **LP management agent** — agent API places liquidity positions instead of trades |
+| Banking fraud detection | **Transaction screening** — risk validator checks withdrawals against balance limits |
+| SaaS feature flags | **Graduated rollout** — shadow/live execution becomes canary/production traffic routing |
+| Supply chain | **Order routing** — multi-venue fabric routes purchase orders to suppliers based on health/price |
+| Any LLM agent with a wallet | **Autonomous economic agent** — shadow-first, coach-supervised, journal-as-memory loop |
 
 ## Running it
 
