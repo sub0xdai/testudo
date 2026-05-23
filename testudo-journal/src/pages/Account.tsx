@@ -187,38 +187,11 @@ export default function Account() {
 
           <div class="max-w-7xl mx-auto w-full px-8 pb-10">
             <CoachBanner />
+            {/* <div class="pt-12 border-t border-container-border/30">
+              <IdentitySettings />
+            </div> */}
           </div>
         </Show>
-      </Show>
-
-      {/* Add Exchange modal */}
-      <Show when={showForm()}>
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-main-bg/80 backdrop-blur-sm" onClick={() => { setShowForm(false); setFormInitialExchange('') }}>
-          <div class="bg-container-bg border border-container-border max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="font-mono text-xs tracking-[0.2em] text-text-primary uppercase">ADD EXCHANGE</h2>
-              <button onClick={() => { setShowForm(false); setFormInitialExchange('') }} class="font-mono text-lg text-text-tertiary hover:text-text-primary transition-colors leading-none">&times;</button>
-            </div>
-            <Show when={exchanges()}>
-              {(exs) => (
-                <AddExchangeForm exchanges={exs()} onSuccess={handleFormSuccess} onCancel={() => { setShowForm(false); setFormInitialExchange('') }} initialExchange={formInitialExchange()} />
-              )}
-            </Show>
-          </div>
-        </div>
-      </Show>
-
-      {/* Reauthorize Agent modal */}
-      <Show when={reauthAccountId()}>
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-main-bg/80 backdrop-blur-sm" onClick={() => setReauthAccountId(null)}>
-          <div class="bg-container-bg border border-container-border max-w-lg w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="font-mono text-xs tracking-[0.2em] text-text-primary uppercase">RE-AUTHORIZE AGENT WALLET</h2>
-              <button onClick={() => setReauthAccountId(null)} class="font-mono text-lg text-text-tertiary hover:text-text-primary transition-colors leading-none">&times;</button>
-            </div>
-            <WalletConnectFlow existingAccountId={reauthAccountId()!} onComplete={() => { setReauthAccountId(null); refetchAccounts() }} />
-          </div>
-        </div>
       </Show>
     </div>
   )
