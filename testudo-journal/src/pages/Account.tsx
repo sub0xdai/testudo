@@ -183,13 +183,62 @@ export default function Account() {
                 {() => <AddExchangeCard onClick={() => openForm()} />}
               </For>
             </div>
+
+            {/* Add exchange form — centered overlay */}
+            <Show when={showForm()}>
+              <div
+                class="fixed inset-0 z-50 flex items-center justify-center bg-main-bg/80 backdrop-blur-sm"
+                onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false) }}
+              >
+                <div class="relative border border-container-border bg-container-bg p-8 w-full max-w-lg mx-4 shadow-2xl">
+                  <button
+                    onClick={() => setShowForm(false)}
+                    class="absolute top-4 right-4 text-text-tertiary hover:text-text-primary font-mono text-lg leading-none transition-colors"
+                    aria-label="Close"
+                  >
+                    &times;
+                  </button>
+                  <div class="font-mono text-[10px] tracking-widest text-text-tertiary mb-4">// ADD_EXCHANGE</div>
+                  <h3 class="font-mono text-sm font-bold text-text-primary mb-4">ADD EXCHANGE</h3>
+
+                  <Show when={exchanges()}>
+                    {(exs) => (
+                      <AddExchangeForm
+                        exchanges={exs()}
+                        initialExchange={formInitialExchange()}
+                        onSuccess={handleFormSuccess}
+                        onCancel={() => setShowForm(false)}
+                      />
+                    )}
+                  </Show>
+                </div>
+              </div>
+            </Show>
+
+            {/* Re-authorization modal */}
+            <Show when={reauthAccountId()}>
+              <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div class="border border-container-border bg-main-bg/95 backdrop-blur-md p-8 max-w-lg w-full mx-4">
+                  <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-mono text-sm font-bold text-text-primary tracking-wider">RE-AUTHORIZE AGENT WALLET</h3>
+                    <button
+                      onClick={() => setReauthAccountId(null)}
+                      class="text-text-tertiary hover:text-text-primary font-mono text-xs"
+                    >
+                      CLOSE
+                    </button>
+                  </div>
+                  <WalletConnectFlow
+                    existingAccountId={reauthAccountId()!}
+                    onComplete={() => { setReauthAccountId(null); refetchAccounts() }}
+                  />
+                </div>
+              </div>
+            </Show>
           </div>
 
           <div class="max-w-7xl mx-auto w-full px-8 pb-10">
             <CoachBanner />
-            {/* <div class="pt-12 border-t border-container-border/30">
-              <IdentitySettings />
-            </div> */}
           </div>
         </Show>
       </Show>
