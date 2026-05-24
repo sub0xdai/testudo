@@ -1237,6 +1237,13 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::scope("/journal")
                             .wrap(JwtMiddleware::new(token_service.clone()))
+                            // AGENT-03: Agent journal memory — nested scope, no ordering conflict
+                            .service(
+                                web::scope("/agent")
+                                    .route("/summary", web::get().to(agent_journal::get_summary))
+                                    .route("/insights", web::get().to(agent_journal::get_insights))
+                                    .route("/compare", web::post().to(agent_journal::post_compare)),
+                            )
                             .route("/sync", web::post().to(journal::trigger_manual_sync))
                             .route("/analytics/filter-options", web::get().to(journal::filter_options))
                             .route("/analytics/overview", web::get().to(journal::overview))
@@ -1268,14 +1275,6 @@ async fn main() -> std::io::Result<()> {
                             .route("/upload", web::post().to(journal::upload_journal_image))
                             .route("/storage", web::get().to(journal::storage_usage))
                             .route("/images/{id}", web::delete().to(journal::delete_image)),
-                    )
-                    // AGENT-03: Agent journal memory endpoints
-                    .service(
-                        web::scope("/journal/agent")
-                            .wrap(JwtMiddleware::new(token_service.clone()))
-                            .route("/summary", web::get().to(agent_journal::get_summary))
-                            .route("/insights", web::get().to(agent_journal::get_insights))
-                            .route("/compare", web::post().to(agent_journal::post_compare)),
                     )
                     // HIST-01: Trade history import routes
                     .service(
