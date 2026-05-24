@@ -18,7 +18,7 @@ Every trade, every fill, every management decision is recorded. See what's worki
 
 ### [Agent Trading](AGENT_TRADING.md) 
 
-AI agents (Hermes, OpenClaw, pi, Claude Code) can trade autonomously on Testudo using the same infrastructure. A REST API for trade execution, WebSocket channels for real-time fill and risk alerts, and a journal-as-memory interface that lets agents read their own performance history. Full paper-trading sandbox included.
+AI agents (Hermes, OpenClaw, pi) can trade autonomously on Testudo using the same infrastructure. A REST API for trade execution, WebSocket channels for real-time fill and risk alerts, and a journal-as-memory interface that lets agents read their own performance history. Full paper-trading sandbox included.
 
 ## Beyond crypto
 

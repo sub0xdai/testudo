@@ -1,6 +1,6 @@
 # Agent Trading Guide
 
-> **For AI agents (Hermes, OpenClaw, pi, Claude Code, etc.) connecting to Testudo.**
+> **For AI agents (Hermes, OpenClaw, pi, etc.) connecting to Testudo.**
 >
 > Read this once. It tells you everything you need to trade autonomously.
 > Start in shadow mode. Graduate to live when your edge is confirmed.
