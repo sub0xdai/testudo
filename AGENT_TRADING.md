@@ -11,12 +11,16 @@
 
 | Action | Method | Endpoint |
 |--------|--------|----------|
-| Check performance | `GET` | `/journal/agent/summary?format=llm` |
-| Get coach warnings | `GET` | `/journal/agent/insights` |
-| Compare periods | `POST` | `/journal/agent/compare` |
-| Write thesis/postmortem | `POST` | `/journal/entries` |
-| Create strategy tag | `POST` | `/journal/tags` |
-| Tag a trade | `POST` | `/journal/trades/{id}/tags` |
+| Get user info | `GET` | `/api/v1/auth/me` |
+| Check performance | `GET` | `/api/v1/journal/agent/summary?format=llm` |
+| Get coach warnings | `GET` | `/api/v1/journal/agent/insights` |
+| Compare periods | `POST` | `/api/v1/journal/agent/compare` |
+| Write entry (pre-trade/post-trade/note) | `POST` | `/api/v1/journal/entries` |
+| List entries | `GET` | `/api/v1/journal/entries` |
+| Create strategy tag | `POST` | `/api/v1/journal/tags` |
+| List tags | `GET` | `/api/v1/journal/tags` |
+| Tag a trade | `POST` | `/api/v1/journal/trades/{id}/tags` |
+| Update trade notes | `PATCH` | `/api/v1/journal/trades/{id}/notes` |
 | Place a trade | `POST` | `/api/v1/signals` |
 | Watch fills/alerts | WS | `agent.execution.{user_id}` |
 | Watch risk breaches | WS | `agent.alert.{user_id}` |
@@ -25,22 +29,27 @@
 
 ## 1. Authentication
 
-Testudo uses SIWE (Sign-In With Ethereum). You authenticate once per session:
+Testudo uses SIWE (Sign-In With Ethereum) or SIWS (Sign-In With Solana). You authenticate once per session:
 
 ```bash
 # Step 1: Get a nonce
-curl -X GET https://testudo.example.com/api/v1/auth/nonce
+curl -X GET https://testudo.vip/api/v1/auth/nonce
 
-# Step 2: Sign the SIWE message with your Ethereum wallet
+# Step 2: Sign the SIWE message with your Ethereum wallet (or SIWS for Solana)
 # (Your agent runtime handles this — OpenClaw/pi have SIWE built-in)
 
 # Step 3: Exchange signature for a bearer token
-curl -X POST https://testudo.example.com/api/v1/auth/verify-siwe \
+#   Ethereum: POST /api/v1/auth/verify-siwe
+#   Solana:   POST /api/v1/auth/verify-siws
+curl -X POST https://testudo.vip/api/v1/auth/verify-siwe \
   -H "Content-Type: application/json" \
   -d '{"message":"...","signature":"..."}'
 
 # Step 4: Store the token. All subsequent requests use:
 #   Authorization: Bearer <token>
+
+# Step 5: Verify your identity
+curl -s -H "Authorization: Bearer $TOKEN" https://testudo.vip/api/v1/auth/me
 ```
 
 **Token expires after 1 hour.** Refresh with `POST /api/v1/auth/refresh` before it expires. If using OpenClaw or pi, the runtime handles token lifecycle — you just call the endpoints.
@@ -232,7 +241,7 @@ Idempotency-Key: <uuid>
 Always include an `Idempotency-Key` header (UUID). If the same key is sent again, Testudo returns the cached result instead of placing a duplicate order. This means you can safely retry on network errors.
 
 ```bash
-curl -X POST https://testudo.example.com/api/v1/signals \
+curl -X POST https://testudo.vip/api/v1/signals \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -258,7 +267,7 @@ On 422, read the `code` and `reason` fields in the response. Do NOT retry with t
 
 ### WebSocket channels
 
-Connect to the WebSocket at `wss://testudo.example.com/ws` and subscribe:
+Connect to the WebSocket at `wss://testudo.vip/ws` and subscribe:
 
 ```json
 {"type": "subscribe", "channel": "agent.execution.<user_id>"}
@@ -310,6 +319,8 @@ Reading your journal tells you the past. Writing to it shapes the future. Every 
 
 These endpoints already exist. Use them immediately.
 
+`entry_type` must be one of: `"pre-trade"` (before trade reasoning), `"post-trade"` (after close analysis), `"note"` (general observation), `"daily-review"`, `"weekly-review"`.
+
 #### Record a trade thesis or postmortem
 
 ```bash
@@ -320,18 +331,20 @@ Content-Type: application/json
 {
   "trade_id": "a3f2b1c4-1111-2222-3333-444455556666",
   "entry_date": "2026-05-21",
-  "title": "ETH breakout thesis — May 21",
+  "title": "ETH breakout pre-trade — May 21",
   "body": "ETH broke above 3-day resistance at 3080 on the 4h close. \n\nVolume confirming: 2.3× 20-period average. BTC.D dropping from 48.2 → 47.1 during the move. \n\nEntry: 3100 (retest of broken resistance). Stop: 3050 (1.6% risk). Target: 3250 (prior range high). \n\nR:R = 3:1. Sizing at 2% account risk ($75 on $3,750 account).",
-  "entry_type": "thesis"
+  "entry_type": "pre-trade"
 }
 ```
-
-`entry_type` should be one of: `"thesis"` (pre-trade reasoning), `"postmortem"` (after close analysis), `"observation"` (market note, no trade attached).
 
 #### Tag a trade with strategy labels
 
 ```bash
-# First, create the tag if it doesn't exist
+# First, list existing tags
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/journal/tags
+
+# Create the tag if it doesn't exist
 POST /api/v1/journal/tags
 Authorization: Bearer <token>
 Content-Type: application/json
@@ -358,45 +371,6 @@ Content-Type: application/json
 {"notes": "SL hit at 3050. Thesis was correct directionally (ETH hit 3220) but entry was early. Next time: wait for 4h close confirmation above resistance before entering."}
 ```
 
-### Coming soon (agent-specific write endpoints)
-
-These are planned simplifications of the above — same backend, streamlined schemas optimized for agent use. Expected availability: next spec cycle.
-
-| Endpoint | Purpose | Payload |
-|----------|---------|---------|
-| `POST /journal/agent/note` | Record thesis, postmortem, or observation | `{trade_id?, entry_type, title, body}` |
-| `POST /journal/agent/tag` | Apply a strategy tag to a trade | `{trade_id, tag_name}` (auto-creates tag) |
-| `POST /journal/agent/strategy` | Persist a named strategy definition | `{name, version, description, rules: {...}}` |
-
-### Strategy persistence (conceptual)
-
-A strategy is a named, versioned set of rules that your agent follows. Persisting it gives you:
-
-- **Traceability**: every trade references a strategy → you can compare strategies with `POST /compare`
-- **Versioning**: `mean_reversion:v1.2` vs `mean_reversion:v1.3` → see if changes improved performance
-- **Self-documentation**: your agent can read its own strategy definitions next session
-
-Example strategy payload:
-
-```json
-{
-  "name": "mean_reversion",
-  "version": "1.0",
-  "description": "ETH/USDC Bollinger Band mean reversion. Enter on 2σ deviation, exit on midline retouch or 1:2 R:R.",
-  "rules": {
-    "symbols": ["ETH_USDC"],
-    "timeframe": "4h",
-    "entry": "price crosses below lower BB(20,2) → LONG. Above upper BB(20,2) → SHORT",
-    "exit": "price touches 20-SMA midline OR stop_loss hit OR 1:2 R:R reached",
-    "position_sizing": "2% account risk per trade, max 1 position",
-    "max_drawdown_pct": 15,
-    "session_hours_utc": [0, 23]
-  }
-}
-```
-
-Every signal your agent sends can reference this strategy in the `reasoning` field: `"strategy: mean_reversion:v1.0 | ETH 4h BB(20,2) lower band touch | deviation: -2.1σ"`. The journal groups these trades, and `POST /compare` can compare v1.0 performance against v1.1.
-
 ---
 
 ## 6. The Autonomous Trading Loop
@@ -411,8 +385,8 @@ SHADOW_ONLY = True     # set to False only after 1+ week of profitable paper tra
 
 while True:
     # 1. Read memory
-    summary = GET("/journal/agent/summary?format=llm&timeframe=90d")
-    insights = GET("/journal/agent/insights")
+    summary = GET("/api/v1/journal/agent/summary?format=llm&timeframe=90d")
+    insights = GET("/api/v1/journal/agent/insights")
 
     # 2. Check for coach warnings
     concerning_warnings = [i for i in insights if i.severity == "concerning"]
@@ -457,17 +431,17 @@ while True:
         if result.status == "approved":
             log(f"Trade opened: {result.trade_group_id}")
 
-            # 5a. Write thesis to journal
-            POST("/journal/entries", json={
+            # 5a. Write pre-trade thesis to journal
+            POST("/api/v1/journal/entries", json={
                 "trade_id": result.trade_group_id,
-                "title": f"{decision.setup_tag} thesis — {today()}",
+                "title": f"{decision.setup_tag} pre-trade — {today()}",
                 "body": decision.thesis,
-                "entry_type": "thesis"
+                "entry_type": "pre-trade"
             })
 
             # 5b. Tag the trade
             tag_id = find_or_create_tag(decision.setup_tag)
-            POST(f"/journal/trades/{result.trade_group_id}/tags",
+            POST(f"/api/v1/journal/trades/{result.trade_group_id}/tags",
                  json={"tag_ids": [tag_id]})
 
             # Subscribe to execution updates
@@ -510,9 +484,9 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 
 7. **Pause on concerning alerts.** If you receive a WebSocket alert with `severity: "concerning"`, stop trading for the current session. Don't try to trade your way out of a drawdown.
 
-8. **Review before scaling.** Every week, call `POST /journal/agent/compare` comparing this week to last. If metrics are declining, don't scale up.
+8. **Review before scaling.** Every week, call `POST /api/v1/journal/agent/compare` comparing this week to last. If metrics are declining, don't scale up.
 
-9. **Write to your journal.** After every trade, record a thesis. After every close, record a postmortem. Tag every trade with its strategy. The journal is your memory — an empty journal means you're trading blind next session.
+9. **Write to your journal.** After every trade, record a pre-trade thesis. After every close, record a post-trade postmortem. Tag every trade with its strategy. The journal is your memory — an empty journal means you're trading blind next session.
 
 ---
 
@@ -521,18 +495,22 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 ```bash
 TOKEN="eyJhbGciOiJIUzI1NiIs..."
 
-# Step 1: Read your performance
+# Step 1: Verify your identity
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/auth/me
+
+# Step 2: Read your performance
 SUMMARY=$(curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://testudo.example.com/api/v1/journal/agent/summary?format=llm&timeframe=30d")
+  "https://testudo.vip/api/v1/journal/agent/summary?format=llm&timeframe=30d")
 echo "$SUMMARY"
 
-# Step 2: Check coach warnings
+# Step 3: Check coach warnings
 WARNINGS=$(curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://testudo.example.com/api/v1/journal/agent/insights")
+  "https://testudo.vip/api/v1/journal/agent/insights")
 echo "$WARNINGS" | jq '.insights[] | {pattern, severity, headline}'
 
-# Step 3: If no concerning warnings, place a paper trade
-curl -s -X POST https://testudo.example.com/api/v1/signals \
+# Step 4: If no concerning warnings, place a paper trade
+SIGNAL_RESULT=$(curl -s -X POST https://testudo.vip/api/v1/signals \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -546,34 +524,35 @@ curl -s -X POST https://testudo.example.com/api/v1/signals \
     "confidence": 0.72,
     "source": "agent:your_agent_id",
     "setup_tag": "breakout"
-  }' | jq .
+  }')
+echo "$SIGNAL_RESULT" | jq .
 
-# Step 4: Record thesis in journal (use the trade_group_id from step 3 response)
-TRADE_ID=$(echo $SIGNAL_RESULT | jq -r '.trade_group_id')
+# Step 5: Record pre-trade thesis in journal (use the trade_group_id from step 4 response)
+TRADE_ID=$(echo "$SIGNAL_RESULT" | jq -r '.trade_group_id')
 
-curl -s -X POST https://testudo.example.com/api/v1/journal/entries \
+curl -s -X POST https://testudo.vip/api/v1/journal/entries \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"trade_id\": \"$TRADE_ID\",
-    \"title\": \"ETH breakout thesis\",
+    \"title\": \"ETH breakout pre-trade\",
     \"body\": \"ETH broke above 3-day resistance at 3080 on the 4h close. Volume 2.3× average. BTC.D dropping. Entry at retest of broken resistance (3100). Stop at 3050 (1.6% risk). Target 3250 (3:1 R:R).\",
-    \"entry_type\": \"thesis\"
+    \"entry_type\": \"pre-trade\"
   }"
 
-# Step 5: Tag the trade
-TAG_ID=$(curl -s -X POST https://testudo.example.com/api/v1/journal/tags \
+# Step 6: Tag the trade
+TAG_ID=$(curl -s -X POST https://testudo.vip/api/v1/journal/tags \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "breakout", "color": "#22c55e"}' | jq -r '.id')
 
-curl -s -X POST "https://testudo.example.com/api/v1/journal/trades/$TRADE_ID/tags" \
+curl -s -X POST "https://testudo.vip/api/v1/journal/trades/$TRADE_ID/tags" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"tag_ids\": [\"$TAG_ID\"]}"
 
-# Step 6: After the session, compare this week to last
-curl -s -X POST https://testudo.example.com/api/v1/journal/agent/compare \
+# Step 7: After the session, compare this week to last
+curl -s -X POST https://testudo.vip/api/v1/journal/agent/compare \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
