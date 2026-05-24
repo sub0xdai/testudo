@@ -183,40 +183,62 @@ Content-Type: application/json
 Idempotency-Key: <uuid>
 ```
 
+### SignalInput Fields
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `symbol` | string | ✅ | e.g. `"ETH_USDT"` |
+| `side` | string | ✅ | `"LONG"` or `"SHORT"` (**uppercase**) |
+| `entry_price` | decimal | ✅ | Limit price for the order |
+| `take_profit` | array | ✅ | TP targets; can be `[]` if none |
+| `stop_loss` | decimal | — | Optional. Omit or set to `null` |
+| `execution_mode` | string | ✅ | `"SHADOW"` or `"LIVE"` (**uppercase**) |
+| `reasoning` | string | — | Stored in journal for audit |
+| `confidence` | float | — | 0.0–1.0, used by calibration engine |
+| `source` | string | — | Agent identifier, e.g. `"agent:hermes_v1.2"` |
+| `leverage` | int | — | 1–20, default depends on exchange |
+| `management` | object | — | Trailing stop, break-even, partial TP config |
+
+> **`setup_tag` is NOT a SignalInput field.** It will be silently ignored. Tag the trade
+> via `POST /api/v1/journal/trades/{id}/tags` after the signal is accepted (see Section 5).
+
 ### Shadow mode (paper trading — START HERE)
 
 ```json
 {
   "symbol": "ETH_USDT",
-  "side": "long",
+  "side": "LONG",
   "entry_price": 3100.00,
   "stop_loss": 3050.00,
+  "take_profit": [],
   "leverage": 1,
-  "execution_mode": "shadow",
+  "execution_mode": "SHADOW",
   "reasoning": "ETH breakout above 3-day resistance at 3080. Volume increasing, BTC.D dropping. Targeting 3200 with 1.6R.",
   "confidence": 0.72,
   "source": "agent:hermes_v1.2",
-  "setup_tag": "breakout",
   "management": {
     "trailing_stop": {"activation": 3150, "distance": 30}
   }
 }
 ```
 
+> **Note:** `setup_tag` is **not** a SignalInput field. Tag the trade separately via
+> `POST /api/v1/journal/trades/{id}/tags` after the signal is accepted (see Section 5).
+
 ### Live mode (real money — AFTER shadow-mode edge is confirmed)
 
 ```json
 {
   "symbol": "ETH_USDT",
-  "side": "long",
+  "side": "LONG",
   "entry_price": 3100.00,
   "stop_loss": 3050.00,
+  "take_profit": [],
   "leverage": 1,
-  "execution_mode": "live",
+  "execution_mode": "LIVE",
   "reasoning": "ETH breakout above 3-day resistance at 3080. Volume increasing, BTC.D dropping. Targeting 3200 with 1.6R.",
   "confidence": 0.72,
   "source": "agent:hermes_v1.2",
-  "setup_tag": "breakout",
   "management": {
     "trailing_stop": {"activation": 3150, "distance": 30}
   }
@@ -252,7 +274,7 @@ curl -X POST https://testudo.vip/api/v1/signals \
 
 | HTTP | Meaning |
 |------|---------|
-| 400 | Missing/invalid fields (symbol, side, entry_price, stop_loss required) |
+| 400 | Missing/invalid fields (`symbol`, `side`, `entry_price`, `take_profit` required; `side` and `execution_mode` are UPPERCASE) |
 | 401 | Invalid or expired token |
 | 409 | Duplicate idempotency key |
 | 422 | Risk engine rejected the trade (drawdown exceeded, max positions, sizing violation, etc.) |
@@ -416,14 +438,14 @@ while True:
     if decision.trade:
         signal = {
             "symbol": decision.symbol,
-            "side": decision.side,
+            "side": decision.side.upper(),
             "entry_price": decision.entry_price,
             "stop_loss": decision.stop_loss,
-            "execution_mode": "shadow" if SHADOW_ONLY else "live",
+            "take_profit": [],
+            "execution_mode": "SHADOW" if SHADOW_ONLY else "LIVE",
             "reasoning": decision.reasoning,
             "confidence": decision.confidence,
-            "source": "agent:your_agent_id",
-            "setup_tag": decision.setup_tag
+            "source": "agent:your_agent_id"
         }
         result = POST("/api/v1/signals", json=signal,
                        headers={"Idempotency-Key": uuid4()})
@@ -470,7 +492,7 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 
 ## 8. Rules of Engagement
 
-1. **Start in shadow mode.** Every agent begins with `"execution_mode": "shadow"`. Do not switch to `"live"` until you have at least one week of profitable paper trading.
+1. **Start in shadow mode.** Every agent begins with `"execution_mode": "SHADOW"`. Do not switch to `"LIVE"` until you have at least one week of profitable paper trading.
 
 2. **Use setup tags.** Every trade gets a `setup_tag` (`breakout`, `support_bounce`, `trend_follow`, etc.). Tags are how you and the coach learn which strategies work. Consistency matters.
 
@@ -516,14 +538,14 @@ SIGNAL_RESULT=$(curl -s -X POST https://testudo.vip/api/v1/signals \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{
     "symbol": "ETH_USDT",
-    "side": "long",
+    "side": "LONG",
     "entry_price": 3100,
     "stop_loss": 3050,
-    "execution_mode": "shadow",
+    "take_profit": [],
+    "execution_mode": "SHADOW",
     "reasoning": "ETH breakout above 3-day resistance. Volume confirming.",
     "confidence": 0.72,
-    "source": "agent:your_agent_id",
-    "setup_tag": "breakout"
+    "source": "agent:your_agent_id"
   }')
 echo "$SIGNAL_RESULT" | jq .
 
