@@ -37,6 +37,7 @@ done
 echo ""
 echo "[2/6] Building Rust backend..."
 cd "$TESTUDO_DIR/testudo-exchange"
+find crates -name "*.rs" -exec touch {} + 2>/dev/null || true  # bust cargo cache after git pull
 cargo build --release 2>&1 | tail -3
 
 # 3. Build safe-cex (if needed)
