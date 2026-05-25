@@ -2,6 +2,18 @@
 - [ ] Break-even trigger, trailing stop, partial tp (perhaps remove that) not important for now
 - [ ] change pw in env on n0x
 
+## Strategy Verification Series (STRAT-01)
+
+Blueprint: `strat-lean-proofs.md` (project root)
+
+Workflow:
+```
+/skill:vox plan STRAT-01-lean-proofs    # gap analysis → IMPLEMENTATION_PLAN.md
+/skill:vox build STRAT-01-lean-proofs   # CP-1 (repeat for each checkpoint)
+```
+
+- [ ] **STRAT-01-lean-proofs** — `testudo-proofs/` directory with a Lean 4 project. 7 verifiable theorems (Wasserstein metric, Kelly optimality, OU mean reversion, momentum autocorrelation, funding arbitrage, delta neutrality, gambler's ruin). All proofs closed (no `sorry`). `lake build` exits 0. AGPL-3.0 licensed — pure mathematics, fully open-sourceable. Verification layer for the LLM-facing strategies in `strat-lean-proofs.md`.
+
 ## Agent Integration Series (AGENT-01 → AGENT-03)
 
 Blueprint: `agent-integration-blueprint.md` (project root)

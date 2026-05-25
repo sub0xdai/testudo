@@ -479,7 +479,171 @@ while True:
 
 ---
 
-## 7. Rate Limits
+## 7. Strategy Primitives
+
+> The mathematically verified strategies. Full proofs in `strat-lean-proofs.md`
+> and `testudo-proofs/`. The agent selects a strategy based on the detected
+> market regime, then orchestrates Testudo's API. Testudo enforces risk limits;
+> the agent makes the directional call.
+
+### Regime Detection (Which Strategy to Use)
+
+Markets have regimes. The same setup that prints in mean-reverting conditions
+bleeds in trending ones. Classify the regime before picking a strategy:
+
+Compute the 1-Wasserstein distance between recent returns and pre-computed
+regime centroids. Nearest centroid = current regime.
+
+| Regime | Condition | Strategy |
+|--------|-----------|----------|
+| R0 | Low volatility, neg. autocorrelation | Mean Reversion |
+| R1 | Above-avg volatility, pos. autocorrelation | Momentum Breakout |
+| R2 | High volatility, no autocorrelation | Halt (no edge) |
+| R3 | Extreme volatility | Halt (preserve capital) |
+
+Regime detection uses OHLCV from `GET /api/v1/klines?symbol=ETH_USDT&interval=4h&limit=100`.
+Reclassify once per 4h candle close, not intra-candle.
+
+### 7.1 Mean Reversion
+
+Trade when price deviates from its rolling mean. The deviation is temporary —
+price reverts.
+
+**When:** Regime R0. Confirm with negative lag-1 autocorrelation (ρ₁ < -0.1).
+
+**Entry:** Price crosses 2σ below 20-period SMA → LONG. Above 2σ → SHORT.
+
+**Exit:** Stop at 2× ATR(14). Target: 20-period SMA.
+
+**Confidence:** Based on half-life of the mean-reverting process (OU κ estimate).
+Short half-life (fast reversion) → 0.75–0.85. Long half-life → 0.50–0.60.
+
+**Signal payload:**
+```json
+{
+  "symbol": "ETH_USDT", "side": "LONG",
+  "entry_price": 3050.00, "stop_loss": 3000.00,
+  "take_profit": [{"price": 3150.00, "quantity": 1.0}],
+  "execution_mode": "SHADOW",
+  "reasoning": "ETH -2.3σ below 20-period SMA (3150). OU half-life 6 candles. Targeting mean.",
+  "confidence": 0.78, "source": "agent:mean-reversion:v1",
+  "leverage": 1
+}
+```
+
+**Invalidation:** Price closes beyond 3σ from mean in the opposite direction.
+Regime has changed — exit immediately.
+
+**Proof:** `testudo-proofs/Proofs/OUMreversion.lean` — after n half-lives,
+|deviation| ≤ |initial|/2ⁿ.
+
+### 7.2 Momentum Breakout
+
+Trade when price breaks a significant level with volume confirmation. The trend
+persists.
+
+**When:** Regime R1. Confirm with positive lag-1 autocorrelation (ρ₁ > 0.1)
+and volume > 1.5× 20-period average.
+
+**Entry:** Price breaks above 20-period resistance → LONG. Breaks below 20-period
+support → SHORT.
+
+**Exit:** Stop at 2× ATR(14). No fixed take-profit — trailing stop manages exit.
+Activate trail after 1.5 ATR profit, trail at 40% of the move.
+
+**Confidence:** Based on breakout clarity. Clean break + volume spike → 0.70–0.80.
+Marginal break → 0.55–0.65.
+
+**Signal payload:**
+```json
+{
+  "symbol": "BTC_USDT", "side": "LONG",
+  "entry_price": 89200.00, "stop_loss": 88250.00,
+  "take_profit": [],
+  "execution_mode": "SHADOW",
+  "reasoning": "BTC breakout above 20p resistance (89000). Volume 2.1× avg. ρ₁=0.18.",
+  "confidence": 0.70, "source": "agent:momentum-breakout:v1",
+  "leverage": 2,
+  "management": {"trailing_stop": {"enabled": true, "distance_percent": 40}}
+}
+```
+
+**Invalidation:** Price closes back inside the broken level. Fakeout — exit.
+
+**Proof:** `testudo-proofs/Proofs/MomentumAutocorr.lean` — positive covariance
+→ conditional expectation above mean.
+
+### 7.3 Funding Rate Arbitrage
+
+Capture the spread between perpetual futures and spot when the funding rate
+exceeds friction. Delta-neutral — direction-independent profit.
+
+**When:** Any regime. Trigger: |funding_rate| > 0.01% per 8h on Hyperliquid.
+
+**Entry:** Positive funding → SHORT perp + LONG spot. Negative funding →
+LONG perp + SHORT spot. Pair with a spot order on the same exchange.
+
+**Exit:** |funding_rate| normalizes below 0.003%. No stop-loss (direction risk
+is hedged).
+
+**Confidence:** Based on funding rate magnitude. > 0.05% → 0.85–0.95.
+0.01–0.03% → 0.70–0.80.
+
+**Proof:** `testudo-proofs/Proofs/FundingArb.lean` — profit exists iff
+spread exceeds frictional cost.
+
+### 7.4 Delta-Neutral Hedge
+
+Reduce directional exposure when existing positions create uncomfortable net
+delta.
+
+**When:** Any regime. Trigger: net delta exceeds risk tolerance. Pairs with
+any other active strategy.
+
+**Entry:** If net delta > 0 (net long) → add SHORT of size |Δ|. If net delta
+< 0 → add LONG of size |Δ|.
+
+**Exit:** When the hedged position closes, reevaluate net delta.
+
+**Confidence:** Always 0.95. This is mechanical, not discretionary.
+
+**Proof:** `testudo-proofs/Proofs/DeltaNeutral.lean` — single opposing hedge
+of size |Δ| achieves Σ = 0.
+
+### 7.5 HaltExecution
+
+Not a trade. A state transition. Stop trading when risk constraints are active.
+
+**Triggers:**
+- Coach severity "concerning" on any insight
+- Daily drawdown > 4% (approaching 5% limit)
+- 3 consecutive losing trades
+- Regime R2 or R3 (no edge)
+- WebSocket `agent.alert.*` with `severity: "concerning"`
+
+**Action:** Write a HaltExecution journal note. Sleep until next evaluation.
+No signals sent.
+
+**Proof:** `testudo-proofs/Proofs/GamblersRuin.lean` — 2% risk per trade has
+64% chance of 20% drawdown even with a fair coin.
+
+### Position Sizing (All Strategies)
+
+Let Testudo size the position. Supply `confidence` in every SignalInput.
+Testudo's Kelly engine (`testudo-exchange/crates/common_utils/src/risk/kelly.rs`)
+uses Quarter-Kelly with ±2× clamp around a reference point. The agent never
+computes position size manually.
+
+Correlation check before entering: if any existing position has ρ > 0.8 with
+the new symbol, skip the trade. Correlated positions amplify risk without
+diversification benefit.
+
+**Proof:** `testudo-proofs/Proofs/KellyOptimal.lean` — f* = (bp-q)/b uniquely
+maximizes E[log(wealth)].
+
+---
+
+## 8. Rate Limits
 
 | Endpoint | Limit | Window |
 |----------|-------|--------|
@@ -490,7 +654,7 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 
 ---
 
-## 8. Rules of Engagement
+## 9. Rules of Engagement
 
 1. **Start in shadow mode.** Every agent begins with `"execution_mode": "SHADOW"`. Do not switch to `"LIVE"` until you have at least one week of profitable paper trading.
 
@@ -512,7 +676,7 @@ Rate limits exist to prevent runaway loops. A signal every 2 seconds is more tha
 
 ---
 
-## 9. Example: Complete Session
+## 10. Example: Complete Session
 
 ```bash
 TOKEN="eyJhbGciOiJIUzI1NiIs..."
@@ -585,7 +749,7 @@ curl -s -X POST https://testudo.vip/api/v1/journal/agent/compare \
 
 ---
 
-## 10. Supported Exchanges
+## 11. Supported Exchanges
 
 | Exchange | Mode | Execution |
 |----------|------|-----------|
