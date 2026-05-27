@@ -4,21 +4,29 @@ Draw a position on TradingView. Hit Alt+X. The trade is sized against your risk 
 
 ## How it works
 
-### [Exchange](testudo-exchange) 
+### [Exchange](testudo-exchange)
 
 Rust backend. It validates every trade before it touches your exchange account, sizes positions conservatively across multiple methods, and manages exits in real time.
 
-### [Extension](testudo-extension) 
+### [Extension](testudo-extension)
 
 Overlays a panel on TradingView. Draw a position tool, hit Alt+X, done. Your risk config (how much per trade, max leverage, account limits) is pulled from the engine.
 
 ### Journal
 
-Every trade, every fill, every management decision is recorded. See what's working across setups, timeframes, and market conditions. 
+Every trade, every fill, every management decision is recorded. See what's working across setups, timeframes, and market conditions.
 
-### [Agent Trading](AGENT_TRADING.md) 
+### [Agent Trading](AGENT_TRADING.md)
 
 AI agents (Hermes, OpenClaw, pi) can trade autonomously on Testudo using the same infrastructure. A REST API for trade execution, WebSocket channels for real-time fill and risk alerts, and a journal-as-memory interface that lets agents read their own performance history. Full paper-trading sandbox included.
+
+### [Sheaf Engine](sheaf-engine)
+
+Cellular sheaf topology perception layer. Ingests multi-venue tick data, builds a topology graph of arbitrage and correlation edges, and streams structural signals (spread dislocation, volatility diffusion, venue health) to AI agents over gRPC. Gives agents real-time market structure awareness beyond raw OHLCV.
+
+### [Strategy Proofs](testudo-proofs)
+
+Lean 4 formal verification of strategy primitives. Proves properties like delta-neutrality, funding arbitrage bounds, Kelly-optimal sizing, and gambler's ruin avoidance. Ensures agent strategies are mathematically sound before they touch real capital.
 
 ## Beyond crypto
 

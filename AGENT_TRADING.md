@@ -749,7 +749,43 @@ curl -s -X POST https://testudo.vip/api/v1/journal/agent/compare \
 
 ---
 
-## 11. Supported Exchanges
+## 11. Market Perception — Sheaf Engine (Coming Soon)
+
+The [sheaf-engine](sheaf-engine) is a topology perception layer that streams
+real-time market structure signals to agents over gRPC. Instead of raw OHLCV,
+you get:
+
+- **Arbitrage edges**: cross-venue spread dislocations (e.g. "ETH 15 bps spread
+  Binance→Hyperliquid, 3.8σ above baseline")
+- **Volatility diffusion**: eigen gap on the topology Laplacian detects
+  regime structure forming before it shows in price
+- **Correlation breaks**: tracked |ρ| decoupling between pairs
+- **Venue health**: stale/down nodes, clock skew, throttling detection
+
+Connect to the sheaf-engine gRPC endpoint (separate from the REST/WS
+infrastructure) to receive continuous `SignalBatch` streams. Combine with
+journal-as-memory for a full perception→decision→execution→reflection loop.
+
+---
+
+## 12. Strategy Proofs — Lean 4 Verification
+
+Trading strategies in Testudo can be formally verified. The
+[testudo-proofs](testudo-proofs) crate proves mathematical properties of
+strategy primitives in Lean 4:
+
+- **Delta-neutral** portfolio construction
+- **Funding arbitrage** bounds and convergence guarantees
+- **Kelly-optimal** position sizing with ruin avoidance
+- **Momentum autocorrelation** decay under OU processes
+- **Wasserstein metric** for regime change detection
+
+Agents shipping verified strategies reduce the probability of catastrophic
+failure modes (gambler's ruin, unbounded leverage, adversarial drift).
+
+---
+
+## 13. Supported Exchanges
 
 | Exchange | Mode | Execution |
 |----------|------|-----------|
