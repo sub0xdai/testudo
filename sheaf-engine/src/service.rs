@@ -10,12 +10,14 @@ use crate::health::compute_health;
 use crate::laplacian::compute_laplacian;
 use crate::proto::sheaf_engine_server::{SheafEngine, SheafEngineServer};
 use crate::proto::{
-    ConfigureGraph, HealthRequest, HealthResponse, SignalBatch, SnapshotRequest, SnapshotResponse,
+    ConfigureGraph, HealthRequest, HealthResponse, SignalBatch,
+    SnapshotRequest, SnapshotResponse,
 };
 use crate::signals::extract_signals;
 use crate::source::SourceOrchestrator;
 use futures::stream::StreamExt;
 use std::pin::Pin;
+use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
@@ -71,10 +73,17 @@ impl SheafEngine for SheafEngineService {
             .map(|w| (w.venue.clone(), w.symbol.clone()))
             .collect();
 
-        // Initialize graph and alignment.
+        // Initialize graph inside a thread-safe container.
+        // Arc<RwLock<>> allows shared read access from the compute loop
+        // and future snapshot/health endpoints without data races.
         let graph_config = GraphConfig::default();
         let timeframes = self.config.timeframes.clone();
-        let graph = SheafGraph::new(watch_targets, timeframes.clone(), graph_config);
+        let graph = Arc::new(RwLock::new(SheafGraph::new(
+            watch_targets,
+            timeframes.clone(),
+            graph_config,
+        )));
+        let graph_for_spawn = Arc::clone(&graph);
 
         let _alignment_config = AlignmentConfig {
             tolerance_ms: self.config.alignment_tolerance_ms,
@@ -95,11 +104,43 @@ impl SheafEngine for SheafEngineService {
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_millis(window_ms)).await;
 
-                // In production: pull next TickBatch from orchestrator, align, graph.ingest().
-                // For scaffold: produce a minimal heartbeat batch.
-                let laplacian = compute_laplacian(&graph);
-                let signals = extract_signals(&graph, &laplacian, 0);
-                let health = compute_health(&graph, 0, vec![]);
+                // Scope the read lock to minimum duration: compute
+                // everything while holding the lock, then release before
+                // the async send. This keeps RwLockReadGuard from
+                // crossing an .await boundary.
+                let (laplacian, signals, health, graph_state, edge_count) = {
+                    let g = graph_for_spawn
+                        .read()
+                        .expect("RwLock must not be poisoned");
+
+                    let laplacian = compute_laplacian(&g);
+                    let signals = extract_signals(&g, &laplacian, 0);
+                    let health = compute_health(&g, 0, vec![]);
+
+                    let graph_state = crate::proto::GraphState {
+                        version: g.version,
+                        node_count: g.nodes.len() as u32,
+                        edge_count: g.edges.len() as u32,
+                        arbitrage_edges: g.edge_count_by_type(
+                            crate::graph::EdgeType::Arbitrage,
+                        ) as u32,
+                        correlation_edges: g.edge_count_by_type(
+                            crate::graph::EdgeType::Correlation,
+                        ) as u32,
+                        triangular_edges: g.edge_count_by_type(
+                            crate::graph::EdgeType::Triangular,
+                        ) as u32,
+                        connected_components: 1,
+                        isolated_nodes: g.down_node_count() as u32,
+                        is_connected: g.down_node_count() == 0,
+                        nodes: vec![],
+                        edges: vec![],
+                    };
+                    let edge_count = g.edges.len() as i64;
+
+                    (laplacian, signals, health, graph_state, edge_count)
+                    // `g` (RwLockReadGuard) dropped here — lock released.
+                };
 
                 let batch = SignalBatch {
                     timestamp_ns: std::time::SystemTime::now()
@@ -107,25 +148,7 @@ impl SheafEngine for SheafEngineService {
                         .unwrap_or_default()
                         .as_nanos() as i64,
                     seq,
-                    graph: Some(crate::proto::GraphState {
-                        version: graph.version,
-                        node_count: graph.nodes.len() as u32,
-                        edge_count: graph.edges.len() as u32,
-                        arbitrage_edges: graph.edge_count_by_type(
-                            crate::graph::EdgeType::Arbitrage,
-                        ) as u32,
-                        correlation_edges: graph.edge_count_by_type(
-                            crate::graph::EdgeType::Correlation,
-                        ) as u32,
-                        triangular_edges: graph.edge_count_by_type(
-                            crate::graph::EdgeType::Triangular,
-                        ) as u32,
-                        connected_components: 1,
-                        isolated_nodes: graph.down_node_count() as u32,
-                        is_connected: graph.down_node_count() == 0,
-                        nodes: vec![],
-                        edges: vec![],
-                    }),
+                    graph: Some(graph_state),
                     signals,
                     health: Some(health),
                     metrics: Some(crate::proto::Metrics {
@@ -137,7 +160,7 @@ impl SheafEngine for SheafEngineService {
                         ticks_per_second: 0,
                         batches_per_second: 0,
                         total_ticks_ingested: 0,
-                        total_edges_created: graph.edges.len() as i64,
+                        total_edges_created: edge_count,
                         config_applies: 1,
                     }),
                 };
