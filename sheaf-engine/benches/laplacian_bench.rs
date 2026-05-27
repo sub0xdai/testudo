@@ -5,8 +5,8 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use sheaf_engine::graph::{
-    Edge, EdgeId, EdgeOrigin, EdgeStatus, EdgeType, GraphConfig, NodeId, NodeStatus, SheafGraph,
-    Timeframe,
+    Edge, EdgeId, EdgeOrigin, EdgeStatus, EdgeType, GraphConfig,
+    NodeId, NodeStatus, SheafGraph, Timeframe,
 };
 use sheaf_engine::laplacian::compute_laplacian;
 

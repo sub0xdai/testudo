@@ -63,6 +63,11 @@ pub fn perception_confidence(
     degraded_edges: u32,
     total_edges: u32,
 ) -> f64 {
+    debug_assert!(active_nodes <= total_nodes,
+        "active_nodes ({active_nodes}) must not exceed total_nodes ({total_nodes})");
+    debug_assert!(active_edges + degraded_edges <= total_edges || total_edges == 0,
+        "active + degraded edges must not exceed total edges");
+
     if total_nodes == 0 {
         return 0.0;
     }
@@ -70,12 +75,20 @@ pub fn perception_confidence(
     let node_health = active_nodes as f64 / total_nodes as f64;
 
     let edge_health = if total_edges == 0 {
-        1.0 // no edges yet = not degraded
+        1.0 // No edges yet = not degraded.
     } else {
         (active_edges as f64 + 0.3 * degraded_edges as f64) / total_edges as f64
     };
 
-    0.4 * node_health + 0.6 * edge_health
+    let confidence = 0.4 * node_health + 0.6 * edge_health;
+
+    // Post-condition: confidence must be in [0, 1].
+    debug_assert!(
+        (0.0..=1.0).contains(&confidence),
+        "confidence ({confidence}) must be in [0, 1]"
+    );
+
+    confidence
 }
 
 #[cfg(test)]

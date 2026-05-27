@@ -12,7 +12,7 @@ use crate::proto;
 /// Extract all topology signals from the current graph state.
 pub fn extract_signals(
     graph: &SheafGraph,
-    lap: &LaplacianResult,
+    laplacian: &LaplacianResult,
     _cross_exchange_skew_ms: i64,
 ) -> Vec<proto::TopologySignal> {
     let now = now_ns();
@@ -24,17 +24,23 @@ pub fn extract_signals(
     // Correlation break signals
     extract_correlation_signals(graph, now, &mut signals);
 
-    // Volatility diffusion (from Laplacian eigengap)
-    extract_volatility_diffusion(graph, lap, now, &mut signals);
+    // Volatility diffusion (from Laplacian eigen gap).
+    extract_volatility_diffusion(graph, laplacian, now, &mut signals);
 
-    // Triangular mispricing
+    // Triangular mispricing.
     extract_triangular_signals(graph, now, &mut signals);
 
-    // Edge lifecycle
+    // Edge lifecycle.
     extract_edge_lifecycle(graph, now, &mut signals);
 
-    // Node health
+    // Node health.
     extract_node_health(graph, now, &mut signals);
+
+    // Post-condition: signal context strings must be non-empty.
+    debug_assert!(
+        signals.iter().all(|s| !s.context.is_empty()),
+        "all topology signals must carry context"
+    );
 
     signals
 }
@@ -59,15 +65,15 @@ fn extract_arbitrage_signals(
         };
 
         let spread_bps = ((pa - pb).abs() / pa) * 10_000.0;
+        debug_assert!(spread_bps >= 0.0, "spread must be non-negative");
 
-        // Only emit if spread exceeds threshold
+        // Only emit if spread exceeds threshold.
         if spread_bps < 5.0 {
-            // tracked internally, not emitted
             continue;
         }
 
         let sigma = if spread_bps > 0.0 {
-            spread_bps / 4.0 // baseline spread is ~4 bps for crypto
+            spread_bps / 4.0 // Baseline spread is ~4 bps for crypto.
         } else {
             0.0
         };
@@ -111,19 +117,26 @@ fn extract_correlation_signals(
 
 fn extract_volatility_diffusion(
     _graph: &SheafGraph,
-    lap: &LaplacianResult,
+    laplacian: &LaplacianResult,
     _now: i64,
     signals: &mut Vec<proto::TopologySignal>,
 ) {
-    // Eigengap heuristic: large gap → strong community structure → potential vol regime.
-    // This is a simplified placeholder. Full vol diffusion requires timeframe stalk edges.
-    if lap.eigengap > 0.5 && lap.node_count > 2 {
+    // Eigen gap heuristic: large gap → strong community structure →
+    // potential volatility regime shift. Full diffusion modeling requires
+    // timeframe stalk edges (future work).
+    if laplacian.eigen_gap > 0.5 && laplacian.node_count > 2 {
+        debug_assert!(
+            laplacian.eigen_gap.is_finite(),
+            "eigen gap must be finite"
+        );
+
         signals.push(proto::TopologySignal {
             r#type: proto::SignalType::VolatilityDiffusion as i32,
             severity: proto::Severity::Notable as i32,
             context: format!(
-                "Sheaf eigengap {:.3} suggests volatility regime structure forming. {} nodes active.",
-                lap.eigengap, lap.node_count
+                "Sheaf eigen gap {:.3}: volatility regime \
+                 structure forming. {} nodes active.",
+                laplacian.eigen_gap, laplacian.node_count
             ),
             first_seen_ns: now_ns(),
             duration_windows: 1,
@@ -133,7 +146,7 @@ fn extract_volatility_diffusion(
                         direction: "upward".into(),
                         source_timeframe: proto::Timeframe::T1m as i32,
                         target_timeframe: proto::Timeframe::T5m as i32,
-                        strength: lap.eigengap.min(1.0),
+                        strength: laplacian.eigen_gap.min(1.0),
                         symbols: vec![],
                     },
                 ),
@@ -204,6 +217,8 @@ fn extract_node_health(
     now: i64,
     signals: &mut Vec<proto::TopologySignal>,
 ) {
+    debug_assert!(now > 0, "timestamp must be positive");
+
     for (id, node) in &graph.nodes {
         match node.status {
             crate::graph::NodeStatus::Stale { since } => {

@@ -153,6 +153,15 @@ impl SheafGraph {
         timeframes: Vec<Timeframe>,
         config: GraphConfig,
     ) -> Self {
+        debug_assert!(
+            !watch_targets.is_empty(),
+            "must have at least one watch target"
+        );
+        debug_assert!(
+            !timeframes.is_empty(),
+            "must have at least one timeframe"
+        );
+
         let watch_set: HashSet<_> = watch_targets.into_iter().collect();
 
         let mut graph = Self {
@@ -200,6 +209,8 @@ impl SheafGraph {
     /// Ingest an aligned snapshot: update node state, discover edges.
     pub fn ingest(&mut self, snapshot: &AlignedSnapshot) -> Vec<EdgeId> {
         let now = Self::now_ns();
+        debug_assert!(now > 0, "timestamp must be positive");
+
         let mut new_edges = Vec::new();
 
         // 1. Update node states from the snapshot.
@@ -263,6 +274,14 @@ impl SheafGraph {
 
     /// Apply node and edge decay.
     fn apply_decay(&mut self, now: i64) {
+        debug_assert!(now > 0, "decay timestamp must be positive");
+        debug_assert!(
+            self.config.node_down_secs > self.config.node_stale_secs,
+            "node_down_secs ({}) must exceed node_stale_secs ({})",
+            self.config.node_down_secs,
+            self.config.node_stale_secs
+        );
+
         let node_stale_ns = self.config.node_stale_secs as i64 * 1_000_000_000;
         let node_down_ns = self.config.node_down_secs as i64 * 1_000_000_000;
 
@@ -325,9 +344,11 @@ impl SheafGraph {
                         continue; // different venues only
                     }
 
-                    // Compute spread from node prices
-                    let node_a = self.nodes.get(a).unwrap();
-                    let node_b = self.nodes.get(b).unwrap();
+                    // Compute spread from node prices.
+                    let node_a = self.nodes.get(a)
+                        .expect("node must exist: id came from active nodes");
+                    let node_b = self.nodes.get(b)
+                        .expect("node must exist: id came from active nodes");
                     if let (Some(pa), Some(pb)) = (node_a.last_price, node_b.last_price) {
                         let spread_bps = ((pa - pb).abs() / pa) * 10_000.0;
 

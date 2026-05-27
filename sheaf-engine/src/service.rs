@@ -97,8 +97,8 @@ impl SheafEngine for SheafEngineService {
 
                 // In production: pull next TickBatch from orchestrator, align, graph.ingest().
                 // For scaffold: produce a minimal heartbeat batch.
-                let lap = compute_laplacian(&graph);
-                let signals = extract_signals(&graph, &lap, 0);
+                let laplacian = compute_laplacian(&graph);
+                let signals = extract_signals(&graph, &laplacian, 0);
                 let health = compute_health(&graph, 0, vec![]);
 
                 let batch = SignalBatch {
@@ -131,7 +131,7 @@ impl SheafEngine for SheafEngineService {
                     metrics: Some(crate::proto::Metrics {
                         alignment_ns: 0,
                         graph_discovery_ns: 0,
-                        laplacian_ns: lap.compute_ns,
+                        laplacian_ns: laplacian.compute_ns,
                         signal_extraction_ns: 0,
                         total_window_ns: 0,
                         ticks_per_second: 0,
