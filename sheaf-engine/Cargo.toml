@@ -1,0 +1,86 @@
+[package]
+name = "sheaf-engine"
+version = "0.1.0"
+edition = "2024"
+description = "Cellular sheaf topology engine — perception layer between market data and AI trading agents"
+license = "AGPL-3.0"
+repository = "https://github.com/sub0xdai/testudo"
+
+[[bin]]
+name = "sheaf-engine"
+path = "src/main.rs"
+
+[lib]
+name = "sheaf_engine"
+path = "src/lib.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+# gRPC
+tonic = "0.14"
+prost = "0.14"
+tonic-prost = "0.14"
+tokio-stream = "0.1"
+async-trait = "0.1"
+
+# Columnar data
+arrow = { version = "55", features = ["prettyprint"] }
+arrow-array = "55"
+arrow-schema = "55"
+polars = { version = "0.47", features = ["asof_join", "dtype-datetime", "dtype-struct", "lazy", "streaming", "dtype-categorical"] }
+
+# WebSocket (ExchangeSource)
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Precise arithmetic (prices, sizes)
+rust_decimal = "1"
+rust_decimal_macros = "1"
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "2"
+
+# Linear algebra — dense eigenvalue decomposition for Laplacian (15-30 node graphs)
+nalgebra = "0.33"
+
+# Utils
+chrono = "0.4"
+uuid = { version = "1", features = ["v4", "fast-rng"] }
+parking_lot = "0.12"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+rand = "0.8"
+rand_distr = "0.4"
+
+[[bench]]
+name = "laplacian_bench"
+harness = false
+
+[[bench]]
+name = "ingest_bench"
+harness = false
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
