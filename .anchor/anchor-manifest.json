@@ -1724,9 +1724,25 @@
         "ui"
       ]
     },
+    "api:journal:types": {
+      "locations": [
+        "testudo-journal/src/api/types.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "api:journal:core": {
       "locations": [
         "testudo-journal/src/api/core.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:journal:analytics": {
+      "locations": [
+        "testudo-journal/src/api/analytics.ts"
       ],
       "tags": [
         "api"

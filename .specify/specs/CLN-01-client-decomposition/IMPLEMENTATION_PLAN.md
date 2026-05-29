@@ -25,7 +25,8 @@ Pre-existing `npx tsc --noEmit` errors: 9 unused-variable errors in `IdentitySet
 - **Verification**: `cd testudo-journal && bun test` — existing tests pass (token refresh test in `lib/cache-batch.test.ts`)
 - **Commit message**: `fix: extract core API layer, restrict 401 retry to safe methods`
 
-### CP-2: Extract analytics.ts + shared types.ts
+### CP-2: Extract analytics.ts + shared types.ts ✅
+- Completed 2026-05-29 by /skill:vox build. Build passes, 56/56 tests pass, client.ts down to 782 lines.
 - **Touches**: `src/api/types.ts` (new), `src/api/analytics.ts` (new), `src/api/client.ts` (modified)
 - **Tasks**:
   1. Create `src/api/types.ts` with shared interfaces: `StatsFilter`, `AccountStats`, `PerformanceStats`, `RiskStats`, `SetupTagEntry`, `KellyInputs`, `FilterOptions`
