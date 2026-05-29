@@ -130,65 +130,66 @@ export function AuthProvider(props: { children: JSX.Element }) {
   }
   checkSession()
 
-  // Run SIWE when wallet connects and provider becomes available
-  async function runSiwe(address: string) {
+  interface SignerConfig {
+    chain: 'evm' | 'solana'
+    getProvider: () => unknown
+    providerPollAttempts?: number
+    buildMessage: (address: string, nonce: string, chainId?: number | string) => string
+    sign: (provider: unknown, message: string, address: string) => Promise<string>
+    verifyEndpoint: string
+    verifyExtraFields?: Record<string, unknown>
+  }
+
+  async function runAuthFlow(config: SignerConfig, address: string): Promise<void> {
     if (user() || loading() || siweInFlight) return
     siweInFlight = true
     setSiweError(null)
 
     try {
-      // Wait briefly for provider to be ready (subscribeProviders may fire after subscribeAccount)
       let attempts = 0
-      while (!evmProvider && attempts < 20) {
+      const maxAttempts = config.providerPollAttempts ?? 20
+      while (!config.getProvider() && attempts < maxAttempts) {
         await new Promise(r => setTimeout(r, 100))
         attempts++
       }
-      if (!evmProvider) throw new Error('Wallet provider not ready — please try again')
-
-      // Re-check after async wait — /me may have resolved and set user()
-      if (user()) {
-        siweInFlight = false
-        return
+      if (!config.getProvider()) {
+        throw new Error(`${config.chain} provider not ready — please try again`)
       }
 
-      // Get nonce from backend
+      if (user()) { siweInFlight = false; return }
+
       const nonceRes = await fetchAuth('/nonce')
       if (!nonceRes.ok) throw new Error('Failed to get nonce')
       const { nonce } = await nonceRes.json() as { nonce: string }
 
-      // Build SIWE message — chain-agnostic, uses whatever chain the wallet is on
-      // Kit is guaranteed loaded here — runSiwe is only called from subscribeAccount
-      // which is attached after loadWallet() resolves.
-      const chainId = (await loadWallet()).getChainId() ?? 1
+      let chainId: string | number | undefined
+      try {
+        chainId = (await loadWallet()).getChainId() ?? undefined
+      } catch { /* optional — chainId only used by EVM */ }
 
-      const message = [
-        `${window.location.host} wants you to sign in with your Ethereum account:`,
-        address, '', 'Sign in to Testudo', '',
-        `URI: ${window.location.origin}`,
-        `Version: 1`,
-        `Chain ID: ${chainId}`,
-        `Nonce: ${nonce}`,
-        `Issued At: ${new Date().toISOString()}`,
-      ].join('\n')
+      const message = config.buildMessage(address, nonce, chainId)
+      const signature = await config.sign(config.getProvider(), message, address)
 
-      // Sign via EVM provider from subscribeProviders
-      const signature = await evmProvider.request({
-        method: 'personal_sign',
-        params: [message, address],
-      })
-
-      // Verify with backend
-      const verifyRes = await fetchAuth('/verify-siwe', {
+      const body: Record<string, unknown> = {
+        message,
+        signature,
+        address,
+        ...config.verifyExtraFields,
+      }
+      const verifyRes = await fetchAuth(config.verifyEndpoint, {
         method: 'POST',
-        body: JSON.stringify({ message, signature }),
+        body: JSON.stringify(body),
       })
-      if (!verifyRes.ok) throw new Error('SIWE verification failed')
+      if (!verifyRes.ok) {
+        const errBody = await verifyRes.text().catch(() => '')
+        throw new Error(`Verification failed: ${errBody || verifyRes.statusText}`)
+      }
 
       const { user: u } = await verifyRes.json() as { user: User }
       setUser(u)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Authentication failed'
-      console.error('[SIWE] auth failed:', msg)
+      console.error(`[${config.chain.toUpperCase()}] auth failed:`, msg)
       setSiweError(
         /reject|denied|cancel/i.test(msg)
           ? 'Signature rejected — click Connect to retry'
@@ -199,6 +200,30 @@ export function AuthProvider(props: { children: JSX.Element }) {
       siweInFlight = false
       userInitiatedConnect = false
     }
+  }
+
+  // Run SIWE when wallet connects and provider becomes available
+  async function runSiwe(address: string) {
+    await runAuthFlow({
+      chain: 'evm',
+      getProvider: () => evmProvider,
+      buildMessage: (addr, nonce, chainId) =>
+        [
+          `${window.location.host} wants you to sign in with your Ethereum account:`,
+          addr, '', 'Sign in to Testudo', '',
+          `URI: ${window.location.origin}`,
+          'Version: 1',
+          `Chain ID: ${chainId ?? 1}`,
+          `Nonce: ${nonce}`,
+          `Issued At: ${new Date().toISOString()}`,
+        ].join('\n'),
+      sign: (provider, message, addr) =>
+        (provider as any).request({
+          method: 'personal_sign',
+          params: [message, addr],
+        }),
+      verifyEndpoint: '/verify-siwe',
+    }, address)
   }
 
   // Run SIWS (Sign In With Solana) — parallel to runSiwe for Solana wallets
