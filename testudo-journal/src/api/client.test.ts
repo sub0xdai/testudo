@@ -6,6 +6,7 @@ import {
   fetchTags,
   fetchFilterOptions,
   fetchTradeDetail,
+  createTag,
   type StatsFilter,
 } from './client'
 
@@ -205,5 +206,26 @@ describe('error handling', () => {
     mockFetch.mockResolvedValue(jsonResponse({}, 503))
 
     await expect(fetchFilterOptions()).rejects.toThrow('API error: 503')
+  })
+})
+
+describe('fetchWithCredentials POST retry safety', () => {
+  it('does NOT retry POST requests on 401 — throws Session expired instead', async () => {
+    // 401 on first attempt, refresh succeeds
+    mockFetch.mockResolvedValueOnce(jsonResponse({}, 401))
+    mockFetch.mockResolvedValueOnce(jsonResponse({}, 200))
+    // If a retry happens, this third fetch mock would be called
+    mockFetch.mockResolvedValueOnce(jsonResponse({ id: '1', name: 'testtag' }))
+
+    // createTag uses fetchCrud which POSTs to the API
+    // After the fix, POST should NOT retry on 401
+    await expect(createTag({ name: 'testtag' })).rejects.toThrow('Session expired')
+
+    // Only 2 calls: original request + refresh. NO retry.
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    const [url1] = mockFetch.mock.calls[0]
+    expect(url1).toContain('/api/v1/journal/tags')
+    const [url2] = mockFetch.mock.calls[1]
+    expect(url2).toBe('/api/v1/auth/refresh')
   })
 })

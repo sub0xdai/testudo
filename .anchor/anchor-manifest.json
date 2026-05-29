@@ -1724,6 +1724,14 @@
         "ui"
       ]
     },
+    "api:journal:core": {
+      "locations": [
+        "testudo-journal/src/api/core.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "api:journal:client": {
       "locations": [
         "testudo-journal/src/api/client.ts"

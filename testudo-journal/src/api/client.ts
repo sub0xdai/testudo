@@ -1,14 +1,9 @@
 /** @anchor api:journal:client
  * @tags api */
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+export * from './core'
 
-export interface StatsFilter {
-  exchange?: string
-  symbol?: string
-  dateFrom?: string
-  dateTo?: string
-}
+import { API_BASE, fetchWithCredentials, buildParams, fetchApi, fetchCrud, fetchExchange } from './core'
 
 export interface AccountStats {
   total_trades: number
@@ -50,29 +45,6 @@ export interface OverviewResponse {
   account: AccountStats
   performance: PerformanceStats
   risk: RiskStats
-}
-
-async function fetchWithCredentials(url: string, init?: RequestInit): Promise<Response> {
-  const opts: RequestInit = { ...init, credentials: 'include' }
-  let res = await fetch(url, opts)
-  if (res.status === 401) {
-    const refreshRes = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    if (!refreshRes.ok) throw new Error('Session expired')
-    res = await fetch(url, opts)
-  }
-  return res
-}
-
-function buildParams(filters: StatsFilter): URLSearchParams {
-  const params = new URLSearchParams()
-  if (filters.exchange) params.set('exchange', filters.exchange)
-  if (filters.symbol) params.set('symbol', filters.symbol)
-  if (filters.dateFrom) params.set('date_from', filters.dateFrom)
-  if (filters.dateTo) params.set('date_to', filters.dateTo)
-  return params
 }
 
 export interface EquityPoint {
@@ -147,13 +119,6 @@ export async function fetchFilterOptions(exchange?: string): Promise<FilterOptio
   const params = new URLSearchParams()
   if (exchange) params.set('exchange', exchange)
   const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/analytics/filter-options?${params}`)
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
-}
-
-async function fetchApi<T>(path: string, filters: StatsFilter): Promise<T> {
-  const params = buildParams(filters)
-  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/analytics/${path}?${params}`)
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
@@ -334,15 +299,6 @@ export interface TradeListParams {
   dateTo?: string
   sort?: string
   order?: string
-}
-
-async function fetchCrud<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetchWithCredentials(`${API_BASE}/api/v1/journal/${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
 }
 
 export async function fetchTrades(params: TradeListParams): Promise<TradesResponse> {
@@ -614,18 +570,6 @@ export interface MigrateToAgentWalletResponse {
 
 export interface RevokeAgentResponse {
   success: boolean
-}
-
-async function fetchExchange<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetchWithCredentials(`${API_BASE}/api/v1/exchanges${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(text || `Exchange API error: ${res.status}`)
-  }
-  return res.json()
 }
 
 export const exchangeApi = {
