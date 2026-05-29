@@ -36,7 +36,8 @@ Pre-existing `npx tsc --noEmit` errors: 9 unused-variable errors in `IdentitySet
 - **Verification**: `cd testudo-journal && bun run build` — all 26 analytics-consuming components still work
 - **Commit message**: `refactor: extract analytics and shared types into domain modules`
 
-### CP-3: Extract trades.ts, journal.ts, coach.ts, dignitas.ts, exchange.ts, risk.ts
+### CP-3: Extract trades.ts, journal.ts, coach.ts, dignitas.ts, exchange.ts, risk.ts ✅
+- Completed 2026-05-29 by /skill:vox build. 56/56 tests pass, client.ts down to 12 lines (pure re-exports).
 - **Touches**: 6 new files in `src/api/`, `client.ts` (modified)
 - **Tasks**:
   1. Create `src/api/trades.ts` — `JournalTrade`, `TradeDetail`, `TradeWithTags`, `TradesResponse`, `TradeListParams`, all trade CRUD functions, active positions, draft notes, journal sync trigger

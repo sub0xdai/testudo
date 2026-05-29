@@ -1732,6 +1732,22 @@
         "api"
       ]
     },
+    "api:journal:dignitas": {
+      "locations": [
+        "testudo-journal/src/api/dignitas.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:journal:risk": {
+      "locations": [
+        "testudo-journal/src/api/risk.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "api:journal:core": {
       "locations": [
         "testudo-journal/src/api/core.ts"
@@ -1740,9 +1756,41 @@
         "api"
       ]
     },
+    "api:journal:exchange": {
+      "locations": [
+        "testudo-journal/src/api/exchange.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "api:journal:analytics": {
       "locations": [
         "testudo-journal/src/api/analytics.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:journal:journal": {
+      "locations": [
+        "testudo-journal/src/api/journal.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:journal:coach": {
+      "locations": [
+        "testudo-journal/src/api/coach.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:journal:trades": {
+      "locations": [
+        "testudo-journal/src/api/trades.ts"
       ],
       "tags": [
         "api"
