@@ -70,8 +70,9 @@ fn extract_arbitrage_signals(
         let spread_bps = ((pa - pb).abs() / pa) * 10_000.0;
         debug_assert!(spread_bps >= 0.0, "spread must be non-negative");
 
-        // Only emit if spread exceeds threshold.
-        if spread_bps < 5.0 {
+        // Only emit if spread exceeds configured threshold.
+        let threshold = graph.config().arbitrage_signal_threshold_bps;
+        if spread_bps < threshold {
             continue;
         }
 
@@ -280,3 +281,85 @@ fn extract_node_health(
 }
 
 pub(crate) use crate::graph::now_ns;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::{Edge, EdgeId, EdgeOrigin, EdgeType, GraphConfig,
+        NodeId, NodeStatus, SheafGraph, Timeframe};
+    use crate::laplacian::LaplacianResult;
+
+    /// When `arbitrage_signal_threshold_bps` is raised to 10.0, a 7 bps spread
+    /// should NOT emit a signal. Proves the config threshold is wired.
+    #[test]
+    fn test_arbitrage_signal_respects_config_threshold() {
+        let now = crate::graph::now_ns();
+
+        // Custom config: threshold at 10 bps instead of default 5.
+        let config = GraphConfig {
+            arbitrage_signal_threshold_bps: 10.0,
+            ..Default::default()
+        };
+
+        let mut graph = SheafGraph::new(
+            vec![("A".into(), "ETH".into()), ("B".into(), "ETH".into())],
+            vec![Timeframe::T1m],
+            config,
+        );
+
+        // Set node A price to 100.0, node B to 99.93 — spread = 7 bps.
+        let id_a = NodeId { venue: "A".into(), symbol: "ETH".into(), timeframe: Timeframe::T1m };
+        let id_b = NodeId { venue: "B".into(), symbol: "ETH".into(), timeframe: Timeframe::T1m };
+
+        if let Some(n) = graph.nodes.get_mut(&id_a) {
+            n.last_price = Some(100.0);
+            n.last_tick_ns = Some(now);
+            n.status = NodeStatus::Active;
+        }
+        if let Some(n) = graph.nodes.get_mut(&id_b) {
+            n.last_price = Some(99.93);
+            n.last_tick_ns = Some(now);
+            n.status = NodeStatus::Active;
+        }
+
+        // Add an arbitrage edge between A and B.
+        let edge_id = EdgeId {
+            a: id_a.clone(),
+            b: id_b.clone(),
+            edge_type: EdgeType::Arbitrage,
+        };
+        graph.edges.insert(
+            edge_id.clone(),
+            Edge {
+                id: edge_id,
+                status: crate::graph::EdgeStatus::Active,
+                weight: 1.0,
+                discovered_at: now,
+                origin: EdgeOrigin::Discovered,
+            },
+        );
+
+        // Extract signals: spread is 7 bps, which is below 10 bps threshold.
+        // Should produce NO arbitrage signal.
+        let dummy_laplacian = LaplacianResult {
+            node_count: 2,
+            eigenvalues: vec![0.0, 1.0],
+            eigen_gap: 1.0,
+            algebraic_connectivity: 1.0,
+            spectral_radius: 1.0,
+            compute_ns: 0,
+        };
+        let signals = extract_signals(&graph, &dummy_laplacian, 0);
+
+        let arb_signals: Vec<_> = signals
+            .iter()
+            .filter(|s| s.r#type == crate::proto::SignalType::ArbitrageEdge as i32)
+            .collect();
+
+        assert!(
+            arb_signals.is_empty(),
+            "Expected 0 arbitrage signals at 7 bps with threshold 10 bps, got {}",
+            arb_signals.len()
+        );
+    }
+}

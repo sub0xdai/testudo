@@ -28,7 +28,8 @@ All changes are mechanical, internal to `sheaf-engine/`, with no new dependencie
 - **Verification**: `cd sheaf-engine && cargo test` produces `test result: ok. 12 passed`
 - **Commit message**: `fix: canonial now_ns, clippy-clean is_symmetric, fix guard message, honest connected_components`
 
-### CP-2: Wire config threshold into signal extraction
+### CP-2: Wire config threshold into signal extraction ✅
+- Completed 2026-05-29 by /skill:vox build. 13/13 tests pass, threshold config wired, 0 warnings on touched files.
 - **Touches**: `sheaf-engine/src/signals.rs`
 - **Tasks**:
   1. `signals.rs`: in `extract_arbitrage_signals`, read threshold from `graph.config().arbitrage_signal_threshold_bps` instead of hardcoded `5.0`
