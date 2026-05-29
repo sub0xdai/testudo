@@ -8,7 +8,6 @@ import {
   releaseHandle,
   patchVisibility,
   patchIndexing,
-  updateBio,
   type IdentityPreferences,
 } from '../../api/client'
 import { RESERVED_HANDLES } from '../../config/dignitas-reserved-handles'
@@ -35,27 +34,15 @@ export function IdentitySettings() {
   // Claim form
   const [claimInput, setClaimInput] = createSignal('')
   const [claimBio, setClaimBio] = createSignal('')
-  const [claimError, setClaimError] = createSignal('')
+  const [, setClaimError] = createSignal('')
   const [claiming, setClaiming] = createSignal(false)
 
   // Release
-  const [releasing, setReleasing] = createSignal(false)
-  const [releaseError, setReleaseError] = createSignal('')
+  const [, setReleasing] = createSignal(false)
+  const [, setReleaseError] = createSignal('')
   const [confirmRelease, setConfirmRelease] = createSignal(false)
 
-  // Bio edit
-  const [bioEdit, setBioEdit] = createSignal<string | null>(null)
-  const [bioSaving, setBioSaving] = createSignal(false)
-  const [bioError, setBioError] = createSignal('')
-
-  // Visibility save errors
-  const [visError, setVisError] = createSignal('')
-
-  const handleInputHint = () => {
-    const v = claimInput().trim()
-    if (!v) return ''
-    return localHandleError(v) ?? ''
-  }
+  const [, setVisError] = createSignal('')
 
   async function handleClaim(e: Event) {
     e.preventDefault()
@@ -111,28 +98,6 @@ export function IdentitySettings() {
       }
     } finally {
       setReleasing(false)
-    }
-  }
-
-  function startBioEdit() {
-    setBioEdit(identity()?.bio ?? '')
-    setBioError('')
-  }
-
-  async function saveBio() {
-    const val = bioEdit()
-    if (val === null) return
-    const trimmed = val.trim() || null
-    setBioSaving(true)
-    setBioError('')
-    try {
-      await updateBio(trimmed)
-      mutate(prev => prev ? { ...prev, bio: trimmed } : prev)
-      setBioEdit(null)
-    } catch (err: unknown) {
-      setBioError((err as Error).message ?? 'failed to save bio')
-    } finally {
-      setBioSaving(false)
     }
   }
 

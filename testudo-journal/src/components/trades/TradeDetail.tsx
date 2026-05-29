@@ -1,7 +1,7 @@
 /** @anchor ui:journal:TradeDetail
  * @tags ui */
 
-import { createSignal, createResource, Show, For, onCleanup, onMount } from 'solid-js'
+import { createSignal, createResource, createEffect, Show, For, onCleanup, onMount } from 'solid-js'
 import { useCachedResource, invalidate } from '../../lib/cache'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -98,9 +98,9 @@ export function TradeDetail(props: TradeDetailProps) {
     }
   }
 
-  // Watch for detail/draft changes
-  createResource(() => detail(), () => { syncNotes(); return null })
-  createResource(() => draftData(), () => { syncDraftNotes(); return null })
+  // Watch for detail/draft changes and sync notes
+  createEffect(() => { detail(); syncNotes() })
+  createEffect(() => { draftData(); syncDraftNotes() })
 
   // Close on Escape
   function handleKeyDown(e: KeyboardEvent) {
