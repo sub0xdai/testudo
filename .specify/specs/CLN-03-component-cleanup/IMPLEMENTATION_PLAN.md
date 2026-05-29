@@ -38,7 +38,8 @@ Four components have code quality anti-patterns identified in the nuclear review
 - **Verification**: `grep -c createSignal src/pages/Account.tsx` prints ≤ 7 (was 11)
 - **Commit message**: `refactor: collapse Account.tsx signal soup into useAsyncAction hook`
 
-### CP-3: Extract wrapBatchSection helper + final gates
+### CP-3: Extract wrapBatchSection helper + final gates ✅
+- Completed 2026-05-29 by /skill:vox build. Build + tests pass. 0 TS errors. All 4 anti-patterns fixed.
 - **Touches**: `src/components/Overview.tsx`
 - **Tasks**:
   1. Extract `wrapBatchSection<T>(section, refetchAll)` function in Overview.tsx

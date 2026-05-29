@@ -2,7 +2,7 @@
  * @tags ui */
 
 import { createSignal, createResource, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
-import { useCachedBatch } from '../lib/cache'
+import { useCachedBatch, type CachedResource } from '../lib/cache'
 import { SkeletonBar } from './SkeletonBar'
 import { StatSection } from './StatSection'
 import { PnlCalendar } from './charts/PnlCalendar'
@@ -52,41 +52,28 @@ export function Overview() {
   // Thin accessors preserve the prior `useCachedResource` API surface so the
   // rest of this component reads unchanged. NB: `Object.assign` invokes
   // getters on the source object and copies the resulting values as plain
+  // Thin accessors preserve the prior `useCachedResource` API surface so the
   // data properties — that flattens reactivity. Use `defineProperty` so the
   // getters re-run on every read and stay reactive with the underlying signals.
-  const statsAccessor = (() => batch.sections.overview() as OverviewResponse | undefined) as {
-    (): OverviewResponse | undefined
-    readonly loading: boolean
-    readonly error: unknown
-    refetch: () => void
+  function wrapBatchSection<T>(
+    section: CachedResource<unknown>,
+    refetchAll: () => void,
+  ): CachedResource<T> {
+    const accessor = (() => section() as T | undefined) as CachedResource<T>
+    Object.defineProperty(accessor, 'loading', {
+      get: () => section.loading, enumerable: true,
+    })
+    Object.defineProperty(accessor, 'error', {
+      get: () => section.error, enumerable: true,
+    })
+    Object.defineProperty(accessor, 'refetch', {
+      value: refetchAll, enumerable: true, writable: false,
+    })
+    return accessor
   }
-  Object.defineProperty(statsAccessor, 'loading', {
-    get: () => batch.sections.overview.loading, enumerable: true,
-  })
-  Object.defineProperty(statsAccessor, 'error', {
-    get: () => batch.sections.overview.error, enumerable: true,
-  })
-  Object.defineProperty(statsAccessor, 'refetch', {
-    value: () => batch.refetch(), enumerable: true, writable: false,
-  })
-  const stats = statsAccessor
 
-  const equityAccessor = (() => batch.sections.equity_curve() as { data: EquityPoint[] } | undefined) as {
-    (): { data: EquityPoint[] } | undefined
-    readonly loading: boolean
-    readonly error: unknown
-    refetch: () => void
-  }
-  Object.defineProperty(equityAccessor, 'loading', {
-    get: () => batch.sections.equity_curve.loading, enumerable: true,
-  })
-  Object.defineProperty(equityAccessor, 'error', {
-    get: () => batch.sections.equity_curve.error, enumerable: true,
-  })
-  Object.defineProperty(equityAccessor, 'refetch', {
-    value: () => batch.refetch(), enumerable: true, writable: false,
-  })
-  const equity = equityAccessor
+  const stats = wrapBatchSection<OverviewResponse>(batch.sections.overview, batch.refetch)
+  const equity = wrapBatchSection<{ data: EquityPoint[] }>(batch.sections.equity_curve, batch.refetch)
 
   // Aggregate account balance across all exchanges
   const [totalBalance, setTotalBalance] = createSignal<number | null>(null)
