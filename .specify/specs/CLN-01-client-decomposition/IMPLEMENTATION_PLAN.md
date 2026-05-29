@@ -50,7 +50,8 @@ Pre-existing `npx tsc --noEmit` errors: 9 unused-variable errors in `IdentitySet
 - **Verification**: `cd testudo-journal && bun run build` — zero build errors across all 61 consumers
 - **Commit message**: `refactor: extract trades, journal, coach, dignitas, exchange, risk into domain modules`
 
-### CP-4: Final cleanup — client.ts < 200 lines, fix Account.tsx dead import
+### CP-4: Final cleanup — client.ts < 200 lines, fix Account.tsx dead import ✅
+- Completed 2026-05-29 by /skill:vox build. 56/56 tests pass, client.ts = 12 lines, 9 TS6133 remain (IdentitySettings.tsx only, CLN-03 scope), all chunks within budget.
 - **Touches**: `src/api/client.ts` (modified), `src/pages/Account.tsx` (modified)
 - **Tasks**:
   1. Verify `client.ts` is pure re-exports (8 `export *` lines + anchor header + `API_BASE` export)

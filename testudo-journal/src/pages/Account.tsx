@@ -16,7 +16,6 @@ import { OnboardingFlow } from '../components/account/OnboardingFlow'
 import { WalletConnectFlow } from '../components/account/WalletConnectFlow'
 import { CorrelationStack } from '../components/account/CorrelationStack'
 import { CoachBanner } from '../components/account/CoachBanner'
-import { IdentitySettings } from '../components/account/IdentitySettings'
 
 export default function Account() {
   const [accounts, { refetch: refetchAccounts }] = createResource(async () => {
