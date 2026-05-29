@@ -7,6 +7,7 @@ import {
   fetchRiskSnapshot,
   type TestConnectionResult,
 } from '../api/client'
+import { useAsyncAction } from '../lib/useAsyncAction'
 import { HelpTip } from '../components/HelpTip'
 import { HELP } from '../lib/help-content'
 import { ExchangeCard } from '../components/account/ExchangeCard'
@@ -29,58 +30,42 @@ export default function Account() {
   const [snapshot] = createResource(fetchRiskSnapshot)
 
   const [testResults, setTestResults] = createSignal<Record<string, TestConnectionResult>>({})
-  const [testingId, setTestingId] = createSignal<string | null>(null)
-  const [deletingId, setDeletingId] = createSignal<string | null>(null)
-  const [revokingId, setRevokingId] = createSignal<string | null>(null)
-  const [importingId, setImportingId] = createSignal<string | null>(null)
+  const action = useAsyncAction()
   const [showForm, setShowForm] = createSignal(false)
   const [formInitialExchange, setFormInitialExchange] = createSignal('')
   const [reauthAccountId, setReauthAccountId] = createSignal<string | null>(null)
 
   const [setupComplete, setSetupComplete] = createSignal(false)
-  const [error, setError] = createSignal('')
 
   const isOnboarding = () => !accounts.loading && (accounts()?.length ?? 0) === 0 && !setupComplete()
 
   async function handleTest(id: string) {
-    setTestingId(id)
-    try {
+    await action.run(id, async () => {
       const result = await exchangeApi.testConnection(id)
       setTestResults(prev => ({ ...prev, [id]: result }))
-    } catch {
-      setTestResults(prev => ({ ...prev, [id]: { success: false, latency_ms: null, error: 'Connection failed' } }))
-    } finally {
-      setTestingId(null)
+    }, 'Connection failed')
+    // Store failure result on error so UI shows the red badge
+    if (action.error()) {
+      setTestResults(prev => ({ ...prev, [id]: { success: false, latency_ms: null, error: action.error() } }))
     }
   }
 
   async function handleDelete(id: string) {
-    setDeletingId(id)
-    try {
+    await action.run(id, async () => {
       await exchangeApi.deleteAccount(id)
       refetchAccounts()
-    } catch {
-      setError('Failed to delete account')
-    } finally {
-      setDeletingId(null)
-    }
+    }, 'Failed to delete account')
   }
 
   async function handleRevoke(id: string) {
-    setRevokingId(id)
-    try {
+    await action.run(id, async () => {
       await exchangeApi.revokeAgent(id)
       refetchAccounts()
-    } catch {
-      setError('Failed to revoke agent')
-    } finally {
-      setRevokingId(null)
-    }
+    }, 'Failed to revoke agent')
   }
 
   async function handleImport(exchangeName: string) {
-    setImportingId(exchangeName)
-    try {
+    await action.run(exchangeName, async () => {
       const API_BASE = import.meta.env.VITE_API_URL || ''
       const res = await fetch(`${API_BASE}/api/v1/trades/import`, {
         method: 'POST',
@@ -88,14 +73,8 @@ export default function Account() {
         credentials: 'include',
         body: JSON.stringify({ exchange_name: exchangeName }),
       })
-      if (!res.ok) {
-        setError('Import failed')
-      }
-    } catch {
-      setError('Failed to trigger import')
-    } finally {
-      setImportingId(null)
-    }
+      if (!res.ok) throw new Error('Import failed')
+    }, 'Failed to trigger import')
   }
 
   function openForm(initialExchange?: string) {
@@ -121,9 +100,9 @@ export default function Account() {
         </div>
       </Show>
 
-      <Show when={error()}>
+      <Show when={action.error()}>
         <div role="alert" class="border border-signal-red bg-signal-red/10 p-4 mx-8 mt-6 font-mono text-sm text-signal-red">
-          {error()}
+          {action.error()}
         </div>
       </Show>
 
@@ -167,16 +146,16 @@ export default function Account() {
                     account={acc}
                     testResult={testResults()[acc.id]}
                     snapshot={snapshot()}
-                    isTesting={testingId() === acc.id}
-                    isDeleting={deletingId() === acc.id}
-                    isRevoking={revokingId() === acc.id}
+                    isTesting={action.pending() === acc.id}
+                    isDeleting={action.pending() === acc.id}
+                    isRevoking={action.pending() === acc.id}
                     onTest={() => handleTest(acc.id)}
                     onDelete={() => handleDelete(acc.id)}
                     onRevoke={() => handleRevoke(acc.id)}
                     onMigrate={() => openForm('hyperliquid')}
                     onReauthorize={() => setReauthAccountId(acc.id)}
                     onImport={() => handleImport(acc.exchange_name)}
-                    isImporting={importingId() === acc.exchange_name}
+                    isImporting={action.pending() === acc.exchange_name}
                   />
                 )}
               </For>

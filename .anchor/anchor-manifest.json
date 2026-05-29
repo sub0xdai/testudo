@@ -2028,6 +2028,14 @@
         "infra"
       ]
     },
+    "infra:journal-lib:useAsyncAction": {
+      "locations": [
+        "testudo-journal/src/lib/useAsyncAction.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
     "infra:journal-lib:echarts-setup": {
       "locations": [
         "testudo-journal/src/lib/echarts-setup.ts"

@@ -26,7 +26,8 @@ Four components have code quality anti-patterns identified in the nuclear review
 - **Verification**: `bun run build` exits 0
 - **Commit message**: `fix: replace createResource abuse with createEffect, remove IdentitySettings dead code`
 
-### CP-2: Collapse Account.tsx signal soup into useAsyncAction
+### CP-2: Collapse Account.tsx signal soup into useAsyncAction ✅
+- Completed 2026-05-29 by /skill:vox build. 6 createSignal calls (was 11). new useAsyncAction hook in lib/. Build + tests pass.
 - **Touches**: `src/pages/Account.tsx`, `src/lib/useAsyncAction.ts` (new)
 - **Tasks**:
   1. Create `src/lib/useAsyncAction.ts` with `useAsyncAction()` hook: `{ pending, error, setError, run }`
