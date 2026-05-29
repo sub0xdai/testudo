@@ -7,7 +7,394 @@
 
 ---
 
+## 0. First Contact: Agent Onboarding
+
+When you connect to Testudo for the first time (or connect on behalf of a new
+user), none of the authenticated endpoints in the Quick Reference will work yet.
+You need to onboard the user. This section is your script.
+
+### The First Contact Decision Tree
+
+```
+┌─────────────────────────────────────────────┐
+│  AGENT FIRST CONTACT                         │
+│                                               │
+│  1. Auth (SIWE)                               │
+│  2. GET /exchanges/accounts → empty?          │
+│     ├─ YES → ask user to pick an exchange     │
+│     │         GET /exchanges → present list   │
+│     │         ├─ CEX path → ask for API keys  │
+│     │         └─ HL path  → agent wallet flow │
+│     └─ NO  → check risk config, then trade    │
+│  3. GET /risk-config → set conservative       │
+│  4. Start shadow trading loop                 │
+└─────────────────────────────────────────────┘
+```
+
+### Step 1: Authenticate
+
+Follow **Section 1 (Authentication)** below. Use SIWE (Sign-In With Ethereum)
+or SIWS (Sign-In With Solana). Your agent runtime (OpenClaw, pi) has SIWE
+built-in — use it.
+
+After auth, verify your identity with `GET /api/v1/auth/me` to confirm the
+token works.
+
+### Step 2: Check Onboarding State
+
+Call these two discovery endpoints to figure out where the user stands:
+
+```bash
+# Do they already have exchange accounts connected?
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/exchanges/accounts
+
+# What's their risk configuration?
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/risk-config
+```
+
+**If `GET /exchanges/accounts` returns an empty array `[]`:** the user has no
+exchange connected. Proceed to Step 3 (Exchange Setup).
+
+**If it returns accounts:** the user is already set up. Skip to Step 4
+(Ready to Trade).
+
+### Step 3: Exchange Setup
+
+Tell the user:
+
+> "I need to connect to an exchange before I can trade. Testudo supports
+> Binance, Bybit, OKX, Hyperliquid, and 5 others. Which one do you use? If
+> you're not sure, Hyperliquid is a good DEX with no KYC — you just need
+> an Ethereum wallet."
+
+Call `GET /api/v1/exchanges` to see the full list with credential
+requirements:
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/exchanges
+```
+
+Response (9 exchanges):
+
+```json
+{
+  "exchanges": [
+    {
+      "id": "bybit",
+      "name": "Bybit",
+      "type": "cex",
+      "description": "Top derivatives exchange",
+      "supported_features": ["spot", "futures"],
+      "required_credentials": ["api_key", "secret"],
+      "optional_credentials": []
+    },
+    {
+      "id": "hyperliquid",
+      "name": "Hyperliquid",
+      "type": "dex",
+      "description": "On-chain perpetual futures DEX",
+      "supported_features": ["futures"],
+      "required_credentials": ["wallet"],
+      "optional_credentials": []
+    }
+    // ... 7 more exchanges
+  ]
+}
+```
+
+Check the `type` field to know which setup path to follow:
+- `"cex"` → centralized exchange, requires API keys → **CEX Path** below
+- `"dex"` → decentralized, requires wallet → **Hyperliquid Path** below
+
+#### CEX Path (Binance, Bybit, OKX, Bitget, Gate.io, Phemex, BloFin, WOO X)
+
+All CEX exchanges use `required_credentials` to tell you what to ask for.
+Display the list, let the user pick, then collect the credentials:
+
+1. **Agent asks:** "Which exchange?" → user picks, e.g. "bybit"
+2. **Agent says:** "Create an API key at bybit.com/settings/api with trading
+   permissions. Paste your API key and secret."
+
+   If the exchange requires a passphrase (OKX, Bitget, BloFin), also ask for
+   it — `required_credentials` tells you exactly which fields.
+
+3. **POST the credentials:**
+
+```bash
+curl -s -X POST https://testudo.vip/api/v1/exchanges/accounts \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "exchange_name": "bybit",
+    "api_key": "user-provided-api-key",
+    "secret": "user-provided-secret"
+  }'
+```
+
+For exchanges that require a passphrase, include `"passphrase"` in the body.
+
+4. **Response: 201 Created.** The API validates credentials by fetching the
+   balance from the exchange before saving. If validation fails, you get a
+   400/401/502 with an error code — tell the user and ask them to re-enter.
+
+5. **Agent says:** "Connected. Your Bybit account is verified. Trade history
+   is importing in the background. Let me check your balance..."
+
+   Then fetch the balance:
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://testudo.vip/api/v1/exchanges/accounts/$ACCOUNT_ID/balance"
+```
+
+6. **Agent says:** "Balance: $X,XXX USD. Setting conservative risk defaults.
+   Starting shadow mode — I'll paper trade first to build a track record."
+
+#### Hyperliquid DEX Path
+
+Hyperliquid is a decentralized perpetual futures exchange. It uses an
+**agent wallet** model: Testudo generates a separate keypair that trades on
+the user's behalf, and the user approves it with an EIP-712 signature from
+their main wallet.
+
+1. **Agent asks:** "What's your Hyperliquid wallet address? (0x...)"
+
+   This is the address the user uses to deposit/withdraw on Hyperliquid.
+   The agent wallet will be a separate keypair that trades on its behalf.
+
+2. **Initialize the agent wallet:**
+
+```bash
+curl -s -X POST https://testudo.vip/api/v1/exchanges/agent-wallet/init \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"wallet_address": "0xUSER_WALLET_ADDRESS"}'
+```
+
+Response (201 Created, or 200 OK if reusing an existing pending wallet):
+
+```json
+{
+  "account_id": "uuid",
+  "agent_address": "0xAGENT_KEYPAIR_ADDRESS"
+}
+```
+
+If you get 200 (not 201), the user already had a pending agent wallet.
+Reuse it — you don't need to re-approve unless `requires_reauthorization`
+is present on the account.
+
+3. **Agent says:** "I've created an agent wallet: `0xAGENT...` You need to
+   approve it so it can trade on your behalf. Open your wallet and sign
+   this EIP-712 message."
+
+4. **Get the EIP-712 typed data for the user to sign:**
+
+```bash
+curl -s -X POST https://testudo.vip/api/v1/exchanges/agent-wallet/approve-data \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"account_id": "uuid-from-step-2"}'
+```
+
+Response:
+
+```json
+{
+  "typed_data": { /* EIP-712 structured data */ },
+  "nonce": 1717000000000,
+  "agent_address": "0xAGENT_KEYPAIR_ADDRESS"
+}
+```
+
+Present the `typed_data` to the user through their wallet (MetaMask,
+Rabby, etc.). The user must sign it with their main wallet — NOT the
+agent address.
+
+5. **Submit the signed approval:**
+
+```bash
+curl -s -X POST https://testudo.vip/api/v1/exchanges/agent-wallet/approve \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_id": "uuid-from-step-2",
+    "signature": "0xSIGNATURE_FROM_USER_WALLET",
+    "nonce": 1717000000000
+  }'
+```
+
+Response: 200 OK with `{"success": true, "agent_address": "0x...",
+"message": "Agent approved and verified"}`.
+
+If you get 409 Conflict (`"already_approved"`), the agent wallet is
+already active — proceed to trading.
+
+6. **Agent says:** "Agent wallet approved and verified on-chain. Fetching
+   your Hyperliquid balance..."
+
+   Fetch the balance to confirm:
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://testudo.vip/api/v1/exchanges/accounts/$ACCOUNT_ID/balance"
+```
+
+7. **Agent says:** "Connected. Balance: $X,XXX USDC on Hyperliquid. Setting
+   conservative risk defaults. Starting shadow mode."
+
+### Step 4: Set Risk Configuration
+
+After connecting an exchange, check the risk config. If it's at defaults
+(which are conservative: 2% account risk, stop-loss required, 1:1 min R:R),
+you're good. If the user wants custom settings:
+
+```bash
+# Read current config
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/risk-config
+
+# Update if needed (partial updates — only send fields you want to change)
+curl -s -X PUT https://testudo.vip/api/v1/risk-config \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"account_risk_percent": "1.5", "max_leverage": 3}'
+```
+
+**Always err conservative for new users.** The defaults are:
+- 2% account risk per trade
+- Stop-loss required
+- Max 5× leverage
+- 5% daily drawdown limit
+
+### Step 5: Start Shadow Trading
+
+Once authenticated, exchange connected, and risk configured, you're ready.
+Start the autonomous trading loop from **Section 6**, but with
+`SHADOW_ONLY = True`.
+
+Tell the user:
+
+> "Everything's configured. I'm starting in shadow mode — paper trading with
+> real market data but no real money at risk. I'll journal every trade and
+> tag it by strategy. After we see consistent profitability (typically 1–2
+> weeks), we can switch to live trading. You can check my performance anytime
+> with /journal/agent/summary."
+
+### Onboarding Error Recovery
+
+| Situation | What to do |
+|-----------|------------|
+| `GET /exchanges/accounts` returns 401 | Token expired — refresh or re-auth |
+| `POST /exchanges/accounts` returns 400 | User gave bad credentials format |
+| `POST /exchanges/accounts` returns 400/401/502 for CEX | Credential validation failed — ask user to re-enter keys |
+| `POST /agent-wallet/init` returns 400 | Invalid wallet address format (must be 0x + 40 hex chars) |
+| `POST /agent-wallet/approve` returns 409 | Already approved — proceed to trading |
+| `POST /agent-wallet/approve` returns 502 | Hyperliquid API unreachable — tell user, retry later |
+| `PUT /risk-config` returns 400 | Validation error — values out of acceptable range |
+
+### Quick Onboarding Script (for agent runtimes)
+
+```python
+# Pseudocode — adapt to your agent runtime
+
+def onboard_user(token):
+    # Step 1: Check current state
+    accounts = GET("/api/v1/exchanges/accounts", auth=token)
+
+    if not accounts:
+        # No exchange — guide user through setup
+        exchanges = GET("/api/v1/exchanges", auth=token)
+        choice = ask_user("Which exchange?", options=[e["id"] for e in exchanges["exchanges"]])
+
+        selected = next(e for e in exchanges["exchanges"] if e["id"] == choice)
+
+        if selected["type"] == "dex":
+            # Hyperliquid agent wallet flow
+            wallet = ask_user("What's your Hyperliquid wallet address? (0x...)")
+            init = POST("/api/v1/exchanges/agent-wallet/init",
+                        json={"wallet_address": wallet}, auth=token)
+
+            if init.status == 200:  # reusing existing
+                say(f"Found existing agent wallet: {init.agent_address}")
+                # Check if it needs re-approval
+                account = next(a for a in accounts if a["id"] == init["account_id"])
+                if account.get("requires_reauthorization"):
+                    say("Your agent wallet needs re-approval.")
+                else:
+                    say("Agent wallet is already active. Skipping approval.")
+                    return init["account_id"]
+
+            say(f"Created agent wallet: {init.agent_address}")
+            say("Open your wallet and sign this EIP-712 message to approve it.")
+
+            approve_data = POST("/api/v1/exchanges/agent-wallet/approve-data",
+                                json={"account_id": init["account_id"]}, auth=token)
+            signature = ask_user_to_sign(approve_data["typed_data"])
+
+            POST("/api/v1/exchanges/agent-wallet/approve",
+                 json={"account_id": init["account_id"],
+                       "signature": signature,
+                       "nonce": approve_data["nonce"]}, auth=token)
+            say("Agent wallet approved!")
+
+            balance = GET(f"/api/v1/exchanges/accounts/{init['account_id']}/balance", auth=token)
+            say(f"Balance: {balance['balances'][0]['total']} USDC on Hyperliquid")
+
+        else:
+            # CEX path
+            creds = selected["required_credentials"]
+            api_key = ask_user(f"Paste your {selected['name']} API key")
+            secret = ask_user(f"Paste your {selected['name']} API secret")
+            body = {"exchange_name": choice, "api_key": api_key, "secret": secret}
+            if "passphrase" in creds:
+                body["passphrase"] = ask_user(f"Paste your {selected['name']} passphrase")
+
+            result = POST("/api/v1/exchanges/accounts", json=body, auth=token)
+            if result.status == 201:
+                say(f"Connected! {selected['name']} account verified.")
+                balance = GET(f"/api/v1/exchanges/accounts/{result['id']}/balance", auth=token)
+                usd_total = sum(float(b["total"]) for b in balance["balances"] if b["asset"] == "USDT")
+                say(f"Balance: ${usd_total:,.2f} USD")
+            else:
+                say(f"Connection failed: {result.get('message', 'Unknown error')}")
+                return None
+
+    # Step 3: Verify risk config
+    risk = GET("/api/v1/risk-config", auth=token)
+    say(f"Risk: {risk['account_risk_percent']}% per trade, max {risk['max_leverage']}x leverage")
+
+    # Step 4: Ready
+    say("Setup complete. Starting shadow trading loop.")
+    return True
+```
+
+---
+
 ## Quick Reference
+
+### Discovery & Onboarding (unauthenticated → auth required)
+
+| Action | Method | Endpoint | Notes |
+|--------|--------|----------|-------|
+| Get SIWE nonce | `GET` | `/api/v1/auth/nonce` | No auth needed |
+| Auth (Ethereum) | `POST` | `/api/v1/auth/verify-siwe` | Returns bearer token |
+| Auth (Solana) | `POST` | `/api/v1/auth/verify-siws` | Returns bearer token |
+| List exchanges | `GET` | `/api/v1/exchanges` | Show user options |
+| Check connected accounts | `GET` | `/api/v1/exchanges/accounts` | Empty = needs setup |
+| Add CEX account | `POST` | `/api/v1/exchanges/accounts` | API key + secret |
+| Init agent wallet (HL) | `POST` | `/api/v1/exchanges/agent-wallet/init` | `{wallet_address}` |
+| Get approval data (HL) | `POST` | `/api/v1/exchanges/agent-wallet/approve-data` | EIP-712 typed data |
+| Approve agent (HL) | `POST` | `/api/v1/exchanges/agent-wallet/approve` | Submit signature |
+| Check risk config | `GET` | `/api/v1/risk-config` | Verify defaults |
+| Set risk config | `PUT` | `/api/v1/risk-config` | Partial updates |
+
+> Full onboarding script: see **Section 0 (First Contact)** above.
+
+### Trading (all require auth)
 
 | Action | Method | Endpoint |
 |--------|--------|----------|
@@ -28,6 +415,10 @@
 ---
 
 ## 1. Authentication
+
+> **If this is your first time connecting for this user, see Section 0 (First Contact)
+> first.** The onboarding flow walks you through auth + exchange setup + risk config
+> in a single guided sequence. Come back here for token lifecycle details.
 
 Testudo uses SIWE (Sign-In With Ethereum) or SIWS (Sign-In With Solana). You authenticate once per session:
 
@@ -787,10 +1178,37 @@ failure modes (gambler's ruin, unbounded leverage, adversarial drift).
 
 ## 13. Supported Exchanges
 
-| Exchange | Mode | Execution |
-|----------|------|-----------|
-| **Shadow** (paper) | `shadow` | Internal engine — always available, no credentials needed |
-| **Hyperliquid** | `live` | Native Rust SDK. Requires agent wallet approval (`POST /api/v1/exchanges/agent-wallet/approve`) |
-| **Binance / Bybit / OKX** | `live` | Via CEX sidecar. Requires API key/secret in exchange accounts |
+> **Discovery endpoint:** `GET /api/v1/exchanges` returns the full list (9 exchanges)
+> with `type`, `required_credentials`, and `supported_features` for each.
+> See **Section 0 (First Contact)** for the complete onboarding flow.
+
+### Full Exchange List
+
+| Exchange | Type | Required Credentials |
+|----------|------|---------------------|
+| **Binance** | CEX | `api_key`, `secret` |
+| **Bybit** | CEX | `api_key`, `secret` |
+| **OKX** | CEX | `api_key`, `secret`, `passphrase` |
+| **Bitget** | CEX | `api_key`, `secret`, `passphrase` |
+| **Gate.io** | CEX | `api_key`, `secret` |
+| **Phemex** | CEX | `api_key`, `secret` |
+| **BloFin** | CEX | `api_key`, `secret`, `passphrase` |
+| **WOO X** | CEX | `api_key`, `secret` |
+| **Hyperliquid** | DEX | `wallet` (agent wallet flow) |
+
+### Execution Modes
+
+| Mode | Execution |
+|------|-----------|
+| **Shadow** (paper) | Internal engine — always available, no credentials needed |
+| **Hyperliquid** | Native Rust SDK. Requires agent wallet approval (`POST /api/v1/exchanges/agent-wallet/approve`) |
+| **Binance / Bybit / OKX...** | Via CEX sidecar. Requires API key/secret in exchange accounts |
+
+### Setup Paths
+
+- **CEX path:** Ask user for API key + secret → `POST /exchanges/accounts`
+- **Hyperliquid path:** Ask for wallet address → `POST /exchanges/agent-wallet/init` → user signs EIP-712 → `POST /exchanges/agent-wallet/approve`
+
+Full conversational scripts in **Section 0 (First Contact)**.
 
 Start shadow. After proving profitability, add a live exchange account and switch `execution_mode` to `"live"`.

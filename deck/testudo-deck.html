@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Testudo — Trade with Discipline</title>
+<meta name="author" content="Testudo">
+<meta name="description" content="Testudo is a trading overlay that validates, sizes, and manages positions across any exchange. Trade with discipline, not emotion.">
+<meta name="keywords" content="Testudo, crypto trading, risk management, trading overlay, DeFi, memecoin, position sizing">
+<meta name="generator" content="Kami">
+<style>
+  /* JetBrains Mono available system-wide */
+
+  @page {
+    size: 280mm 158mm;
+    margin: 0;
+    background: #f5f4ed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --parchment:  #f5f4ed;
+    --ivory:      #faf9f5;
+    --near-black: #141413;
+    --dark-warm:  #3d3d3a;
+    --olive:      #504e49;
+    --stone:      #6b6a64;
+    --brand:      #1B365D;
+    --brand-tint: #EEF2F7;
+    --border:     #e8e6dc;
+    --border-soft:#e5e3d8;
+
+    --serif: Charter, Georgia, Palatino, serif;
+    --sans:  var(--serif);
+    --mono:  "JetBrains Mono", "SF Mono", Consolas, monospace;
+  }
+
+  body {
+    color: var(--near-black);
+    font-family: var(--serif);
+    font-size: 13pt;
+    line-height: 1.55;
+  }
+
+  .slide {
+    width: 280mm;
+    height: 158mm;
+    padding: 16mm 20mm;
+    background: var(--parchment);
+    break-after: page;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .slide:last-child { break-after: auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: var(--stone);
+    margin-bottom: 2pt;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 10mm;
+    right: 20mm;
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: var(--stone);
+    letter-spacing: 0.5pt;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer-mark {
+    position: absolute;
+    bottom: 10mm;
+    left: 20mm;
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: var(--stone);
+    letter-spacing: 1.5pt;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 24pt;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.3pt;
+    color: var(--near-black);
+    margin-bottom: 14pt;
+  }
+
+  h3 {
+    font-family: var(--serif);
+    font-size: 15pt;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--brand);
+    margin-bottom: 8pt;
+  }
+
+  .lead {
+    font-family: var(--serif);
+    font-size: 12pt;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--olive);
+    margin-bottom: 8pt;
+  }
+
+  .mt {
+    font-family: var(--serif);
+    font-size: 16pt;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--near-black);
+    margin-bottom: 8pt;
+  }
+
+  .ml {
+    font-family: var(--serif);
+    font-size: 24pt;
+    font-weight: 500;
+    color: var(--brand);
+    margin-right: 6pt;
+  }
+
+  .ms {
+    font-family: var(--mono);
+    font-size: 7.5pt;
+    letter-spacing: 1.5pt;
+    text-transform: uppercase;
+    color: var(--stone);
+    border-bottom: 0.3pt solid var(--border);
+    padding-bottom: 4pt;
+    margin-bottom: 14pt;
+  }
+
+  .mb {
+    font-family: var(--serif);
+    font-size: 11pt;
+    line-height: 1.6;
+    color: var(--dark-warm);
+    margin-bottom: 18pt;
+  }
+
+  .mi {
+    font-family: var(--serif);
+    font-size: 11pt;
+    line-height: 1.55;
+    color: var(--dark-warm);
+    padding: 8pt 0;
+  }
+
+  .mc {
+    font-family: var(--serif);
+    font-size: 9.5pt;
+    line-height: 1.5;
+    color: var(--olive);
+    border-top: 0.3pt solid var(--border);
+    padding-top: 8pt;
+    margin-top: 18pt;
+  }
+
+  .co {
+    font-family: var(--serif);
+    font-size: 11pt;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--brand);
+    position: absolute;
+    bottom: 12mm;
+    left: 20mm;
+    right: 20mm;
+  }
+
+  .c2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22pt;
+  }
+
+  .t2x2 {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 22pt 18pt;
+    margin: -18pt -22pt;
+  }
+  .t2x2 td {
+    vertical-align: top;
+    width: 50%;
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.data td {
+    padding: 8pt;
+    border-bottom: 0.3pt solid var(--border);
+    font-size: 11pt;
+    line-height: 1.55;
+  }
+  table.data td:first-child {
+    font-weight: 500;
+    color: var(--brand);
+  }
+
+  svg {
+    max-height: 105mm;
+    width: auto;
+  }
+
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .cover h1 {
+    font-family: var(--serif);
+    font-size: 38pt;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.5pt;
+    color: var(--near-black);
+    margin-bottom: 12pt;
+  }
+  .cover .sub {
+    font-family: var(--serif);
+    font-size: 14pt;
+    line-height: 1.45;
+    color: var(--olive);
+    max-width: 50ch;
+    margin-bottom: 32pt;
+  }
+  .cover .meta {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    color: var(--stone);
+    letter-spacing: 1.5pt;
+    text-transform: uppercase;
+  }
+
+  .cover-logo {
+    width: 64pt;
+    height: auto;
+    margin-bottom: 28pt;
+    opacity: 0.85;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 22pt;
+    margin: 20pt 0;
+  }
+  .stat-val {
+    font-family: var(--serif);
+    font-size: 22pt;
+    font-weight: 500;
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label {
+    font-family: var(--serif);
+    font-size: 10pt;
+    color: var(--olive);
+    margin-top: 2pt;
+  }
+
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10pt;
+    margin-bottom: 16pt;
+  }
+  .flow-num {
+    font-family: var(--serif);
+    font-size: 18pt;
+    font-weight: 500;
+    color: var(--brand);
+    min-width: 28pt;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- 01 · Cover -->
+<section class="slide cover">
+  <img class="cover-logo" src="crest.png" alt="Testudo">
+  <h1>Trade with Discipline<br>Not Emotion</h1>
+  <div class="sub">The validation layer that sits between your trading decisions and the exchange — catching mistakes before they cost you money</div>
+  <div class="meta">Testudo · 2026</div>
+</section>
+
+<!-- 02 · Problem -->
+<section class="slide">
+  <span class="eyebrow">THE PROBLEM</span>
+  <h2>Retail traders lose money on trades they never should have taken</h2>
+  <p class="lead">The exchange lets you enter any position at any size. There is no gatekeeper. The mistakes are mechanical — and repeatable.</p>
+
+  <div class="stat-row">
+    <div>
+      <div class="stat-val">2.4&times;</div>
+      <div class="stat-label">Average size increase after a loss — classic revenge trading</div>
+    </div>
+    <div>
+      <div class="stat-val">0</div>
+      <div class="stat-label">Built-in safety checks on most exchanges before an order is placed</div>
+    </div>
+    <div>
+      <div class="stat-val">-67%</div>
+      <div class="stat-label">Typical account drawdown from unmanaged risk in volatile markets</div>
+    </div>
+  </div>
+
+  <p class="mb">The problem is not your strategy. It is the absence of a gate between the idea and the order.</p>
+
+  <div class="page-num">01</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 03 · Solution -->
+<section class="slide">
+  <span class="eyebrow">THE SOLUTION</span>
+  <h2>Testudo validates every trade before it ever reaches the exchange</h2>
+
+  <div class="flow-step">
+    <div class="flow-num">1</div>
+    <div>
+      <h3>You decide what to trade</h3>
+      <p class="mb">Your strategy. Your edge. Testudo does not tell you what to buy — that is your call.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-num">2</div>
+    <div>
+      <h3>Testudo answers: how much, and is it safe?</h3>
+      <p class="mb">Position sizing across multiple methods — Kelly criterion, fixed fractional, risk-budgeted. The most conservative answer wins.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-num">3</div>
+    <div>
+      <h3>Testudo executes, monitors, and manages the exit</h3>
+      <p class="mb">Entry, stop-loss, and take-profit placed as a linked group. Break-even automation. Trailing stops. Partial take-profit.</p>
+    </div>
+  </div>
+
+  <div class="co">Your strategy decides direction. Testudo decides size, safety, and execution.</div>
+
+  <div class="page-num">02</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 04 · Three-Stage Pipeline -->
+<section class="slide">
+  <span class="eyebrow">ARCHITECTURE</span>
+  <h2>Three stages. One path. No trade skips the gate.</h2>
+
+  <table class="t2x2">
+    <tr>
+      <td>
+        <div class="mt"><span class="ml">V</span>Validation</div>
+        <p class="mb">Decision Loop checks exposure. Position Sizer picks quantity — the smallest of account %, fixed risk, max size, and margin capacity. Shadow Engine simulates against in-memory state. Rejected trades never leave the server.</p>
+      </td>
+      <td>
+        <div class="mt"><span class="ml">E</span>Execution</div>
+        <p class="mb">Validated orders route to the exchange via native Hyperliquid SDK or CCXT for CEX venues. Entry, stop-loss, and take-profit are placed as one linked group. Cancel one, cancel all.</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <div class="mt"><span class="ml">M</span>Management</div>
+        <p class="mb">Price Feed polls every 2 seconds. Trade Manager handles break-even triggers, trailing stops, and partial take-profit. Fill Detector listens via WebSocket and cancels OCO siblings when one leg fills.</p>
+      </td>
+      <td>
+        <div class="mt"><span class="ml">R</span>Recovery</div>
+        <p class="mb">If the server restarts, positions rehydrate from the database and verify against the exchange. Nothing is lost. The Shadow Engine rebuilds state and continues managing.</p>
+      </td>
+    </tr>
+  </table>
+
+  <div class="page-num">03</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 05 · Validation Gate -->
+<section class="slide">
+  <span class="eyebrow">VALIDATION</span>
+  <h2>The Decision Loop is the single gate every trade must pass</h2>
+
+  <div class="c2">
+    <div>
+      <h3>What it checks</h3>
+      <p class="mi">Account exposure limits</p>
+      <p class="mi">Position size across multiple methods</p>
+      <p class="mi">Margin capacity and free balance</p>
+      <p class="mi">Symbol-level risk concentration</p>
+      <p class="mi">Correlation overlap with open positions</p>
+      <p class="mi">Exchange-level rate limits</p>
+    </div>
+    <div>
+      <h3>How it decides</h3>
+      <p class="mb">The most conservative of four sizing methods wins — the Position Sizer returns the smallest quantity, not the average. When real money is on the line, the safest answer is the only answer.</p>
+      <div class="mc">Kelly criterion · Fixed fractional · Max risk-budgeted · Margin-gated</div>
+    </div>
+  </div>
+
+  <div class="page-num">04</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 06 · Shadow Engine -->
+<section class="slide">
+  <span class="eyebrow">SIMULATION</span>
+  <h2>Paper trade with full price-time-priority matching before risking a single dollar</h2>
+
+  <div class="c2">
+    <div>
+      <h3>What the Shadow Engine does</h3>
+      <p class="mb">An in-memory mirror of every active position and order. It runs a full orderbook with BTreeMap-based bids and asks, matching orders using the same price-time-priority rules as a real exchange.</p>
+    </div>
+    <div>
+      <h3>What it gives you</h3>
+      <p class="mb">Test a new strategy across weeks of real price action — no capital at risk. See your win rate, drawdown profile, and Sharpe ratio before you commit. When you go live, the Shadow Engine tracks your real positions so decisions never wait on API round-trips.</p>
+    </div>
+  </div>
+
+  <div class="co">Backtest with real market microstructure. Deploy with confidence.</div>
+
+  <div class="page-num">05</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 07 · Coach -->
+<section class="slide">
+  <span class="eyebrow">INTELLIGENCE</span>
+  <h2>The Coach finds your trading leaks before they drain your account</h2>
+
+  <p class="lead">Six behavioral patterns detected weekly from your trade history. Each one anchored to specific trades — not vague advice.</p>
+
+  <table class="data">
+    <tr>
+      <td>Sizing Drift</td>
+      <td>Position size jumped 2.4&times; baseline after a loss. Classic revenge-trading fingerprint.</td>
+    </tr>
+    <tr>
+      <td>Frequency Spike</td>
+      <td>You opened 34 trades in a 6-hour window — 3.1&times; your 30-day baseline. Euphoria chase.</td>
+    </tr>
+    <tr>
+      <td>Session Anomaly</td>
+      <td>Trades executed at 3:14 AM UTC — well outside your typical active hours. Fatigue risk.</td>
+    </tr>
+    <tr>
+      <td>Setup Fatigue</td>
+      <td>Your breakout setup is degrading: 0.82 R baseline → 0.41 R this week. Regime shift warning.</td>
+    </tr>
+    <tr>
+      <td>Correlation Stack</td>
+      <td>Three L1 longs held simultaneously for 7 hours. Nominally diversified, structurally one bet.</td>
+    </tr>
+    <tr>
+      <td>Streak Risk</td>
+      <td>Five consecutive wins with position size doubling across the run. The largest give-backs follow.</td>
+    </tr>
+  </table>
+
+  <div class="page-num">06</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 08 · Multi-Exchange -->
+<section class="slide">
+  <span class="eyebrow">CONNECTIVITY</span>
+  <h2>One interface controls every exchange you trade on</h2>
+
+  <div class="c2">
+    <div>
+      <h3>Venues supported</h3>
+      <p class="mi">Binance</p>
+      <p class="mi">Hyperliquid (native SDK)</p>
+      <p class="mi">Bybit</p>
+      <p class="mi">Coinbase</p>
+      <p class="mi">Kraken</p>
+      <p class="mi">OKX, WOO X, Bitget, Blofin</p>
+      <div class="mc">All CEX venues via CCXT sidecar. Hyperliquid via direct API for zero-latency execution.</div>
+    </div>
+    <div>
+      <h3>Unified risk view</h3>
+      <p class="mb">Testudo aggregates positions across all your connected accounts. One net exposure number. One correlation stack. One margin snapshot. You see the risks that cross venue boundaries — the kind a single-exchange dashboard misses entirely.</p>
+    </div>
+  </div>
+
+  <div class="co">Diversify across venues. Manage risk across all of them.</div>
+
+  <div class="page-num">07</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 09 · Dignitas -->
+<section class="slide">
+  <span class="eyebrow">REPUTATION</span>
+  <h2>Dignitas proves you can trade — on-chain, verifiable, permanent</h2>
+
+  <div class="c2">
+    <div>
+      <h3>What it measures</h3>
+      <p class="mi">Drawdown adherence — do you exit when you said you would?</p>
+      <p class="mi">Risk-per-trade consistency — is your sizing predictable?</p>
+      <p class="mi">Setup adherence — do you trade what you planned?</p>
+      <p class="mi">Coach responsiveness — do you fix the leaks the Coach finds?</p>
+      <p class="mi">Journal consistency — do you document your reasoning?</p>
+    </div>
+    <div>
+      <h3>What it unlocks</h3>
+      <p class="mb">A single score, publicly visible. A streak counter — days without a discipline violation. A sparkline showing your trajectory. In a market where everyone claims alpha, Dignitas is the proof. Share your handle. Let the numbers speak.</p>
+    </div>
+  </div>
+
+  <div class="co">Alpha is a claim. Discipline is verifiable. Dignitas shows which one you have.</div>
+
+  <div class="page-num">08</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+<!-- 10 · Close -->
+<section class="slide">
+  <span class="eyebrow">NEXT STEPS</span>
+  <h2>Start trading with the discipline of an institution</h2>
+
+  <p class="lead">Testudo is the validation layer the market has been missing. Your strategy. Our guardrails.</p>
+
+  <div class="stat-row" style="margin: 32pt 0 24pt 0;">
+    <div>
+      <div class="stat-val">0</div>
+      <div class="stat-label">Unchecked orders — every trade hits the Decision Loop</div>
+    </div>
+    <div>
+      <div class="stat-val">6</div>
+      <div class="stat-label">Behavioral patterns the Coach watches for every week</div>
+    </div>
+    <div>
+      <div class="stat-val">All</div>
+      <div class="stat-label">Major CEX venues + Hyperliquid — one interface</div>
+    </div>
+  </div>
+
+  <div class="co">Validation. Execution. Management. Recovery. Testudo handles the parts that are not your edge — so you can focus on the part that is.</div>
+
+  <div class="page-num">09</div>
+  <div class="footer-mark">TESTUDO</div>
+</section>
+
+</body>
+</html>
