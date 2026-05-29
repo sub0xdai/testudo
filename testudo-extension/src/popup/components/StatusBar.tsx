@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:StatusBar
+ * @tags ui */
+
 import { createSignal, onMount, onCleanup } from "solid-js";
 import browser from "webextension-polyfill";
 import type { WsState } from "../../types";

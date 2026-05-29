@@ -1,5 +1,8 @@
 //! AUD-05 FR-4/FR-5: Prometheus metrics for the Testudo router.
 
+// @anchor exchange:router:metrics
+// @tags api
+
 use lazy_static::lazy_static;
 use prometheus::{
     Encoder, HistogramOpts, HistogramVec, IntCounterVec, IntGauge, Opts, Registry, TextEncoder,

@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:sw-route
+ * @tags infra */
+
 /**
  * Pure URL-routing classifier for the journal service worker.
  *

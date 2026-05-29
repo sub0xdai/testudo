@@ -1,3 +1,6 @@
+// @anchor exchange:router:exchange_account
+// @tags api
+
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     AeadCore, Aes256Gcm,

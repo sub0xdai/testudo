@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:Coach
+ * @tags ui */
+
 import { createResource, createSignal, createEffect, Show, onMount } from 'solid-js'
 import { useCachedResource, cacheKeyForSection } from '../lib/cache'
 import {

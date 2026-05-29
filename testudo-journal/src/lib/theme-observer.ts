@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:theme-observer
+ * @tags infra */
+
 // Shared MutationObserver for data-theme changes on <html>
 // Notifies all subscribers when theme switches so charts can re-init
 

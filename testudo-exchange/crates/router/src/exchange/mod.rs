@@ -44,6 +44,9 @@
 //! # }
 //! ```
 
+// @anchor exchange:router:mod
+// @tags api
+
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use common_utils::{ExchangeError, OrderValidationError, StandardOrder};

@@ -1,3 +1,6 @@
+// @anchor exchange:router:config
+// @tags api
+
 use confik::Configuration;
 
 #[derive(Debug, Clone, Configuration)]

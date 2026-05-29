@@ -1,3 +1,7 @@
+/** @anchor ui:ext-popup:theme-init
+ * @tags ui
+ */
+
 let t = localStorage.getItem('testudo-theme');
 if (t === 'soft-dark') { t = 'amoled'; localStorage.setItem('testudo-theme', t); }
 if (t && t !== 'amoled') document.documentElement.setAttribute('data-theme', t);

@@ -1,3 +1,6 @@
+// @anchor exchange:engine:ws_stream
+// @tags domain
+
 use super::engine::Engine;
 use crate::types::{
     engine::{Fill, OrderSide},

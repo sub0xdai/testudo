@@ -9,6 +9,9 @@
 //! single source of truth. The chronology CHECK constraint
 //! (`closed_at >= opened_at`) makes negative durations structurally impossible.
 
+// @anchor exchange:router:journal_service
+// @tags api
+
 use chrono::{DateTime, NaiveDate, Utc};
 use common_utils::models::canonical_exchange_name;
 use rust_decimal::Decimal;

@@ -1,3 +1,6 @@
+/** @anchor ui:journal:AddExchangeCard
+ * @tags ui */
+
 export function AddExchangeCard(props: { onClick: () => void }) {
   return (
     <button

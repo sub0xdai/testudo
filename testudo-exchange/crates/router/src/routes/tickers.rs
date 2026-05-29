@@ -1,3 +1,6 @@
+// @anchor exchange:router:tickers
+// @tags api
+
 use crate::types::app::AppState;
 use actix_web::web::Data;
 

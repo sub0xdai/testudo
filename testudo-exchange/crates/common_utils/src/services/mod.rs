@@ -3,6 +3,9 @@
 //! High-level services that wrap lower-level adapters and provide
 //! business logic for the Testudo exchange system.
 
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 pub mod binance_data;
 pub mod pg_cache;
 

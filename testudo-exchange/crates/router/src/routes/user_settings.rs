@@ -7,6 +7,9 @@
 //!                               flipping `dynamic_risk_enabled` to true before
 //!                               the user has enough calibration data.
 
+// @anchor exchange:router:user_settings
+// @tags api
+
 use actix_web::{web, HttpResponse, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

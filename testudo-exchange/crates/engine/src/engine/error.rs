@@ -1,3 +1,6 @@
+// @anchor exchange:engine:error
+// @tags domain
+
 use rust_decimal::Decimal;
 
 /// Typed error for the classic matching engine.

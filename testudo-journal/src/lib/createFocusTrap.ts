@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:createFocusTrap
+ * @tags infra */
+
 import { onMount, onCleanup } from 'solid-js'
 
 const FOCUSABLE = [

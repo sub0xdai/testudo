@@ -1,3 +1,6 @@
+/** @anchor protocol:ext-bridge:page-bridge
+ * @tags protocol */
+
 // EXT-43: Main-World Bridge for TradingView Chart API
 // Runs in the PAGE context (MAIN world), injected by content script via <script> tag.
 // Accesses window.TradingViewApi / window.ChartApiInstance / window.tvWidget directly.

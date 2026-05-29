@@ -11,6 +11,9 @@
 //! - A is the weighted adjacency matrix (A[i][j] = weight of edge between
 //!   nodes i and j)
 
+// @anchor infra:sheaf:laplacian
+// @tags infra
+
 use crate::graph::{EdgeType, SheafGraph};
 
 /// The result of a sheaf Laplacian computation.
@@ -87,9 +90,9 @@ pub fn compute_laplacian(graph: &SheafGraph) -> LaplacianResult {
     }
 
     // Fill degree (diagonal): D[i][i] = -sum of off-diagonal row i.
-    for i in 0..node_count {
-        let row_sum: f64 = matrix[i].iter().sum::<f64>() - matrix[i][i];
-        matrix[i][i] = -row_sum;
+    for (i, row) in matrix.iter_mut().enumerate().take(node_count) {
+        let row_sum: f64 = row.iter().sum::<f64>() - row[i];
+        row[i] = -row_sum;
     }
 
     // Post-condition: matrix must be symmetric.
@@ -144,9 +147,9 @@ pub fn compute_laplacian(graph: &SheafGraph) -> LaplacianResult {
 
 /// Verify that a dense square matrix is numerically symmetric.
 fn is_symmetric(matrix: &[Vec<f64>], n: usize) -> bool {
-    for i in 0..n {
-        for j in (i + 1)..n {
-            if (matrix[i][j] - matrix[j][i]).abs() > 1e-10 {
+    for (i, row) in matrix.iter().enumerate().take(n) {
+        for (j, &val) in row.iter().enumerate().skip(i + 1).take(n.saturating_sub(i + 1)) {
+            if (val - matrix[j][i]).abs() > 1e-10 {
                 return false;
             }
         }
@@ -199,12 +202,7 @@ fn dense_symmetric_eigenvalues(matrix: &[Vec<f64>], n: usize) -> Vec<f64> {
     eigenvalues
 }
 
-fn now_ns() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos() as i64
-}
+pub(crate) use crate::graph::now_ns;
 
 #[cfg(test)]
 mod tests {

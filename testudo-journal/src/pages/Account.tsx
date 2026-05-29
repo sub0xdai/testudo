@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:Account
+ * @tags ui */
+
 import { createSignal, createResource, For, Show } from 'solid-js'
 import {
   exchangeApi,

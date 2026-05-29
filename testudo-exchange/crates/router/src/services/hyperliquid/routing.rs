@@ -4,6 +4,9 @@
 //! `HyperliquidExchangeApi` (native SDK) or `CexExchangeApi` (sidecar) based
 //! on the `exchange_name` stored in the user's exchange account.
 
+// @anchor exchange:router:routing
+// @tags api
+
 use async_trait::async_trait;
 use rust_decimal::Decimal;
 use std::sync::Arc;

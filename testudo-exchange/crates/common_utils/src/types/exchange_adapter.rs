@@ -4,6 +4,9 @@
 //! These are placed in common_utils to avoid circular dependencies and provide a
 //! shared interface for all exchange integrations.
 
+// @anchor exchange:common_utils:exchange_adapter
+// @tags infra
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

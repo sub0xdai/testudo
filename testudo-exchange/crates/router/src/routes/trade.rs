@@ -1,3 +1,6 @@
+// @anchor exchange:router:trade
+// @tags api
+
 use actix_web::web::Data;
 use db_processor::query::get_trades_from_db;
 

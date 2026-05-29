@@ -13,6 +13,9 @@
 //!   merely closed inside it.
 //! - Baseline window is 30 days *ending at* `as_of` (exclusive upper bound).
 
+// @anchor exchange:router:digest
+// @tags api
+
 use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};

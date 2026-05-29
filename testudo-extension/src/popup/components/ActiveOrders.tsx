@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:ActiveOrders
+ * @tags ui */
+
 import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import type { TradeGroupResponse, ExchangePositionsResponse, ExchangePosition } from "../../types";

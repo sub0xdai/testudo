@@ -4,6 +4,9 @@
 //! and accurate max drawdown calculations. Snapshots are taken at trade
 //! boundaries (TradeClosed events) via exchange API balance fetch.
 
+// @anchor exchange:router:balance_snapshot
+// @tags api
+
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use sqlx::PgPool;

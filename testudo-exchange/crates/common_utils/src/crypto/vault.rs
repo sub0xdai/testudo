@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:vault
+// @tags infra
+
 /// Secure encryption service for protecting CEX API keys and secrets
 ///
 /// This module implements AES-256-GCM authenticated encryption with secure key derivation

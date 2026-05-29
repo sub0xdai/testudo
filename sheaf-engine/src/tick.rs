@@ -1,5 +1,8 @@
 //! Tick data types — Arrow-native columnar format.
 
+// @anchor infra:sheaf:tick
+// @tags infra
+
 use arrow::array::{Float64Array, StringArray, TimestampNanosecondArray};
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use arrow::record_batch::RecordBatch as ArrowRecordBatch;

@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:ws
+ * @tags infra */
+
 import { createSignal, type Accessor } from 'solid-js'
 
 // VITE_WS_URL points at the ws-stream crate (default :4000 in local dev).

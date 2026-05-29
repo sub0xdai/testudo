@@ -1,3 +1,6 @@
+/** @anchor api:ext:scraper
+ * @tags api */
+
 // EXT-02: TradingView DOM Scraper
 // Extracts trade setup data from TradingView's Long/Short Position drawing tools.
 // Uses multiple selector strategies with fallbacks for resilience.

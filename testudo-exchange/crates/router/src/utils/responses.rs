@@ -3,6 +3,9 @@
 //! This module implements semantic compression by creating standardized response
 //! builders that make error handling omissions impossible.
 
+// @anchor exchange:router:responses
+// @tags api
+
 use actix_web::{HttpResponse, Result};
 use serde_json::Value;
 

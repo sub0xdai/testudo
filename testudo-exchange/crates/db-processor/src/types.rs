@@ -1,3 +1,6 @@
+// @anchor exchange:db-processor:types
+// @tags infra
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 

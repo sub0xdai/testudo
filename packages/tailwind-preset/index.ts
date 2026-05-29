@@ -1,3 +1,7 @@
+/** @anchor infra:tailwind-preset
+ * @tags infra
+ */
+
 /** Shared Testudo design tokens — imported by testudo-web and testudo-journal */
 export default {
   theme: {

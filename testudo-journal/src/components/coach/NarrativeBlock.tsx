@@ -1,3 +1,6 @@
+/** @anchor ui:journal:NarrativeBlock
+ * @tags ui */
+
 import { For, createMemo } from 'solid-js'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'

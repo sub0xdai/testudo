@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:export
+ * @tags infra */
+
 import type { JournalEntry, JournalTag } from '../api/client'
 
 function slugify(text: string): string {

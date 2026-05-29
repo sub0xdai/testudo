@@ -1,5 +1,8 @@
 /* eslint-disable */
 /**
+ * @anchor infra:journal:sw-template
+ * @tags infra
+ *
  * Testudo journal service worker (template).
  *
  * Build pipeline: scripts/inject-sw-shell.ts reads this file at Vite

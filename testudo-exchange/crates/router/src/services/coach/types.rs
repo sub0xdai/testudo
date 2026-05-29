@@ -5,6 +5,9 @@
 //! in `/api/v1/coach/*` responses (decimals as strings, uuids/dates as
 //! ISO strings via serde defaults on `rust_decimal::Decimal` + `chrono`).
 
+// @anchor exchange:router:types
+// @tags api
+
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};

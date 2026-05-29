@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:Pair
+ * @tags ui */
+
 import { createSignal, onMount, onCleanup, Show } from 'solid-js'
 import { useAuth } from '../context/AuthContext'
 import { pairExtension, checkPairStatus } from '../api/client'

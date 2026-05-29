@@ -1,3 +1,6 @@
+// @anchor exchange:engine:user
+// @tags domain
+
 use crate::{types::engine::UserRequests, Engine};
 use pg_queue::PgQueueManager;
 use std::sync::Arc;

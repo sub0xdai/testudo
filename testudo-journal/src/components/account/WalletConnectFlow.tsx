@@ -1,3 +1,6 @@
+/** @anchor ui:journal:WalletConnectFlow
+ * @tags ui */
+
 import { createSignal, Show, For, type JSX } from 'solid-js'
 import { loadWallet, getLoadedWallet } from '../../config/wallet'
 import { exchangeApi } from '../../api/client'

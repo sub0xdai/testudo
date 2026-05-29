@@ -3,6 +3,9 @@
 //! All mutations run inside a transaction and bump `users.last_handle_change_at`
 //! so the 30-day rate-limit window survives claim → release → reclaim cycles.
 
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod profanity;
 pub mod reserved;
 pub mod validation;

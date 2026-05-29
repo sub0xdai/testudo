@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 pub mod exchange_account;
 pub mod user;
 

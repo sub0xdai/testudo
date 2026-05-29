@@ -11,6 +11,9 @@
 //! - Consistent parameter and response formats
 //! - Symbol normalization across exchange-specific formats
 
+// @anchor exchange:common_utils:ccxt_types
+// @tags infra
+
 use async_trait::async_trait;
 use chrono::Utc;
 use rust_decimal::Decimal;

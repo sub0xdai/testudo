@@ -9,6 +9,9 @@
 //! - `encrypted_secret` → Ethereum private key (hex)
 //! - `exchange_name` → "hyperliquid"
 
+// @anchor exchange:router:auth
+// @tags api
+
 use alloy::primitives::Address;
 use alloy::signers::local::PrivateKeySigner;
 use std::collections::HashMap;

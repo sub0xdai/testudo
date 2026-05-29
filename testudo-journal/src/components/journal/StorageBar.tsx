@@ -1,3 +1,6 @@
+/** @anchor ui:journal:StorageBar
+ * @tags ui */
+
 import { createResource } from 'solid-js'
 import { fetchStorageUsage } from '../../api/client'
 

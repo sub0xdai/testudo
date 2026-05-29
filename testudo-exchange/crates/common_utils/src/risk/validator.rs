@@ -3,6 +3,9 @@
 //! Validates orders against risk limits before execution.
 //! Implements pre-trade risk checks from the PRD.
 
+// @anchor exchange:common_utils:validator
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};

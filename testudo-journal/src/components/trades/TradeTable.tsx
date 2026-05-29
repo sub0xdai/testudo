@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TradeTable
+ * @tags ui */
+
 import { createSignal, createResource, Show, For } from 'solid-js'
 import { fetchTrades, triggerJournalSync, type TradeListParams, type KellyInputs } from '../../api/client'
 import { useFilters } from '../filterContext'

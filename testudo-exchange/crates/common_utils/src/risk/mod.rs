@@ -36,6 +36,9 @@
 //! );
 //! ```
 
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 pub mod config;
 pub mod kelly;
 pub mod pg_storage;

@@ -4,6 +4,9 @@
 //! This bridges the gap between PostgreSQL persistence (ManagedPosition) and the
 //! in-memory OrderGroupManager used by list_trades and FillDetectorService.
 
+// @anchor exchange:router:rehydration
+// @tags api
+
 use engine::shadow::order_group::{
     BreakEvenConfig, OrderGroup, OrderGroupStatus, TakeProfitTarget,
 };

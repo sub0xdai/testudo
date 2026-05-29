@@ -8,6 +8,9 @@
 //! `tokio::yield_now()` between chunks so other tasks remain responsive.
 //! Individual failures are logged and do not abort the batch.
 
+// @anchor exchange:router:schedule
+// @tags api
+
 use std::time::Duration;
 
 use chrono::{DateTime, NaiveDate, Timelike, Utc};

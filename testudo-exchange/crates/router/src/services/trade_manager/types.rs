@@ -4,6 +4,9 @@
 //! ManagedPosition tracks positions with management rules that the
 //! trade manager evaluates on each price tick.
 
+// @anchor exchange:router:types
+// @tags api
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

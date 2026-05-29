@@ -3,6 +3,9 @@
 //! Persistence layer for user risk configurations using PostgreSQL.
 //! Provides save/load/delete operations with automatic fallback to defaults.
 
+// @anchor exchange:common_utils:pg_storage
+// @tags infra
+
 use super::config::{RiskConfig, RiskConfigError};
 use crate::services::pg_cache::{CacheError, PgCacheService};
 use std::time::Duration;

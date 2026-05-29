@@ -3,6 +3,9 @@
 //! Pure logic module that evaluates management rules against current price.
 //! No I/O, no side effects - just computes which actions should be taken.
 
+// @anchor exchange:router:evaluator
+// @tags api
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 

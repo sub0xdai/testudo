@@ -1,3 +1,6 @@
+/** @anchor ui:journal:CumulativeProfit
+ * @tags ui */
+
 import { onMount, onCleanup, createEffect } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, AreaSeries } from 'lightweight-charts'
 import { ChartContainer } from './ChartContainer'

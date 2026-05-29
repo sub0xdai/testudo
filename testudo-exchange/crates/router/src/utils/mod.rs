@@ -1,3 +1,6 @@
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod auth_helpers;
 pub mod reconnect;
 pub mod responses;

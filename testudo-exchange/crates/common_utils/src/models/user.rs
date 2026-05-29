@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:user
+// @tags infra
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

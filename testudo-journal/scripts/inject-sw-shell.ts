@@ -1,3 +1,6 @@
+/** @anchor infra:journal-script:inject-sw-shell
+ * @tags infra */
+
 import type { Plugin } from 'vite'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'

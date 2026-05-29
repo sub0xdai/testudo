@@ -1,3 +1,6 @@
+// @anchor exchange:engine:db
+// @tags domain
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 

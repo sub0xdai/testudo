@@ -10,6 +10,9 @@
 //! - `Concerning` when the multiplier is ≥ `CONCERNING_MULTIPLIER_THRESHOLD` (2.5×)
 //! - `Notable` otherwise (strictly > 1.5×)
 
+// @anchor exchange:router:sizing_drift
+// @tags api
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde_json::json;

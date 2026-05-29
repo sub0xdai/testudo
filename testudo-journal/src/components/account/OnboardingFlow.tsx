@@ -1,3 +1,6 @@
+/** @anchor ui:journal:OnboardingFlow
+ * @tags ui */
+
 import { createSignal, Show } from 'solid-js'
 import { AddExchangeForm } from './AddExchangeForm'
 import type { ExchangeInfo, ExchangeAccount } from '../../api/client'

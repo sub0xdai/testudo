@@ -1,3 +1,6 @@
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod nonce_store;
 pub mod pairing_store;
 pub mod siwe;

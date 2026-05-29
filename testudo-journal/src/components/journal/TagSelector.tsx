@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TagSelector
+ * @tags ui */
+
 import { createSignal, Show, For } from 'solid-js'
 import type { JournalTag } from '../../api/client'
 import { TagBadge } from '../trades/TagBadge'

@@ -5,6 +5,9 @@
 //! ExchangeApi focuses on the management operations needed by the trade
 //! manager: balance queries, order placement, amendment, and cancellation.
 
+// @anchor exchange:router:exchange_api
+// @tags api
+
 use async_trait::async_trait;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

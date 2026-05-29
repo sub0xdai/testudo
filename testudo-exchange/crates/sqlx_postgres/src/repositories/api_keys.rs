@@ -4,6 +4,9 @@
 //! with automatic encryption/decryption and comprehensive database operations.
 //! Follows SOLID principles and provides comprehensive error handling.
 
+// @anchor exchange:sqlx_postgres:api_keys
+// @tags infra
+
 use async_trait::async_trait;
 use common_utils::crypto::vault::EncryptionService;
 use common_utils::models::exchange_account::ExchangeAccount;

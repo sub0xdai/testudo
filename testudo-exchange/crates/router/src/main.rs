@@ -14,6 +14,9 @@
 #![allow(unused_imports)]
 #![allow(unused_assignments)]
 
+// @anchor exchange:router:main
+// @tags api
+
 use actix_cors::Cors;
 use actix_web::{
     http::header,

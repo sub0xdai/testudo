@@ -1,3 +1,6 @@
+// @anchor exchange:router:reconnect
+// @tags api
+
 use std::time::Duration;
 use tokio::sync::watch;
 

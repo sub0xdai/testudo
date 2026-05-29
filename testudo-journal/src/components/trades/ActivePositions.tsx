@@ -1,3 +1,6 @@
+/** @anchor ui:journal:ActivePositions
+ * @tags ui */
+
 import { createResource, For, Show, onCleanup } from 'solid-js'
 import { fetchActivePositions, type ActivePosition } from '../../api/client'
 

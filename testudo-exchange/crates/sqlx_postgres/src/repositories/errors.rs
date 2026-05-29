@@ -3,6 +3,9 @@
 //! This module defines comprehensive error handling for database operations,
 //! ensuring that database failures are properly categorized and provide user-safe messages.
 
+// @anchor exchange:sqlx_postgres:errors
+// @tags infra
+
 use common_utils::crypto::errors::EncryptionError;
 use common_utils::ExchangeError;
 use thiserror::Error;

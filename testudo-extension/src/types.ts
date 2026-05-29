@@ -1,3 +1,6 @@
+/** @anchor api:ext:types
+ * @tags api */
+
 export interface Settings {
   backendUrl: string;
   wsUrl: string;

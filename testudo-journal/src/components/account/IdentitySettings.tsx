@@ -1,3 +1,6 @@
+/** @anchor ui:journal:IdentitySettings
+ * @tags ui */
+
 import { createResource, createSignal, Show, batch } from 'solid-js'
 import {
   fetchIdentity,

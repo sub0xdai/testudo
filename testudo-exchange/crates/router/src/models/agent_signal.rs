@@ -5,6 +5,9 @@
 //! SignalResult is the structured response returned after
 //! the risk engine processes the signal.
 
+// @anchor exchange:router:agent_signal
+// @tags api
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

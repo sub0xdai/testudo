@@ -4,6 +4,9 @@
 //! RiskRejection) into AgentAlert structs and broadcast them via
 //! PostgreSQL NOTIFY on the agent_alert and agent_execution channels.
 
+// @anchor exchange:router:agent_alert
+// @tags api
+
 use chrono::{DateTime, Duration, Utc};
 use common_utils::agent::{AgentAlert, AlertSeverity, AlertType, ExecutionReport};
 use common_utils::risk::{RiskRejection, RiskWarning};

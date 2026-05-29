@@ -10,6 +10,9 @@
 //! This module bridges the router layer with the risk management system
 //! and shadow engine for paper trading.
 
+// @anchor exchange:router:decision_loop
+// @tags api
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};

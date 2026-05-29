@@ -22,6 +22,9 @@
 //! - FR-3.1.5: Implement `ExchangeAdapter::health_check` returning Ok (local engine)
 //! - FR-3.1.6: Mark order as risk-validated before passing to ShadowEngine
 
+// @anchor exchange:router:shadow_adapter
+// @tags api
+
 use async_trait::async_trait;
 use common_utils::{OrderSide, OrderType, StandardOrder};
 use engine::{EngineHandle, ShadowOrder, ShadowOrderSide, ShadowOrderStatus, ShadowOrderType};

@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:tests
+// @tags infra
+
 use chrono::{Duration, TimeZone, Utc};
 use rust_decimal_macros::dec;
 use uuid::Uuid;

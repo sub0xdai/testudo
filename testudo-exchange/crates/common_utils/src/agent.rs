@@ -2,6 +2,9 @@
 //!
 //! Shared between ws-stream (WebSocket subscriber) and router (alert emitter).
 
+// @anchor exchange:common_utils:agent
+// @tags infra
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

@@ -1,5 +1,8 @@
 import Mathlib
 
+/-- @anchor domain:proofs:kelly-optimal
+    @tags domain -/
+
 /-!
 # Kelly Criterion Optimality
 

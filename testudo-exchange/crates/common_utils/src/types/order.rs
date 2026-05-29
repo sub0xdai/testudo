@@ -95,6 +95,9 @@
 //! # }
 //! ```
 
+// @anchor exchange:common_utils:order
+// @tags infra
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

@@ -3,6 +3,9 @@
 //! GET /api/v1/risk-config - Get user's risk configuration
 //! PUT /api/v1/risk-config - Update user's risk configuration
 
+// @anchor exchange:router:risk_config
+// @tags api
+
 use actix_web::{web, HttpResponse, Result};
 use common_utils::{
     risk::{PgRiskConfigStorage, RiskConfig},

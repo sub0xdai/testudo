@@ -6,6 +6,9 @@
 //!
 //! All submodules are stubbed in T2; logic lands in T3+.
 
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod digest;
 pub mod narrator;
 pub mod patterns;

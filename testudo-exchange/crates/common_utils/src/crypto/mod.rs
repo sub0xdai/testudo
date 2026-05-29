@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 /// Cryptographic utilities for secure API key management
 ///
 /// This module provides secure encryption services for protecting sensitive

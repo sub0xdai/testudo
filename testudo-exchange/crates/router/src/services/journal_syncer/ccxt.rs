@@ -1,5 +1,8 @@
 //! CCXT fill source — wraps the sidecar POST /trades/since endpoint.
 
+// @anchor exchange:router:ccxt
+// @tags api
+
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use common_utils::journal::{FillSide, RawFill};

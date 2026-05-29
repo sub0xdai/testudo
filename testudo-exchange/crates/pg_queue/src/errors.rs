@@ -1,3 +1,6 @@
+// @anchor exchange:pg_queue:errors
+// @tags infra
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]

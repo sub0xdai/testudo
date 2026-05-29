@@ -2,6 +2,9 @@
 //!
 //! Core types for the Decision Loop and risk management system.
 
+// @anchor exchange:common_utils:types
+// @tags infra
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 

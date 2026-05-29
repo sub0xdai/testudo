@@ -1,3 +1,6 @@
+/** @anchor ui:journal:ExchangeCard
+ * @tags ui */
+
 import { createSignal, createEffect, onCleanup, For, Show } from 'solid-js'
 import type {
   ExchangeAccount,

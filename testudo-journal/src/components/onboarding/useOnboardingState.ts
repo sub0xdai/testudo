@@ -1,3 +1,6 @@
+/** @anchor ui:journal:useOnboardingState
+ * @tags ui */
+
 import { createResource, createMemo } from 'solid-js'
 import { useAuth } from '../../context/AuthContext'
 import { exchangeApi, fetchTrades } from '../../api/client'

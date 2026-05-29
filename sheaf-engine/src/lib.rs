@@ -39,6 +39,9 @@
 //!   --symbol BTC_USDT
 //! ```
 
+// @anchor infra:sheaf:lib
+// @tags infra
+
 pub mod tick;
 pub mod source;
 pub mod clock;

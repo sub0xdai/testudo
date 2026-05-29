@@ -3,6 +3,9 @@
 //! This module provides functionality to execute orders on Binance exchange.
 //! It handles authentication, order submission, and error handling.
 
+// @anchor exchange:common_utils:binance_executor
+// @tags infra
+
 use super::ccxt_auth::CCXTAuthenticator;
 use super::execution_types::{
     BinanceOrderResult, BinanceOrderStatus, ExecutionError, ExecutionOrderSide, ExecutionOrderType,

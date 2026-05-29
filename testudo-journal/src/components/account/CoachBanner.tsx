@@ -1,3 +1,6 @@
+/** @anchor ui:journal:CoachBanner
+ * @tags ui */
+
 import { createResource, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { fetchLatestCoachReport, dismissCoachBanner, type StoredCoachReport } from '../../api/client'

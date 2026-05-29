@@ -1,3 +1,6 @@
+// @anchor exchange:router:session
+// @tags api
+
 use common_utils::auth::AuthError;
 use sqlx::PgPool;
 use uuid::Uuid;

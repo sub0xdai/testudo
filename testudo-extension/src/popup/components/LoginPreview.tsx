@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:LoginPreview
+ * @tags ui */
+
 /**
  * LoginPreview — Static mockup of the main dashboard.
  * Purely decorative: no imports from webextension-polyfill, no API calls,

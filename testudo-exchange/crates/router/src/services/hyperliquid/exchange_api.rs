@@ -3,6 +3,9 @@
 //! Native Rust SDK integration that slots in alongside `ShadowExchangeApi`
 //! and `CexExchangeApi`. Bypasses the Node.js sidecar entirely.
 
+// @anchor exchange:router:exchange_api
+// @tags api
+
 use alloy::signers::local::PrivateKeySigner;
 use async_trait::async_trait;
 use hyperliquid_sdk_rs::{

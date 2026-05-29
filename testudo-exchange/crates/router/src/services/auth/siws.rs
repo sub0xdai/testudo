@@ -1,3 +1,6 @@
+// @anchor exchange:router:siws
+// @tags api
+
 use chrono::{DateTime, Utc};
 use common_utils::auth::AuthError;
 use ed25519_dalek::{Signature, VerifyingKey};

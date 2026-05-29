@@ -1,3 +1,6 @@
+// @anchor exchange:db-processor:seed
+// @tags infra
+
 use chrono::{Duration, Utc};
 use rand::Rng;
 use rust_decimal::prelude::*;

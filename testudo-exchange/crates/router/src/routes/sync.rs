@@ -7,6 +7,9 @@
 //! - GET /api/v1/sync/status - Get last sync result
 //! - GET /api/v1/sync/diff - Get current position differences
 
+// @anchor exchange:router:sync
+// @tags api
+
 use actix_web::HttpResponse;
 use serde::{Deserialize, Serialize};
 

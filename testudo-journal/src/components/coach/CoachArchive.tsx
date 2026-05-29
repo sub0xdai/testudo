@@ -1,3 +1,6 @@
+/** @anchor ui:journal:CoachArchive
+ * @tags ui */
+
 import { For, Show, createSignal } from 'solid-js'
 import type { StoredCoachReport, CoachPatternKind } from '../../api/client'
 import { CoachReport } from './CoachReport'

@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:cache
+ * @tags infra */
+
 // Mutation → invalidation key map (for future CP callers; CP-3 scope is tags only):
 //   addTradeTags / removeTradeTag   → 'tags:'
 //   createTag / updateTag / deleteTag → 'tags:'

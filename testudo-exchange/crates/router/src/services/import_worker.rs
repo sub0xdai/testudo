@@ -6,6 +6,9 @@
 //! Phase 1: Hyperliquid via native SDK (`user_fills_by_time`)
 //! Phase 2: CEX via CCXT sidecar (`fetchMyTrades`)
 
+// @anchor exchange:router:import_worker
+// @tags api
+
 use alloy::primitives::Address;
 use chrono::{DateTime, Utc};
 use hyperliquid_sdk_rs::{InfoProvider, Network};

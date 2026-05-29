@@ -1,3 +1,6 @@
+/** @anchor api:ext-bg:auth
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import type { AuthTokens } from "../types";
 import { calculateRefreshDelay } from "../utils";

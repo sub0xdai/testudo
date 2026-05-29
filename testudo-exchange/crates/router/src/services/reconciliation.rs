@@ -7,6 +7,9 @@
 //! Defense-in-depth: WebSocket handles fills in <1s, reconciliation catches
 //! anything that slips through within 30s.
 
+// @anchor exchange:router:reconciliation
+// @tags api
+
 use crate::repositories::exchange_account::{ExchangeAccountRepository, RepoError};
 use crate::services::cex_client::{CexClient, SidecarOpenOrderResponse};
 use crate::services::exchange_api::{ExchangeApi, ExchangeApiError};

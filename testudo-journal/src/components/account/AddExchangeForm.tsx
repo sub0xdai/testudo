@@ -1,3 +1,6 @@
+/** @anchor ui:journal:AddExchangeForm
+ * @tags ui */
+
 import { createSignal, Show, For } from 'solid-js'
 import { WalletConnectFlow } from './WalletConnectFlow'
 import { exchangeApi } from '../../api/client'

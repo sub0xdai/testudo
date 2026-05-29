@@ -1,6 +1,9 @@
 import Mathlib
 open Real
 
+/-- @anchor domain:proofs:ou-mreversion
+    @tags domain -/
+
 theorem exp_neg_log_two_pow (n : ℕ) : exp (-(Real.log 2) * (n : ℝ)) = ((1 : ℝ)/2) ^ n := by
   have h_log : Real.log ((1 : ℝ)/2) = -(Real.log 2) := by
     simp

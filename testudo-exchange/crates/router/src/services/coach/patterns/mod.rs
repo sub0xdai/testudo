@@ -3,6 +3,9 @@
 //! T3a–T3f each land one detector. The orchestrator `detect_all`
 //! composes them into a `Vec<FlaggedPattern>` for the digest.
 
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod correlation_stack;
 pub mod frequency_spike;
 pub mod session_anomaly;

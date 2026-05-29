@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:PositionCard
+ * @tags ui */
+
 import { Show, For, createMemo } from "solid-js";
 import type { TradeGroupResponse } from "../../types";
 

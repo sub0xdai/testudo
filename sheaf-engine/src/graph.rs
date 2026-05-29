@@ -10,6 +10,9 @@
 //!
 //! Edges auto-decay when stale (per decision C).
 
+// @anchor infra:sheaf:graph
+// @tags infra
+
 use crate::align::AlignedSnapshot;
 use std::collections::{HashMap, HashSet};
 
@@ -181,7 +184,7 @@ impl SheafGraph {
 
     /// Ensure nodes exist for all watch targets at all active timeframes.
     fn ensure_all_nodes(&mut self) {
-        let now = Self::now_ns();
+        let now = now_ns();
         let targets: Vec<_> = self.watch_targets.iter().cloned().collect();
         for (venue, symbol) in targets {
             for &timeframe in &self.active_timeframes {
@@ -208,7 +211,7 @@ impl SheafGraph {
 
     /// Ingest an aligned snapshot: update node state, discover edges.
     pub fn ingest(&mut self, snapshot: &AlignedSnapshot) -> Vec<EdgeId> {
-        let now = Self::now_ns();
+        let now = now_ns();
         debug_assert!(now > 0, "timestamp must be positive");
 
         let mut new_edges = Vec::new();
@@ -309,17 +312,17 @@ impl SheafGraph {
             .collect();
 
         for edge in self.edges.values_mut() {
-            if stale_node_ids.contains(&edge.id.a) || stale_node_ids.contains(&edge.id.b) {
-                if matches!(edge.status, EdgeStatus::Active) {
-                    edge.status = EdgeStatus::Degraded { since: now };
-                }
+            if (stale_node_ids.contains(&edge.id.a) || stale_node_ids.contains(&edge.id.b))
+                && matches!(edge.status, EdgeStatus::Active)
+            {
+                edge.status = EdgeStatus::Degraded { since: now };
             }
         }
     }
 
     /// Discover arbitrage edges: same symbol, different venues.
     fn discover_arbitrage_edges(&mut self, new_edges: &mut Vec<EdgeId>) {
-        let now = Self::now_ns();
+        let now = now_ns();
 
         // Group active nodes by (symbol, timeframe)
         let mut by_symbol_tf: HashMap<(String, Timeframe), Vec<&NodeId>> = HashMap::new();
@@ -427,10 +430,18 @@ impl SheafGraph {
             .count()
     }
 
-    fn now_ns() -> i64 {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos() as i64
+    /// Access the graph configuration.
+    pub(crate) fn config(&self) -> &GraphConfig {
+        &self.config
     }
+}
+
+/// Current wall-clock time in nanoseconds since Unix epoch.
+///
+/// Falls back to 0 if the system clock is before 1970 (should never happen).
+pub(crate) fn now_ns() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as i64
 }

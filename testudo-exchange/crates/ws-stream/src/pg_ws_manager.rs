@@ -2,6 +2,9 @@
 //!
 //! Uses LISTEN/NOTIFY for pub/sub instead of Redis.
 
+// @anchor exchange:ws-stream:pg_ws_manager
+// @tags infra
+
 use futures_util::SinkExt;
 use pg_queue::{ListenerService, PgPool};
 use tokio_tungstenite::tungstenite::Message;

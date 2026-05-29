@@ -8,6 +8,9 @@
 //! server-side cache. Per-account fetches mirror the logic in `routes/exchanges.rs`
 //! (HL native info API for Hyperliquid; CEX sidecar for everything else).
 
+// @anchor exchange:router:risk_snapshot
+// @tags api
+
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 

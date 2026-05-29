@@ -3,6 +3,9 @@
 //! PostgreSQL persistence layer for managed positions (EXT-09 FR-9).
 //! Enables restart recovery by persisting position state.
 
+// @anchor exchange:router:repository
+// @tags api
+
 use chrono::Utc;
 use rust_decimal::Decimal;
 use sqlx::PgPool;

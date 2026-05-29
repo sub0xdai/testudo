@@ -10,6 +10,9 @@
 //! (`get_preference`, `set_preference`), and banner state flips
 //! (`mark_viewed`, `dismiss_banner`) back the HTTP endpoints wired in T8.
 
+// @anchor exchange:router:service
+// @tags api
+
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};

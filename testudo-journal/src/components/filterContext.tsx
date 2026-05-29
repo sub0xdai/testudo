@@ -1,3 +1,6 @@
+/** @anchor ui:journal:filterContext
+ * @tags ui */
+
 import { createContext, useContext, type JSX } from 'solid-js'
 import { createSignal } from 'solid-js'
 import type { StatsFilter } from '../api/client'

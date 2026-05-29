@@ -5,6 +5,9 @@
 //! Pure function — no allocations on the hot path beyond building the
 //! final String. All formatting is deterministic given the same summary.
 
+// @anchor exchange:router:agent_journal_formatter
+// @tags api
+
 use rust_decimal::Decimal;
 
 use crate::models::agent_journal::{AgentSummary, SetupBreakdown, TradeCitation};

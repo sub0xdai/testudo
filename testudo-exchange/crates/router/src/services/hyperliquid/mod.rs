@@ -4,6 +4,9 @@
 //! Node.js sidecar entirely. Implements the `ExchangeApi` trait for
 //! seamless integration with the existing `TradeManagerService`.
 
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod agent_approval;
 pub mod auth;
 pub mod exchange_api;

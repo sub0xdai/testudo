@@ -1,3 +1,6 @@
+// @anchor exchange:db-processor:main
+// @tags infra
+
 use db_processor::{handle_db_updates_pg, types::DatabaseRequests};
 use pg_queue::{PgQueueManager, QueueName};
 use sqlx_postgres::PostgresDb;

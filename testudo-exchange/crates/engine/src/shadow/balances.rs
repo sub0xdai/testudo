@@ -15,6 +15,9 @@
 //! Uses DashMap for lock-free concurrent access per user.
 //! Two different users can modify their balances simultaneously without blocking.
 
+// @anchor exchange:engine:balances
+// @tags domain
+
 use dashmap::DashMap;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

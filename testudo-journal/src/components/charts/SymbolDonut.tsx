@@ -1,3 +1,6 @@
+/** @anchor ui:journal:SymbolDonut
+ * @tags ui */
+
 import { createResource, createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'

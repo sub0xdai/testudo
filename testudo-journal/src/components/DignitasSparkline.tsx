@@ -1,3 +1,6 @@
+/** @anchor ui:journal:DignitasSparkline
+ * @tags ui */
+
 import { createMemo, Show } from 'solid-js'
 import { EChart } from './charts/EChart'
 import { getAccentPrimary, accentPrimaryAlpha } from '../lib/tokens'

@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:ExchangeToggle
+ * @tags ui */
+
 import { createSignal, onMount, onCleanup, For } from "solid-js";
 import browser from "webextension-polyfill";
 import type { ExchangeMode } from "../../utils";

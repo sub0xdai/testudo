@@ -37,6 +37,9 @@
 //! engine.place_order(user_id, order);
 //! ```
 
+// @anchor exchange:engine:mod
+// @tags domain
+
 pub mod actor;
 pub mod balances;
 pub mod handle;

@@ -1,3 +1,6 @@
+/** @anchor api:cex:metrics
+ * @tags api */
+
 /**
  * Prometheus metrics for testudo-cex sidecar.
  */

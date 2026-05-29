@@ -1,3 +1,6 @@
+// @anchor exchange:db-processor:lib
+// @tags infra
+
 pub mod query;
 pub mod types;
 

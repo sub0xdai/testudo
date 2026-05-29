@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:Trades
+ * @tags ui */
+
 import { createEffect, createSignal, Show } from 'solid-js'
 import { useSearchParams } from '@solidjs/router'
 import { TradeTable } from '../components/trades/TradeTable'

@@ -3,6 +3,9 @@
 //! Core service that monitors managed positions against price ticks
 //! and executes management actions (break-even, trailing stop, partial TP).
 
+// @anchor exchange:router:service
+// @tags api
+
 use rust_decimal::Decimal;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;

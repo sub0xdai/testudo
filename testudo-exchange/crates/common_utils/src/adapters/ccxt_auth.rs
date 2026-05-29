@@ -16,6 +16,9 @@
 //! - Credentials implement `Zeroize` to clear memory on drop
 //! - Timestamps are validated to prevent replay attacks
 
+// @anchor exchange:common_utils:ccxt_auth
+// @tags infra
+
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use pbkdf2::hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256, Sha512};

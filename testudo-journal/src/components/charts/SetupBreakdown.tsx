@@ -1,3 +1,6 @@
+/** @anchor ui:journal:SetupBreakdown
+ * @tags ui */
+
 import { createResource, createMemo, createSignal, Show, For } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'

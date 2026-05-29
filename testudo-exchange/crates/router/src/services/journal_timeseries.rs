@@ -4,6 +4,9 @@
 //! duration/profitability correlations, and return distribution histograms.
 //! All financial math uses `rust_decimal::Decimal` — no f64 for money.
 
+// @anchor exchange:router:journal_timeseries
+// @tags api
+
 use chrono::NaiveDate;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;

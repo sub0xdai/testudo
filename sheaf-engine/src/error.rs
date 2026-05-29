@@ -1,5 +1,8 @@
 //! Error types for the sheaf engine.
 
+// @anchor infra:sheaf:error
+// @tags infra
+
 /// Top-level error type.
 #[derive(Debug, thiserror::Error)]
 pub enum SheafError {

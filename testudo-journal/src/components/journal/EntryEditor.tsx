@@ -1,3 +1,6 @@
+/** @anchor ui:journal:EntryEditor
+ * @tags ui */
+
 import { createSignal, Show, onCleanup, onMount } from 'solid-js'
 import { useCachedResource } from '../../lib/cache'
 import { useAuth } from '../../context/AuthContext'

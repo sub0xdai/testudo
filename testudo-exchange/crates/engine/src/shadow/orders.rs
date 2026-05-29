@@ -12,6 +12,9 @@
 //! - **Stop Loss Buy**: Triggers when `High Price >= Stop Price`
 //! - **Stop Loss Sell**: Triggers when `Low Price <= Stop Price`
 
+// @anchor exchange:engine:orders
+// @tags domain
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

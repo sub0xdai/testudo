@@ -1,6 +1,9 @@
 import Lake
 open Lake DSL
 
+/-- @anchor domain:proofs:lakefile
+    @tags domain -/
+
 package «testudo-proofs» where
   leanOptions := #[
     ⟨`pp.unicode.fun, true⟩

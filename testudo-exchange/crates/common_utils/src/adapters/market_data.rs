@@ -18,6 +18,9 @@
 //! let orderbook = loader.fetch_order_book("BTC/USDT").await?;
 //! ```
 
+// @anchor exchange:common_utils:market_data
+// @tags infra
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use std::collections::HashMap;

@@ -1,3 +1,6 @@
+/** @anchor api:ext-bg:websocket
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import type { WsState } from "../types";
 import {

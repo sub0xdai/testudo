@@ -1,3 +1,6 @@
+/** @anchor ui:journal:KellyInputsModal
+ * @tags ui */
+
 import { onCleanup, onMount } from 'solid-js'
 import type { KellyInputs } from '../../api/client'
 import { HelpTip } from '../HelpTip'

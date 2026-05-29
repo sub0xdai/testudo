@@ -2,3 +2,6 @@
 //!
 //! The WS-driven journal write path has been deleted. The JournalSyncer
 //! (pull-based) is now the sole authority for journal data.
+
+// @anchor exchange:router:internal
+// @tags api

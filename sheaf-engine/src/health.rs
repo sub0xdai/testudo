@@ -6,6 +6,9 @@
 //! - < 0.60: HaltExecution
 //! - 0.00: sheaf unreachable — hard halt
 
+// @anchor infra:sheaf:health
+// @tags infra
+
 use crate::graph::SheafGraph;
 use crate::proto;
 

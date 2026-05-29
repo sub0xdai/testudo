@@ -16,6 +16,9 @@
 //! fall-through (preserving QNT-01a "never fail a trade for a
 //! calibration hiccup" semantics); the preview route maps errors to 5xx.
 
+// @anchor exchange:router:sizing_preview
+// @tags api
+
 use chrono::Utc;
 use rust_decimal::Decimal;
 use serde::Serialize;

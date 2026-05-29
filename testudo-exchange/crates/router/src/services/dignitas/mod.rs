@@ -13,6 +13,9 @@
 //!   handles/    — handle claim/release/visibility + public profile (ENG-01b)
 //!   streak.rs   — days-since-Concerning-flag counter + longest_ever (ENG-01c)
 
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod config;
 pub mod handles;
 pub mod inputs;

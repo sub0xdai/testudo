@@ -1,3 +1,6 @@
+// @anchor exchange:pg_queue:request_response
+// @tags infra
+
 use crate::errors::{PgQueueError, Result};
 use crate::listen::ListenerService;
 use crate::queue::{QueueName, QueueRepository};

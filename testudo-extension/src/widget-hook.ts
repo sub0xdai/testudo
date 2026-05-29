@@ -1,3 +1,6 @@
+/** @anchor protocol:ext-bridge:widget-hook
+ * @tags protocol */
+
 // EXT-46: TradingView Widget Constructor Hook
 // Runs in MAIN world at document_start — before any page JS executes.
 // Intercepts TradingView.widget() constructor to capture widget instances

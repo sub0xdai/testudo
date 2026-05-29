@@ -7,6 +7,9 @@
 //! Supports injected `BalanceProvider` implementations for real data fetching.
 //! Without a provider, falls back to default paper trading values.
 
+// @anchor exchange:common_utils:account_state
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::sync::Arc;

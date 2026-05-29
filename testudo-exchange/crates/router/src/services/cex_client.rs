@@ -4,6 +4,9 @@
 //! All exchange operations (balance, order, position) are routed through
 //! this client to the sidecar at `http://127.0.0.1:3100`.
 
+// @anchor exchange:router:cex_client
+// @tags api
+
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use rust_decimal::Decimal;

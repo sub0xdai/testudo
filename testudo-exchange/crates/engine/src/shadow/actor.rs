@@ -4,6 +4,9 @@
 //! EngineCommand, EngineError) lives in `handle.rs`. This module contains
 //! only the actor loop, command dispatch, and tests.
 
+// @anchor exchange:engine:actor
+// @tags domain
+
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc;

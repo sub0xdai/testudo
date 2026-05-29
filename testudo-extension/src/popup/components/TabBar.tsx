@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:TabBar
+ * @tags ui */
+
 export type TabId = "trade" | "positions" | "account";
 
 interface TabBarProps {

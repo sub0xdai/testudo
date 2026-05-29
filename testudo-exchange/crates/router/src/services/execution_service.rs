@@ -4,6 +4,9 @@
 //! Currently supports shadow (paper) trading only. Live trading is handled
 //! via the CEX sidecar service through `CexExchangeApi` and `TradeManagerService`.
 
+// @anchor exchange:router:execution_service
+// @tags api
+
 use common_utils::adapters::execution_types::ExecutionMode;
 use common_utils::StandardOrder;
 use std::sync::Arc;

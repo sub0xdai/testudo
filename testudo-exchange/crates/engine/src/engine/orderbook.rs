@@ -1,3 +1,6 @@
+// @anchor exchange:engine:orderbook
+// @tags domain
+
 use crate::engine::error::CoreEngineError;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

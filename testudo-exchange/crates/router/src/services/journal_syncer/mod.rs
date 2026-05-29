@@ -4,6 +4,9 @@
 //! fixed cadence, upserts raw fills to `raw_fills`, then calls
 //! `reconstruct_trades` to project closed round trips into `journal_trades`.
 
+// @anchor exchange:router:mod
+// @tags api
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use common_utils::journal::RawFill;

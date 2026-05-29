@@ -1,3 +1,6 @@
+// @anchor exchange:pg_queue:listen
+// @tags infra
+
 use crate::errors::{PgQueueError, Result};
 use sqlx::postgres::PgListener;
 use sqlx::PgPool;

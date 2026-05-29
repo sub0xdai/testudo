@@ -4,6 +4,9 @@
 //! This service combines validation checks with position sizing to produce
 //! a unified RiskCheckResult.
 
+// @anchor exchange:common_utils:service
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 

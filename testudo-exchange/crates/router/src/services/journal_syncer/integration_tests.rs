@@ -3,6 +3,9 @@
 //! Run with:
 //!   DATABASE_URL=postgres://... cargo test --ignored journal_syncer
 
+// @anchor exchange:router:integration_tests
+// @tags api
+
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use common_utils::journal::{FillSide, RawFill};

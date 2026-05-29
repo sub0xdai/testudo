@@ -8,6 +8,9 @@
 #![allow(clippy::unwrap_or_default)]
 #![allow(deprecated)]
 
+// @anchor exchange:engine:main
+// @tags domain
+
 pub mod engine;
 pub mod order;
 pub mod shadow;

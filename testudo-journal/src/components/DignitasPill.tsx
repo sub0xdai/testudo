@@ -1,3 +1,6 @@
+/** @anchor ui:journal:DignitasPill
+ * @tags ui */
+
 import { createSignal, Show, createResource, onMount, onCleanup } from 'solid-js'
 import { useAuth } from '../context/AuthContext'
 import { fetchDignitasMe, type DignitasCurrent } from '../api/client'

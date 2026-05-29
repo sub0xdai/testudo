@@ -1,3 +1,6 @@
+/** @anchor api:ext-bg:storage
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import type { Settings } from "../types";
 import { DEFAULT_SETTINGS } from "../utils";

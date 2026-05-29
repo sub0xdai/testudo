@@ -1,5 +1,8 @@
 //! Cross-venue tick alignment via Polars ASOF join.
 
+// @anchor infra:sheaf:align
+// @tags infra
+
 use crate::tick::TickBatch;
 use polars::prelude::*;
 

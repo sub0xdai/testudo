@@ -1,3 +1,6 @@
+// @anchor exchange:ws-stream:user
+// @tags infra
+
 use futures_util::stream::SplitSink;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};

@@ -1,3 +1,6 @@
+/** @anchor ui:journal-context:AuthContext
+ * @tags ui */
+
 import { createContext, useContext, createSignal, onCleanup, type JSX } from 'solid-js'
 import { base58 } from '@scure/base'
 import { loadWallet, isWalletLoaded } from '../config/wallet'

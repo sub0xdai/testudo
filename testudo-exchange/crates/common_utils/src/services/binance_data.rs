@@ -9,6 +9,9 @@
 //! - GET /fapi/v1/klines - Candlestick/Kline data
 //! - GET /fapi/v1/exchangeInfo - Exchange trading rules and symbol info
 
+// @anchor exchange:common_utils:binance_data
+// @tags infra
+
 use crate::adapters::ccxt_types::{CCXTError, CCXTOrderBook, CCXTTicker};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

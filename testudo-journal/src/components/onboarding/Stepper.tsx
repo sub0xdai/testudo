@@ -1,3 +1,6 @@
+/** @anchor ui:journal:Stepper
+ * @tags ui */
+
 import { Show, For, createSignal, createEffect } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { useAuth } from '../../context/AuthContext'

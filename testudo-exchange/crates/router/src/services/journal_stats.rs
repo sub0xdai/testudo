@@ -4,6 +4,9 @@
 //! account overview, performance, risk, and streaks.
 //! All financial math uses `rust_decimal::Decimal` — no f64.
 
+// @anchor exchange:router:journal_stats
+// @tags api
+
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

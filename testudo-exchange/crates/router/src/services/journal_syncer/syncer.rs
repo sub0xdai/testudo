@@ -1,5 +1,8 @@
 //! JournalSyncer — per-(user, account) tokio task for the pull-based journal pipeline.
 
+// @anchor exchange:router:syncer
+// @tags api
+
 use chrono::{Duration, Utc};
 use sqlx::PgPool;
 use std::sync::Arc;

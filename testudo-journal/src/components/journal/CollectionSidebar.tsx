@@ -1,3 +1,6 @@
+/** @anchor ui:journal:CollectionSidebar
+ * @tags ui */
+
 import { createSignal, For, Show } from 'solid-js'
 import type { JournalCollection, TreeNode, CollectionFilters } from '../../lib/collections'
 import {

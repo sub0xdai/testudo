@@ -1,3 +1,6 @@
+/** @anchor ui:journal:ChartSelector
+ * @tags ui */
+
 import { createSignal, Show, lazy, Suspense } from 'solid-js'
 import { HelpTip } from './HelpTip'
 import { HELP } from '../lib/help-content'

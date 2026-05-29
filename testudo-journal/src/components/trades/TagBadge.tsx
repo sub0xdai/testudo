@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TagBadge
+ * @tags ui */
+
 import type { JournalTag } from '../../api/client'
 import { getTagPalette } from '../../lib/tokens'
 

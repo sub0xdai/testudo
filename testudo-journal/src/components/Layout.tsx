@@ -1,3 +1,6 @@
+/** @anchor ui:journal:Layout
+ * @tags ui */
+
 import { createSignal, For, Show, onMount, onCleanup } from 'solid-js'
 import { useLocation, type RouteSectionProps } from '@solidjs/router'
 import { NavLink } from './NavLink'

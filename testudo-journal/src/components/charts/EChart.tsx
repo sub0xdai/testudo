@@ -1,3 +1,6 @@
+/** @anchor ui:journal:EChart
+ * @tags ui */
+
 import { onMount, onCleanup, createEffect, type Accessor } from 'solid-js'
 import { echarts } from '../../lib/echarts-setup'
 import { TESTUDO_THEME, registerTestudoTheme } from '../../lib/echarts-theme'

@@ -3,6 +3,9 @@
 //! Provides caching capabilities using PostgreSQL UNLOGGED table with
 //! per-query TTL checking.
 
+// @anchor exchange:common_utils:pg_cache
+// @tags infra
+
 use pg_queue::{CacheRepository, PgPool};
 use serde::{de::DeserializeOwned, Serialize};
 use std::time::Duration;

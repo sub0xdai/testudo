@@ -1,3 +1,6 @@
+/** @anchor api:ext:background
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import { RuntimeMessageSchema } from "./schemas";
 import { getSettings } from "./background/storage";

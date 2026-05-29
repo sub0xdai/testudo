@@ -1,3 +1,6 @@
+/** @anchor api:ext-bg:handlers
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import type { RuntimeMessageSchema } from "../schemas";
 import { getSettings, getExchangeMode, getActiveExchangeId, setActiveExchangeId } from "./storage";

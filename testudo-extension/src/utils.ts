@@ -1,3 +1,6 @@
+/** @anchor api:ext:utils
+ * @tags api */
+
 import type { Settings } from "./types";
 
 // --- Exchange Type Derivation ---

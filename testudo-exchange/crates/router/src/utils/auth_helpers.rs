@@ -2,6 +2,9 @@
 //!
 //! Provides reusable auth patterns for route handlers.
 
+// @anchor exchange:router:auth_helpers
+// @tags api
+
 use actix_web::Error as ActixError;
 
 use crate::middleware::AuthenticatedUser;

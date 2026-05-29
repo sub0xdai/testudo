@@ -3,6 +3,9 @@
 //! This module defines the data transfer objects used for repository operations,
 //! separating business logic from database representation.
 
+// @anchor exchange:sqlx_postgres:types
+// @tags infra
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

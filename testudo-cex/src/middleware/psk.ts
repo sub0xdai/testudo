@@ -1,3 +1,6 @@
+/** @anchor api:cex:psk
+ * @tags api */
+
 import type { Request, Response, NextFunction } from "express";
 
 const SIDECAR_PSK = process.env.SIDECAR_PSK;

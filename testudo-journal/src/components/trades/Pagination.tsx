@@ -1,3 +1,6 @@
+/** @anchor ui:journal:Pagination
+ * @tags ui */
+
 import { For } from 'solid-js'
 
 export function Pagination(props: {

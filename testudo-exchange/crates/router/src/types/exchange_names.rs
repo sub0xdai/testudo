@@ -1,3 +1,6 @@
+// @anchor exchange:router:exchange_names
+// @tags api
+
 /// Supported exchange identifiers — single source of truth.
 pub mod exchanges {
     pub const HYPERLIQUID: &str = "hyperliquid";

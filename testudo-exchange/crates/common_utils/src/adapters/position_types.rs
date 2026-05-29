@@ -3,6 +3,9 @@
 //! This module defines types for tracking Binance positions,
 //! comparing shadow vs live positions, and handling sync errors.
 
+// @anchor exchange:common_utils:position_types
+// @tags infra
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

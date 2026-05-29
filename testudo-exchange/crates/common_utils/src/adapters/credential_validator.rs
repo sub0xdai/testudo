@@ -3,6 +3,9 @@
 //! Validates exchange API credentials before storing them.
 //! Calls the exchange API to verify authentication and permissions.
 
+// @anchor exchange:common_utils:credential_validator
+// @tags infra
+
 use super::ccxt_auth::CCXTAuthenticator;
 use serde::{Deserialize, Serialize};
 use std::fmt;

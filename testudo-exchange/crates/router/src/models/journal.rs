@@ -1,3 +1,6 @@
+// @anchor exchange:router:journal
+// @tags api
+
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

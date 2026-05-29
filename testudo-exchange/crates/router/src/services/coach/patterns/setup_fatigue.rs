@@ -17,6 +17,9 @@
 //! gated by `MIN_WEEK_TRADES` so a single bad trade can't trigger fatigue.
 //! Untagged trades are excluded — fatigue is a property of a specific setup.
 
+// @anchor exchange:router:setup_fatigue
+// @tags api
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde_json::json;

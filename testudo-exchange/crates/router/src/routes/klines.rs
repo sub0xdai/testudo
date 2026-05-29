@@ -1,3 +1,6 @@
+// @anchor exchange:router:klines
+// @tags api
+
 use actix_web::web::Data;
 use db_processor::query::get_klines_timeseries_data;
 

@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TradeRow
+ * @tags ui */
+
 import { For, Show } from 'solid-js'
 import type { JournalTrade, JournalTag } from '../../api/client'
 import { formatCurrency, formatPrice, formatDuration, formatDate, pnlColor, rColor, sideColor } from '../../lib/formatters'

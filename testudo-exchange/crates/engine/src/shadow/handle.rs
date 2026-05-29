@@ -4,6 +4,9 @@
 //! command interface and async handle used by all external callers.
 //! The actor loop and dispatch logic live in `actor.rs`.
 
+// @anchor exchange:engine:handle
+// @tags domain
+
 use rust_decimal::Decimal;
 use std::time::Instant;
 use tokio::sync::{mpsc, oneshot};

@@ -1,3 +1,6 @@
+// @anchor exchange:router:context
+// @tags api
+
 use actix_web::HttpResponse;
 use serde_json::{json, Map, Value};
 

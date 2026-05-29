@@ -5,6 +5,9 @@
 //! User-scoped: only the owning user can see events.
 //! Uses the same dual-auth pattern as trade_management (JWT Bearer or X-User-Id).
 
+// @anchor exchange:router:trade_events
+// @tags api
+
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Serialize;
 use sqlx::Row;

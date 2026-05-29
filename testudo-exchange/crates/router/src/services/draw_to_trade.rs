@@ -15,6 +15,9 @@
 //!
 //! The pipeline will reject/fail if internal processing exceeds 50ms.
 
+// @anchor exchange:router:draw_to_trade
+// @tags api
+
 use common_utils::adapters::execution_types::{
     CexGateway, DispatchResult, ExecutionError, LatencyExceededError, SignedOrder, TradeIntent,
 };

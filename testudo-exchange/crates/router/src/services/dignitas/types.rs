@@ -4,6 +4,9 @@
 //! Wire-format: Decimals serialize as JSON strings (rust_decimal default),
 //! dates as `"YYYY-MM-DD"` strings (chrono + serde).
 
+// @anchor exchange:router:types
+// @tags api
+
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

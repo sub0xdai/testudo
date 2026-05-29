@@ -1,3 +1,6 @@
+// @anchor exchange:sqlx_postgres:lib
+// @tags infra
+
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 

@@ -7,6 +7,9 @@
 //!
 //! All endpoints require JWT authentication (SIWE bearer token).
 
+// @anchor exchange:router:agent_journal
+// @tags api
+
 use actix_web::{web, HttpResponse};
 
 use crate::{

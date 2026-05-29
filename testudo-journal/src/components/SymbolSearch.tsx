@@ -1,3 +1,6 @@
+/** @anchor ui:journal:SymbolSearch
+ * @tags ui */
+
 import { createSignal, createMemo, Show, For } from 'solid-js'
 import type { SymbolCount } from '../api/client'
 import { useEscapeClose } from '../lib/useEscapeClose'

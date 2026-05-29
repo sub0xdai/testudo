@@ -1,3 +1,6 @@
+// @anchor exchange:router:exchanges
+// @tags api
+
 use actix_web::{web, HttpResponse, Result};
 use uuid::Uuid;
 use validator::Validate;

@@ -25,6 +25,9 @@
 //! a "typical disciplined setup". At that point `edge_multiplier == 1`,
 //! so the baseline fixed-fractional risk flows through unchanged.
 
+// @anchor exchange:common_utils:kelly
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::sync::OnceLock;

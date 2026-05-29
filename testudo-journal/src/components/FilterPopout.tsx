@@ -1,3 +1,6 @@
+/** @anchor ui:journal:FilterPopout
+ * @tags ui */
+
 import { createSignal, onCleanup } from 'solid-js'
 import { useFilters } from './filterContext'
 import { SymbolSearch } from './SymbolSearch'

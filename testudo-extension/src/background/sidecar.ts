@@ -1,3 +1,6 @@
+/** @anchor api:ext-bg:sidecar
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import { SidecarHealthResponseSchema } from "../schemas";
 import { apiRequest } from "./api";

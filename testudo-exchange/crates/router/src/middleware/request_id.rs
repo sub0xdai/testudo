@@ -3,6 +3,9 @@
 //! Extracts `X-Request-Id` from incoming request headers or generates a new UUID v4.
 //! Inserts into request extensions for downstream extraction and adds to response headers.
 
+// @anchor exchange:router:request_id
+// @tags api
+
 use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::header::{HeaderName, HeaderValue};
 use actix_web::HttpMessage;

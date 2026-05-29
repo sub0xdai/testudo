@@ -1,3 +1,6 @@
+// @anchor exchange:engine:engine
+// @tags domain
+
 use crate::engine::error::CoreEngineError;
 use crate::engine::orderbook::OrderBook;
 use crate::types::engine::{

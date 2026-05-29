@@ -1,3 +1,6 @@
+/** @anchor ui:journal:CoachReport
+ * @tags ui */
+
 import { For, Show } from 'solid-js'
 import type {
   StoredCoachReport,

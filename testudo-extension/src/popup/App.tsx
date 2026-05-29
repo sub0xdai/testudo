@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:App
+ * @tags ui */
+
 import { createSignal, onMount, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import { AuthProvider, useAuth } from "./context/AuthContext";

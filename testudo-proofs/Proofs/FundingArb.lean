@@ -1,5 +1,8 @@
 import Mathlib
 
+/-- @anchor domain:proofs:funding-arb
+    @tags domain -/
+
 /-!
 # Funding Rate No-Arbitrage Bound
 

@@ -1,6 +1,9 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::new_without_default)]
 
+// @anchor exchange:common_utils:lib
+// @tags infra
+
 pub mod adapters;
 pub mod agent;
 pub mod journal;

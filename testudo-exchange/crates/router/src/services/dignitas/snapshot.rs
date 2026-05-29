@@ -8,6 +8,9 @@
 //! functions, applies formula, handles cold-start, upserts into
 //! `dignitas_history`.
 
+// @anchor exchange:router:snapshot
+// @tags api
+
 use chrono::{Duration, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

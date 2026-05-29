@@ -38,6 +38,9 @@
 //!
 //! All existing error types automatically convert via `From` traits.
 
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 pub mod exchange;
 
 pub use exchange::ExchangeError;

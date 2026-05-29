@@ -1,5 +1,8 @@
 import Mathlib
 
+/-- @anchor domain:proofs:momentum-autocorr
+    @tags domain -/
+
 /-!
 # Momentum Autocorrelation
 

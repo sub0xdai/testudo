@@ -1,3 +1,6 @@
+/** @anchor ui:journal:HeroEquityCurve
+ * @tags ui */
+
 import { onMount, onCleanup, createEffect, Show } from 'solid-js'
 import { createChart, type IChartApi, type ISeriesApi, BaselineSeries } from 'lightweight-charts'
 import type { EquityPoint } from '../api/client'

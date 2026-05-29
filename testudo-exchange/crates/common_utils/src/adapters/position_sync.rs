@@ -8,6 +8,9 @@
 //! - Compare shadow positions with Binance positions
 //! - Reconcile positions (alert user of discrepancies - no auto-reconcile)
 
+// @anchor exchange:common_utils:position_sync
+// @tags infra
+
 use super::binance_executor::BinanceExecutor;
 use super::execution_types::symbol;
 use super::position_types::{

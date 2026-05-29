@@ -1,3 +1,6 @@
+/** @anchor ui:journal:DignitasPanel
+ * @tags ui */
+
 import { createResource, createSignal, onCleanup, Show } from 'solid-js'
 import { A } from '@solidjs/router'
 import { DignitasSparkline } from './DignitasSparkline'

@@ -1,3 +1,6 @@
+/** @anchor ui:journal:ReturnHistogram
+ * @tags ui */
+
 import { createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'

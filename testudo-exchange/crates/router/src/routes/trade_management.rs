@@ -17,6 +17,9 @@
 //! All order creation routes run through the Decision Loop for risk validation.
 //! Orders are marked as `risk_validated = true` only after approval.
 
+// @anchor exchange:router:trade_management
+// @tags api
+
 use actix_web::{http::StatusCode, web, HttpRequest, HttpResponse};
 use engine::{
     BreakEvenConfig, EngineHandle, OrderGroup, OrderGroupStatus, OrderRole, ShadowEngine,

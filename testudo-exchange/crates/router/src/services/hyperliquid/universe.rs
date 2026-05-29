@@ -4,6 +4,9 @@
 //! This module caches the `coin_name → (asset_index, sz_decimals)` mapping
 //! fetched from the Hyperliquid `meta` API at startup.
 
+// @anchor exchange:router:universe
+// @tags api
+
 use hyperliquid_sdk_rs::{InfoProvider, Network};
 use std::collections::HashMap;
 use thiserror::Error;

@@ -3,6 +3,9 @@
 //! Provides API endpoints for fetching and managing shadow/paper trading account balances.
 //! These are virtual balances managed by the ShadowEngine for paper trading.
 
+// @anchor exchange:router:paper_balance
+// @tags api
+
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Serialize;
 use uuid::Uuid;

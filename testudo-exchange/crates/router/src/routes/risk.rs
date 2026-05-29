@@ -2,6 +2,9 @@
 //!
 //! GET /api/v1/risk/snapshot — unified live risk view across every connected venue.
 
+// @anchor exchange:router:risk
+// @tags api
+
 use actix_web::{web, HttpResponse, Result};
 use serde::Serialize;
 

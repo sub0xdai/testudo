@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:integration_example
+// @tags infra
+
 /// Integration example showing how User and ExchangeAccount models work together
 ///
 /// # Example Integration

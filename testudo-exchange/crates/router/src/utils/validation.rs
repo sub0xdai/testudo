@@ -3,6 +3,9 @@
 //! This module implements semantic compression by creating validated types
 //! that eliminate the need for repeated UUID parsing and validation across routes.
 
+// @anchor exchange:router:validation
+// @tags api
+
 use actix_web::error::{ErrorBadRequest, ErrorForbidden};
 use actix_web::Error as ActixError;
 use std::str::FromStr;

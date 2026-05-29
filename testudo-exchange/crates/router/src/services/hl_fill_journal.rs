@@ -5,6 +5,9 @@
 //! convert Hyperliquid closing fills into `TradeCloseEvent` without
 //! duplicating logic.
 
+// @anchor exchange:router:hl_fill_journal
+// @tags api
+
 use chrono::{DateTime, TimeZone, Utc};
 use hyperliquid_sdk_rs::types::info_types::UserFillByTime;
 use rust_decimal::Decimal;

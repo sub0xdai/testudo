@@ -8,6 +8,9 @@
 //! - Background sync every 60 seconds
 //! - Alert user of discrepancies (no auto-reconcile)
 
+// @anchor exchange:router:sync_service
+// @tags api
+
 use common_utils::adapters::{
     BinanceExecutor, PositionSyncer, ShadowPositionInfo, SyncError, SyncResult,
 };

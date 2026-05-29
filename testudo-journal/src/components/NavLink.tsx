@@ -1,3 +1,6 @@
+/** @anchor ui:journal:NavLink
+ * @tags ui */
+
 import type { JSX } from 'solid-js'
 import { A } from '@solidjs/router'
 import { routePrefetchers } from '../lib/route-prefetch'

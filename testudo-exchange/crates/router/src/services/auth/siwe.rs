@@ -1,3 +1,6 @@
+// @anchor exchange:router:siwe
+// @tags api
+
 use alloy::primitives::{eip191_hash_message, Address, Signature};
 use chrono::{DateTime, Utc};
 use common_utils::auth::AuthError;

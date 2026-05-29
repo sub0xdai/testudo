@@ -4,6 +4,9 @@
 //! The core principle is "Conservative Wins": always use the smallest
 //! position size among all calculated methods.
 
+// @anchor exchange:common_utils:sizing
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 

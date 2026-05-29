@@ -1,3 +1,6 @@
+/** @anchor protocol:ext-bridge:content
+ * @tags protocol */
+
 import { scrapeTradeSetup, scrapeSymbol, scrapeTimeframe } from "./scraper";
 
 // MV3 provides Promise-based APIs natively — no polyfill needed in content scripts

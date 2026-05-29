@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:errors
+// @tags infra
+
 /// Encryption error types for secure API key management
 ///
 /// This module defines comprehensive error handling for the encryption service,

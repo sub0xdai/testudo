@@ -1,3 +1,6 @@
+// @anchor exchange:engine:engine
+// @tags domain
+
 use crate::engine::error::CoreEngineError;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

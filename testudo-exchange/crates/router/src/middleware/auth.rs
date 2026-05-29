@@ -1,3 +1,6 @@
+// @anchor exchange:router:auth
+// @tags api
+
 use actix_web::{
     body::BoxBody,
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},

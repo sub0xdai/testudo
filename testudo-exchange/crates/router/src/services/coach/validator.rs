@@ -18,6 +18,9 @@
 //! `[T-` + exactly 8 lowercase hex characters + `]`, consistent with the
 //! `short_id` format produced by `digest::make_short_id`).
 
+// @anchor exchange:router:validator
+// @tags api
+
 use std::collections::HashSet;
 
 use lazy_static::lazy_static;

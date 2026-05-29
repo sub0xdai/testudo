@@ -1,3 +1,6 @@
+// @anchor exchange:router:user
+// @tags api
+
 use common_utils::{
     auth::AuthError,
     models::User,

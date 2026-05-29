@@ -1,3 +1,6 @@
+/** @anchor ui:journal:EntryCard
+ * @tags ui */
+
 import { Show, For, createSignal, onCleanup } from 'solid-js'
 import type { JournalEntry, JournalTag } from '../../api/client'
 import { MarkdownPreview } from './MarkdownPreview'

@@ -10,6 +10,9 @@
 #![allow(clippy::ptr_arg)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::unwrap_or_default)]
+// @anchor exchange:engine:lib
+// @tags domain
+
 // Deny unwrap() and eprintln! in production code — tests are exempt via cfg_attr
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 #![cfg_attr(not(test), deny(clippy::print_stderr))]

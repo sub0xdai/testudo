@@ -15,6 +15,9 @@
 //! When both streaks fire in the same week, the win streak is reported
 //! (single-flag contract matches the other detectors).
 
+// @anchor exchange:router:streak_risk
+// @tags api
+
 use rust_decimal::Decimal;
 use serde_json::json;
 use uuid::Uuid;

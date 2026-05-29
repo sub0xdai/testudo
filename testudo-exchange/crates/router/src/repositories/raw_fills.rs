@@ -1,3 +1,6 @@
+// @anchor exchange:router:raw_fills
+// @tags api
+
 use chrono::{DateTime, Utc};
 use common_utils::journal::{FillSide, RawFill};
 use rust_decimal::Decimal;

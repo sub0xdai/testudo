@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:PublicProfile
+ * @tags ui */
+
 import { createResource, createEffect, Show, onMount, onCleanup } from 'solid-js'
 import { useParams } from '@solidjs/router'
 import { fetchPublicProfile } from '../api/client'

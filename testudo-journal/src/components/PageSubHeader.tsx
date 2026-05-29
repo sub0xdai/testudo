@@ -1,3 +1,6 @@
+/** @anchor ui:journal:PageSubHeader
+ * @tags ui */
+
 import { createSignal, Show, For, type JSX } from 'solid-js'
 import { useFilters } from './filterContext'
 import { FilterPopout } from './FilterPopout'

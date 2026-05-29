@@ -26,6 +26,9 @@
 //! tx.commit(&mut orders, &mut groups)?; // All or nothing
 //! ```
 
+// @anchor exchange:engine:transaction
+// @tags domain
+
 use rust_decimal::Decimal;
 use uuid::Uuid;
 

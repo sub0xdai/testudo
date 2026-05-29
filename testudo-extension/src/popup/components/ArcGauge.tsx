@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:ArcGauge
+ * @tags ui */
+
 import { For } from "solid-js";
 
 interface ArcGaugeProps {

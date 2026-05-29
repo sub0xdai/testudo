@@ -5,6 +5,9 @@
 //!
 //! Division-by-zero guards are mandatory (see AGENTS.md).
 
+// @anchor exchange:router:inputs
+// @tags api
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 

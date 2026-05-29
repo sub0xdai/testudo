@@ -1,3 +1,6 @@
+// @anchor exchange:router:depth
+// @tags api
+
 use actix_web::web::Data;
 use pg_queue::QueueName;
 use std::time::{Duration, Instant};

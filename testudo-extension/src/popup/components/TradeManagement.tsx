@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:TradeManagement
+ * @tags ui */
+
 import { createSignal, createMemo, onMount, Show } from "solid-js";
 import browser from "webextension-polyfill";
 import type { z } from "zod";

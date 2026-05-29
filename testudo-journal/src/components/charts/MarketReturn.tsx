@@ -1,3 +1,6 @@
+/** @anchor ui:journal:MarketReturn
+ * @tags ui */
+
 import { createResource, createMemo } from 'solid-js'
 import { ChartContainer } from './ChartContainer'
 import { EChart } from './EChart'

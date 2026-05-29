@@ -3,6 +3,9 @@
 //! Backend is the enforcement gate; the frontend mirrors this list for UX
 //! only. The set is loaded once into a `OnceLock<HashSet>`.
 
+// @anchor exchange:router:reserved
+// @tags api
+
 use std::collections::HashSet;
 use std::sync::OnceLock;
 

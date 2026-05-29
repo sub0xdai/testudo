@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:collections
+ * @tags infra */
+
 // JNL-17: Nested collections — localStorage-backed persistence layer
 // Swap localStorage calls for API calls when backend adds /journal/collections
 

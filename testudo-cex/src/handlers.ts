@@ -1,3 +1,6 @@
+/** @anchor api:cex:handlers
+ * @tags api */
+
 /**
  * HTTP route handlers — same endpoint contract as testudo-ccxt.
  * Reads come from safe-cex's in-memory Store (no HTTP round-trip to exchange).

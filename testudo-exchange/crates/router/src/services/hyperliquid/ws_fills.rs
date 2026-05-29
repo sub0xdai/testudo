@@ -15,6 +15,9 @@
 //! - Reconnect reconciliation via REST fill query
 //! - OID-based deduplication
 
+// @anchor exchange:router:ws_fills
+// @tags api
+
 use alloy::primitives::Address;
 use futures_util::{SinkExt, StreamExt};
 use hyperliquid_sdk_rs::{

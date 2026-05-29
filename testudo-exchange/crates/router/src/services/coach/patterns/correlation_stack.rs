@@ -15,6 +15,9 @@
 //! The `stables` bucket is excluded (base-asset stablecoins are rarely
 //! directional positions and would be noise in the coach output).
 
+// @anchor exchange:router:correlation_stack
+// @tags api
+
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Duration, Utc};

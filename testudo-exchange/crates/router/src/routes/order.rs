@@ -1,3 +1,6 @@
+// @anchor exchange:router:order
+// @tags api
+
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 use rust_decimal_macros::dec;
 use std::str::FromStr;

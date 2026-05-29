@@ -1,3 +1,6 @@
+/** @anchor api:cex:reconciler
+ * @tags api */
+
 /**
  * Polling reconciler — CEX-06.
  *

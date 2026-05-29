@@ -1,3 +1,6 @@
+/** @anchor api:cex:gateway
+ * @tags api */
+
 import { createExchange } from "safe-cex";
 import type { BaseExchange } from "safe-cex/dist/exchanges/base";
 import type {

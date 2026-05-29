@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TagManager
+ * @tags ui */
+
 import { createSignal, Show, For, onMount } from 'solid-js'
 import { createTag, updateTag, deleteTag, type JournalTag } from '../../api/client'
 import { useEscapeClose } from '../../lib/useEscapeClose'

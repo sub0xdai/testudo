@@ -21,6 +21,9 @@
 //! - Setup match is case-insensitive (`LOWER(setup_tag) = LOWER($2)`) to
 //!   agree with RSK-02 `setup_breakdown` normalization.
 
+// @anchor exchange:router:calibration
+// @tags api
+
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;

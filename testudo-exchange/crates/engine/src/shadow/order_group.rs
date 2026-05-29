@@ -10,6 +10,9 @@
 //! - When SL fills, TPs are cancelled (and vice versa)
 //! - Cancelling entry cancels all linked orders
 
+// @anchor exchange:engine:order_group
+// @tags domain
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

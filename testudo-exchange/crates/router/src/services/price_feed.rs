@@ -24,6 +24,9 @@
 //! └──────────────────────────────┘
 //! ```
 
+// @anchor exchange:router:price_feed
+// @tags api
+
 use crate::services::trade_manager::service::TradeManagerService;
 use common_utils::services::binance_data::BinanceDataService;
 use engine::EngineHandle;

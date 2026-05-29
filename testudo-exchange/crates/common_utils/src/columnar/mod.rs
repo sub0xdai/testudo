@@ -3,6 +3,9 @@
 //! Implements Structure-of-Arrays (SoA) pattern for ~25% smaller JSON payloads.
 //! See: https://en.wikipedia.org/wiki/AoS_and_SoA
 
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 

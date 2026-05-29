@@ -1,3 +1,6 @@
+/** @anchor api:cex:symbols
+ * @tags api */
+
 /**
  * Symbol normalization between Rust backend format and safe-cex exchange format.
  *

@@ -9,6 +9,9 @@
 //! this Sun 00:00)). `compute_week_bounds` is a pure helper so the boundary
 //! logic is unit-testable without a clock.
 
+// @anchor exchange:router:schedule
+// @tags api
+
 use std::sync::Arc;
 use std::time::Duration;
 

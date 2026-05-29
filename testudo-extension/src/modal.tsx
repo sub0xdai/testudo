@@ -1,3 +1,6 @@
+/** @anchor api:ext:modal
+ * @tags api */
+
 import { render } from "solid-js/web";
 import TradeForm from "./components/TradeForm";
 import type { TradeSetup } from "./scraper";

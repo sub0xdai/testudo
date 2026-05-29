@@ -1,3 +1,6 @@
+/** @anchor ui:journal:CorrelationStack
+ * @tags ui */
+
 import { For, Show } from 'solid-js'
 import type { CorrelationBucket, RiskSnapshot } from '../../api/client'
 import { HelpTip } from '../HelpTip'

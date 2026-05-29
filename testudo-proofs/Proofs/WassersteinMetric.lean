@@ -1,5 +1,8 @@
 import Mathlib
 
+/-- @anchor domain:proofs:wasserstein
+    @tags domain -/
+
 /-!
 # 1-Wasserstein Metric on ℝ (Empirical Distributions)
 

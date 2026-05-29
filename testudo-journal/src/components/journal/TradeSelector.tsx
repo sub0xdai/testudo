@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TradeSelector
+ * @tags ui */
+
 import { createSignal, createResource, Show, For } from 'solid-js'
 import { fetchTrades, type JournalTrade } from '../../api/client'
 import { formatCurrency, formatDateFull } from '../../lib/formatters'

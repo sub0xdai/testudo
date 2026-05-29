@@ -1,0 +1,2699 @@
+{
+  "surfaces": {
+    "tokens": {
+      "locations": [
+        ".anchor/generate_manifest.py"
+      ],
+      "tags": [
+        "on nearby line"
+      ]
+    },
+    "ui:journal:vitest": {
+      "locations": [
+        "testudo-journal/vitest.unit.config.ts"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "exchange:common_utils:order_usage": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/examples/order_usage.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:agent": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/agent.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:lib": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/lib.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:integration_example": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/models/integration_example.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:exchange_account": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/models/exchange_account.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:mod": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/models/mod.rs",
+        "testudo-exchange/crates/common_utils/src/errors/mod.rs",
+        "testudo-exchange/crates/common_utils/src/crypto/mod.rs",
+        "testudo-exchange/crates/common_utils/src/journal/mod.rs",
+        "testudo-exchange/crates/common_utils/src/adapters/mod.rs",
+        "testudo-exchange/crates/common_utils/src/columnar/mod.rs",
+        "testudo-exchange/crates/common_utils/src/risk/mod.rs",
+        "testudo-exchange/crates/common_utils/src/auth/mod.rs",
+        "testudo-exchange/crates/common_utils/src/services/mod.rs",
+        "testudo-exchange/crates/common_utils/src/types/mod.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:user": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/models/user.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:exchange": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/errors/exchange.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:errors": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/crypto/errors.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:vault": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/crypto/vault.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:tests": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/journal/tests.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:account_state": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/account_state.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:position_types": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/position_types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:market_data": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/market_data.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:credential_validator": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/credential_validator.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:ccxt_types": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/ccxt_types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:ccxt_auth": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/ccxt_auth.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:binance_executor": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/binance_executor.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:position_sync": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/position_sync.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:execution_types": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/adapters/execution_types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:validator": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/validator.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:pg_storage": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/pg_storage.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:sizing": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/sizing.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:config": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/config.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:service": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/service.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:position_sizer": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/position_sizer.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:types": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:kelly": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/risk/kelly.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:binance_data": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/services/binance_data.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:pg_cache": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/services/pg_cache.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:exchange_adapter": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/types/exchange_adapter.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:order": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/types/order.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:common_utils:credentials": {
+      "locations": [
+        "testudo-exchange/crates/common_utils/src/types/credentials.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:router:metrics": {
+      "locations": [
+        "testudo-exchange/crates/router/src/metrics.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:config": {
+      "locations": [
+        "testudo-exchange/crates/router/src/config.rs",
+        "testudo-exchange/crates/router/src/services/dignitas/config.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:main": {
+      "locations": [
+        "testudo-exchange/crates/router/src/main.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:decision_loop": {
+      "locations": [
+        "testudo-exchange/crates/router/src/decision_loop.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent_journal": {
+      "locations": [
+        "testudo-exchange/crates/router/src/models/agent_journal.rs",
+        "testudo-exchange/crates/router/src/services/agent_journal.rs",
+        "testudo-exchange/crates/router/src/routes/agent_journal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:journal": {
+      "locations": [
+        "testudo-exchange/crates/router/src/models/journal.rs",
+        "testudo-exchange/crates/router/src/routes/journal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:mod": {
+      "locations": [
+        "testudo-exchange/crates/router/src/models/mod.rs",
+        "testudo-exchange/crates/router/src/adapters/mod.rs",
+        "testudo-exchange/crates/router/src/middleware/mod.rs",
+        "testudo-exchange/crates/router/src/exchange/mod.rs",
+        "testudo-exchange/crates/router/src/services/mod.rs",
+        "testudo-exchange/crates/router/src/utils/mod.rs",
+        "testudo-exchange/crates/router/src/repositories/mod.rs",
+        "testudo-exchange/crates/router/src/routes/mod.rs",
+        "testudo-exchange/crates/router/src/types/mod.rs",
+        "testudo-exchange/crates/router/src/services/journal_syncer/mod.rs",
+        "testudo-exchange/crates/router/src/services/dignitas/mod.rs",
+        "testudo-exchange/crates/router/src/services/hyperliquid/mod.rs",
+        "testudo-exchange/crates/router/src/services/trade_manager/mod.rs",
+        "testudo-exchange/crates/router/src/services/auth/mod.rs",
+        "testudo-exchange/crates/router/src/services/coach/mod.rs",
+        "testudo-exchange/crates/router/src/services/coach/patterns/mod.rs",
+        "testudo-exchange/crates/router/src/services/dignitas/handles/mod.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent_signal": {
+      "locations": [
+        "testudo-exchange/crates/router/src/models/agent_signal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:shadow_adapter": {
+      "locations": [
+        "testudo-exchange/crates/router/src/adapters/shadow_adapter.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:content_negotiation": {
+      "locations": [
+        "testudo-exchange/crates/router/src/middleware/content_negotiation.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:auth": {
+      "locations": [
+        "testudo-exchange/crates/router/src/middleware/auth.rs",
+        "testudo-exchange/crates/router/src/routes/auth.rs",
+        "testudo-exchange/crates/router/src/types/auth.rs",
+        "testudo-exchange/crates/router/src/services/hyperliquid/auth.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:request_id": {
+      "locations": [
+        "testudo-exchange/crates/router/src/middleware/request_id.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:cex_client": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/cex_client.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:journal_timeseries": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/journal_timeseries.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:balance_snapshot": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/balance_snapshot.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:hl_fill_journal": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/hl_fill_journal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:fill_detector": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/fill_detector.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:sizing_preview": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/sizing_preview.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:journal_stats": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/journal_stats.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:trade_event_writer": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/trade_event_writer.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:calibration": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/calibration.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:cex_history": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/cex_history.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:rehydration": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/rehydration.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:price_feed": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/price_feed.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:exchange_api": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/exchange_api.rs",
+        "testudo-exchange/crates/router/src/services/hyperliquid/exchange_api.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:sync_service": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/sync_service.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:ws_subscription_manager": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/ws_subscription_manager.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:execution_service": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/execution_service.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:risk_snapshot": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/risk_snapshot.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:import_worker": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/import_worker.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:draw_to_trade": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/draw_to_trade.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:integration_tests": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/integration_tests.rs",
+        "testudo-exchange/crates/router/src/services/journal_syncer/integration_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent_alert": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/agent_alert.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:reconciliation": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/reconciliation.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:journal_service": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/journal_service.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent_journal_formatter": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/agent_journal_formatter.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:reconnect": {
+      "locations": [
+        "testudo-exchange/crates/router/src/utils/reconnect.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:responses": {
+      "locations": [
+        "testudo-exchange/crates/router/src/utils/responses.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:auth_helpers": {
+      "locations": [
+        "testudo-exchange/crates/router/src/utils/auth_helpers.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:validation": {
+      "locations": [
+        "testudo-exchange/crates/router/src/utils/validation.rs",
+        "testudo-exchange/crates/router/src/services/dignitas/handles/validation.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:raw_fills": {
+      "locations": [
+        "testudo-exchange/crates/router/src/repositories/raw_fills.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:session": {
+      "locations": [
+        "testudo-exchange/crates/router/src/repositories/session.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:exchange_account": {
+      "locations": [
+        "testudo-exchange/crates/router/src/repositories/exchange_account.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:user": {
+      "locations": [
+        "testudo-exchange/crates/router/src/repositories/user.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:tickers": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/tickers.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:imports": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/imports.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:klines": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/klines.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:trade": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/trade.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:internal": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/internal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:signal": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/signal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:market_data": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/market_data.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:paper_balance": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/paper_balance.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:public_profile": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/public_profile.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:dignitas": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/dignitas.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:exchanges": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/exchanges.rs",
+        "testudo-exchange/crates/router/src/types/exchanges.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:trade_events": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/trade_events.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:coach": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/coach.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:trade_management": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/trade_management.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:sync": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/sync.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:depth": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/depth.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:order": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/order.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:context": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/context.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:risk_config": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/risk_config.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:user_settings": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/user_settings.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:risk": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/risk.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:exchange_names": {
+      "locations": [
+        "testudo-exchange/crates/router/src/types/exchange_names.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:app": {
+      "locations": [
+        "testudo-exchange/crates/router/src/types/app.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:routes": {
+      "locations": [
+        "testudo-exchange/crates/router/src/types/routes.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:ccxt": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/journal_syncer/ccxt.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:syncer": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/journal_syncer/syncer.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:hyperliquid": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/journal_syncer/hyperliquid.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:inputs": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/inputs.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:snapshot": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/snapshot.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:schedule": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/schedule.rs",
+        "testudo-exchange/crates/router/src/services/coach/schedule.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:streak": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/streak.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:types": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/types.rs",
+        "testudo-exchange/crates/router/src/services/trade_manager/types.rs",
+        "testudo-exchange/crates/router/src/services/coach/types.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:universe": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/hyperliquid/universe.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:ws_fills": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/hyperliquid/ws_fills.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:routing": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/hyperliquid/routing.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent_approval": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/hyperliquid/agent_approval.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:evaluator": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/trade_manager/evaluator.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:repository": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/trade_manager/repository.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:service": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/trade_manager/service.rs",
+        "testudo-exchange/crates/router/src/services/coach/service.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:siwe": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/auth/siwe.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:pairing_store": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/auth/pairing_store.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:siws": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/auth/siws.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:nonce_store": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/auth/nonce_store.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:digest": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/digest.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:narrator": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/narrator.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:validator": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/validator.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:correlation_stack": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/patterns/correlation_stack.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:streak_risk": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/patterns/streak_risk.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:sizing_drift": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/patterns/sizing_drift.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:session_anomaly": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/patterns/session_anomaly.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:frequency_spike": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/patterns/frequency_spike.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:setup_fatigue": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/coach/patterns/setup_fatigue.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:profanity": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/handles/profanity.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:reserved": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/dignitas/handles/reserved.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:sqlx_postgres:lib": {
+      "locations": [
+        "testudo-exchange/crates/sqlx_postgres/src/lib.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:sqlx_postgres:errors": {
+      "locations": [
+        "testudo-exchange/crates/sqlx_postgres/src/repositories/errors.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:sqlx_postgres:mod": {
+      "locations": [
+        "testudo-exchange/crates/sqlx_postgres/src/repositories/mod.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:sqlx_postgres:api_keys": {
+      "locations": [
+        "testudo-exchange/crates/sqlx_postgres/src/repositories/api_keys.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:sqlx_postgres:types": {
+      "locations": [
+        "testudo-exchange/crates/sqlx_postgres/src/repositories/types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:db-processor:query": {
+      "locations": [
+        "testudo-exchange/crates/db-processor/src/query.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:db-processor:seed": {
+      "locations": [
+        "testudo-exchange/crates/db-processor/src/seed.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:db-processor:lib": {
+      "locations": [
+        "testudo-exchange/crates/db-processor/src/lib.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:db-processor:types": {
+      "locations": [
+        "testudo-exchange/crates/db-processor/src/types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:db-processor:main": {
+      "locations": [
+        "testudo-exchange/crates/db-processor/src/main.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:ws-stream:pg_ws_manager": {
+      "locations": [
+        "testudo-exchange/crates/ws-stream/src/pg_ws_manager.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:ws-stream:user": {
+      "locations": [
+        "testudo-exchange/crates/ws-stream/src/user.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:ws-stream:types": {
+      "locations": [
+        "testudo-exchange/crates/ws-stream/src/types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:ws-stream:main": {
+      "locations": [
+        "testudo-exchange/crates/ws-stream/src/main.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:engine:order": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/order.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:lib": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/lib.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:user": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/user.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:main": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/main.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:orderbook": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/engine/orderbook.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:mod": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/engine/mod.rs",
+        "testudo-exchange/crates/engine/src/shadow/mod.rs",
+        "testudo-exchange/crates/engine/src/types/mod.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:error": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/engine/error.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:ws_stream": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/engine/ws_stream.rs",
+        "testudo-exchange/crates/engine/src/types/ws_stream.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:engine": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/engine/engine.rs",
+        "testudo-exchange/crates/engine/src/types/engine.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:positions": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/positions.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:transaction": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/transaction.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:balances": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/balances.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:orders": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/orders.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:trade_event": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/trade_event.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:actor": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/actor.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:handle": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/handle.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:order_group": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/shadow/order_group.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:engine:db": {
+      "locations": [
+        "testudo-exchange/crates/engine/src/types/db.rs"
+      ],
+      "tags": [
+        "domain"
+      ]
+    },
+    "exchange:pg_queue:errors": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/errors.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:pg_queue:listen": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/listen.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:pg_queue:cache": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/cache.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:pg_queue:notify": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/notify.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:pg_queue:queue": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/queue.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:pg_queue:lib": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/lib.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "exchange:pg_queue:request_response": {
+      "locations": [
+        "testudo-exchange/crates/pg_queue/src/request_response.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:tailwind-preset": {
+      "locations": [
+        "packages/tailwind-preset/index.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "domain:proofs:kelly-optimal": {
+      "locations": [
+        "testudo-proofs/Proofs/KellyOptimal.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "domain:proofs:funding-arb": {
+      "locations": [
+        "testudo-proofs/Proofs/FundingArb.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "domain:proofs:delta-neutral": {
+      "locations": [
+        "testudo-proofs/Proofs/DeltaNeutral.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "domain:proofs:wasserstein": {
+      "locations": [
+        "testudo-proofs/Proofs/WassersteinMetric.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "domain:proofs:ou-mreversion": {
+      "locations": [
+        "testudo-proofs/Proofs/OUMreversion.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "domain:proofs:momentum-autocorr": {
+      "locations": [
+        "testudo-proofs/Proofs/MomentumAutocorr.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "domain:proofs:gamblers-ruin": {
+      "locations": [
+        "testudo-proofs/Proofs/GamblersRuin.lean"
+      ],
+      "tags": [
+        "domain -"
+      ]
+    },
+    "api:cex:types": {
+      "locations": [
+        "testudo-cex/src/types.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:ws-fills": {
+      "locations": [
+        "testudo-cex/src/ws-fills.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:handlers": {
+      "locations": [
+        "testudo-cex/src/handlers.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:metrics": {
+      "locations": [
+        "testudo-cex/src/metrics.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:reconciler": {
+      "locations": [
+        "testudo-cex/src/reconciler.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:server": {
+      "locations": [
+        "testudo-cex/src/server.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:symbols": {
+      "locations": [
+        "testudo-cex/src/symbols.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:gateway": {
+      "locations": [
+        "testudo-cex/src/gateway.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:cex:psk": {
+      "locations": [
+        "testudo-cex/src/middleware/psk.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "ui:web:content": {
+      "locations": [
+        "testudo-web/src/content.config.ts"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:web-comp:ThemeToggle": {
+      "locations": [
+        "testudo-web/src/components/ThemeToggle.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:web:schema": {
+      "locations": [
+        "testudo-web/src/content/vs/schema.ts"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:sheaf:ingest_bench": {
+      "locations": [
+        "sheaf-engine/benches/ingest_bench.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:laplacian_bench": {
+      "locations": [
+        "sheaf-engine/benches/laplacian_bench.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:signals": {
+      "locations": [
+        "sheaf-engine/src/signals.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:tick": {
+      "locations": [
+        "sheaf-engine/src/tick.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:health": {
+      "locations": [
+        "sheaf-engine/src/health.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:source": {
+      "locations": [
+        "sheaf-engine/src/source.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:align": {
+      "locations": [
+        "sheaf-engine/src/align.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:error": {
+      "locations": [
+        "sheaf-engine/src/error.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:graph": {
+      "locations": [
+        "sheaf-engine/src/graph.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:laplacian": {
+      "locations": [
+        "sheaf-engine/src/laplacian.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:lib": {
+      "locations": [
+        "sheaf-engine/src/lib.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:config": {
+      "locations": [
+        "sheaf-engine/src/config.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:service": {
+      "locations": [
+        "sheaf-engine/src/service.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:main": {
+      "locations": [
+        "sheaf-engine/src/main.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:sheaf:clock": {
+      "locations": [
+        "sheaf-engine/src/clock.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal:sw-template": {
+      "locations": [
+        "testudo-journal/public/sw.template.js"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-script:inject-sw-shell": {
+      "locations": [
+        "testudo-journal/scripts/inject-sw-shell.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "ui:journal:index": {
+      "locations": [
+        "testudo-journal/src/index.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "api:journal:client": {
+      "locations": [
+        "testudo-journal/src/api/client.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "ui:journal-page:Trades": {
+      "locations": [
+        "testudo-journal/src/pages/Trades.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal-page:PublicProfile": {
+      "locations": [
+        "testudo-journal/src/pages/PublicProfile.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal-page:Pair": {
+      "locations": [
+        "testudo-journal/src/pages/Pair.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal-page:Coach": {
+      "locations": [
+        "testudo-journal/src/pages/Coach.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal-page:Account": {
+      "locations": [
+        "testudo-journal/src/pages/Account.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal-page:Journal": {
+      "locations": [
+        "testudo-journal/src/pages/Journal.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal-page:Dignitas": {
+      "locations": [
+        "testudo-journal/src/pages/Dignitas.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:SymbolSearch": {
+      "locations": [
+        "testudo-journal/src/components/SymbolSearch.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:PageSubHeader": {
+      "locations": [
+        "testudo-journal/src/components/PageSubHeader.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DignitasPill": {
+      "locations": [
+        "testudo-journal/src/components/DignitasPill.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:FilterPopout": {
+      "locations": [
+        "testudo-journal/src/components/FilterPopout.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:NavLink": {
+      "locations": [
+        "testudo-journal/src/components/NavLink.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:ChartSelector": {
+      "locations": [
+        "testudo-journal/src/components/ChartSelector.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:HelpTip": {
+      "locations": [
+        "testudo-journal/src/components/HelpTip.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:SkeletonBar": {
+      "locations": [
+        "testudo-journal/src/components/SkeletonBar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:filterContext": {
+      "locations": [
+        "testudo-journal/src/components/filterContext.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:Overview": {
+      "locations": [
+        "testudo-journal/src/components/Overview.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DignitasPanel": {
+      "locations": [
+        "testudo-journal/src/components/DignitasPanel.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:StatSection": {
+      "locations": [
+        "testudo-journal/src/components/StatSection.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:Layout": {
+      "locations": [
+        "testudo-journal/src/components/Layout.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:HeroEquityCurve": {
+      "locations": [
+        "testudo-journal/src/components/HeroEquityCurve.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DignitasSparkline": {
+      "locations": [
+        "testudo-journal/src/components/DignitasSparkline.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:journal-lib:route-prefetch": {
+      "locations": [
+        "testudo-journal/src/lib/route-prefetch.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:tokens": {
+      "locations": [
+        "testudo-journal/src/lib/tokens.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:echarts-theme": {
+      "locations": [
+        "testudo-journal/src/lib/echarts-theme.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:collections": {
+      "locations": [
+        "testudo-journal/src/lib/collections.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:ws": {
+      "locations": [
+        "testudo-journal/src/lib/ws.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:createFocusTrap": {
+      "locations": [
+        "testudo-journal/src/lib/createFocusTrap.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:echarts-setup": {
+      "locations": [
+        "testudo-journal/src/lib/echarts-setup.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:theme-observer": {
+      "locations": [
+        "testudo-journal/src/lib/theme-observer.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:formatters": {
+      "locations": [
+        "testudo-journal/src/lib/formatters.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:useEscapeClose": {
+      "locations": [
+        "testudo-journal/src/lib/useEscapeClose.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:cache": {
+      "locations": [
+        "testudo-journal/src/lib/cache.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:export": {
+      "locations": [
+        "testudo-journal/src/lib/export.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:help-content": {
+      "locations": [
+        "testudo-journal/src/lib/help-content.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-lib:sw-route": {
+      "locations": [
+        "testudo-journal/src/lib/sw-route.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "ui:journal-context:AuthContext": {
+      "locations": [
+        "testudo-journal/src/context/AuthContext.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:journal-config:wallet": {
+      "locations": [
+        "testudo-journal/src/config/wallet.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:journal-config:dignitas-reserved-handles": {
+      "locations": [
+        "testudo-journal/src/config/dignitas-reserved-handles.ts"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "ui:journal:CorrelationStack": {
+      "locations": [
+        "testudo-journal/src/components/account/CorrelationStack.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:AddExchangeCard": {
+      "locations": [
+        "testudo-journal/src/components/account/AddExchangeCard.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:IdentitySettings": {
+      "locations": [
+        "testudo-journal/src/components/account/IdentitySettings.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:WalletConnectFlow": {
+      "locations": [
+        "testudo-journal/src/components/account/WalletConnectFlow.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:OnboardingFlow": {
+      "locations": [
+        "testudo-journal/src/components/account/OnboardingFlow.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:CoachBanner": {
+      "locations": [
+        "testudo-journal/src/components/account/CoachBanner.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:AddExchangeForm": {
+      "locations": [
+        "testudo-journal/src/components/account/AddExchangeForm.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:ExchangeCard": {
+      "locations": [
+        "testudo-journal/src/components/account/ExchangeCard.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:ActivePositions": {
+      "locations": [
+        "testudo-journal/src/components/trades/ActivePositions.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TradeRow": {
+      "locations": [
+        "testudo-journal/src/components/trades/TradeRow.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TagBadge": {
+      "locations": [
+        "testudo-journal/src/components/trades/TagBadge.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TradeDetail": {
+      "locations": [
+        "testudo-journal/src/components/trades/TradeDetail.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TradeTable": {
+      "locations": [
+        "testudo-journal/src/components/trades/TradeTable.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:KellyInputsModal": {
+      "locations": [
+        "testudo-journal/src/components/trades/KellyInputsModal.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:Pagination": {
+      "locations": [
+        "testudo-journal/src/components/trades/Pagination.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TradeFilters": {
+      "locations": [
+        "testudo-journal/src/components/trades/TradeFilters.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:JournalTimeline": {
+      "locations": [
+        "testudo-journal/src/components/journal/JournalTimeline.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:EntryCard": {
+      "locations": [
+        "testudo-journal/src/components/journal/EntryCard.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TagSelector": {
+      "locations": [
+        "testudo-journal/src/components/journal/TagSelector.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DatabaseTable": {
+      "locations": [
+        "testudo-journal/src/components/journal/DatabaseTable.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:StorageBar": {
+      "locations": [
+        "testudo-journal/src/components/journal/StorageBar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TagManager": {
+      "locations": [
+        "testudo-journal/src/components/journal/TagManager.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:MarkdownPreview": {
+      "locations": [
+        "testudo-journal/src/components/journal/MarkdownPreview.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:EntryEditor": {
+      "locations": [
+        "testudo-journal/src/components/journal/EntryEditor.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:CollectionSidebar": {
+      "locations": [
+        "testudo-journal/src/components/journal/CollectionSidebar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TradeSelector": {
+      "locations": [
+        "testudo-journal/src/components/journal/TradeSelector.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:Stepper": {
+      "locations": [
+        "testudo-journal/src/components/onboarding/Stepper.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:useOnboardingState": {
+      "locations": [
+        "testudo-journal/src/components/onboarding/useOnboardingState.ts"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DurationScatter": {
+      "locations": [
+        "testudo-journal/src/components/charts/DurationScatter.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:TimeHeatmap": {
+      "locations": [
+        "testudo-journal/src/components/charts/TimeHeatmap.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:PnlCalendar": {
+      "locations": [
+        "testudo-journal/src/components/charts/PnlCalendar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:CumulativeProfit": {
+      "locations": [
+        "testudo-journal/src/components/charts/CumulativeProfit.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:ReturnHistogram": {
+      "locations": [
+        "testudo-journal/src/components/charts/ReturnHistogram.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:PnlTreemap": {
+      "locations": [
+        "testudo-journal/src/components/charts/PnlTreemap.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:PerformanceRadar": {
+      "locations": [
+        "testudo-journal/src/components/charts/PerformanceRadar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DailyPnl": {
+      "locations": [
+        "testudo-journal/src/components/charts/DailyPnl.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:ChartContainer": {
+      "locations": [
+        "testudo-journal/src/components/charts/ChartContainer.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:DrawdownChart": {
+      "locations": [
+        "testudo-journal/src/components/charts/DrawdownChart.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:SymbolBreakdown": {
+      "locations": [
+        "testudo-journal/src/components/charts/SymbolBreakdown.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:MarketReturn": {
+      "locations": [
+        "testudo-journal/src/components/charts/MarketReturn.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:EChart": {
+      "locations": [
+        "testudo-journal/src/components/charts/EChart.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:ExpectancyBySymbol": {
+      "locations": [
+        "testudo-journal/src/components/charts/ExpectancyBySymbol.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:HoldingPeriodAnalysis": {
+      "locations": [
+        "testudo-journal/src/components/charts/HoldingPeriodAnalysis.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:SymbolDonut": {
+      "locations": [
+        "testudo-journal/src/components/charts/SymbolDonut.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:SetupBreakdown": {
+      "locations": [
+        "testudo-journal/src/components/charts/SetupBreakdown.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:NarrativeBlock": {
+      "locations": [
+        "testudo-journal/src/components/coach/NarrativeBlock.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:CoachArchive": {
+      "locations": [
+        "testudo-journal/src/components/coach/CoachArchive.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:journal:CoachReport": {
+      "locations": [
+        "testudo-journal/src/components/coach/CoachReport.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "api:ext:types": {
+      "locations": [
+        "testudo-extension/src/types.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "protocol:ext-bridge:page-bridge": {
+      "locations": [
+        "testudo-extension/src/page-bridge.ts"
+      ],
+      "tags": [
+        "protocol"
+      ]
+    },
+    "api:ext:background": {
+      "locations": [
+        "testudo-extension/src/background.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext:utils": {
+      "locations": [
+        "testudo-extension/src/utils.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext:scraper": {
+      "locations": [
+        "testudo-extension/src/scraper.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext:schemas": {
+      "locations": [
+        "testudo-extension/src/schemas.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext:modal": {
+      "locations": [
+        "testudo-extension/src/modal.tsx"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "protocol:ext-bridge:content": {
+      "locations": [
+        "testudo-extension/src/content.ts"
+      ],
+      "tags": [
+        "protocol"
+      ]
+    },
+    "protocol:ext-bridge:widget-hook": {
+      "locations": [
+        "testudo-extension/src/widget-hook.ts"
+      ],
+      "tags": [
+        "protocol"
+      ]
+    },
+    "api:ext-bg:api": {
+      "locations": [
+        "testudo-extension/src/background/api.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext-bg:handlers": {
+      "locations": [
+        "testudo-extension/src/background/handlers.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext-bg:auth": {
+      "locations": [
+        "testudo-extension/src/background/auth.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext-bg:websocket": {
+      "locations": [
+        "testudo-extension/src/background/websocket.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext-bg:sidecar": {
+      "locations": [
+        "testudo-extension/src/background/sidecar.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext-bg:storage": {
+      "locations": [
+        "testudo-extension/src/background/storage.ts"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "api:ext:TradeForm": {
+      "locations": [
+        "testudo-extension/src/components/TradeForm.tsx"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "ui:ext-popup:index": {
+      "locations": [
+        "testudo-extension/src/popup/index.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:theme-init": {
+      "locations": [
+        "testudo-extension/src/popup/theme-init.js"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:App": {
+      "locations": [
+        "testudo-extension/src/popup/App.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:ExchangeToggle": {
+      "locations": [
+        "testudo-extension/src/popup/components/ExchangeToggle.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:StatusBar": {
+      "locations": [
+        "testudo-extension/src/popup/components/StatusBar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:TabBar": {
+      "locations": [
+        "testudo-extension/src/popup/components/TabBar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:LoginPreview": {
+      "locations": [
+        "testudo-extension/src/popup/components/LoginPreview.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:TradeManagement": {
+      "locations": [
+        "testudo-extension/src/popup/components/TradeManagement.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:PositionCard": {
+      "locations": [
+        "testudo-extension/src/popup/components/PositionCard.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:ArcGauge": {
+      "locations": [
+        "testudo-extension/src/popup/components/ArcGauge.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:MainView": {
+      "locations": [
+        "testudo-extension/src/popup/components/MainView.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:HeaderBar": {
+      "locations": [
+        "testudo-extension/src/popup/components/HeaderBar.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:ActiveOrders": {
+      "locations": [
+        "testudo-extension/src/popup/components/ActiveOrders.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:PairView": {
+      "locations": [
+        "testudo-extension/src/popup/components/PairView.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:AuthSection": {
+      "locations": [
+        "testudo-extension/src/popup/components/AuthSection.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:ExchangeSelector": {
+      "locations": [
+        "testudo-extension/src/popup/components/ExchangeSelector.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "ui:ext-popup:AuthContext": {
+      "locations": [
+        "testudo-extension/src/popup/context/AuthContext.tsx"
+      ],
+      "tags": [
+        "ui"
+      ]
+    }
+  },
+  "meta": {
+    "generated_from": "/home/m0xu/1-projects/testudo"
+  }
+}

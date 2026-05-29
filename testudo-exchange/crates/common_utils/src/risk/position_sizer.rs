@@ -16,6 +16,9 @@
 //! 2. Size from fixed risk amount
 //! 3. Maximum position size limit
 
+// @anchor exchange:common_utils:position_sizer
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};

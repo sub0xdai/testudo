@@ -3,6 +3,9 @@
 //! User-defined risk parameters that control position sizing
 //! and trade validation.
 
+// @anchor exchange:common_utils:config
+// @tags infra
+
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};

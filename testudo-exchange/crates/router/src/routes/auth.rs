@@ -1,3 +1,6 @@
+// @anchor exchange:router:auth
+// @tags api
+
 use actix_web::cookie::time::Duration as CookieDuration;
 use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{web, HttpRequest, HttpResponse, Result};

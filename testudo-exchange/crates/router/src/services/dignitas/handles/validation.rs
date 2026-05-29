@@ -3,6 +3,9 @@
 //! No DB interaction. Trims, normalises to lowercase, enforces format,
 //! then checks the reserved list and profanity filter.
 
+// @anchor exchange:router:validation
+// @tags api
+
 use std::sync::OnceLock;
 
 use regex::Regex;

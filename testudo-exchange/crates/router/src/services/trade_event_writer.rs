@@ -10,6 +10,9 @@
 //!
 //! Journal writes are handled by the JournalSyncer pull pipeline (JNL-SYNC-01).
 
+// @anchor exchange:router:trade_event_writer
+// @tags api
+
 use engine::{TradeEvent, TradeEventType};
 use sqlx::PgPool;
 use std::time::Duration;

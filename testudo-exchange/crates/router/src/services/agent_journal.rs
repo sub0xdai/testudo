@@ -4,6 +4,9 @@
 //! Pure composition layer over existing analytics machinery. No new SQL, no new
 //! crates, no mutable state.
 
+// @anchor exchange:router:agent_journal
+// @tags api
+
 use chrono::{NaiveDate, Utc};
 use rust_decimal::Decimal;
 use sqlx::PgPool;

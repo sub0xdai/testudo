@@ -1,3 +1,6 @@
+// @anchor exchange:db-processor:query
+// @tags infra
+
 use crate::types::{DbTrade, KlineData, TickerData};
 use chrono::{DateTime, Duration, Utc};
 use rust_decimal::Decimal;

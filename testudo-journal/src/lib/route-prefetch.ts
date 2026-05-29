@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:route-prefetch
+ * @tags infra */
+
 import { prefetch, stableHash } from './cache'
 import {
   fetchOverview,

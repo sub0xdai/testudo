@@ -1,3 +1,6 @@
+/** @anchor ui:ext-popup:ExchangeSelector
+ * @tags ui */
+
 import { createSignal, createMemo, onMount, onCleanup, Show, For } from "solid-js";
 import browser from "webextension-polyfill";
 import type { ExchangeAccount } from "../../types";

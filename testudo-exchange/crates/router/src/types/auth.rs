@@ -1,3 +1,6 @@
+// @anchor exchange:router:auth
+// @tags api
+
 use common_utils::models::User;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

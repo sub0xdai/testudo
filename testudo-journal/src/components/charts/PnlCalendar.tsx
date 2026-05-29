@@ -1,3 +1,6 @@
+/** @anchor ui:journal:PnlCalendar
+ * @tags ui */
+
 import { createSignal, createMemo, Show, For } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { useFilters } from '../filterContext'

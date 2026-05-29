@@ -3,6 +3,9 @@
 //! The sheaf engine is configured via CLI flags (primary) with
 //! environment variable fallback. No config file in v0.1.
 
+// @anchor infra:sheaf:config
+// @tags infra
+
 use clap::Parser;
 
 /// Sheaf Engine — cellular sheaf topology perception layer.

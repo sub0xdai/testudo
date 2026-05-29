@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 pub mod credentials;
 pub mod exchange_adapter;
 pub mod order;

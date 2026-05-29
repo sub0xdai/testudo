@@ -1,3 +1,6 @@
+/** @anchor ui:journal:DatabaseTable
+ * @tags ui */
+
 import { createSignal, createMemo, For, Show } from 'solid-js'
 import type { JournalEntry, JournalTag } from '../../api/client'
 import { TagBadge } from '../trades/TagBadge'

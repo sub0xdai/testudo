@@ -2,6 +2,9 @@
 //!
 //! This module provides credential types for exchange adapter authentication.
 
+// @anchor exchange:common_utils:credentials
+// @tags infra
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

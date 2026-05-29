@@ -1,3 +1,6 @@
+/** @anchor ui:journal:PerformanceRadar
+ * @tags ui */
+
 import { createMemo, createResource, Show } from 'solid-js'
 import { EChart } from './EChart'
 import { HelpTip } from '../HelpTip'

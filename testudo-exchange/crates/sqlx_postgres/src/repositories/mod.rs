@@ -10,6 +10,9 @@
 //! - Interface Segregation: Focused traits for specific operations
 //! - Dependency Inversion: Depends on abstractions, not concretions
 
+// @anchor exchange:sqlx_postgres:mod
+// @tags infra
+
 pub mod api_keys;
 pub mod errors;
 pub mod types;

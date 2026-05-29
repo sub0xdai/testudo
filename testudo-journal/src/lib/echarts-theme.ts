@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:echarts-theme
+ * @tags infra */
+
 import { echarts } from './echarts-setup'
 import { getTagPalette, getChartBg, getBorder, getTextTertiary, getTextSecondary, getTextPrimary, getBgHover } from './tokens'
 

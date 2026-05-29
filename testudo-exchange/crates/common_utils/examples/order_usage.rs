@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:order_usage
+// @tags infra
+
 // Example usage of StandardOrder type
 // Run with: cargo run --example order_usage
 

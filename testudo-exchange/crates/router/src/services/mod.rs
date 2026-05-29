@@ -2,6 +2,9 @@
 //!
 //! Background services and service layer for the router.
 
+// @anchor exchange:router:mod
+// @tags api
+
 pub mod agent_alert;
 pub mod agent_journal;
 pub mod agent_journal_formatter;

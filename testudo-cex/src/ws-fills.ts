@@ -1,3 +1,6 @@
+/** @anchor api:cex:ws-fills
+ * @tags api */
+
 /**
  * WebSocket fill streaming — CEX-05.
  *

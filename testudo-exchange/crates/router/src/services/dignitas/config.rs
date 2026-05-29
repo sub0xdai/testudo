@@ -3,6 +3,9 @@
 //! Weights are read fresh on each daily snapshot run so that changes to the
 //! `dignitas_config` table take effect without a redeploy (FR-6).
 
+// @anchor exchange:router:config
+// @tags api
+
 use std::collections::HashMap;
 
 use rust_decimal::Decimal;

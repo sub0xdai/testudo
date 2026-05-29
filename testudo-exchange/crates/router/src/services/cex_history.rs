@@ -3,6 +3,9 @@
 //! Bypasses the CCXT/safe-cex sidecar — calls exchange REST APIs directly
 //! with HMAC signing. Only used for read-only history import.
 
+// @anchor exchange:router:cex_history
+// @tags api
+
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use chrono::{DateTime, Utc};

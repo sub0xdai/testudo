@@ -4,6 +4,9 @@
 //! All endpoints require JWT auth (wired via `JwtMiddleware` in `main.rs`).
 //! GET endpoints return `{ ... }` JSON objects; PATCH/DELETE returns 204 No Content.
 
+// @anchor exchange:router:dignitas
+// @tags api
+
 use actix_web::{web, HttpResponse, Result};
 use chrono::{Duration, Utc};
 use rust_decimal::Decimal;

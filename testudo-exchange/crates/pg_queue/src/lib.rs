@@ -5,6 +5,9 @@
 //! - Pub/Sub: Using LISTEN/NOTIFY for real-time messaging
 //! - Cache: Using UNLOGGED tables with per-query TTL checks
 
+// @anchor exchange:pg_queue:lib
+// @tags infra
+
 pub mod cache;
 pub mod errors;
 pub mod listen;

@@ -1,3 +1,6 @@
+/** @anchor api:ext-bg:api
+ * @tags api */
+
 import browser from "webextension-polyfill";
 import type {
   TradePayload,

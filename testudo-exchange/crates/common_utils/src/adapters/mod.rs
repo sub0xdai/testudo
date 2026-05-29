@@ -1,3 +1,6 @@
+// @anchor exchange:common_utils:mod
+// @tags infra
+
 /// Exchange Adapter Module
 ///
 /// Provides exchange integration adapters for the Testudo platform.

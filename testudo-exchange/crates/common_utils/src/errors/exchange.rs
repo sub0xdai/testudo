@@ -35,6 +35,9 @@
 //! }
 //! ```
 
+// @anchor exchange:common_utils:exchange
+// @tags infra
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

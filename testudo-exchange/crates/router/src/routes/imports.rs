@@ -1,5 +1,8 @@
 //! HIST-01: Trade history import endpoints
 
+// @anchor exchange:router:imports
+// @tags api
+
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

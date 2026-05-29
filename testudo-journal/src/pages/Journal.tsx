@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:Journal
+ * @tags ui */
+
 import { JournalTimeline } from '../components/journal/JournalTimeline'
 import { HelpTip } from '../components/HelpTip'
 import { HELP } from '../lib/help-content'

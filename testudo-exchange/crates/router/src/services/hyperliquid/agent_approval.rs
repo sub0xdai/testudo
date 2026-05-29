@@ -7,6 +7,9 @@
 //! then the backend forwards the signature to Hyperliquid. This ensures the
 //! user's main private key never touches the server.
 
+// @anchor exchange:router:agent_approval
+// @tags api
+
 use hyperliquid_sdk_rs::Network;
 use serde_json::{json, Value};
 use thiserror::Error;

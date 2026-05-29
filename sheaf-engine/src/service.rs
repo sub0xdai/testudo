@@ -3,6 +3,9 @@
 //! Implements the `SheafEngine` proto service with bidirectional streaming.
 //! Agent sends `ConfigureGraph` requests, engine streams `SignalBatch` responses.
 
+// @anchor infra:sheaf:service
+// @tags infra
+
 use crate::align::AlignmentConfig;
 use crate::config::RuntimeConfig;
 use crate::graph::{GraphConfig, SheafGraph};
@@ -130,7 +133,7 @@ impl SheafEngine for SheafEngineService {
                         triangular_edges: g.edge_count_by_type(
                             crate::graph::EdgeType::Triangular,
                         ) as u32,
-                        connected_components: 1,
+                        connected_components: 0, // TODO: compute connected components from graph
                         isolated_nodes: g.down_node_count() as u32,
                         is_connected: g.down_node_count() == 0,
                         nodes: vec![],

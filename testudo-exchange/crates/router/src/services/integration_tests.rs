@@ -6,6 +6,9 @@
 //!
 //! All code in this module is `#[cfg(test)]` only — no production impact.
 
+// @anchor exchange:router:integration_tests
+// @tags api
+
 use crate::services::exchange_api::{
     AmendRequest, ApiOrderType, ExchangeApi, ExchangeApiError, OrderSide, PlaceOrderRequest,
     PlaceOrderResult, PositionInfo,

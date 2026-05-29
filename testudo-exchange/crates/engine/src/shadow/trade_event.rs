@@ -4,6 +4,9 @@
 //! Events are emitted by the `EngineActor` via `try_send()` (non-blocking) and
 //! persisted by the `TradeEventWriter` in the router crate.
 
+// @anchor exchange:engine:trade_event
+// @tags domain
+
 use serde::Serialize;
 use uuid::Uuid;
 

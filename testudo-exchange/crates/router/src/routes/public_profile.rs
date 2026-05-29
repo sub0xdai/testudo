@@ -3,6 +3,9 @@
 //! GET /api/v1/public/profile/:handle — no auth required.
 //! Per-IP rate limit: 60 req/min (dedicated limiter, separate from auth limiter).
 
+// @anchor exchange:router:public_profile
+// @tags api
+
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 use std::net::IpAddr;
 

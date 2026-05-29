@@ -1,3 +1,6 @@
+/** @anchor ui:journal:ChartContainer
+ * @tags ui */
+
 import { Show, type JSX } from 'solid-js'
 import { SkeletonBar } from '../SkeletonBar'
 

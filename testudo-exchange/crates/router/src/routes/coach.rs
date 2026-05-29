@@ -4,6 +4,9 @@
 //! Responses use the envelope `{ data: ... }` for read endpoints; mutating
 //! endpoints return 204 No Content on success.
 
+// @anchor exchange:router:coach
+// @tags api
+
 use actix_web::{web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

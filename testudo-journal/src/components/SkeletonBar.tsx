@@ -1,3 +1,6 @@
+/** @anchor ui:journal:SkeletonBar
+ * @tags ui */
+
 export function SkeletonBar(props: { width?: string; height?: string; class?: string }) {
   return (
     <div

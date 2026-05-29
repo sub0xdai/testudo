@@ -1,3 +1,6 @@
+/** @anchor ui:journal:StatSection
+ * @tags ui */
+
 import { For } from 'solid-js'
 
 export interface StatItem {

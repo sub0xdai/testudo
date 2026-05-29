@@ -1,3 +1,6 @@
+// @anchor exchange:engine:ws_stream
+// @tags domain
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

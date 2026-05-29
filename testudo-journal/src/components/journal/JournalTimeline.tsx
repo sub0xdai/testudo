@@ -1,3 +1,6 @@
+/** @anchor ui:journal:JournalTimeline
+ * @tags ui */
+
 import { createSignal, createResource, Show, For, createMemo } from 'solid-js'
 import { useCachedResource, invalidate } from '../../lib/cache'
 import { useAuth } from '../../context/AuthContext'

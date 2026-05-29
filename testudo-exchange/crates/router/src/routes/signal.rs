@@ -4,6 +4,9 @@
 //! runs it through the DecisionLoop risk engine, and places an order.
 //! Supports shadow (paper) and live (CEX/Hyperliquid) execution.
 
+// @anchor exchange:router:signal
+// @tags api
+
 use actix_web::{web, HttpResponse};
 use rust_decimal::Decimal;
 use sqlx::PgPool;

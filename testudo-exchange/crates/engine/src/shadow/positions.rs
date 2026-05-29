@@ -9,6 +9,9 @@
 //! - Unrealized P&L = (Entry Price - Mark Price) * Size for shorts
 //! - Uses Mark Price (not bid/ask) to avoid P&L noise from spread flickering
 
+// @anchor exchange:engine:positions
+// @tags domain
+
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

@@ -9,6 +9,9 @@
 //! - `Concerning` when off-hours trade count ≥ `CONCERNING_OFF_HOURS_COUNT` (4)
 //! - `Notable` otherwise (≥ `OFF_HOURS_COUNT_THRESHOLD`, i.e. 2 or 3)
 
+// @anchor exchange:router:session_anomaly
+// @tags api
+
 use std::collections::HashSet;
 
 use chrono::Timelike;

@@ -1,3 +1,6 @@
+/** @anchor ui:journal:MarkdownPreview
+ * @tags ui */
+
 import { createMemo } from 'solid-js'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'

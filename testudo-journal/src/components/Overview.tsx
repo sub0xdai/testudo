@@ -1,3 +1,6 @@
+/** @anchor ui:journal:Overview
+ * @tags ui */
+
 import { createSignal, createResource, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
 import { useCachedBatch } from '../lib/cache'
 import { SkeletonBar } from './SkeletonBar'

@@ -1,3 +1,6 @@
+/** @anchor api:cex:types
+ * @tags api */
+
 /**
  * Shared types and request/response shapes.
  */

@@ -8,6 +8,9 @@
 //!
 //! Reference: `github.com/flox-foundation/flox` — `ExchangeClockSync`
 
+// @anchor infra:sheaf:clock
+// @tags infra
+
 /// Per-venue clock synchronization state.
 ///
 /// Updated on every heartbeat/pong from the venue. Converts exchange

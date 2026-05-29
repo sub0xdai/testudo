@@ -1,3 +1,6 @@
+// @anchor exchange:ws-stream:main
+// @tags infra
+
 use futures_util::StreamExt;
 use pg_queue::ListenerService;
 use sqlx_postgres::PostgresDb;

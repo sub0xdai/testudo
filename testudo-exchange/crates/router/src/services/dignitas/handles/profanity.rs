@@ -4,6 +4,9 @@
 //! names are accepted over a weak filter (per spec risk 3).
 //! Substring search on the normalised (lowercase) handle.
 
+// @anchor exchange:router:profanity
+// @tags api
+
 use std::sync::OnceLock;
 
 static SUBSTRINGS: OnceLock<Vec<&'static str>> = OnceLock::new();

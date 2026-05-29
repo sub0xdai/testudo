@@ -15,6 +15,9 @@
 //! `cache_hit_ratio`, `generated_at` — are filled in by the narrator after
 //! the call so the LLM can't lie about them.
 
+// @anchor exchange:router:narrator
+// @tags api
+
 use std::sync::Mutex;
 
 use async_openai::config::OpenAIConfig;

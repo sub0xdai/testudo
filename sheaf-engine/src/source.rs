@@ -6,6 +6,9 @@
 //!
 //! Sources are orchestrated by `SourceOrchestrator`.
 
+// @anchor infra:sheaf:source
+// @tags infra
+
 use crate::tick::TickBatch;
 use futures::stream::Stream;
 use std::pin::Pin;

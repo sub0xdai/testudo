@@ -6,6 +6,9 @@
 //!
 //! Hooked into the ENG-01a daily scheduler (`schedule::run_batch`).
 
+// @anchor exchange:router:streak
+// @tags api
+
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use sqlx::PgPool;

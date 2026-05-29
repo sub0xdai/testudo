@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TradeDetail
+ * @tags ui */
+
 import { createSignal, createResource, Show, For, onCleanup, onMount } from 'solid-js'
 import { useCachedResource, invalidate } from '../../lib/cache'
 import { useAuth } from '../../context/AuthContext'

@@ -11,6 +11,9 @@
 //! - `Concerning` when the multiplier is ≥ `CONCERNING_MULTIPLIER_THRESHOLD` (2.5×)
 //! - `Notable` otherwise (strictly > 1.5×)
 
+// @anchor exchange:router:frequency_spike
+// @tags api
+
 use chrono::Duration;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

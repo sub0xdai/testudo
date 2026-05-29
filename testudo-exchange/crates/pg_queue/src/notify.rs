@@ -1,3 +1,6 @@
+// @anchor exchange:pg_queue:notify
+// @tags infra
+
 use crate::errors::Result;
 use sqlx::PgPool;
 

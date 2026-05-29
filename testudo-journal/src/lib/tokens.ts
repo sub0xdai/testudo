@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:tokens
+ * @tags infra */
+
 // Single source of truth for all design tokens used in JS chart configs
 // Reads from CSS custom properties at runtime, with fallbacks for SSR/testing
 // Cool marble palette — blue-shifted to read as stone/silver

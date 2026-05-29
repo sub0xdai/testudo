@@ -3,6 +3,9 @@
 //! Simulates n venues reporting ETH prices, with all-pairs arbitrage edges
 //! (complete graph). This is the worst-case edge density for a given node count.
 
+// @anchor infra:sheaf:laplacian_bench
+// @tags infra
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use sheaf_engine::graph::{
     Edge, EdgeId, EdgeOrigin, EdgeStatus, EdgeType, GraphConfig,

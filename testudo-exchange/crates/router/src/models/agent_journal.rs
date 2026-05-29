@@ -4,6 +4,9 @@
 //! formatted as LLM-optimized markdown (for direct context-window injection).
 //! All financial values use `rust_decimal::Decimal`.
 
+// @anchor exchange:router:agent_journal
+// @tags api
+
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

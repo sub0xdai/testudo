@@ -1,3 +1,6 @@
+// @anchor exchange:pg_queue:queue
+// @tags infra
+
 use crate::errors::Result;
 use serde::{de::DeserializeOwned, Serialize};
 use sqlx::PgPool;

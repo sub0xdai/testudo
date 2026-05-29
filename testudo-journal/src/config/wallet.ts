@@ -1,3 +1,6 @@
+/** @anchor infra:journal-config:wallet
+ * @tags infra */
+
 import type { AppKit } from '@reown/appkit'
 
 let walletPromise: Promise<AppKit> | null = null

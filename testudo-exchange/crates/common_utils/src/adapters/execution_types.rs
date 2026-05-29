@@ -9,6 +9,9 @@
 //! - [`SignedOrder`]: Ready-for-CEX order with calculated size
 //! - [`CexGateway`]: Trait for exchange dispatch (real or mock)
 
+// @anchor exchange:common_utils:execution_types
+// @tags infra
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::future::Future;

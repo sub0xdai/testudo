@@ -1,3 +1,6 @@
+/** @anchor ui:journal-page:Dignitas
+ * @tags ui */
+
 import { createResource, For, Show } from 'solid-js'
 import { A } from '@solidjs/router'
 import { fetchDignitasMe, type DignitasCurrent } from '../api/client'

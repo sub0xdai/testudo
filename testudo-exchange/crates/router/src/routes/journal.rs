@@ -1,3 +1,6 @@
+// @anchor exchange:router:journal
+// @tags api
+
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 use chrono::{DateTime, NaiveDate, Utc};

@@ -1,3 +1,6 @@
+/** @anchor ui:journal:TradeFilters
+ * @tags ui */
+
 import { Show } from 'solid-js'
 
 export interface TradeFilterState {

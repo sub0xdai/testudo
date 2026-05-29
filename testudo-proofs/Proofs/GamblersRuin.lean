@@ -1,5 +1,8 @@
 import Mathlib
 
+/-- @anchor domain:proofs:gamblers-ruin
+    @tags domain -/
+
 /-!
 # Gambler's Ruin — Symmetric Random Walk
 

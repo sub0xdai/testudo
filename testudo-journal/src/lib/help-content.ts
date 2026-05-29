@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:help-content
+ * @tags infra */
+
 export const HELP: Record<string, string> = {
   // ── Page Explainers ──
   'page.overview': 'Your trading dashboard. Performance stats, P&L calendar, and analytical charts — all filtered by exchange, symbol, and time period.',

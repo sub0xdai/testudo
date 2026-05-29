@@ -10,6 +10,9 @@
 //! - GET /market-data/klines?symbol=BTC_USDC&interval=1h&limit=100
 //! - GET /market-data/markets
 
+// @anchor exchange:router:market_data
+// @tags api
+
 use actix_web::{web, HttpResponse};
 use common_utils::columnar::ColumnarOrderBook;
 use common_utils::services::BinanceDataService;

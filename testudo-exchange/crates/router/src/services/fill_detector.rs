@@ -12,6 +12,9 @@
 //! events are sent to the trade_event_tx channel for atomic co-write in
 //! TradeEventWriter's flush transaction.
 
+// @anchor exchange:router:fill_detector
+// @tags api
+
 use crate::services::cex_client::OrderUpdateEvent;
 use crate::services::exchange_api::{ExchangeApi, ExchangeApiError};
 use engine::shadow::order_group::{OrderGroup, OrderGroupStatus};

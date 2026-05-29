@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "engine": "harness-compiled"
+  },
+  "rules": {
+    "token_identifier": "@anchor",
+    "tag_identifier": "@tags",
+    "enforce_on_commit": true,
+    "max_lines_without_anchor": 150,
+    "allowed_prefixes": ["api", "domain", "infra", "worker", "ui", "protocol"]
+  },
+  "exclude": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.git-rewrite/**",
+    "**/.claude/worktrees/**",
+    "**/target/**",
+    "**/dist/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/.lake/**",
+    "**/testudo-proofs/**"
+  ]
+}

@@ -1,3 +1,6 @@
+// @anchor exchange:router:content_negotiation
+// @tags api
+
 use actix_web::HttpRequest;
 use serde::Serialize;
 use serde_json::Value;

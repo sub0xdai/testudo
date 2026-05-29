@@ -1,3 +1,6 @@
+/** @anchor api:ext:TradeForm
+ * @tags api */
+
 import { createSignal, createMemo, createEffect, onMount, onCleanup, Show, For } from "solid-js";
 import type { TradeSetup } from "../scraper";
 import type { ManagementPreset, BalanceResponse } from "../types";

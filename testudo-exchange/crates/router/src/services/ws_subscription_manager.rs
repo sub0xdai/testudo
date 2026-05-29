@@ -1,3 +1,6 @@
+// @anchor exchange:router:ws_subscription_manager
+// @tags api
+
 use crate::metrics;
 use crate::repositories::exchange_account::{ExchangeAccountRepository, RepoError};
 use crate::services::cex_client::{CexClient, OrderUpdateEvent, SidecarCredentials};

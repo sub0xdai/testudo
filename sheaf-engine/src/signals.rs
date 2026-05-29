@@ -5,6 +5,9 @@
 //! format: enriched structural observations with `context` fields
 //! that the LLM reads directly.
 
+// @anchor infra:sheaf:signals
+// @tags infra
+
 use crate::graph::{EdgeType, SheafGraph};
 use crate::laplacian::LaplacianResult;
 use crate::proto;
@@ -221,10 +224,10 @@ fn extract_node_health(
 
     for (id, node) in &graph.nodes {
         match node.status {
-            crate::graph::NodeStatus::Stale { since } => {
-                // Only emit if newly stale (within last 2 windows)
-                if now - since < 200_000_000 {
-                    signals.push(proto::TopologySignal {
+            crate::graph::NodeStatus::Stale { since }
+                if now - since < 200_000_000 =>
+            {
+                signals.push(proto::TopologySignal {
                         r#type: proto::SignalType::NodeStale as i32,
                         severity: proto::Severity::Notable as i32,
                         context: format!(
@@ -245,11 +248,11 @@ fn extract_node_health(
                             ),
                         ),
                     });
-                }
             }
-            crate::graph::NodeStatus::Down { since } => {
-                if now - since < 200_000_000 {
-                    signals.push(proto::TopologySignal {
+            crate::graph::NodeStatus::Down { since }
+                if now - since < 200_000_000 =>
+            {
+                signals.push(proto::TopologySignal {
                         r#type: proto::SignalType::NodeDown as i32,
                         severity: proto::Severity::Critical as i32,
                         context: format!(
@@ -270,16 +273,10 @@ fn extract_node_health(
                             ),
                         ),
                     });
-                }
             }
             _ => {}
         }
     }
 }
 
-fn now_ns() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos() as i64
-}
+pub(crate) use crate::graph::now_ns;

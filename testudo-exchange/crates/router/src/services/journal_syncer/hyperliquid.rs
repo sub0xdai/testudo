@@ -4,6 +4,9 @@
 //! derives round trips from net-qty crossings, so filtering by closed_pnl here
 //! would break opening fill inclusion.
 
+// @anchor exchange:router:hyperliquid
+// @tags api
+
 use alloy::primitives::Address;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};

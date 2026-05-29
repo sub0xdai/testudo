@@ -2,6 +2,9 @@
 //!
 //! Starts the gRPC server and tick ingestion pipeline.
 
+// @anchor infra:sheaf:main
+// @tags infra
+
 use clap::Parser;
 use sheaf_engine::config::{Cli, RuntimeConfig};
 use sheaf_engine::service::SheafEngineService;

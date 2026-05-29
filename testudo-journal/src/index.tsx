@@ -1,3 +1,6 @@
+/** @anchor ui:journal:index
+ * @tags ui */
+
 /* @refresh reload */
 import { render } from 'solid-js/web'
 import { Router, Route, Navigate } from '@solidjs/router'

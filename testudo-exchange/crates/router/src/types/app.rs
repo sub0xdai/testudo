@@ -1,3 +1,6 @@
+// @anchor exchange:router:app
+// @tags api
+
 use crate::config::RouterConfig;
 use crate::repositories::exchange_account::ExchangeAccountRepository;
 use crate::services::calibration::CalibrationEngine;

@@ -1,3 +1,6 @@
+// @anchor exchange:ws-stream:types
+// @tags infra
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

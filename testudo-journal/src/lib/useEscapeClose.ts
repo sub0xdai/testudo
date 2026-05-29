@@ -1,3 +1,6 @@
+/** @anchor infra:journal-lib:useEscapeClose
+ * @tags infra */
+
 import { onMount, onCleanup } from 'solid-js'
 
 export function useEscapeClose(onClose: () => void) {
