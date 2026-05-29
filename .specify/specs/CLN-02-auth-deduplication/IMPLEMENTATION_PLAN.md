@@ -20,7 +20,8 @@ Any bug fix to the guard logic or error-handling pattern must be applied in two 
 - **Verification**: `wc -l src/context/AuthContext.tsx` < 334 (proves dedup is working)
 - **Commit message**: `refactor: extract runAuthFlow from SIWE auth, define SignerConfig`
 
-### CP-2: Refactor runSiws + final cleanup
+### CP-2: Refactor runSiws + final cleanup ✅
+- Completed 2026-05-29 by /skill:vox build. Build passes, 56/56 tests pass, runSiws is 22-line wrapper (was 63). AuthContext.tsx = 307 lines. runAuthFlow serves both EVM and Solana.
 - **Touches**: `src/context/AuthContext.tsx`
 - **Tasks**:
   1. Refactor `runSiws` into a thin wrapper (~20 lines) passing Solana-specific config to `runAuthFlow`

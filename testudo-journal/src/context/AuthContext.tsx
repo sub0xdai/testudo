@@ -226,79 +226,27 @@ export function AuthProvider(props: { children: JSX.Element }) {
     }, address)
   }
 
-  // Run SIWS (Sign In With Solana) — parallel to runSiwe for Solana wallets
+  // Run SIWS (Sign In With Solana) — thin wrapper around runAuthFlow
   async function runSiws(address: string) {
-    if (user() || loading() || siweInFlight) return
-    siweInFlight = true
-    setSiweError(null)
-
-    try {
-      // Wait briefly for Solana provider to be ready
-      let attempts = 0
-      while (!solanaProvider && attempts < 20) {
-        await new Promise(r => setTimeout(r, 100))
-        attempts++
-      }
-      if (!solanaProvider) throw new Error('Solana provider not ready — please try again')
-
-      // Re-check after async wait — /me may have resolved and set user()
-      if (user()) {
-        siweInFlight = false
-        return
-      }
-
-      // Get nonce from backend (shared endpoint)
-      const nonceRes = await fetchAuth('/nonce')
-      if (!nonceRes.ok) throw new Error('Failed to get nonce')
-      const { nonce } = await nonceRes.json() as { nonce: string }
-
-      // Build SIWS message
-      const message = [
-        `${window.location.host} wants you to sign in with your Solana account:`,
-        address, '', 'Sign in to Testudo', '',
-        `URI: ${window.location.origin}`,
-        `Nonce: ${nonce}`,
-        `Issued At: ${new Date().toISOString()}`,
-      ].join('\n')
-
-      // Sign via Solana provider — signMessage takes Uint8Array
-      const encoded = new TextEncoder().encode(message)
-      const sig = await solanaProvider.signMessage(encoded)
-      // sig may be Uint8Array or { signature: Uint8Array } depending on adapter
-      const sigBytes: Uint8Array = sig instanceof Uint8Array ? sig : sig.signature
-
-      // Base58-encode the signature for transport
-      const signatureB58 = base58.encode(sigBytes)
-
-      // Verify with backend
-      const verifyRes = await fetchAuth('/verify-siws', {
-        method: 'POST',
-        body: JSON.stringify({
-          message,
-          signature: signatureB58,
-          address,
-        }),
-      })
-      if (!verifyRes.ok) {
-        const errBody = await verifyRes.text().catch(() => '')
-        throw new Error(`SIWS verification failed: ${errBody || verifyRes.statusText}`)
-      }
-
-      const { user: u } = await verifyRes.json() as { user: User }
-      setUser(u)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed'
-      console.error('[SIWS] auth failed:', msg)
-      setSiweError(
-        /reject|denied|cancel/i.test(msg)
-          ? 'Signature rejected — click Connect to retry'
-          : msg
-      )
-      ;(await loadWallet()).disconnect()
-    } finally {
-      siweInFlight = false
-      userInitiatedConnect = false
-    }
+    await runAuthFlow({
+      chain: 'solana',
+      getProvider: () => solanaProvider,
+      buildMessage: (addr, nonce) =>
+        [
+          `${window.location.host} wants you to sign in with your Solana account:`,
+          addr, '', 'Sign in to Testudo', '',
+          `URI: ${window.location.origin}`,
+          `Nonce: ${nonce}`,
+          `Issued At: ${new Date().toISOString()}`,
+        ].join('\n'),
+      sign: async (provider, message, _addr) => {
+        const encoded = new TextEncoder().encode(message)
+        const sig = await (provider as any).signMessage(encoded)
+        const sigBytes: Uint8Array = sig instanceof Uint8Array ? sig : sig.signature
+        return base58.encode(sigBytes)
+      },
+      verifyEndpoint: '/verify-siws',
+    }, address)
   }
 
   function notifyExtensionOfWalletChange(address: string | null) {
