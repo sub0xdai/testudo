@@ -1,9 +1,9 @@
 import Mathlib
 
-/-- @anchor domain:proofs:wasserstein
-    @tags domain -/
-
 /-!
+@anchor domain:proofs:wasserstein
+@tags domain
+
 # 1-Wasserstein Metric on ℝ (Empirical Distributions)
 
 For sorted lists xs, ys of equal length n:

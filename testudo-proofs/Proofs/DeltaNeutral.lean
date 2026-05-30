@@ -1,7 +1,9 @@
 import Mathlib
 
-/-- @anchor domain:proofs:delta-neutral
-    @tags domain -/
+/-!
+@anchor domain:proofs:delta-neutral
+@tags domain
+-/
 
 def portfolio_delta (positions : List (ℝ × ℝ)) : ℝ :=
   (positions.map (λ (s, d) => s * d)).sum

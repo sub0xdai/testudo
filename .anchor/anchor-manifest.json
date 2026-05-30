@@ -16,6 +16,400 @@
         "ui"
       ]
     },
+    "infra:cli:daemon": {
+      "locations": [
+        "testudo-cli/src/daemon.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:cmd": {
+      "locations": [
+        "testudo-cli/src/cmd.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:app": {
+      "locations": [
+        "testudo-cli/src/app.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:update": {
+      "locations": [
+        "testudo-cli/src/update.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:auth": {
+      "locations": [
+        "testudo-cli/src/auth.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:main": {
+      "locations": [
+        "testudo-cli/src/lib.rs",
+        "testudo-cli/src/main.rs"
+      ],
+      "tags": [
+        "infra",
+        "api"
+      ]
+    },
+    "infra:cli:config": {
+      "locations": [
+        "testudo-cli/src/config.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:msg": {
+      "locations": [
+        "testudo-cli/src/msg.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:tools:signal": {
+      "locations": [
+        "testudo-cli/src/tools/submit_signal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:check-onboarding": {
+      "locations": [
+        "testudo-cli/src/tools/check_onboarding.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:check-risk": {
+      "locations": [
+        "testudo-cli/src/tools/check_risk.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:read-journal": {
+      "locations": [
+        "testudo-cli/src/tools/read_journal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:klines": {
+      "locations": [
+        "testudo-cli/src/tools/fetch_klines.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:list-positions": {
+      "locations": [
+        "testudo-cli/src/tools/list_positions.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:types": {
+      "locations": [
+        "testudo-cli/src/tools/types.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:tools:write-journal": {
+      "locations": [
+        "testudo-cli/src/tools/write_journal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:strategies:registry": {
+      "locations": [
+        "testudo-cli/src/strategies/registry.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:strategies:template": {
+      "locations": [
+        "testudo-cli/src/strategies/template.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:view:journal": {
+      "locations": [
+        "testudo-cli/src/view/journal_pane.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:risk": {
+      "locations": [
+        "testudo-cli/src/view/risk_pane.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:dashboard": {
+      "locations": [
+        "testudo-cli/src/view/dashboard.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:pnl": {
+      "locations": [
+        "testudo-cli/src/view/pnl_chart.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:status": {
+      "locations": [
+        "testudo-cli/src/view/status_bar.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:agent": {
+      "locations": [
+        "testudo-cli/src/view/agent_pane.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:positions": {
+      "locations": [
+        "testudo-cli/src/view/positions_pane.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:view:signal": {
+      "locations": [
+        "testudo-cli/src/view/signal_log.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "infra:cli:api:klines": {
+      "locations": [
+        "testudo-cli/src/api/klines.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:signals": {
+      "locations": [
+        "testudo-cli/src/api/signals.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:client": {
+      "locations": [
+        "testudo-cli/src/api/client.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:exchanges": {
+      "locations": [
+        "testudo-cli/src/api/exchanges.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:journal": {
+      "locations": [
+        "testudo-cli/src/api/journal.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:onboarding": {
+      "locations": [
+        "testudo-cli/src/api/onboarding.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:agent-keys": {
+      "locations": [
+        "testudo-cli/src/api/agent_keys.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:api:risk": {
+      "locations": [
+        "testudo-cli/src/api/risk.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:llm:client": {
+      "locations": [
+        "testudo-cli/src/llm/client.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:llm:anthropic": {
+      "locations": [
+        "testudo-cli/src/llm/anthropic.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:llm:stream": {
+      "locations": [
+        "testudo-cli/src/llm/stream.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:llm:openai": {
+      "locations": [
+        "testudo-cli/src/llm/openai.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:llm:ollama": {
+      "locations": [
+        "testudo-cli/src/llm/ollama.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:llm:gemini": {
+      "locations": [
+        "testudo-cli/src/llm/gemini.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:ws:client": {
+      "locations": [
+        "testudo-cli/src/ws/client.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:ws:stream": {
+      "locations": [
+        "testudo-cli/src/ws/stream.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:risk:precheck": {
+      "locations": [
+        "testudo-cli/src/risk/precheck.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:model:market": {
+      "locations": [
+        "testudo-cli/src/model/market.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:model:positions": {
+      "locations": [
+        "testudo-cli/src/model/positions.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:model:session": {
+      "locations": [
+        "testudo-cli/src/model/session.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:model:journal": {
+      "locations": [
+        "testudo-cli/src/model/journal.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:model:agent": {
+      "locations": [
+        "testudo-cli/src/model/agent.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:model:state": {
+      "locations": [
+        "testudo-cli/src/model/state.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
     "exchange:common_utils:order_usage": {
       "locations": [
         "testudo-exchange/crates/common_utils/examples/order_usage.rs"
@@ -1433,7 +1827,7 @@
         "testudo-proofs/Proofs/KellyOptimal.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "domain:proofs:funding-arb": {
@@ -1441,7 +1835,7 @@
         "testudo-proofs/Proofs/FundingArb.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "domain:proofs:delta-neutral": {
@@ -1449,7 +1843,7 @@
         "testudo-proofs/Proofs/DeltaNeutral.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "domain:proofs:wasserstein": {
@@ -1457,7 +1851,7 @@
         "testudo-proofs/Proofs/WassersteinMetric.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "domain:proofs:ou-mreversion": {
@@ -1465,7 +1859,7 @@
         "testudo-proofs/Proofs/OUMreversion.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "domain:proofs:momentum-autocorr": {
@@ -1473,7 +1867,7 @@
         "testudo-proofs/Proofs/MomentumAutocorr.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "domain:proofs:gamblers-ruin": {
@@ -1481,7 +1875,7 @@
         "testudo-proofs/Proofs/GamblersRuin.lean"
       ],
       "tags": [
-        "domain -"
+        "domain"
       ]
     },
     "api:cex:types": {

@@ -1,9 +1,9 @@
 import Mathlib
 
-/-- @anchor domain:proofs:momentum-autocorr
-    @tags domain -/
-
 /-!
+@anchor domain:proofs:momentum-autocorr
+@tags domain
+
 # Momentum Autocorrelation
 
 2-point equally-weighted model. cov2 = (x₁-x₂)(y₁-y₂)/4.

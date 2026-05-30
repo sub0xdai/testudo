@@ -5,8 +5,8 @@
 **Status:** Draft
 **Class:** Feature / AI Agent
 **Priority:** P0 — required for Agora Agents Hackathon submission; Agentic Sophistication criterion (30%) depends on autonomous decision-making
-**Depends on:** AGENT-01 (signal endpoint), AGENT-02 (WebSocket alerts), AGENT-03 (journal memory), AGENT-04 (Circle adapter)
-**Series:** AGENT-04 through AGENT-05 (Hackathon Delivery)
+**Depends on:** AGENT-01 (signal endpoint), AGENT-02 (WebSocket alerts), AGENT-03 (journal memory)
+**Series:** AGENT-05 (Strategy Agent) — deferred, will refactor when circling back
 
 ---
 

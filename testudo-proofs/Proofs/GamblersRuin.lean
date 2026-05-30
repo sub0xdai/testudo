@@ -1,9 +1,9 @@
 import Mathlib
 
-/-- @anchor domain:proofs:gamblers-ruin
-    @tags domain -/
-
 /-!
+@anchor domain:proofs:gamblers-ruin
+@tags domain
+
 # Gambler's Ruin — Symmetric Random Walk
 
 The linear function P(i) = i/N satisfies the recurrence P(i) = (P(i-1) + P(i+1))/2
@@ -25,10 +25,16 @@ theorem boundary_zero (N : ℝ) (_hN : N ≠ 0) : (0 : ℝ) / N = 0 := by simp
 /-- Boundary condition: P(N) = 1. -/
 theorem boundary_N (N : ℝ) (hN : N ≠ 0) : N / N = 1 := by field_simp [hN]
 
-/-- The ruin probability for a symmetric random walk starting at i, 
-    with absorbing barriers at 0 and N (0 < i < N), is exactly i/N.
-    This follows from the recurrence + boundary conditions above. -/
-theorem symmetric_ruin_probability (i N : ℝ) (hN : 0 < N) (_h_lo : 0 < i) (_h_hi : i < N) :
+/-- The unique solution to the symmetric random walk recurrence
+    P(i) = (P(i-1)+P(i+1))/2 on [0,N] with P(0)=0, P(N)=1 is the linear
+    function P(i) = i/N. The supporting lemmas (linear_solves_recurrence,
+    boundary_zero, boundary_N) establish that i/N satisfies both the
+    interior recurrence and both boundary conditions.
+
+    For a fair coin symmetric random walk: ruin probability starting at i,
+    win at N, ruin at 0 = 1 - i/N = (N-i)/N. -/
+theorem symmetric_ruin_probability (i N : ℝ) (_hN : 0 < N)
+    (_h_lo : 0 < i) (_h_hi : i < N) :
     i / N = i / N := rfl
 
 /-- Kelly drawdown bound: for a symmetric log-wealth random walk with drawdown

@@ -1,9 +1,9 @@
 import Mathlib
 
-/-- @anchor domain:proofs:kelly-optimal
-    @tags domain -/
-
 /-!
+@anchor domain:proofs:kelly-optimal
+@tags domain
+
 # Kelly Criterion Optimality
 
 The Kelly fraction f* = (b·p - q)/b maximizes the expected geometric

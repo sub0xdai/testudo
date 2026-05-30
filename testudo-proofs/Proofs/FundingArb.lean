@@ -1,9 +1,9 @@
 import Mathlib
 
-/-- @anchor domain:proofs:funding-arb
-    @tags domain -/
-
 /-!
+@anchor domain:proofs:funding-arb
+@tags domain
+
 # Funding Rate No-Arbitrage Bound
 
 For perpetual futures: arbitrage profit exists iff |F - S| > S·|r|·Δt + ε.
