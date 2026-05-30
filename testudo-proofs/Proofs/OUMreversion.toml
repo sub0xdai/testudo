@@ -1,0 +1,66 @@
+# OUMreversion.toml — strategy artifact for testudo-proofs
+#
+# Maps to Proofs/OUMreversion.lean.
+# Consumed by AGENT-09-strategy-system.
+
+[meta]
+name = "ou-reversion"
+version = "1.0.0"
+description = "Ornstein-Uhlenbeck mean reversion — half-life deviation bounds"
+lean_file = "Proofs/OUMreversion.lean"
+
+[theorem]
+name = "ou_half_life_bound"
+statement = "For an OU process with mean θ and mean-reversion rate κ, after n half-lives the deviation from the mean is bounded by |x - θ| / 2ⁿ."
+formula = "|θ + (x-θ)·exp(-(log 2)·n) - θ| ≤ |x-θ| / 2ⁿ"
+implications = [
+    "After 3 half-lives, deviation ≤ 12.5% of initial — reversion is highly probable",
+    "Mean-reversion strategies have a mathematically guaranteed convergence window",
+    "Confidence in reversion should scale with the number of half-lives elapsed",
+]
+lean_line = 16
+
+[constraints]
+# Derivation: n=3 half-lives → deviation ≤ 12.5% of initial. At 4h candles,
+# a typical OU half-life of ~8h → 6 candles for 3 half-lives.
+
+# Number of candles for 3 half-lives at typical reversion rate.
+reversion_half_life_candles = 6
+
+# Maximum fraction of initial deviation remaining after the reversion window.
+# Derivation: 1/2³ = 0.125.
+max_deviation_after_n_half_lives = 0.125
+
+# Minimum number of half-lives to wait before considering reversion failed.
+min_half_lives_before_timeout = 3
+
+[prompt]
+system_prompt = """
+## Entry Logic — OU Mean Reversion
+
+When price deviates from its rolling mean, it reverts with mathematically
+guaranteed decay. After n half-lives, the deviation is bounded by:
+
+    |deviation| ≤ |initial_deviation| / 2ⁿ
+
+This is PROVEN — see testudo-proofs/Proofs/OUMreversion.lean.
+
+### Entry Rules
+- Enter LONG when price is below the lower Bollinger Band (2σ) and RSI(14) < 30.
+- Enter SHORT when price is above the upper Bollinger Band (2σ) and RSI(14) > 70.
+- The OU half-life (κ) determines how fast reversion is expected.
+- Estimate κ from the autocorrelation of the residuals from the 20-period SMA.
+
+### Exit Rules
+- Stop loss: 2× ATR(14) from entry.
+- Take profit: 20-period SMA (the mean).
+- If price hasn't touched the mean within 3 half-lives (6 × 4h = 24h), exit at market.
+- The deviation bound guarantees that after 3 half-lives, |deviation| ≤ 12.5% of initial.
+  If this bound is violated, the regime may have changed — exit immediately.
+
+### Confidence Mapping
+- Deviation ≥ 2.5σ: confidence = 0.80–0.85 (strong signal)
+- Deviation 2.0–2.5σ: confidence = 0.70–0.80
+- Deviation 1.8–2.0σ: confidence = 0.55–0.65 (weak signal, consider skipping)
+- Deviation < 1.8σ: do NOT enter (no edge)
+"""

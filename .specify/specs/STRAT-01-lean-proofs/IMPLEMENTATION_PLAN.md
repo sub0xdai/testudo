@@ -31,7 +31,8 @@
 - **Verification**: `cd testudo-proofs && lake build` exits 0 with zero errors.
 - **Commit message**: `fix: correct Proofs.lean syntax and vacuous GamblersRuin theorem`
 
-### CP-2: Write WassersteinMetric.toml + KellyOptimal.toml artifacts
+### CP-2: Write WassersteinMetric.toml + KellyOptimal.toml artifacts ✅
+- Completed 2026-05-30 by /skill:vox build. WassersteinMetric.toml: 3 constraints (min_samples=50, same_regime_threshold=0.002, max_regime_distance=0.05), 1058-char prompt. KellyOptimal.toml: 5 constraints (max_kelly_fraction=0.10, max_leverage=5, max_account_risk_pct=2.0, min_kelly_fraction=0.005, min_required_win_rate=0.51), 872-char prompt. Both validated via tomllib structural checks.
 
 - **Touches**: `testudo-proofs/Proofs/WassersteinMetric.toml` (NEW), `testudo-proofs/Proofs/KellyOptimal.toml` (NEW)
 - **Tasks**:
@@ -41,7 +42,8 @@
 - **Verification**: Both `.toml` files exist, valid TOML syntax, all sections populated per spec.
 - **Commit message**: `feat: add Wasserstein and Kelly strategy artifacts`
 
-### CP-3: Write remaining 5 artifact files
+### CP-3: Write remaining 5 artifact files ✅
+- Completed 2026-05-30 by /skill:vox build. OUMreversion.toml (3 constraints: reversion_half_life_candles=6, max_deviation_after_n_half_lives=0.125, min_half_lives_before_timeout=3), MomentumAutocorr.toml (3 constraints: min_autocorr_threshold=0.10, min_samples_for_autocorr=50, max_lag=5), FundingArb.toml (4 constraints: min_funding_rate_bps=1.5, max_slippage_bps=3.0, min_position_notional_usd=1000, require_delta_neutral=true), DeltaNeutral.toml (3 constraints: max_net_delta=0.01, max_hedge_delay_sec=30, min_hedge_notional_usd=50), GamblersRuin.toml (4 constraints: max_drawdown_pct=20, warn_drawdown_pct=15, max_consecutive_losses=5, pause_trades_after_loss_streak=5). All 7 artifacts now complete (22 total constraints across all files).
 
 - **Touches**: `testudo-proofs/Proofs/OUMreversion.toml`, `MomentumAutocorr.toml`, `FundingArb.toml`, `DeltaNeutral.toml`, `GamblersRuin.toml` (all NEW)
 - **Tasks**:
@@ -54,7 +56,8 @@
 - **Verification**: `ls Proofs/*.toml | wc -l` → 7. Each parses as valid TOML.
 - **Commit message**: `feat: add OU, momentum, funding, delta, ruin strategy artifacts`
 
-### CP-4: Write verify-artifacts.py script
+### CP-4: Write verify-artifacts.py script ✅
+- Completed 2026-05-30 by /skill:vox build. Script cross-references all 7 .lean ↔ .toml pairs, checks theorem names in artifacts match .lean files, spot-checks constraint values (max_leverage ≤ 10, max_drawdown_pct ≤ 50, max_account_risk_pct ≤ 10), and reports errors for orphan files. Tested: passing case exits 0, missing artifact exits 1 with clear error message.
 
 - **Touches**: `testudo-proofs/verify-artifacts.py` (NEW)
 - **Tasks**:
@@ -66,7 +69,8 @@
 - **Verification**: `python3 verify-artifacts.py` prints "All artifacts valid ✓" and exits 0. With a missing artifact, exits 1 with error message.
 - **Commit message**: `feat: add verify-artifacts.py cross-reference script`
 
-### CP-5: Update README.md documentation
+### CP-5: Update README.md documentation ✅
+- Completed 2026-05-30 by /skill:vox build. README updated with theorem+artifact+constraint table, verify-artifacts.py instructions, and AGENT-09 consumption link. strat-lean-proofs.md §6 updated with artifact column, build+verify command, and bridge reference. Fixed duplicate ## 7 heading. lake build + verify-artifacts.py both pass.
 
 - **Touches**: `testudo-proofs/README.md` (MODIFY)
 - **Tasks**:

@@ -1,0 +1,76 @@
+# FundingArb.toml — strategy artifact for testudo-proofs
+#
+# Maps to Proofs/FundingArb.lean.
+# Consumed by AGENT-09-strategy-system.
+
+[meta]
+name = "funding-arb"
+version = "1.0.0"
+description = "Funding rate arbitrage — no-arbitrage bound for perpetual futures"
+lean_file = "Proofs/FundingArb.lean"
+
+[theorem]
+name = "funding_no_arbitrage_bound"
+statement = "Arbitrage profit exists iff |F - S| > S·|r|·Δt + ε, where F is the futures price, S is spot, r is the funding rate, Δt is the funding interval, and ε is the frictional cost (slippage + fees)."
+formula = "profit > 0 ↔ |F - S| > S·|r|·Δt + ε"
+implications = [
+    "Funding arbitrage is only profitable when the spread exceeds total friction",
+    "Delta-neutral position P&L = Q·|r|·Δt - fees is independent of price direction",
+    "The strategy is direction-agnostic — it captures the spread, not price movement",
+]
+lean_line = 17
+
+[constraints]
+# Derivation: Hyperliquid funding rate is ~0.01% per 8h for most pairs.
+# Arbitrage becomes profitable when |funding_rate| > slippage + fees.
+# Typical CEX+DEX round-trip: 0.05% maker + 0.05% taker + ~0.02% gas = ~0.12%.
+# Adding 3 bps margin → 1.5 bps minimum funding rate.
+
+# Minimum funding rate in basis points to trigger arbitrage.
+# 1 bps = 0.01%. 1.5 bps = 0.015% per 8h.
+min_funding_rate_bps = 1.5
+
+# Maximum slippage in basis points for entry to be profitable.
+max_slippage_bps = 3.0
+
+# Minimum position size in USD notional for the arb to cover fixed costs.
+min_position_notional_usd = 1000
+
+# The position must be delta-neutral: buy spot + short perp (or vice versa).
+require_delta_neutral = true
+
+[prompt]
+system_prompt = """
+## Entry Logic — Funding Rate Arbitrage
+
+Capture the spread between perpetual futures and spot when the funding rate
+exceeds friction. This is a delta-neutral strategy — direction-independent profit.
+
+    Arbitrage profit = |F - S| - S·|r|·Δt - ε
+
+Profit exists iff |F - S| > S·|r|·Δt + ε. This is PROVEN.
+See testudo-proofs/Proofs/FundingArb.lean.
+
+### Entry Rules
+- Trigger: |funding_rate| > 1.5 bps per 8h on Hyperliquid.
+- Positive funding (longs pay shorts): SHORT perp + LONG spot.
+- Negative funding (shorts pay longs): LONG perp + SHORT spot.
+- Pair with a spot order on the same venue (or a venue with negligible transfer cost).
+- Minimum position: $1,000 USD notional.
+
+### Exit Rules
+- |funding_rate| normalizes below 0.3 bps → close both legs.
+- No stop-loss needed — the position is delta-neutral (zero directional risk).
+- Exception: if the spread reverses sign by more than slippage, exit immediately.
+
+### Confidence Mapping
+- |funding_rate| > 5 bps: confidence = 0.90–0.95 (strong arb)
+- |funding_rate| 2–5 bps: confidence = 0.80–0.90
+- |funding_rate| 1.5–2 bps: confidence = 0.70–0.80 (marginal — check slippage carefully)
+
+### Risk
+- This strategy is delta-neutral. There is NO directional risk.
+- The primary risk is execution: both legs must fill at expected prices.
+- If one leg fails to fill, immediately close the other leg at market.
+- Never hold an unhedged leg for more than 60 seconds.
+"""

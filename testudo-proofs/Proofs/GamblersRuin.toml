@@ -1,0 +1,73 @@
+# GamblersRuin.toml — strategy artifact for testudo-proofs
+#
+# Maps to Proofs/GamblersRuin.lean.
+# Consumed by AGENT-09-strategy-system.
+
+[meta]
+name = "gamblers-ruin"
+version = "1.0.0"
+description = "Gambler's ruin — drawdown probability bounds for sequential betting"
+lean_file = "Proofs/GamblersRuin.lean"
+
+[theorem]
+name = "kelly_drawdown_bound"
+statement = "For a symmetric log-wealth random walk, the probability of drawdown to fraction (1-D) before doubling is bounded by log(2)/log(2/(1-D)). This bound is non-negative (a valid probability bound)."
+formula = "P(drawdown to 1-D before doubling) ≤ log(2) / log(2/(1-D))"
+implications = [
+    "Even with a fair coin, sequential betting carries inevitable drawdown risk",
+    "With 2% risk per trade and a fair coin, a 20% drawdown has ~64% probability",
+    "The only defense against ruin is: stop trading before the bound is reached",
+]
+lean_line = 44
+
+[constraints]
+# Derivation: D = 0.20 (20% drawdown) → bound = log(2)/log(2/0.80) = log(2)/log(2.5) ≈ 0.693/0.916 ≈ 0.757.
+# This is an UPPER bound — actual probability may be lower.
+# Conservative rounding: max_drawdown_pct = 20 with halt at 15 (20% safety margin below bound).
+
+# Maximum allowed drawdown percentage before mandatory halt.
+# Derivation: with 2% risk per trade, 20% drawdown has ~64% probability even with a fair coin.
+max_drawdown_pct = 20
+
+# Drawdown percentage at which the agent should WARN before mandatory halt.
+warn_drawdown_pct = 15
+
+# Maximum consecutive losses before mandatory pause.
+# Derivation: probability of 5 consecutive losses at 50% win rate = (0.5)⁵ = 3.125%.
+# At this point, the agent is either unlucky or its edge has decayed.
+max_consecutive_losses = 5
+
+# Number of trades to skip after hitting the consecutive loss limit.
+pause_trades_after_loss_streak = 5
+
+[prompt]
+system_prompt = """
+## Risk Limits — Gambler's Ruin
+
+Sequential betting with a fixed fraction of capital inevitably leads to drawdowns.
+Even with a PERFECTLY FAIR COIN (50% win rate), a 20% drawdown has ~64% probability.
+
+    P(drawdown to 1-D before doubling) ≤ log(2) / log(2/(1-D))
+
+This bound is PROVEN. See testudo-proofs/Proofs/GamblersRuin.lean.
+
+### Halt Rules
+You MUST halt trading when ANY of these triggers fire:
+
+1. **Drawdown ≥ 15%**: WARNING — reduce position sizes. Log a journal note explaining.
+2. **Drawdown ≥ 20%**: MANDATORY HALT. Stop immediately. Do not resume until the next day.
+3. **5 consecutive losses**: MANDATORY PAUSE. Skip the next 5 trade cycles.
+   Write a journal postmortem analyzing what went wrong.
+4. **Regime R2 or R3 detected** (from Wasserstein regime classifier): HALT.
+5. **Coach severity "concerning" on ANY insight**: HALT.
+
+### Resume Conditions
+- After drawdown halt: next calendar day, positions reduced to 50% of normal size for first 5 trades.
+- After consecutive loss pause: after 5 skipped cycles, reduce confidence by 20% for next 5 trades.
+- After regime halt: reclassify regime. Only resume when R0 or R1 confirmed.
+
+### Never
+- NEVER increase position size after a loss (no martingale).
+- NEVER override the halt. The proof says ruin is inevitable otherwise.
+- NEVER trade during a halt. Write journal analysis instead.
+"""

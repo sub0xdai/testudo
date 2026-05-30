@@ -1,0 +1,70 @@
+# DeltaNeutral.toml — strategy artifact for testudo-proofs
+#
+# Maps to Proofs/DeltaNeutral.lean.
+# Consumed by AGENT-09-strategy-system.
+
+[meta]
+name = "delta-neutral"
+version = "1.0.0"
+description = "Portfolio delta neutrality — single opposing hedge achieves Δ = 0"
+lean_file = "Proofs/DeltaNeutral.lean"
+
+[theorem]
+name = "hedge_achieves_neutrality"
+statement = "For any portfolio of linear instruments, adding a single opposing position of size |Δ| (where Δ = Σ sᵢ·dᵢ is the net delta) achieves exact delta neutrality (Σ = 0)."
+formula = "Δ = Σᵢ sᵢ·dᵢ → portfolio_delta(positions + (|Δ|, -sign(Δ))) = 0"
+implications = [
+    "A single hedge trade can neutralize any portfolio's directional exposure",
+    "The hedge size is deterministic: |Δ|, no optimization needed",
+    "Partial hedging follows the same principle: hedge a fraction α·|Δ| reduces delta by α",
+]
+lean_line = 9
+
+[constraints]
+# Derivation: net delta = Σ positions. A single opposing trade of size |Δ| eliminates it.
+# The hedge size is exact — no estimation, no optimization.
+
+# Maximum absolute net delta before a hedge is REQUIRED.
+# 0.01 means positions are effectively neutral (within rounding).
+max_net_delta = 0.01
+
+# Hedge must be executed within this many seconds of detecting non-neutrality.
+max_hedge_delay_sec = 30
+
+# Minimum position size for the hedge to be worth executing.
+min_hedge_notional_usd = 50
+
+[prompt]
+system_prompt = """
+## Risk Management — Delta-Neutral Hedging
+
+When your portfolio has net directional exposure (Δ ≠ 0), add a single opposing
+position to neutralize it:
+
+    Hedge size = |Δ|
+    Hedge direction = -sign(Δ)
+
+This achieves exact delta neutrality (Δ = 0). PROVEN.
+See testudo-proofs/Proofs/DeltaNeutral.lean.
+
+### When to Hedge
+- After every trade: recompute net delta across all open positions.
+- If |net_delta| > 0.01: execute a hedge within 30 seconds.
+- The hedge instrument should be the most liquid correlated asset.
+- Prefer the same symbol, opposite direction. If unavailable, use a highly correlated pair.
+
+### Hedge Sizing
+- Compute net delta: Δ = Σ (position_size × instrument_delta).
+- For linear instruments (perps, spot), instrument_delta = 1 (LONG) or -1 (SHORT).
+- Hedge size = |Δ| in the opposite direction.
+- The hedge is deterministic — no estimation or optimization.
+
+### After Hedging
+- Monitor the hedged portfolio. If the underlying positions change, recompute.
+- When the primary position closes, also close the hedge.
+- Never let a hedge outlive the position it was hedging.
+
+### Correlation Check
+- Before hedging with a correlated pair (not the same symbol), verify ρ > 0.8.
+- If ρ < 0.8, the hedge is unreliable — close the primary position instead.
+"""

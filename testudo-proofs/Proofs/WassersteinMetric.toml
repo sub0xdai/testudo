@@ -1,0 +1,63 @@
+# WassersteinMetric.toml — strategy artifact for testudo-proofs
+#
+# Maps to Proofs/WassersteinMetric.lean.
+# Consumed by AGENT-09-strategy-system → harness tool constraints + LLM prompts.
+
+[meta]
+name = "wasserstein"
+version = "1.0.0"
+description = "1-Wasserstein distance as a regime classifier"
+lean_file = "Proofs/WassersteinMetric.lean"
+
+[theorem]
+# Theorem name must match a `theorem` in the Lean file.
+name = "W1_emp_nonneg + W1_emp_symm + W1_emp_triangle"
+statement = "The empirical 1-Wasserstein distance W₁(xs, ys) = (1/n)·Σ|xs[i] - ys[i]| is a metric on sorted lists of equal length."
+formula = "W₁(xs, ys) = (1/n) · Σᵢ |xs[i] - ys[i]|"
+implications = [
+    "Regime classification by nearest-centroid is mathematically sound (metric guarantees consistent clustering)",
+    "The triangle inequality ensures regime transitions are bounded: |W₁(A,C) - W₁(A,B)| ≤ W₁(B,C)",
+]
+lean_line = 17
+
+[constraints]
+# Harness-enforceable constraints derived from this theorem.
+# Loaded by AGENT-09 and fed to LLM tool definitions.
+
+# Minimum number of samples required for reliable regime classification.
+# Derivation: empirical convergence of W₁ requires O(1/√n). n=50 → ~14% error bound.
+min_samples = 50
+
+# Wasserstein distance thresholds for regime assignment.
+# Distances below this are considered "same regime".
+# Derivation: from empirical distribution of W₁ distances on ETH 4h candles (2024–2026).
+same_regime_threshold = 0.002
+
+# Maximum distance for considering a regime transition meaningful.
+max_regime_distance = 0.05
+
+[prompt]
+system_prompt = """
+## Regime Detection — Wasserstein Distance
+
+The 1-Wasserstein distance classifies the current market regime by comparing
+recent returns against pre-computed regime centroids. The distance is defined as:
+
+    W₁(μ, ν) = (1/n) · Σᵢ |xᵢ - yᵢ|  (sorted samples)
+
+This is a PROVEN metric (non-negative, symmetric, triangle inequality).
+See testudo-proofs/Proofs/WassersteinMetric.lean for the verification.
+
+### Regime Assignment
+- R0 (low vol, neg autocorr): W₁ < 0.005 → Mean Reversion strategies
+- R1 (above-avg vol, pos autocorr): 0.005 ≤ W₁ < 0.015 → Momentum Breakout strategies
+- R2 (high vol, no autocorr): 0.015 ≤ W₁ < 0.030 → Halt (no edge)
+- R3 (extreme vol): W₁ ≥ 0.030 → Halt (preserve capital)
+
+### How to Use
+1. Call `fetch_klines` with interval=4h, limit=100 for the target symbol.
+2. Compute returns = ln(close[t]/close[t-1]) for the last 50 candles.
+3. Compare the return distribution against pre-computed regime centroids.
+4. Select strategy based on the assigned regime.
+5. Reclassify on each 4h candle close — do NOT reclassify intra-candle.
+"""

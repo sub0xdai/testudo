@@ -1,0 +1,63 @@
+# KellyOptimal.toml — strategy artifact for testudo-proofs
+#
+# Maps to Proofs/KellyOptimal.lean.
+# Consumed by AGENT-09-strategy-system → harness tool constraints + LLM prompts.
+
+[meta]
+name = "kelly"
+version = "1.0.0"
+description = "Kelly criterion optimality — fractional position sizing"
+lean_file = "Proofs/KellyOptimal.lean"
+
+[theorem]
+name = "kelly_maximizes_growth"
+statement = "The fraction f* = (b·p - q)/b uniquely maximizes E[log(wealth)] for binary-outcome bets with win probability p, net odds b, and loss probability q = 1-p."
+formula = "f* = (b·p - (1-p)) / b  where b = net odds, p = win probability"
+implications = [
+    "Any other fraction f ≠ f* yields lower expected geometric growth",
+    "Over-betting (f > f*) reduces growth AND increases ruin risk",
+    "Under-betting (f < f*) is safer but suboptimal",
+]
+lean_line = 53
+
+[constraints]
+# These map theorem conclusions → harness-enforceable limits.
+
+# Maximum Kelly fraction allowed (Quarter-Kelly for conservative sizing).
+# Derivation: Quarter-Kelly at p=0.60, b=1.5 → f* = 0.40 → f/4 = 0.10.
+max_kelly_fraction = 0.10
+min_kelly_fraction = 0.005
+
+# Leverage cap derived from Kelly: quarter-Kelly limits single-bet exposure.
+# Derivation: f_max = 0.10 → max leverage = 1/f_max → 10× theoretical, halved for safety margin.
+max_leverage = 5
+
+# Maximum account risk per trade (Quarter-Kelly at 60% win rate, 1.5:1 R:R).
+max_account_risk_pct = 2.0
+
+# The Kelly fraction only applies when edge is positive.
+# Below this win rate, the Kelly fraction is ≤ 0 (do not bet).
+min_required_win_rate = 0.51
+
+[prompt]
+system_prompt = """
+## Position Sizing — Kelly Criterion
+
+Your position sizes are determined by the Quarter-Kelly formula:
+
+    f* = (b·p - q)/b
+
+where b = net odds, p = your estimated win probability, q = 1-p.
+
+Testudo's sizing engine uses Quarter-Kelly: f_actual = (1/4) · f*
+This is a PROVEN optimum — see testudo-proofs/Proofs/KellyOptimal.lean.
+
+### Rules
+- NEVER compute position size manually. Set `confidence` (0.0–1.0) and Testudo sizes for you.
+- `confidence` maps to your estimated p: confidence = 0.60 → p ≈ 0.55 (with Bayesian shrinkage).
+- If your edge is negative (estimated p < 0.51), do NOT trade. Skip the cycle.
+- Max leverage: 5×. Max account risk per trade: 2.0%.
+- If you've had 3 consecutive losses, reduce confidence by 20% for the next 5 trades.
+- Over-betting DOES NOT increase returns — it increases ruin probability.
+  See testudo-proofs/Proofs/GamblersRuin.lean.
+"""

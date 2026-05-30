@@ -796,23 +796,27 @@ Check with: `GET /journal/agent/summary?format=json&source=agent:your_id`
 ## 6. Lean 4 Proofs
 
 Machine-checked theorems. See `testudo-proofs/Proofs/` for the verifiable
-Lean 4 source. Each `.lean` file corresponds to one subsection below.
+Lean 4 source. Each proof ships with a strategy artifact (`.toml`) that derives
+harness constraints from the theorem.
 
-| § | Theorem | File |
-|---|---------|------|
-| 6.1 | W1 is a metric on R | `Proofs/WassersteinMetric.lean` |
-| 6.2 | Kelly optimality | `Proofs/KellyOptimal.lean` |
-| 6.3 | OU mean reversion bound | `Proofs/OUMreversion.lean` |
-| 6.4 | Momentum autocorrelation | `Proofs/MomentumAutocorr.lean` |
-| 6.5 | Funding no-arbitrage bound | `Proofs/FundingArb.lean` |
-| 6.6 | Portfolio delta neutrality | `Proofs/DeltaNeutral.lean` |
-| 6.7 | Gambler's ruin bound | `Proofs/GamblersRuin.lean` |
+| § | Theorem | Proof | Artifact | Key Constraint |
+|---|---------|-------|----------|----------------|
+| 6.1 | W₁ is a metric | `WassersteinMetric.lean` | `WassersteinMetric.toml` | `min_samples=50` |
+| 6.2 | Kelly optimality | `KellyOptimal.lean` | `KellyOptimal.toml` | `max_leverage=5` |
+| 6.3 | OU mean reversion | `OUMreversion.lean` | `OUMreversion.toml` | `reversion_half_life_candles=6` |
+| 6.4 | Momentum autocorrelation | `MomentumAutocorr.lean` | `MomentumAutocorr.toml` | `min_autocorr_threshold=0.10` |
+| 6.5 | Funding no-arbitrage | `FundingArb.lean` | `FundingArb.toml` | `min_funding_rate_bps=1.5` |
+| 6.6 | Delta neutrality | `DeltaNeutral.lean` | `DeltaNeutral.toml` | `max_net_delta=0.01` |
+| 6.7 | Gambler's ruin | `GamblersRuin.lean` | `GamblersRuin.toml` | `max_drawdown_pct=20` |
 
-Build: `cd testudo-proofs && lake build`
+Build + verify:
+```bash
+cd testudo-proofs && lake build && python3 verify-artifacts.py
+```
 
----
-
-## 7. Testudo API Quick Reference
+Artifacts are consumed by the trading harness bridge (AGENT-09-strategy-system),
+which merges constraints and bakes them into LLM tool definitions. See
+`.specify/specs/AGENT-09-strategy-system/spec.md`.
 
 ---
 
