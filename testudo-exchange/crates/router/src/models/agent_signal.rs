@@ -90,6 +90,8 @@ pub struct SignalResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_key_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rejection: Option<SignalRejection>,
 }
 
@@ -107,6 +109,7 @@ impl SignalResult {
         sizing_method: SizingMethod,
         execution_mode: ExecutionMode,
         warnings: Vec<String>,
+        agent_key_id: Option<Uuid>,
     ) -> Self {
         Self {
             success: true,
@@ -116,6 +119,7 @@ impl SignalResult {
             sizing_method: Some(sizing_method),
             execution_mode,
             warnings,
+            agent_key_id,
             rejection: None,
         }
     }
@@ -129,6 +133,7 @@ impl SignalResult {
             sizing_method: None,
             execution_mode,
             warnings: Vec::new(),
+            agent_key_id: None,
             rejection: Some(SignalRejection { reason, code }),
         }
     }

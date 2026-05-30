@@ -335,74 +335,103 @@ Tell the user:
 
 def onboard_user(token):
     # Step 1: Check current state
-    accounts = GET("/api/v1/exchanges/accounts", auth=token)
-
-    if not accounts:
-        # No exchange — guide user through setup
-        exchanges = GET("/api/v1/exchanges", auth=token)
-        choice = ask_user("Which exchange?", options=[e["id"] for e in exchanges["exchanges"]])
-
-        selected = next(e for e in exchanges["exchanges"] if e["id"] == choice)
-
-        if selected["type"] == "dex":
-            # Hyperliquid agent wallet flow
-            wallet = ask_user("What's your Hyperliquid wallet address? (0x...)")
-            init = POST("/api/v1/exchanges/agent-wallet/init",
-                        json={"wallet_address": wallet}, auth=token)
-
-            if init.status == 200:  # reusing existing
-                say(f"Found existing agent wallet: {init.agent_address}")
-                # Check if it needs re-approval
-                account = next(a for a in accounts if a["id"] == init["account_id"])
-                if account.get("requires_reauthorization"):
-                    say("Your agent wallet needs re-approval.")
-                else:
-                    say("Agent wallet is already active. Skipping approval.")
-                    return init["account_id"]
-
-            say(f"Created agent wallet: {init.agent_address}")
-            say("Open your wallet and sign this EIP-712 message to approve it.")
-
-            approve_data = POST("/api/v1/exchanges/agent-wallet/approve-data",
-                                json={"account_id": init["account_id"]}, auth=token)
-            signature = ask_user_to_sign(approve_data["typed_data"])
-
-            POST("/api/v1/exchanges/agent-wallet/approve",
-                 json={"account_id": init["account_id"],
-                       "signature": signature,
-                       "nonce": approve_data["nonce"]}, auth=token)
-            say("Agent wallet approved!")
-
-            balance = GET(f"/api/v1/exchanges/accounts/{init['account_id']}/balance", auth=token)
-            say(f"Balance: {balance['balances'][0]['total']} USDC on Hyperliquid")
-
-        else:
-            # CEX path
-            creds = selected["required_credentials"]
-            api_key = ask_user(f"Paste your {selected['name']} API key")
-            secret = ask_user(f"Paste your {selected['name']} API secret")
-            body = {"exchange_name": choice, "api_key": api_key, "secret": secret}
-            if "passphrase" in creds:
-                body["passphrase"] = ask_user(f"Paste your {selected['name']} passphrase")
-
-            result = POST("/api/v1/exchanges/accounts", json=body, auth=token)
-            if result.status == 201:
-                say(f"Connected! {selected['name']} account verified.")
-                balance = GET(f"/api/v1/exchanges/accounts/{result['id']}/balance", auth=token)
-                usd_total = sum(float(b["total"]) for b in balance["balances"] if b["asset"] == "USDT")
-                say(f"Balance: ${usd_total:,.2f} USD")
-            else:
-                say(f"Connection failed: {result.get('message', 'Unknown error')}")
-                return None
-
-    # Step 3: Verify risk config
-    risk = GET("/api/v1/risk-config", auth=token)
-    say(f"Risk: {risk['account_risk_percent']}% per trade, max {risk['max_leverage']}x leverage")
-
-    # Step 4: Ready
-    say("Setup complete. Starting shadow trading loop.")
-    return True
+    status = GET("/api/v1/onboarding/status", auth=token)
+    
+    if status["next_step"] == "connect_exchange":
+        # Present exchange options from available_exchanges
+        exchanges = status["available_exchanges"]
+        choice = ask_user("Which exchange?", options=[e["id"] for e in exchanges])
+        # ... CEX or HL path based on exchange type
+    
+    elif status["next_step"] == "approve_agent_wallet":
+        # Guide through EIP-712 signing
+        wallet = status["pending_agent_wallet"]
+        # ...
+    
+    # Step 2: Create an agent API key for autonomous trading
+    key_resp = POST("/api/v1/agent-keys", json={
+        "name": "my-trading-agent",
+        "permissions": ["trade_execute", "journal_read", "journal_write", "account_read"]
+    }, auth=token)
+    
+    agent_key = key_resp["key"]  # Save this — it won't be shown again
+    say(f"Agent key created: {agent_key[:16]}...")
+    return agent_key
 ```
+
+---
+
+### Creating an Agent API Key
+
+For autonomous trading, create a scoped agent API key instead of using your
+full SIWE token. The key has its own permissions, expiry, and can be revoked
+independently without affecting your session.
+
+```bash
+# Create a key with default trading permissions
+curl -s -X POST https://testudo.vip/api/v1/agent-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-trading-agent",
+    "permissions": ["trade_execute", "journal_read", "journal_write", "account_read"]
+  }'
+```
+
+Response (201 Created):
+
+```json
+{
+  "id": "uuid",
+  "name": "my-trading-agent",
+  "key": "tudo_sk_aB3xK9mW...",
+  "permissions": ["trade_execute", "journal_read", "journal_write", "account_read"],
+  "created_at": "2026-05-30T12:00:00Z"
+}
+```
+
+**SAVE THE KEY.** It is only returned once. The server stores only its SHA-256
+hash — it cannot recover the key for you.
+
+Use the key in all subsequent requests:
+
+```bash
+curl -s -H "X-Agent-Key: tudo_sk_aB3xK9mW..." \
+  https://testudo.vip/api/v1/onboarding/status
+```
+
+**Managing keys:**
+
+```bash
+# List all keys (no raw key values included)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/agent-keys
+
+# Revoke a key (immediate effect)
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/agent-keys/$KEY_ID
+
+# Update key permissions
+curl -s -X PATCH -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"permissions": ["trade_execute", "journal_read"]}' \
+  https://testudo.vip/api/v1/agent-keys/$KEY_ID
+```
+
+**Permissions:**
+
+| Permission | Allows |
+|------------|--------|
+| `trade_execute` | Submit signals (POST /signals) |
+| `journal_read` | Read journal (GET /journal/agent/*) |
+| `journal_write` | Write journal entries (POST /journal/entries) |
+| `exchange_manage` | Manage exchange accounts |
+| `risk_configure` | Change risk settings (PUT /risk-config) |
+| `account_read` | Read account data (GET /auth/me, /onboarding/status) |
+
+**Default permissions** (if omitted): `trade_execute`, `journal_read`,
+`journal_write`, `account_read` — everything an agent needs for the
+autonomous trading loop.
 
 ---
 
@@ -424,6 +453,9 @@ def onboard_user(token):
 | Approve agent (HL) | `POST` | `/api/v1/exchanges/agent-wallet/approve` | Submit signature |
 | Check risk config | `GET` | `/api/v1/risk-config` | Verify defaults |
 | Set risk config | `PUT` | `/api/v1/risk-config` | Partial updates |
+| Create agent key | `POST` | `/api/v1/agent-keys` | Returns key once |
+| List agent keys | `GET` | `/api/v1/agent-keys` | Metadata only, no raw keys |
+| Revoke agent key | `DELETE` | `/api/v1/agent-keys/{id}` | Immediate effect |
 
 > Full onboarding script: see **Section 0 (First Contact)** above.
 

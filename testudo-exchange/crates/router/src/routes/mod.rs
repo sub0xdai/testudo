@@ -2,6 +2,7 @@
 // @tags api
 
 pub mod agent_journal;
+pub mod agent_keys;
 pub mod auth;
 pub mod coach;
 pub mod signal;

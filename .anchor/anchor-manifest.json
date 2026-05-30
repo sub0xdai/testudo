@@ -716,6 +716,14 @@
         "api"
       ]
     },
+    "exchange:router:agent-key-types": {
+      "locations": [
+        "testudo-exchange/crates/router/src/models/agent_key.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "exchange:router:agent_journal": {
       "locations": [
         "testudo-exchange/crates/router/src/models/agent_journal.rs",
@@ -813,6 +821,14 @@
     "exchange:router:cex_client": {
       "locations": [
         "testudo-exchange/crates/router/src/services/cex_client.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent-key-service": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/agent_key.rs"
       ],
       "tags": [
         "api"
@@ -1217,6 +1233,14 @@
     "exchange:router:order": {
       "locations": [
         "testudo-exchange/crates/router/src/routes/order.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:agent-keys-routes": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/agent_keys.rs"
       ],
       "tags": [
         "api"

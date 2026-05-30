@@ -6,10 +6,13 @@ use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     error::ErrorUnauthorized,
     http::header::{HeaderName, HeaderValue},
-    Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
+    web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
 };
 use common_utils::auth::{TokenClaims, TokenService};
 use futures_util::future::{ready, Ready};
+
+use crate::models::agent_key::{AgentKeyClaims, AgentPermission, AuthMethod};
+use crate::services::agent_key;
 use std::{
     collections::HashMap,
     future::Future,
@@ -251,6 +254,38 @@ where
                 }
             }
 
+            // No Bearer token — try X-Agent-Key header (AGENT-07)
+            if let Some(agent_key_header) = req.headers().get("x-agent-key") {
+                if let Ok(key_str) = agent_key_header.to_str() {
+                    if let Some(state) = req.app_data::<web::Data<crate::types::app::AppState>>()
+                    {
+                        let pool = state.pool.clone();
+                        match agent_key::resolve_agent_key(&pool, key_str).await {
+                            Ok(Some(claims)) => {
+                                req.extensions_mut().insert(claims);
+                                let res = service.call(req).await?;
+                                return Ok(res.map_body(|_, body| BoxBody::new(body)));
+                            }
+                            Ok(None) => {
+                                return Ok(error_response(
+                                    req,
+                                    actix_web::http::StatusCode::UNAUTHORIZED,
+                                    "Invalid or expired agent key",
+                                ));
+                            }
+                            Err(e) => {
+                                tracing::error!("Agent key resolution error: {}", e);
+                                return Ok(error_response(
+                                    req,
+                                    actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                                    "Authentication service error",
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+
             // No token provided — legitimate "not logged in" state.
             // Do NOT rate-limit: /auth/me probes on page load are expected
             // when no session exists. Only invalid tokens count as attempts.
@@ -264,10 +299,59 @@ where
 }
 
 /// Request extractor for authenticated users (AUTH-02: wallet_address replaces email)
+/// Supports both SIWE bearer tokens and AGENT-07 scoped agent keys.
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
     pub user_id: uuid::Uuid,
     pub wallet_address: String,
+    /// How this request was authenticated. SIWE = full access, AgentKey = scoped.
+    pub auth_method: AuthMethod,
+}
+
+impl AuthenticatedUser {
+    /// Convenience constructor for SIWE-authenticated users (used in tests).
+    pub fn siwe(user_id: uuid::Uuid, wallet_address: String) -> Self {
+        Self {
+            user_id,
+            wallet_address,
+            auth_method: AuthMethod::Siwe,
+        }
+    }
+
+    /// Check if this authenticated principal has a specific permission.
+    /// SIWE-authenticated users have all permissions (full access).
+    pub fn has_permission(&self, perm: &AgentPermission) -> bool {
+        match &self.auth_method {
+            AuthMethod::Siwe => true,
+            AuthMethod::AgentKey { permissions, .. } => permissions.contains(perm),
+        }
+    }
+
+    /// Assert that the user has a permission, returning 403 Forbidden if not.
+    /// SIWE-authenticated users always pass.
+    pub fn require_permission(&self, perm: &AgentPermission) -> Result<(), actix_web::Error> {
+        if self.has_permission(perm) {
+            Ok(())
+        } else {
+            Err(actix_web::error::ErrorForbidden(format!(
+                "Agent key lacks permission: {:?}. Required: {:?}",
+                match &self.auth_method {
+                    AuthMethod::AgentKey { permissions, .. } =>
+                        format!("{:?}", permissions),
+                    AuthMethod::Siwe => "full".into(),
+                },
+                perm,
+            )))
+        }
+    }
+
+    /// The agent key ID if authenticated via agent key, None for SIWE.
+    pub fn agent_key_id(&self) -> Option<uuid::Uuid> {
+        match &self.auth_method {
+            AuthMethod::AgentKey { key_id, .. } => Some(*key_id),
+            AuthMethod::Siwe => None,
+        }
+    }
 }
 
 impl FromRequest for AuthenticatedUser {
@@ -275,11 +359,24 @@ impl FromRequest for AuthenticatedUser {
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut actix_web::dev::Payload) -> Self::Future {
+        // AGENT-07: Check for agent key claims first
+        if let Some(claims) = req.extensions().get::<AgentKeyClaims>() {
+            return ready(Ok(AuthenticatedUser {
+                user_id: claims.user_id,
+                wallet_address: String::new(),
+                auth_method: AuthMethod::AgentKey {
+                    key_id: claims.key_id,
+                    permissions: claims.permissions.clone(),
+                },
+            }));
+        }
+
         if let Some(claims) = req.extensions().get::<TokenClaims>() {
             match uuid::Uuid::parse_str(&claims.sub) {
                 Ok(user_id) => ready(Ok(AuthenticatedUser {
                     user_id,
                     wallet_address: claims.wallet_address.clone(),
+                    auth_method: AuthMethod::Siwe,
                 })),
                 Err(_) => ready(Err(ErrorUnauthorized("Invalid user ID in token"))),
             }

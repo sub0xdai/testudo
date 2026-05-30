@@ -31,7 +31,7 @@ use confik::{Configuration as _, EnvSource};
 use dotenvy::dotenv;
 use engine::{EngineActor, ShadowEngine};
 use routes::{
-    agent_journal, auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines,
+    agent_journal, agent_keys, auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines,
     market_data, onboarding, order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers,
     trade, trade_events, trade_management, user_settings,
 };
@@ -1324,6 +1324,15 @@ async fn main() -> std::io::Result<()> {
                             ) // GET /trades/{id}/events (019f)
                             .route("/{id}", web::delete().to(trade_management::cancel_trade)) // DELETE /trades/{id}
                             .route("/cleanup", web::post().to(trade_management::cleanup_stale_trades)), // POST /trades/cleanup (HL-09)
+                    )
+                    // Agent API keys — scoped credentials for autonomous agents (AGENT-07)
+                    .service(
+                        web::scope("/agent-keys")
+                            .wrap(JwtMiddleware::new(token_service.clone()))
+                            .route("", web::post().to(agent_keys::create_key))
+                            .route("", web::get().to(agent_keys::list_keys))
+                            .route("/{key_id}", web::delete().to(agent_keys::revoke_key))
+                            .route("/{key_id}", web::patch().to(agent_keys::update_key)),
                     )
                     // Onboarding status — single-call agent readiness check (AGENT-06)
                     .service(

@@ -8,6 +8,7 @@
 pub mod agent_alert;
 pub mod agent_journal;
 pub mod agent_journal_formatter;
+pub mod agent_key;
 pub mod auth;
 pub mod balance_snapshot;
 pub mod calibration;

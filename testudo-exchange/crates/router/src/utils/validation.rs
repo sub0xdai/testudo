@@ -162,10 +162,10 @@ mod tests {
     #[test]
     fn test_authorized_user_id_success() {
         let user_id = Uuid::new_v4();
-        let auth_user = AuthenticatedUser {
+        let auth_user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let authorized =
             AuthorizedUserId::parse_and_authorize(&user_id.to_string(), &auth_user).unwrap();
@@ -176,10 +176,10 @@ mod tests {
     fn test_authorized_user_id_forbidden() {
         let user_id = Uuid::new_v4();
         let different_id = Uuid::new_v4();
-        let auth_user = AuthenticatedUser {
+        let auth_user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let result = AuthorizedUserId::parse_and_authorize(&different_id.to_string(), &auth_user);
         assert!(result.is_err());

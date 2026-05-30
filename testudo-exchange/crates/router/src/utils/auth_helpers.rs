@@ -44,10 +44,10 @@ mod tests {
     #[test]
     fn test_auth_context_user_id() {
         let user_id = Uuid::new_v4();
-        let user = AuthenticatedUser {
+        let user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let ctx = AuthContext::new(user);
         let authorized_id = ctx.user_id();
@@ -58,10 +58,10 @@ mod tests {
     #[test]
     fn test_auth_context_authorize_matching_user() {
         let user_id = Uuid::new_v4();
-        let user = AuthenticatedUser {
+        let user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let ctx = AuthContext::new(user);
         let result = ctx.authorize_user_id(&user_id.to_string());
@@ -74,10 +74,10 @@ mod tests {
     fn test_auth_context_authorize_different_user() {
         let user_id = Uuid::new_v4();
         let different_id = Uuid::new_v4();
-        let user = AuthenticatedUser {
+        let user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let ctx = AuthContext::new(user);
         let result = ctx.authorize_user_id(&different_id.to_string());
@@ -88,10 +88,10 @@ mod tests {
     #[test]
     fn test_parse_resource_id_valid() {
         let user_id = Uuid::new_v4();
-        let user = AuthenticatedUser {
+        let user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let ctx = AuthContext::new(user);
         let resource_id = Uuid::new_v4();
@@ -104,10 +104,10 @@ mod tests {
     #[test]
     fn test_parse_resource_id_invalid() {
         let user_id = Uuid::new_v4();
-        let user = AuthenticatedUser {
+        let user = AuthenticatedUser::siwe(
             user_id,
-            wallet_address: "0xC285000000000000000000000000000000005b36".to_string(),
-        };
+            "0xC285000000000000000000000000000000005b36".to_string(),
+        );
 
         let ctx = AuthContext::new(user);
         let result = ctx.parse_resource_id("invalid-uuid");

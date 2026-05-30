@@ -17,6 +17,7 @@ use crate::decision_loop::{
     DecisionInputBuilder, DecisionLoop, DecisionOrderSide, DecisionOrderType, DecisionResult,
 };
 use crate::middleware::auth::AuthenticatedUser;
+use crate::models::agent_key::AgentPermission;
 use crate::models::agent_signal::{ExecutionMode, SignalInput, SignalResult, SignalSide};
 use crate::services::agent_alert::{
     alert_from_rejection, alert_from_warning, build_execution_report,
@@ -75,6 +76,14 @@ pub async fn create_signal(
     app_state: web::Data<crate::types::app::AppState>,
 ) -> HttpResponse {
     let input = body.into_inner();
+
+    // AGENT-07: Enforce agent key permission. SIWE users always pass.
+    if let Err(e) = user.require_permission(&AgentPermission::TradeExecute) {
+        return HttpResponse::Forbidden().json(serde_json::json!({
+            "code": "insufficient_permissions",
+            "message": e.to_string(),
+        }));
+    }
 
     // AGENT-01: Per-user rate limit check (before idempotency — reject
     // duplicates fast, then check if they'd be rate-limited anyway).
@@ -248,6 +257,7 @@ async fn execute_shadow(
             HttpResponse::Ok().json(SignalResult::success(
                 trade_group_id, result.id, position_size,
                 sizing_method, ExecutionMode::Shadow, warnings,
+                None,
             ))
         }
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
@@ -359,6 +369,7 @@ async fn execute_live_cex(
             sizing_method,
             ExecutionMode::Live,
             warnings,
+            None,
         )),
         Err(ref e) if is_definitive_rejection(e) => {
             HttpResponse::BadGateway().json(SignalResult::rejected(
@@ -376,7 +387,8 @@ async fn execute_live_cex(
                 sizing_method,
                 ExecutionMode::Live,
                 warnings,
-            ))
+            None,
+        ))
         }
     }
 }
@@ -433,6 +445,7 @@ async fn execute_live_hl(
             sizing_method,
             ExecutionMode::Live,
             warnings,
+            None,
         )),
         Err(ref e) if is_definitive_rejection(e) => {
             HttpResponse::BadGateway().json(SignalResult::rejected(
@@ -450,7 +463,8 @@ async fn execute_live_hl(
                 sizing_method,
                 ExecutionMode::Live,
                 warnings,
-            ))
+            None,
+        ))
         }
     }
 }
@@ -656,6 +670,7 @@ mod tests {
             SizingMethod::FixedFractional,
             ExecutionMode::Shadow,
             vec![],
+            None,
         );
 
         let json = serde_json::to_string(&result).unwrap();
@@ -721,6 +736,7 @@ mod tests {
             SizingMethod::FixedFractional,
             ExecutionMode::Live,
             vec!["Approaching drawdown limit".to_string()],
+            None,
         );
 
         let json = serde_json::to_string(&result).unwrap();
