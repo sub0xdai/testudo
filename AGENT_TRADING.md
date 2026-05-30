@@ -10,8 +10,31 @@
 ## 0. First Contact: Agent Onboarding
 
 When you connect to Testudo for the first time (or connect on behalf of a new
-user), none of the authenticated endpoints in the Quick Reference will work yet.
-You need to onboard the user. This section is your script.
+user), use the onboarding status endpoint to discover what the user needs:
+
+### The One-Call Discovery
+
+```bash
+# Single call replaces the old 3-call discovery dance
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://testudo.vip/api/v1/onboarding/status
+```
+
+Response for a new user with no exchange:
+
+```json
+{
+  "is_ready": false,
+  "next_step": "connect_exchange",
+  "missing": ["No exchange account connected. You need to add an exchange before trading."],
+  "available_exchanges": [
+    {"id": "binance", "name": "Binance", "type": "cex", "required_credentials": ["api_key", "secret"]},
+    {"id": "bybit", "name": "Bybit", "type": "cex", "required_credentials": ["api_key", "secret"]},
+    {"id": "hyperliquid", "name": "Hyperliquid", "type": "dex", "required_credentials": ["wallet"]}
+  ],
+  "has_trades": false
+}
+```
 
 ### The First Contact Decision Tree
 
@@ -40,25 +63,34 @@ built-in — use it.
 After auth, verify your identity with `GET /api/v1/auth/me` to confirm the
 token works.
 
-### Step 2: Check Onboarding State
-
-Call these two discovery endpoints to figure out where the user stands:
+### Step 2: Check Onboarding State (SINGLE CALL)
 
 ```bash
-# Do they already have exchange accounts connected?
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://testudo.vip/api/v1/exchanges/accounts
-
-# What's their risk configuration?
-curl -s -H "Authorization: Bearer $TOKEN" \
-  https://testudo.vip/api/v1/risk-config
+  https://testudo.vip/api/v1/onboarding/status
 ```
 
-**If `GET /exchanges/accounts` returns an empty array `[]`:** the user has no
-exchange connected. Proceed to Step 3 (Exchange Setup).
+This single endpoint replaces the old multi-step discovery. The response
+includes everything you need:
 
-**If it returns accounts:** the user is already set up. Skip to Step 4
-(Ready to Trade).
+- `next_step`: prescriptive enum telling you exactly what to do
+- `missing`: human-readable blocker descriptions for your conversation
+- `available_exchanges`: full exchange list when `next_step` is `"connect_exchange"`
+- `pending_agent_wallet`: agent wallet details when EIP-712 approval is needed
+- `has_trades`: whether the user has trade history
+- `risk_config`: current risk settings (so you can surface them to the user)
+
+**If `next_step` is `"connect_exchange"`:** the user has no exchange connected.
+Proceed to Step 3 (Exchange Setup). Use `available_exchanges` to present options.
+
+**If `next_step` is `"approve_agent_wallet"`:** an agent wallet needs EIP-712
+approval. Use `pending_agent_wallet` to guide the user through signing.
+
+**If `next_step` is `"configure_risk"`:** risk is at conservative defaults.
+Ask the user if they want to customize before starting.
+
+**If `next_step` is `"ready_to_trade"`:** everything is configured. Skip to
+Step 5 (Start Shadow Trading).
 
 ### Step 3: Exchange Setup
 
@@ -380,6 +412,7 @@ def onboard_user(token):
 
 | Action | Method | Endpoint | Notes |
 |--------|--------|----------|-------|
+| Check onboarding status | `GET` | `/api/v1/onboarding/status` | Single-call readiness — use this first |
 | Get SIWE nonce | `GET` | `/api/v1/auth/nonce` | No auth needed |
 | Auth (Ethereum) | `POST` | `/api/v1/auth/verify-siwe` | Returns bearer token |
 | Auth (Solana) | `POST` | `/api/v1/auth/verify-siws` | Returns bearer token |

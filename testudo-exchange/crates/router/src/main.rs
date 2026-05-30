@@ -32,7 +32,7 @@ use dotenvy::dotenv;
 use engine::{EngineActor, ShadowEngine};
 use routes::{
     agent_journal, auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines,
-    market_data, order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers,
+    market_data, onboarding, order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers,
     trade, trade_events, trade_management, user_settings,
 };
 use dashmap::DashMap;
@@ -1324,6 +1324,12 @@ async fn main() -> std::io::Result<()> {
                             ) // GET /trades/{id}/events (019f)
                             .route("/{id}", web::delete().to(trade_management::cancel_trade)) // DELETE /trades/{id}
                             .route("/cleanup", web::post().to(trade_management::cleanup_stale_trades)), // POST /trades/cleanup (HL-09)
+                    )
+                    // Onboarding status — single-call agent readiness check (AGENT-06)
+                    .service(
+                        web::scope("/onboarding")
+                            .wrap(JwtMiddleware::new(token_service.clone()))
+                            .route("/status", web::get().to(onboarding::get_status)),
                     )
                     // Agent signal endpoint — programmatic trade execution
                     .service(

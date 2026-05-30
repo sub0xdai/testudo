@@ -735,6 +735,14 @@
         "api"
       ]
     },
+    "exchange:router:onboarding-types": {
+      "locations": [
+        "testudo-exchange/crates/router/src/models/onboarding.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "exchange:router:mod": {
       "locations": [
         "testudo-exchange/crates/router/src/models/mod.rs",
@@ -861,6 +869,14 @@
     "exchange:router:trade_event_writer": {
       "locations": [
         "testudo-exchange/crates/router/src/services/trade_event_writer.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:onboarding-service": {
+      "locations": [
+        "testudo-exchange/crates/router/src/services/onboarding.rs"
       ],
       "tags": [
         "api"
@@ -1153,6 +1169,14 @@
     "exchange:router:trade_events": {
       "locations": [
         "testudo-exchange/crates/router/src/routes/trade_events.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "exchange:router:onboarding-route": {
+      "locations": [
+        "testudo-exchange/crates/router/src/routes/onboarding.rs"
       ],
       "tags": [
         "api"

@@ -57,89 +57,17 @@ fn cex_error_to_response(e: CexClientError, fallback_code: &str) -> HttpResponse
 /// List all available exchanges that can be connected.
 /// Hardcoded list of featured exchanges (UI display).
 pub async fn list_exchanges(_user: AuthenticatedUser) -> Result<HttpResponse> {
-    let exchanges = vec![
-        serde_json::json!({
-            "id": exchanges::BINANCE,
-            "name": "Binance",
-            "type": "cex",
-            "description": "Leading cryptocurrency exchange",
-            "supported_features": ["spot", "futures", "margin"],
-            "required_credentials": ["api_key", "secret"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::WOO,
-            "name": "WOO X",
-            "type": "cex",
-            "description": "Zero-fee institutional-grade exchange",
-            "supported_features": ["spot", "futures"],
-            "required_credentials": ["api_key", "secret"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::BYBIT,
-            "name": "Bybit",
-            "type": "cex",
-            "description": "Top derivatives exchange",
-            "supported_features": ["spot", "futures"],
-            "required_credentials": ["api_key", "secret"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::OKX,
-            "name": "OKX",
-            "type": "cex",
-            "description": "Leading global exchange",
-            "supported_features": ["spot", "futures", "margin"],
-            "required_credentials": ["api_key", "secret", "passphrase"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::BITGET,
-            "name": "Bitget",
-            "type": "cex",
-            "description": "Top crypto derivatives exchange",
-            "supported_features": ["spot", "futures"],
-            "required_credentials": ["api_key", "secret", "passphrase"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::GATE,
-            "name": "Gate.io",
-            "type": "cex",
-            "description": "Comprehensive crypto exchange",
-            "supported_features": ["spot", "futures"],
-            "required_credentials": ["api_key", "secret"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::PHEMEX,
-            "name": "Phemex",
-            "type": "cex",
-            "description": "Contract trading platform",
-            "supported_features": ["spot", "futures"],
-            "required_credentials": ["api_key", "secret"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::BLOFIN,
-            "name": "BloFin",
-            "type": "cex",
-            "description": "Professional crypto trading platform",
-            "supported_features": ["spot", "futures"],
-            "required_credentials": ["api_key", "secret", "passphrase"],
-            "optional_credentials": []
-        }),
-        serde_json::json!({
-            "id": exchanges::HYPERLIQUID,
-            "name": "Hyperliquid",
-            "type": "dex",
-            "description": "On-chain perpetual futures DEX",
-            "supported_features": ["futures"],
-            "required_credentials": ["wallet"],
-            "optional_credentials": []
-        }),
-    ];
+    let exchanges: Vec<serde_json::Value> = crate::services::onboarding::build_exchange_list()
+        .into_iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id,
+                "name": e.name,
+                "type": e.exchange_type,
+                "required_credentials": e.required_credentials,
+            })
+        })
+        .collect();
 
     let response = ExchangeListResponse { exchanges };
     Ok(HttpResponse::Ok().json(response))

@@ -25,6 +25,7 @@ pub mod journal_service;
 pub mod journal_stats;
 pub mod journal_syncer;
 pub mod journal_timeseries;
+pub mod onboarding;
 pub mod hyperliquid;
 pub mod price_feed;
 pub mod reconciliation;

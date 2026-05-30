@@ -160,6 +160,23 @@ impl RiskConfig {
     }
 
     /// Validate the configuration
+    /// Returns true if this config matches the default settings.
+    /// Used by onboarding status to detect whether user has customized risk.
+    /// Excludes user_id from comparison (it's assigned at load time, not a setting).
+    pub fn is_default(&self) -> bool {
+        let default = Self::default();
+        self.account_risk_percent == default.account_risk_percent
+            && self.max_risk_amount == default.max_risk_amount
+            && self.max_position_size == default.max_position_size
+            && self.max_leverage == default.max_leverage
+            && self.daily_max_drawdown_percent == default.daily_max_drawdown_percent
+            && self.max_open_positions == default.max_open_positions
+            && self.require_stop_loss == default.require_stop_loss
+            && self.default_stop_atr_multiplier == default.default_stop_atr_multiplier
+            && self.min_risk_reward_ratio == default.min_risk_reward_ratio
+            && self.dynamic_risk_enabled == default.dynamic_risk_enabled
+    }
+
     pub fn validate(&self) -> Result<(), RiskConfigError> {
         if self.account_risk_percent <= dec!(0) {
             return Err(RiskConfigError::InvalidRiskPercent(
@@ -297,5 +314,47 @@ mod tests {
 
         let config = RiskConfig::new().with_max_leverage(1);
         assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_is_default_returns_true_for_default() {
+        let config = RiskConfig::default();
+        assert!(config.is_default());
+    }
+
+    #[test]
+    fn test_is_default_returns_true_with_user_id_set() {
+        let config = RiskConfig {
+            user_id: Some(Uuid::new_v4()),
+            ..Default::default()
+        };
+        assert!(config.is_default());
+    }
+
+    #[test]
+    fn test_is_default_returns_false_when_customized() {
+        let config = RiskConfig {
+            account_risk_percent: dec!(3),
+            ..Default::default()
+        };
+        assert!(!config.is_default());
+    }
+
+    #[test]
+    fn test_is_default_returns_false_when_leverage_changed() {
+        let config = RiskConfig {
+            max_leverage: 10,
+            ..Default::default()
+        };
+        assert!(!config.is_default());
+    }
+
+    #[test]
+    fn test_is_default_returns_false_when_stop_loss_disabled() {
+        let config = RiskConfig {
+            require_stop_loss: false,
+            ..Default::default()
+        };
+        assert!(!config.is_default());
     }
 }

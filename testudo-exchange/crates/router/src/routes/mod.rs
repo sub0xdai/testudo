@@ -15,6 +15,7 @@ pub mod imports;
 pub mod journal;
 pub mod klines;
 pub mod market_data;
+pub mod onboarding;
 pub mod order;
 pub mod paper_balance;
 pub mod risk;
