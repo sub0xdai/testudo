@@ -72,6 +72,14 @@
         "infra"
       ]
     },
+    "test:cli:llm": {
+      "locations": [
+        "testudo-cli/tests/llm_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "infra:cli:daemon": {
       "locations": [
         "testudo-cli/src/daemon.rs"
@@ -367,7 +375,7 @@
         "testudo-cli/src/llm/client.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:llm:anthropic": {
@@ -375,7 +383,7 @@
         "testudo-cli/src/llm/anthropic.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:llm:stream": {
@@ -383,7 +391,7 @@
         "testudo-cli/src/llm/stream.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:llm:openai": {
@@ -408,6 +416,14 @@
       ],
       "tags": [
         "infra"
+      ]
+    },
+    "infra:cli:llm:types": {
+      "locations": [
+        "testudo-cli/src/llm/types.rs"
+      ],
+      "tags": [
+        "api"
       ]
     },
     "infra:cli:ws:client": {

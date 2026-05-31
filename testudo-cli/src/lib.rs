@@ -49,13 +49,14 @@ mod tools {
     pub mod write_journal;
 }
 
-mod llm {
+pub mod llm {
     pub mod anthropic;
     pub mod client;
     pub mod gemini;
     pub mod ollama;
     pub mod openai;
     pub mod stream;
+    pub mod types;
 }
 
 pub mod api {

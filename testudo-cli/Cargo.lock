@@ -2988,6 +2988,7 @@ dependencies = [
 name = "testudo-cli"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "clap",
  "common_utils",
