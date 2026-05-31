@@ -56,6 +56,14 @@
         "api"
       ]
     },
+    "test:cli:tools": {
+      "locations": [
+        "testudo-cli/tests/tools_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "test:cli:errors": {
       "locations": [
         "testudo-cli/tests/error_tests.rs"
@@ -154,7 +162,7 @@
         "ui"
       ]
     },
-    "infra:cli:tools:signal": {
+    "infra:cli:tools:submit_signal": {
       "locations": [
         "testudo-cli/src/tools/submit_signal.rs"
       ],
@@ -162,7 +170,7 @@
         "api"
       ]
     },
-    "infra:cli:tools:check-onboarding": {
+    "infra:cli:tools:check_onboarding": {
       "locations": [
         "testudo-cli/src/tools/check_onboarding.rs"
       ],
@@ -170,7 +178,7 @@
         "api"
       ]
     },
-    "infra:cli:tools:check-risk": {
+    "infra:cli:tools:check_risk": {
       "locations": [
         "testudo-cli/src/tools/check_risk.rs"
       ],
@@ -178,7 +186,15 @@
         "api"
       ]
     },
-    "infra:cli:tools:read-journal": {
+    "infra:cli:tools:mod": {
+      "locations": [
+        "testudo-cli/src/tools/mod.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "infra:cli:tools:read_journal": {
       "locations": [
         "testudo-cli/src/tools/read_journal.rs"
       ],
@@ -186,7 +202,7 @@
         "api"
       ]
     },
-    "infra:cli:tools:klines": {
+    "infra:cli:tools:fetch_klines": {
       "locations": [
         "testudo-cli/src/tools/fetch_klines.rs"
       ],
@@ -194,7 +210,7 @@
         "api"
       ]
     },
-    "infra:cli:tools:list-positions": {
+    "infra:cli:tools:list_positions": {
       "locations": [
         "testudo-cli/src/tools/list_positions.rs"
       ],
@@ -207,10 +223,10 @@
         "testudo-cli/src/tools/types.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
-    "infra:cli:tools:write-journal": {
+    "infra:cli:tools:write_journal": {
       "locations": [
         "testudo-cli/src/tools/write_journal.rs"
       ],

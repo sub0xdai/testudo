@@ -42,7 +42,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- llm` passes. AnthropicClient builds correct request JSON. Tool use blocks parsed with correct name + arguments.
 - **Commit message**: `feat: LLM provider trait with Anthropic Messages API implementation`
 
-### CP-2: 7 tool definitions
+### CP-2: 7 tool definitions ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/tools/types.rs`, `src/tools/mod.rs` (NEW), `src/tools/fetch_klines.rs`, `src/tools/submit_signal.rs`, `src/tools/read_journal.rs`, `src/tools/write_journal.rs`, `src/tools/list_positions.rs`, `src/tools/check_risk.rs`, `src/tools/check_onboarding.rs`, `src/lib.rs`
 - **Tasks**:

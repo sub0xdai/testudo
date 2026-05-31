@@ -38,16 +38,8 @@ mod view {
     pub mod status_bar;
 }
 
-mod tools {
-    pub mod check_onboarding;
-    pub mod check_risk;
-    pub mod fetch_klines;
-    pub mod list_positions;
-    pub mod read_journal;
-    pub mod submit_signal;
-    pub mod types;
-    pub mod write_journal;
-}
+pub mod tools;
+pub use tools::all_tools;
 
 pub mod llm {
     pub mod anthropic;
