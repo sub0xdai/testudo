@@ -19,6 +19,9 @@ pub struct StrategyTemplate {
     pub constraints: Option<StrategyConstraints>,
     #[serde(default)]
     pub allowed_tools: Option<AllowedToolsSection>,
+    /// Proof artifacts this strategy requires.
+    #[serde(default)]
+    pub required_proofs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -39,7 +39,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- loader` passes. Artifacts load from disk. Merge picks tighter bounds. User can only tighten.
 - **Commit message**: `feat: proof artifact loader and constraint merger with user intersection`
 
-### CP-2: Tool constrainer + strategy validation
+### CP-2: Tool constrainer + strategy validation ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/strategies/tools.rs` (NEW), `src/strategies/validator.rs` (NEW), `src/strategies/template.rs` (add required_proofs), `src/strategies/registry.rs` (integrate validation)
 - **Tasks**:

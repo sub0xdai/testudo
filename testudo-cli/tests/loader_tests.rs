@@ -2,7 +2,6 @@
 // @tags api
 
 use testudo_cli::strategies::loader::StrategyLoader;
-use testudo_cli::strategies::constraints::ConstraintSet;
 use std::path::PathBuf;
 
 fn proofs_dir() -> PathBuf {
@@ -132,7 +131,7 @@ fn tool_constrainer_clamps_leverage() {
     assert_eq!(leverage_max, 3, "leverage max should be 3 after constraint");
 
     // Description should mention proof-backed constraints
-    assert!(tool.description.contains("max_leverage"), "description should mention leverage");
+    assert!(tool.description.contains("Max leverage"), "description should mention leverage");
 }
 
 #[test]
@@ -168,7 +167,7 @@ fn validator_rejects_missing_required_proof() {
     // We're testing the validation logic, not the full registry integration
     use testudo_cli::strategies::template::StrategyTemplate;
 
-    let mut tmpl = StrategyTemplate {
+    let tmpl = StrategyTemplate {
         meta: testudo_cli::strategies::template::StrategyMeta {
             name: "test-strat".into(),
             version: "1.0".into(),

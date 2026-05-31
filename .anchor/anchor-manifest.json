@@ -299,6 +299,22 @@
         "api"
       ]
     },
+    "infra:cli:strategies:tools": {
+      "locations": [
+        "testudo-cli/src/strategies/tools.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:strategies:validator": {
+      "locations": [
+        "testudo-cli/src/strategies/validator.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
     "infra:cli:strategies:constraints": {
       "locations": [
         "testudo-cli/src/strategies/constraints.rs"

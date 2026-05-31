@@ -80,6 +80,8 @@ pub mod strategies {
     pub mod loader;
     pub mod registry;
     pub mod template;
+    pub mod tools;
+    pub mod validator;
 }
 
 pub mod risk {
