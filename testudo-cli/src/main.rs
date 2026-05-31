@@ -4,7 +4,7 @@
 use clap::Parser;
 use testudo_cli::app::run_app;
 use testudo_cli::cmd::{
-    run_agent, run_init, run_journal, run_listen,
+    run_agent, run_attach, run_init, run_journal, run_listen,
     run_strategy_add, run_strategy_list, run_strategy_remove, run_strategy_show,
 };
 use testudo_cli::config::Config;
@@ -175,18 +175,17 @@ fn main() {
                 }
             }
         }
+        Command::Attach => {
+            if let Err(e) = run_attach() {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        }
         Command::Init => {
             if let Err(e) = run_init(&config) {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }
-        }
-        other => {
-            println!(
-                "not yet implemented: {} | Config loaded: {}",
-                other.description(),
-                config.api.base_url
-            );
         }
     }
 }

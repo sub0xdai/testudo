@@ -47,3 +47,21 @@ fn daemon_state_with_error() {
     let json = serde_json::to_string(&state).unwrap();
     assert!(json.contains("API timeout"));
 }
+
+use testudo_cli::cmd::run_attach;
+
+#[test]
+fn attach_fails_when_no_socket() {
+    // Save and remove any existing socket
+    let socket_path = testudo_cli::daemon::socket_path();
+    let _ = std::fs::remove_file(&socket_path);
+    
+    let result = run_attach();
+    assert!(result.is_err(), "attach should fail when no socket exists");
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("daemon") || err.contains("socket") || err.contains("not running"),
+        "error should mention daemon/socket, got: {}",
+        err
+    );
+}

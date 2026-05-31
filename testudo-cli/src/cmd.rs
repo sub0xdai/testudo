@@ -13,6 +13,7 @@ use crate::model::agent::{AgentMode, AgentPhase, AgentState};
 use crate::tools::all_tools;
 use crate::tools::types::ToolDef;
 use crate::ws::client::WsClient;
+use tokio::io::AsyncWriteExt;
 
 /// Testudo trading agent harness — terminal-first trading client.
 #[derive(Parser, Debug)]
@@ -720,6 +721,69 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     println!("  testudo dashboard            Open live TUI");
 
     Ok(())
+}
+
+/// `testudo attach` — connect to a running daemon and show live status.
+pub fn run_attach() -> Result<(), Box<dyn std::error::Error>> {
+    let socket_path = crate::daemon::socket_path();
+
+    if !socket_path.exists() {
+        return Err(
+            "No daemon socket found. Start the daemon with:\n  \
+             testudo agent start --daemon"
+                .into(),
+        );
+    }
+
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    rt.block_on(async {
+        let stream = tokio::net::UnixStream::connect(&socket_path).await?;
+        let (reader, mut writer) = stream.into_split();
+
+        // Send status request
+        let request = r#"{"jsonrpc":"2.0","id":1,"method":"status"}"#;
+        writer.write_all(request.as_bytes()).await?;
+        writer.write_all(b"\n").await?;
+
+        // Read response
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        let mut lines = BufReader::new(reader).lines();
+        if let Ok(Some(line)) = lines.next_line().await {
+            let resp: serde_json::Value =
+                serde_json::from_str(&line).unwrap_or_default();
+
+            if let Some(result) = resp.get("result") {
+                println!("╔══════════════════════════════════════╗");
+                println!("║        Daemon Status                  ║");
+                println!("╚══════════════════════════════════════╝");
+                println!();
+                println!(
+                    "  Phase:        {}",
+                    result["phase"].as_str().unwrap_or("unknown")
+                );
+                println!(
+                    "  Signals:      {}",
+                    result["signal_count"].as_u64().unwrap_or(0)
+                );
+                println!(
+                    "  Uptime:       {}s",
+                    result["uptime_secs"].as_u64().unwrap_or(0)
+                );
+                if let Some(err) = result["last_error"].as_str() {
+                    println!("  Last error:   {}", err);
+                }
+                println!();
+                println!("Run 'testudo attach' for live TUI (coming in CP-3).");
+            } else if let Some(err) = resp.get("error") {
+                eprintln!("Daemon error: {}", err);
+            }
+        }
+
+        Ok(())
+    })
 }
 
 /// `testudo strategy remove <name>` — remove a user strategy.

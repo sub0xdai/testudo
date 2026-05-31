@@ -41,7 +41,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- daemon` passes. Manual: `testudo agent start --daemon`, PID file appears, `echo '{"method":"status"}' | nc -U ~/.config/testudo/tudo.sock` returns JSON.
 - **Commit message**: `feat: daemon mode with Unix socket JSON-RPC control`
 
-### CP-2: `testudo attach` read-only TUI
+### CP-2: `testudo attach` read-only TUI ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/cmd.rs` (run_attach), `src/main.rs`, `src/app.rs` (attach TUI loop)
 - **Tasks**:
