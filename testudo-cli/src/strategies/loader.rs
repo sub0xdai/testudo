@@ -51,6 +51,14 @@ impl StrategyLoader {
         Self { proofs_dir }
     }
 
+    /// Default proofs directory (relative to crate root).
+    pub fn proofs_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("testudo-proofs")
+            .join("Proofs")
+    }
+
     /// Load all `.toml` artifacts from the proofs directory.
     /// Returns a map of artifact name → parsed StrategyArtifact.
     /// Gracefully returns empty map if directory doesn't exist.

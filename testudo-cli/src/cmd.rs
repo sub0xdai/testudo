@@ -84,6 +84,11 @@ pub enum StrategyAction {
         /// Strategy name
         name: String,
     },
+    /// Validate a strategy against proof artifacts
+    Validate {
+        /// Strategy name
+        name: String,
+    },
 }
 
 impl Command {
@@ -104,6 +109,7 @@ impl Command {
                 StrategyAction::Add { .. } => "strategy add".into(),
                 StrategyAction::Show { .. } => "strategy show".into(),
                 StrategyAction::Remove { .. } => "strategy remove".into(),
+                StrategyAction::Validate { .. } => "strategy validate".into(),
             },
             Command::Attach => "attach".into(),
         }
@@ -784,6 +790,77 @@ pub fn run_attach() -> Result<(), Box<dyn std::error::Error>> {
 
         Ok(())
     })
+}
+
+/// `testudo strategy validate <name>` — validate strategy against proof artifacts.
+pub fn run_strategy_validate(
+    config_dir: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let registry = StrategyRegistry::new(config_dir);
+    let tmpl = registry
+        .get(name)
+        .ok_or_else(|| format!("Strategy '{}' not found.", name))?;
+
+    // Load proof artifacts
+    let proofs_dir = crate::strategies::loader::StrategyLoader::proofs_dir();
+    let loader = crate::strategies::loader::StrategyLoader::new(proofs_dir);
+    let artifacts = loader.load_all().unwrap_or_default();
+
+    // Validate
+    let result =
+        crate::strategies::validator::StrategyValidator::validate(&tmpl, &artifacts);
+
+    println!("Strategy: {} v{}", tmpl.meta.name, tmpl.meta.version);
+    println!("Description: {}", tmpl.meta.description);
+    println!();
+
+    if tmpl.required_proofs.is_empty() {
+        println!("No proof artifacts required.");
+    } else {
+        println!("Required proofs:");
+        for proof in &tmpl.required_proofs {
+            let status = if artifacts.contains_key(proof) {
+                "✓ loaded"
+            } else {
+                "✗ missing"
+            };
+            println!("  {} {}", status, proof);
+        }
+    }
+
+    // Show constraints from loaded artifacts
+    if !artifacts.is_empty() {
+        let mut cs = crate::strategies::constraints::ConstraintSet::defaults();
+        for (name, artifact) in &artifacts {
+            for (key, value) in &artifact.constraints {
+                cs.apply_toml_constraint(name, key, value);
+            }
+        }
+
+        println!();
+        println!("Proof-backed constraints:");
+        println!("  Max leverage:       {}×", cs.max_leverage as u64);
+        println!("  Account risk/trade: {:.1}%", cs.max_account_risk_pct);
+        println!("  Max drawdown:       {:.1}%", cs.max_drawdown_pct);
+        println!("  Stop loss required: {}", cs.stop_loss_required);
+    }
+
+    println!();
+    if result.valid {
+        println!("✅ Strategy is valid.");
+    } else {
+        println!("❌ Strategy has {} error(s):", result.errors.len());
+        for error in &result.errors {
+            println!("  - {}", error);
+        }
+    }
+
+    for warning in &result.warnings {
+        println!("⚠  {}", warning);
+    }
+
+    Ok(())
 }
 
 /// `testudo strategy remove <name>` — remove a user strategy.

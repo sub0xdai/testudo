@@ -6,6 +6,7 @@ use testudo_cli::app::run_app;
 use testudo_cli::cmd::{
     run_agent, run_attach, run_init, run_journal, run_listen,
     run_strategy_add, run_strategy_list, run_strategy_remove, run_strategy_show,
+    run_strategy_validate,
 };
 use testudo_cli::config::Config;
 use testudo_cli::{AgentAction, Command, StrategyAction};
@@ -169,6 +170,12 @@ fn main() {
                 }
                 StrategyAction::Remove { name } => {
                     if let Err(e) = run_strategy_remove(&config_dir, name.as_str()) {
+                        eprintln!("Error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+                StrategyAction::Validate { name } => {
+                    if let Err(e) = run_strategy_validate(&config_dir, name.as_str()) {
                         eprintln!("Error: {}", e);
                         std::process::exit(1);
                     }

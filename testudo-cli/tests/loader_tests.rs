@@ -226,3 +226,19 @@ fn validator_passes_when_all_proofs_present() {
     assert!(result.valid, "should be valid when all proofs present");
     assert!(result.errors.is_empty());
 }
+
+use testudo_cli::cmd::run_strategy_validate;
+
+#[test]
+fn validate_builtin_strategy_succeeds() {
+    let tmp = tempfile::tempdir().unwrap();
+    let result = run_strategy_validate(tmp.path(), "mean-reversion");
+    assert!(result.is_ok(), "validating a builtin should succeed");
+}
+
+#[test]
+fn validate_nonexistent_strategy_fails() {
+    let tmp = tempfile::tempdir().unwrap();
+    let result = run_strategy_validate(tmp.path(), "nonexistent");
+    assert!(result.is_err(), "validating nonexistent should fail");
+}

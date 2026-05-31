@@ -53,7 +53,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- tools` passes. Tool schemas reflect constraints. Validator catches missing proofs.
 - **Commit message**: `feat: tool constrainer and strategy validator with proof cross-reference`
 
-### CP-3: `strategy validate` CLI + prompt assembly + integration
+### CP-3: `strategy validate` CLI + prompt assembly + integration ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/cmd.rs` (strategy validate handler), `src/main.rs` (wire), Agent loop integration
 - **Tasks**:
