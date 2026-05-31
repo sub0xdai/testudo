@@ -16,6 +16,30 @@
         "ui"
       ]
     },
+    "test:cli:tui": {
+      "locations": [
+        "testudo-cli/tests/tui_tests.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
+    "test:cli:config": {
+      "locations": [
+        "testudo-cli/tests/config_tests.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "test:cli:parsing": {
+      "locations": [
+        "testudo-cli/tests/cli_tests.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
     "infra:cli:daemon": {
       "locations": [
         "testudo-cli/src/daemon.rs"
@@ -80,6 +104,14 @@
       ],
       "tags": [
         "infra"
+      ]
+    },
+    "infra:cli:theme": {
+      "locations": [
+        "testudo-cli/src/theme.rs"
+      ],
+      "tags": [
+        "ui"
       ]
     },
     "infra:cli:tools:signal": {

@@ -6,14 +6,13 @@
 //! TUI + CLI for autonomous trading: onboard, run strategies, monitor
 //! positions, journal results. Consumes the Testudo REST + WebSocket API.
 
-mod app;
-mod auth;
-mod cmd;
-mod config;
-mod msg;
-mod update;
+pub mod cmd;
+pub use cmd::{AgentAction, Command, StrategyAction};
 
-mod model {
+pub mod config;
+pub mod theme;
+
+pub mod model {
     pub mod agent;
     pub mod journal;
     pub mod market;
@@ -21,6 +20,12 @@ mod model {
     pub mod session;
     pub mod state;
 }
+
+pub mod msg;
+pub mod update;
+
+pub mod app;
+mod auth;
 
 mod view {
     pub mod agent_pane;
