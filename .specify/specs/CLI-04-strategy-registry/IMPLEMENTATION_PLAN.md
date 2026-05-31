@@ -81,7 +81,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- agent` passes strategy-specific tests. Manual: printed system prompt differs per strategy.
 - **Commit message**: `feat: strategy-aware agent loop with prompt, constraints, and tool filtering`
 
-### CP-5: `testudo init` onboarding TUI
+### CP-5: `testudo init` onboarding TUI ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/cmd.rs` (run_init), `src/main.rs` (wire Init command)
 - **Tasks**:

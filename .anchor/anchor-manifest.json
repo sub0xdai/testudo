@@ -64,6 +64,14 @@
         "api"
       ]
     },
+    "test:cli:init": {
+      "locations": [
+        "testudo-cli/tests/init_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "test:cli:tools": {
       "locations": [
         "testudo-cli/tests/tools_tests.rs"
@@ -99,6 +107,14 @@
     "test:cli:parsing": {
       "locations": [
         "testudo-cli/tests/cli_tests.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "test:cli:daemon": {
+      "locations": [
+        "testudo-cli/tests/daemon_tests.rs"
       ],
       "tags": [
         "infra"

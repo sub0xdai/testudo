@@ -49,6 +49,9 @@ pub enum AgentAction {
         /// Strategy name to use (optional)
         #[arg(long)]
         strategy: Option<String>,
+        /// Run in daemon mode (background, socket control)
+        #[arg(long)]
+        daemon: bool,
     },
     /// Stop the agent gracefully
     Stop,
@@ -567,6 +570,154 @@ pub fn run_strategy_show(
             println!("  - {}", tool);
         }
     }
+
+    Ok(())
+}
+
+/// `testudo init` — guided onboarding wizard.
+///
+/// Walks the user through 5 steps to configure the harness from scratch.
+/// Uses stdin/stdout terminal prompts (not TUI) for CLI-04.
+/// TUI upgrade deferred to CLI-05.
+pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    println!("╔══════════════════════════════════════════════╗");
+    println!("║        Testudo Harness — First Setup         ║");
+    println!("╚══════════════════════════════════════════════╝");
+    println!();
+
+    let mut base_url = config.api.base_url.clone();
+    let mut agent_key = config.api.agent_key.clone();
+    let mut leverage: u8 = 5;
+    let mut account_risk_pct: f64 = 2.0;
+    let mut drawdown_pct: f64 = 20.0;
+
+    // Step 1: Base URL
+    println!("── Step 1/5: Backend URL ──────────────────────");
+    println!("Enter the Testudo backend URL:");
+    print!("[{}] ", base_url);
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input)?;
+    let trimmed = input.trim();
+    if !trimmed.is_empty() {
+        if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
+            eprintln!("Warning: URL should start with http:// or https://");
+        }
+        base_url = trimmed.to_string();
+    }
+    println!();
+
+    // Step 2: Agent Key
+    println!("── Step 2/5: Agent Key ────────────────────────");
+    println!("Paste your agent key (testudo_sk_...):");
+    if !agent_key.is_empty() {
+        let masked = format!("{}...{}", &agent_key[..12], &agent_key[agent_key.len()-4..]);
+        print!("[{}] ", masked);
+    }
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    let trimmed = input.trim();
+    if !trimmed.is_empty() {
+        if !trimmed.starts_with("testudo_sk_") {
+            eprintln!("Warning: agent keys should start with 'testudo_sk_'");
+        }
+        agent_key = trimmed.to_string();
+    }
+    println!();
+
+    // Step 3: Exchange
+    println!("── Step 3/5: Exchange ─────────────────────────");
+    println!("Exchange connection is set up via the web desk.");
+    println!("Visit your Testudo desk to connect an exchange.");
+    println!("(Press Enter to continue)");
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    println!();
+
+    // Step 4: Risk Config
+    println!("── Step 4/5: Risk Configuration ───────────────");
+
+    print!("Max leverage [{}]: ", leverage);
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    if let Ok(val) = input.trim().parse::<u8>() {
+        if val > 0 && val <= 125 {
+            leverage = val;
+        } else {
+            eprintln!("Leverage must be 1-125. Keeping default.");
+        }
+    }
+
+    print!("Account risk per trade % [{:.1}]: ", account_risk_pct);
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    if let Ok(val) = input.trim().parse::<f64>() {
+        if val > 0.0 && val <= 100.0 {
+            account_risk_pct = val;
+        } else {
+            eprintln!("Risk must be 0.1-100%. Keeping default.");
+        }
+    }
+
+    print!("Max drawdown % [{:.1}]: ", drawdown_pct);
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    if let Ok(val) = input.trim().parse::<f64>() {
+        if val > 0.0 && val <= 100.0 {
+            drawdown_pct = val;
+        } else {
+            eprintln!("Drawdown must be 0.1-100%. Keeping default.");
+        }
+    }
+    println!();
+
+    // Step 5: Save
+    println!("── Step 5/5: Save Configuration ───────────────");
+    println!();
+    println!("  Base URL:     {}", base_url);
+    println!("  Agent Key:    {}", if agent_key.is_empty() { "(not set)" } else { "****" });
+    println!("  Max Leverage: {}×", leverage);
+    println!("  Risk/Trade:   {:.1}%", account_risk_pct);
+    println!("  Max Drawdown: {:.1}%", drawdown_pct);
+    println!();
+
+    print!("Save to ~/.config/testudo/config.toml? [Y/n] ");
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+
+    if input.trim().eq_ignore_ascii_case("n") {
+        println!("Aborted. Config not saved.");
+        return Ok(());
+    }
+
+    // Build and save config
+    let new_config = Config {
+        api: crate::config::ApiConfig {
+            base_url,
+            agent_key,
+            ws_url: config.api.ws_url.clone(),
+        },
+        ..Config::default()
+    };
+
+    let config_dir = Config::config_dir();
+    let config_path = config_dir.join("config.toml");
+    let tmp_path = config_dir.join("config.toml.tmp");
+
+    std::fs::create_dir_all(&config_dir)?;
+    let toml_str = toml::to_string_pretty(&new_config)?;
+    std::fs::write(&tmp_path, &toml_str)?;
+
+    // Atomic rename
+    std::fs::rename(&tmp_path, &config_path)?;
+
+    println!();
+    println!("✅ Configuration saved to {}", config_path.display());
+    println!();
+    println!("Next steps:");
+    println!("  testudo agent start          Start autonomous trading");
+    println!("  testudo journal              View trading summary");
+    println!("  testudo strategy list        Browse strategies");
+    println!("  testudo dashboard            Open live TUI");
 
     Ok(())
 }
