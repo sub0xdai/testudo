@@ -65,7 +65,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- ws` passes. WebSocket types compile. Reconnection logic tested.
 - **Commit message**: `feat: WebSocket client with exponential backoff reconnection`
 
-### CP-3: `testudo listen` + `testudo journal` commands
+### CP-3: `testudo listen` + `testudo journal` commands ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `testudo-cli/src/cmd.rs` (add listen/journal dispatch), `testudo-cli/src/main.rs` (wire commands), `testudo-cli/src/config.rs` (add ws_url helper)
 - **Tasks**:

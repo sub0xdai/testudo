@@ -8,7 +8,7 @@ use serde_json::Value;
 use tokio::sync::mpsc;
 
 /// Events received from the ws-stream service.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum WsEvent {
     /// Agent alert (risk breach, drawdown warning, etc.)
     Alert(AgentAlert),
