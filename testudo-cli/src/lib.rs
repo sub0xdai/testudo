@@ -7,7 +7,7 @@
 //! positions, journal results. Consumes the Testudo REST + WebSocket API.
 
 pub mod cmd;
-pub use cmd::{run_journal, run_listen, AgentAction, Command, StrategyAction};
+pub use cmd::{run_agent, run_journal, run_listen, AgentAction, Command, StrategyAction};
 
 pub mod config;
 pub mod theme;
@@ -20,6 +20,8 @@ pub mod model {
     pub mod session;
     pub mod state;
 }
+
+pub use model::agent::{AgentMode, AgentPhase, AgentState};
 
 pub mod msg;
 pub mod update;
@@ -40,6 +42,7 @@ mod view {
 
 pub mod tools;
 pub use tools::all_tools;
+pub use tools::types::ToolDef;
 
 pub mod llm {
     pub mod anthropic;

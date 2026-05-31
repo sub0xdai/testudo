@@ -62,7 +62,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- tools` passes. All 7 tools defined, definitions have valid JSON structure, executors compile and link to ApiClient.
 - **Commit message**: `feat: 7 typed LLM tool definitions with JSON Schema`
 
-### CP-3: `testudo agent start` autonomous loop
+### CP-3: `testudo agent start` autonomous loop ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/model/agent.rs`, `src/cmd.rs` (add run_agent), `src/main.rs` (wire agent start)
 - **Tasks**:

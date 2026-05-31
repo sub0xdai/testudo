@@ -3,9 +3,9 @@
 
 use clap::Parser;
 use testudo_cli::app::run_app;
-use testudo_cli::cmd::{run_journal, run_listen};
+use testudo_cli::cmd::{run_agent, run_journal, run_listen};
 use testudo_cli::config::Config;
-use testudo_cli::Command;
+use testudo_cli::{AgentAction, Command};
 
 fn init_tracing() {
     use tracing_subscriber::fmt;
@@ -51,6 +51,23 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        Command::Agent(action) => match action {
+            AgentAction::Start => {
+                init_tracing();
+                tracing::info!("agent: starting autonomous loop");
+                if let Err(e) = run_agent(&config, None) {
+                    tracing::error!(error = %e, "agent loop failed");
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            _ => {
+                println!(
+                    "not yet implemented: agent {}",
+                    format!("{:?}", action).to_lowercase()
+                );
+            }
+        },
         other => {
             println!(
                 "not yet implemented: {} | Config loaded: {}",

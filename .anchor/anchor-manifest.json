@@ -64,6 +64,14 @@
         "api"
       ]
     },
+    "test:cli:agent": {
+      "locations": [
+        "testudo-cli/tests/agent_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "test:cli:errors": {
       "locations": [
         "testudo-cli/tests/error_tests.rs"
