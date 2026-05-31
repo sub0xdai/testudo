@@ -104,22 +104,22 @@ impl WsClient {
                         break;
                     }
                     Err(e) => {
-                        eprintln!("WebSocket error: {}", e);
+                        tracing::error!("WebSocket error: {}", e);
 
                         match backoff.next_delay(max_retries) {
                             Some(delay) => {
-                                eprintln!(
-                                    "Reconnecting in {}s (attempt {}/{})...",
-                                    delay.as_secs(),
-                                    backoff.attempt_count(),
-                                    max_retries
+                                tracing::warn!(
+                                    delay_secs = delay.as_secs(),
+                                    attempt = backoff.attempt_count(),
+                                    max = max_retries,
+                                    "WebSocket reconnecting"
                                 );
                                 tokio::time::sleep(delay).await;
                             }
                             None => {
-                                eprintln!(
-                                    "WebSocket permanently failed after {} attempts",
-                                    max_retries
+                                tracing::error!(
+                                    max_attempts = max_retries,
+                                    "WebSocket permanently failed"
                                 );
                                 let _ = tx.send(WsEvent::Disconnected);
                                 break;
@@ -164,7 +164,7 @@ impl WsClient {
                 }
                 Ok(tokio_tungstenite::tungstenite::Message::Close(_)) => break,
                 Err(e) => {
-                    eprintln!("WebSocket read error: {}", e);
+                    tracing::warn!("WebSocket read error: {}", e);
                     break;
                 }
                 _ => {}

@@ -82,6 +82,7 @@ impl Command {
 /// `testudo journal` — fetch and print the agent journal summary.
 pub fn run_journal(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if config.api.agent_key.is_empty() {
+        tracing::warn!("journal: no agent key configured");
         return Err(
             "No agent key configured. Run 'testudo init' first, \
              or set api.agent_key in ~/.config/testudo/config.toml"
@@ -117,6 +118,7 @@ pub fn run_journal(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 /// `testudo listen` — stream WebSocket events to stdout as JSON Lines.
 pub fn run_listen(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if config.api.agent_key.is_empty() {
+        tracing::warn!("listen: no agent key configured");
         return Err(
             "No agent key configured. Run 'testudo init' first, \
              or set api.agent_key in ~/.config/testudo/config.toml"

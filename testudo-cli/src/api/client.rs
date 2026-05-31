@@ -46,11 +46,13 @@ impl ApiClient {
     }
 
     pub async fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, ApiError> {
+        tracing::debug!("GET {}", path);
         let resp = self.request(Method::GET, path).send().await?;
         Self::handle_json_response(resp).await
     }
 
     pub async fn get_text(&self, path: &str) -> Result<String, ApiError> {
+        tracing::debug!("GET {}", path);
         let resp = self.request(Method::GET, path).send().await?;
         Self::handle_text_response(resp).await
     }
@@ -60,6 +62,7 @@ impl ApiClient {
         path: &str,
         body: &B,
     ) -> Result<T, ApiError> {
+        tracing::debug!("POST {}", path);
         let resp = self.request(Method::POST, path).json(body).send().await?;
         Self::handle_json_response(resp).await
     }
@@ -74,17 +77,23 @@ impl ApiClient {
                 serde_json::from_str(&body)
                     .map_err(|e| ApiError::Deserialize(format!("{}: {}", e, body)))
             }
-            StatusCode::UNAUTHORIZED => Err(ApiError::Unauthorized),
+            StatusCode::UNAUTHORIZED => {
+                tracing::warn!("HTTP 401 Unauthorized");
+                Err(ApiError::Unauthorized)
+            }
             StatusCode::NOT_FOUND => {
                 let body = resp.text().await.unwrap_or_default();
+                tracing::warn!("HTTP 404: {}", body);
                 Err(ApiError::NotFound(body))
             }
             StatusCode::UNPROCESSABLE_ENTITY => {
                 let body = resp.text().await.unwrap_or_default();
+                tracing::warn!("HTTP 422: {}", body);
                 Err(ApiError::SignalRejected(body))
             }
             _ => {
                 let body = resp.text().await.unwrap_or_default();
+                tracing::error!("HTTP {} {}", status.as_u16(), body);
                 Err(ApiError::UnexpectedStatus(status.as_u16(), body))
             }
         }
@@ -94,13 +103,18 @@ impl ApiClient {
         let status = resp.status();
         match status {
             StatusCode::OK => Ok(resp.text().await?),
-            StatusCode::UNAUTHORIZED => Err(ApiError::Unauthorized),
+            StatusCode::UNAUTHORIZED => {
+                tracing::warn!("HTTP 401 Unauthorized on text endpoint");
+                Err(ApiError::Unauthorized)
+            }
             StatusCode::NOT_FOUND => {
                 let body = resp.text().await.unwrap_or_default();
+                tracing::warn!("HTTP 404 on text endpoint: {}", body);
                 Err(ApiError::NotFound(body))
             }
             _ => {
                 let body = resp.text().await.unwrap_or_default();
+                tracing::error!("HTTP {} on text endpoint: {}", status.as_u16(), body);
                 Err(ApiError::UnexpectedStatus(status.as_u16(), body))
             }
         }

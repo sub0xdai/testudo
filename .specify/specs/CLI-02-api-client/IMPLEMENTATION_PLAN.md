@@ -77,7 +77,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test` passes. Manual: `testudo journal` with no key → clear error. `testudo listen` against mock → JSON Lines output.
 - **Commit message**: `feat: testudo listen and journal commands with live API integration`
 
-### CP-4: Error handling + tracing instrumentation
+### CP-4: Error handling + tracing instrumentation ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `testudo-cli/src/api/client.rs`, `testudo-cli/src/cmd.rs`, `testudo-cli/src/main.rs`
 - **Tasks**:
