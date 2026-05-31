@@ -80,7 +80,7 @@ pub mod strategies {
     pub mod template;
 }
 
-mod risk {
+pub mod risk {
     pub mod precheck;
 }
 

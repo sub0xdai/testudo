@@ -54,7 +54,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- strategy` passes. Manual: `testudo strategy list` shows 3 builtins. Add/show/remove user strategies works.
 - **Commit message**: `feat: strategy list/add/show/remove CLI commands`
 
-### CP-3: Client-side risk pre-check
+### CP-3: Client-side risk pre-check ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/risk/precheck.rs`, `src/cmd.rs` (wire into agent loop)
 - **Tasks**:

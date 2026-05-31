@@ -48,6 +48,14 @@
         "api"
       ]
     },
+    "test:cli:risk": {
+      "locations": [
+        "testudo-cli/tests/risk_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "test:cli:api": {
       "locations": [
         "testudo-cli/tests/api_tests.rs"
