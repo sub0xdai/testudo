@@ -71,7 +71,7 @@ pub mod ws {
     pub mod stream;
 }
 
-mod strategies {
+pub mod strategies {
     pub mod registry;
     pub mod template;
 }
