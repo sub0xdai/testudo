@@ -112,6 +112,14 @@
         "api"
       ]
     },
+    "test:cli:loader": {
+      "locations": [
+        "testudo-cli/tests/loader_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "test:cli:parsing": {
       "locations": [
         "testudo-cli/tests/cli_tests.rs"
@@ -291,9 +299,25 @@
         "api"
       ]
     },
+    "infra:cli:strategies:constraints": {
+      "locations": [
+        "testudo-cli/src/strategies/constraints.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
     "infra:cli:strategies:registry": {
       "locations": [
         "testudo-cli/src/strategies/registry.rs"
+      ],
+      "tags": [
+        "infra"
+      ]
+    },
+    "infra:cli:strategies:loader": {
+      "locations": [
+        "testudo-cli/src/strategies/loader.rs"
       ],
       "tags": [
         "infra"

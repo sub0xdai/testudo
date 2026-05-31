@@ -76,6 +76,8 @@ pub mod ws {
 }
 
 pub mod strategies {
+    pub mod constraints;
+    pub mod loader;
     pub mod registry;
     pub mod template;
 }
