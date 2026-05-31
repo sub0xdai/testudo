@@ -67,7 +67,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- risk` passes 6 check scenarios.
 - **Commit message**: `feat: client-side risk pre-check for leverage, positions, and symbols`
 
-### CP-4: `testudo agent start --strategy` integration
+### CP-4: `testudo agent start --strategy` integration ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/cmd.rs` (run_agent loads strategy), `src/main.rs` (pass strategy name)
 - **Tasks**:

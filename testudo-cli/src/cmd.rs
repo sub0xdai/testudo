@@ -191,7 +191,7 @@ pub fn run_listen(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 #[allow(unused_assignments)]
 pub fn run_agent(
     config: &Config,
-    _strategy_name: Option<String>,
+    strategy_name: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if config.llm.api_key.is_empty() {
         return Err("No LLM API key configured. Set llm.api_key in \
@@ -204,16 +204,66 @@ pub fn run_agent(
             .into());
     }
 
-    let agent_mode = if config.agent.shadow_only {
+    // Load strategy (or use defaults)
+    let config_dir = Config::config_dir();
+    let registry = StrategyRegistry::new(&config_dir);
+
+    let (system_prompt, loop_interval_secs, filtered_tools, strategy_constraints) =
+        if let Some(ref name) = strategy_name {
+            match registry.get(name) {
+                Some(strat) => {
+                    eprintln!("Loaded strategy: {} v{}", strat.meta.name, strat.meta.version);
+
+                    let prompt = strat.prompt.system.clone();
+                    let interval = strat
+                        .loop_config
+                        .as_ref()
+                        .and_then(|l| l.interval_secs)
+                        .unwrap_or(config.agent.loop_interval_secs);
+
+                    let all_defs = all_tools();
+                    let filtered: Vec<ToolDef> = if let Some(ref allowed) = strat.allowed_tools {
+                        let allowed_names: std::collections::HashSet<&str> =
+                            allowed.tools.iter().map(|s| s.as_str()).collect();
+                        all_defs
+                            .into_iter()
+                            .filter(|t| allowed_names.contains(t.name.as_str()))
+                            .collect()
+                    } else {
+                        all_defs
+                    };
+
+                    let constraints = strat.constraints.clone();
+                    (prompt, interval, filtered, constraints)
+                }
+                None => {
+                    eprintln!("Strategy '{}' not found. Available strategies:", name);
+                    for meta in registry.list() {
+                        eprintln!("  - {}", meta.name);
+                    }
+                    return Err(format!("Strategy '{}' not found", name).into());
+                }
+            }
+        } else {
+            let prompt = include_str!("../../AGENT_TRADING.md").to_string();
+            let interval = config.agent.loop_interval_secs;
+            let defs = all_tools();
+            (prompt, interval, defs, None)
+        };
+
+    let agent_mode = if config.agent.shadow_only
+        || strategy_constraints
+            .as_ref()
+            .and_then(|c| c.shadow_only)
+            .unwrap_or(false)
+    {
         AgentMode::Shadow
     } else {
         AgentMode::Live
     };
 
-    let system_prompt = include_str!("../../AGENT_TRADING.md");
-
     let llm = create_client(&config.llm);
-    let tool_defs: Vec<ToolDef> = all_tools();
+    let tool_defs: Vec<ToolDef> = filtered_tools;
     let tools_json: Vec<serde_json::Value> = tool_defs
         .iter()
         .map(|t| {
@@ -228,7 +278,7 @@ pub fn run_agent(
     let mut state = AgentState::new(agent_mode.clone());
     state.messages.push(LlmMessage {
         role: "system".into(),
-        content: Some(system_prompt.into()),
+        content: Some(system_prompt),
         tool_calls: None,
         tool_call_id: None,
         name: None,
@@ -245,7 +295,7 @@ pub fn run_agent(
 
     rt.block_on(async {
         let api = std::sync::Arc::new(ApiClient::new(&config.api));
-        let loop_interval = std::time::Duration::from_secs(config.agent.loop_interval_secs);
+        let loop_interval = std::time::Duration::from_secs(loop_interval_secs);
         let max_iterations: u64 = 100; // Safety cap
 
         for _iteration in 0..max_iterations {

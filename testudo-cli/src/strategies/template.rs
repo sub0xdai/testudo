@@ -10,7 +10,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Deserialize)]
 pub struct StrategyTemplate {
     pub meta: StrategyMeta,
-    #[serde(default)]
+    #[serde(default, rename = "loop")]
     pub loop_config: Option<LoopConfigSection>,
     pub prompt: StrategyPrompt,
     #[serde(default)]

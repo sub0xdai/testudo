@@ -153,3 +153,64 @@ fn rate_limiter_resets_after_window() {
     limiter.reset();
     assert!(limiter.try_signal(), "should allow after reset");
 }
+
+use testudo_cli::strategies::registry::StrategyRegistry;
+
+#[test]
+fn strategy_loading_returns_correct_prompt() {
+    let tmp = tempfile::tempdir().unwrap();
+    let registry = StrategyRegistry::new(tmp.path());
+    
+    let strat = registry.get("mean-reversion").unwrap();
+    assert!(strat.prompt.system.contains("mean-reversion"));
+    assert!(strat.prompt.system.contains("Bollinger Bands"));
+}
+
+#[test]
+fn strategy_loading_with_none_returns_error() {
+    let tmp = tempfile::tempdir().unwrap();
+    let registry = StrategyRegistry::new(tmp.path());
+    assert!(registry.get("nonexistent").is_none());
+}
+
+#[test]
+fn strategy_tool_filtering() {
+    let tmp = tempfile::tempdir().unwrap();
+    let registry = StrategyRegistry::new(tmp.path());
+    let strat = registry.get("mean-reversion").unwrap();
+    
+    if let Some(ref tools) = strat.allowed_tools {
+        assert!(tools.tools.contains(&"fetch_klines".to_string()));
+        assert!(tools.tools.contains(&"submit_signal".to_string()));
+        // mean-reversion only allows 4 tools
+        assert_eq!(tools.tools.len(), 4);
+    } else {
+        panic!("mean-reversion should have allowed_tools");
+    }
+}
+
+#[test]
+fn strategy_loop_config_overrides() {
+    let tmp = tempfile::tempdir().unwrap();
+    let registry = StrategyRegistry::new(tmp.path());
+    let strat = registry.get("mean-reversion").unwrap();
+    
+    if let Some(ref loop_cfg) = strat.loop_config {
+        assert_eq!(loop_cfg.interval_secs, Some(120));
+        assert_eq!(loop_cfg.shadow_only, Some(true));
+        assert_eq!(loop_cfg.max_signals_per_hour, Some(3));
+    } else {
+        panic!("mean-reversion should have loop_config");
+    }
+}
+
+#[test]
+fn funding_arb_has_different_constraints() {
+    let tmp = tempfile::tempdir().unwrap();
+    let registry = StrategyRegistry::new(tmp.path());
+    let strat = registry.get("funding-arb").unwrap();
+    
+    let constraints = strat.constraints.unwrap();
+    assert_eq!(constraints.max_leverage, Some(2));
+    // funding-arb is more conservative than momentum-breakout (5x)
+}
