@@ -46,11 +46,21 @@ fn render_dashboard(frame: &mut Frame, state: &AppState) {
     let mid_cols = horizontal_split(rows[1]);
     let bot_cols = horizontal_split(rows[2]);
 
-    render_pane(frame, top_cols[0], theme, "Positions", "No open positions");
-    render_pane(frame, top_cols[1], theme, "Agent Reasoning", "Agent not running");
-    render_pane(frame, mid_cols[0], theme, "P&L Chart", "No data");
-    render_pane(frame, mid_cols[1], theme, "Signal Log", "No signals yet");
+    // Top-left: Positions (live data)
+    crate::view::positions_pane::render(
+        frame, top_cols[0], theme, &state.positions,
+    );
+    // Top-right: Agent Reasoning
+    crate::view::agent_pane::render(frame, top_cols[1], theme, "");
+    // Mid-left: P&L Chart (placeholder — CP-4)
+    render_pane(frame, mid_cols[0], theme, "P&L Chart", "Insufficient data");
+    // Mid-right: Signal Log (live data)
+    crate::view::signal_log::render(
+        frame, mid_cols[1], theme, &state.signal_log,
+    );
+    // Bottom-left: Journal Summary (placeholder — CP-4)
     render_pane(frame, bot_cols[0], theme, "Journal Summary", "No journal entries");
+    // Bottom-right: Risk (placeholder — CP-4)
     render_pane(frame, bot_cols[1], theme, "Risk", "No risk data");
 }
 

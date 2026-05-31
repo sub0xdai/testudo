@@ -24,6 +24,14 @@
         "ui"
       ]
     },
+    "test:cli:panes": {
+      "locations": [
+        "testudo-cli/tests/pane_tests.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
     "test:cli:config": {
       "locations": [
         "testudo-cli/tests/config_tests.rs"

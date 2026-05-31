@@ -54,7 +54,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- attach` passes. Manual: start daemon, `testudo attach` opens TUI, `q` detaches.
 - **Commit message**: `feat: testudo attach for read-only daemon TUI reconnection`
 
-### CP-3: Live TUI panes (positions, signal log, agent reasoning)
+### CP-3: Live TUI panes (positions, signal log, agent reasoning) ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/view/positions_pane.rs`, `src/view/signal_log.rs`, `src/view/agent_pane.rs`, `src/app.rs`, `src/model/state.rs`
 - **Tasks**:

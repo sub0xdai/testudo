@@ -18,6 +18,8 @@ fn make_state() -> AppState {
         },
         theme: Theme::vanilla_amoled(),
         error: None,
+        positions: Vec::new(),
+        signal_log: Vec::new(),
     }
 }
 

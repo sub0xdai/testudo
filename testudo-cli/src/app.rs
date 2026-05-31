@@ -43,6 +43,8 @@ pub fn run_app(config: Config) -> io::Result<()> {
         status: StatusBar::new(),
         theme,
         error: None,
+        positions: Vec::new(),
+        signal_log: Vec::new(),
     };
 
     // Run the TEA loop in a tokio runtime
