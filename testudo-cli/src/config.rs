@@ -96,7 +96,7 @@ fn default_theme() -> String {
 }
 
 fn default_base_url() -> String {
-    "http://localhost:8080/api/v1".into()
+    "https://testudo.vip/api/v1".into()
 }
 
 fn default_loop_interval_secs() -> u64 {

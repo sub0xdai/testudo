@@ -6,7 +6,7 @@ use testudo_cli::config::Config;
 #[test]
 fn init_config_has_valid_defaults() {
     let cfg = Config::default();
-    assert_eq!(cfg.api.base_url, "http://localhost:8080/api/v1");
+    assert_eq!(cfg.api.base_url, "https://testudo.vip/api/v1");
     assert_eq!(cfg.agent.loop_interval_secs, 60);
     assert!(cfg.agent.shadow_only);
 }

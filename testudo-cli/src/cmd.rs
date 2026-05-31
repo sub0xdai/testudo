@@ -600,8 +600,10 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 1: Base URL
     println!("── Step 1/5: Backend URL ──────────────────────");
-    println!("Enter the Testudo backend URL:");
-    print!("[{}] ", base_url);
+    println!("Just press Enter — the default is correct unless you're");
+    println!("running your own Testudo server.");
+    println!();
+    print!("Backend URL [{}] ", base_url);
     let mut input = String::new();
     std::io::stdin().read_line(&mut input)?;
     let trimmed = input.trim();
@@ -615,7 +617,12 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 2: Agent Key
     println!("── Step 2/5: Agent Key ────────────────────────");
-    println!("Paste your agent key (testudo_sk_...):");
+    println!("An agent key is a scoped API key that lets the harness submit");
+    println!("signals and read your journal on your behalf.");
+    println!("Create one in the Testudo web desk → Settings → Agent Keys.");
+    println!("It should look like: testudo_sk_...");
+    println!();
+    println!("Paste your agent key:");
     if !agent_key.is_empty() {
         let masked = format!("{}...{}", &agent_key[..12], &agent_key[agent_key.len()-4..]);
         print!("[{}] ", masked);
@@ -633,8 +640,10 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 3: Exchange
     println!("── Step 3/5: Exchange ─────────────────────────");
-    println!("Exchange connection is set up via the web desk.");
-    println!("Visit your Testudo desk to connect an exchange.");
+    println!("Before trading, you need to connect an exchange account.");
+    println!("This is done through the Testudo web desk (not the CLI).");
+    println!("Visit your desk → Exchanges → Connect to add one.");
+    println!("Supported exchanges: Binance, Bybit, Hyperliquid.");
     println!("(Press Enter to continue)");
     input.clear();
     std::io::stdin().read_line(&mut input)?;
@@ -642,6 +651,9 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 4: Risk Config
     println!("── Step 4/5: Risk Configuration ───────────────");
+    println!("Set your personal risk limits. These act as a safety net:");
+    println!("the harness can only tighten these — never loosen them.");
+    println!();
 
     print!("Max leverage [{}]: ", leverage);
     input.clear();

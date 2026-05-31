@@ -11,7 +11,7 @@ fn default_config_has_correct_values() {
     assert_eq!(cfg.ui.theme, "vanilla-amoled");
 
     // API
-    assert_eq!(cfg.api.base_url, "http://localhost:8080/api/v1");
+    assert_eq!(cfg.api.base_url, "https://testudo.vip/api/v1");
     assert_eq!(cfg.api.agent_key, "");
     assert_eq!(cfg.api.ws_url, "ws://localhost:8081");
 
