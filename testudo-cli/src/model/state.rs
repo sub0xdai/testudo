@@ -14,6 +14,9 @@ pub struct AppState {
     pub error: Option<String>,
     pub positions: Vec<Position>,
     pub signal_log: Vec<SignalEntry>,
+    pub equity_curve: Vec<PnlPoint>,
+    pub risk_snapshot: Option<RiskSnapshot>,
+    pub journal_summary: Option<JournalSummary>,
 }
 
 /// A trading position displayed in the positions pane.
@@ -36,6 +39,37 @@ pub struct SignalEntry {
     pub status: String,
     pub pnl: Option<String>,
     pub reasoning: String,
+}
+
+/// Daily P&L point for the equity curve sparkline.
+#[derive(Debug, Clone)]
+pub struct PnlPoint {
+    pub date: String,
+    pub cumulative_pnl: String,
+    pub equity: Option<String>,
+}
+
+/// Risk metrics displayed in the risk pane.
+#[derive(Debug, Clone)]
+pub struct RiskSnapshot {
+    pub drawdown_pct: f64,
+    pub drawdown_limit_pct: f64,
+    pub active_positions: usize,
+    pub max_positions: usize,
+    pub session_signals: u32,
+    pub max_signals_per_hour: u32,
+    pub total_exposure: String,
+}
+
+/// Journal summary stats for the journal pane.
+#[derive(Debug, Clone)]
+pub struct JournalSummary {
+    pub trade_count: i64,
+    pub win_rate: String,
+    pub profit_factor: String,
+    pub avg_r_multiple: String,
+    pub total_pnl: String,
+    pub best_setup: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

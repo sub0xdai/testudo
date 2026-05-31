@@ -68,7 +68,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: Run `testudo dashboard` against live backend. Positions pane shows real data. Signal log populates. 3 panes show live data, 3 show "coming soon" guidance.
 - **Commit message**: `feat: live positions, signal log, and agent reasoning panes`
 
-### CP-4: P&L sparkline + risk pane + journal pane
+### CP-4: P&L sparkline + risk pane + journal pane ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/view/pnl_chart.rs`, `src/view/risk_pane.rs`, `src/view/journal_pane.rs`, `src/app.rs`
 - **Tasks**:

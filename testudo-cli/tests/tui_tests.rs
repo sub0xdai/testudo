@@ -20,6 +20,9 @@ fn make_state() -> AppState {
         error: None,
         positions: Vec::new(),
         signal_log: Vec::new(),
+        equity_curve: Vec::new(),
+        risk_snapshot: None,
+        journal_summary: None,
     }
 }
 

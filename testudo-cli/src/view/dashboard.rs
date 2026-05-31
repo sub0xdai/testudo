@@ -52,16 +52,30 @@ fn render_dashboard(frame: &mut Frame, state: &AppState) {
     );
     // Top-right: Agent Reasoning
     crate::view::agent_pane::render(frame, top_cols[1], theme, "");
-    // Mid-left: P&L Chart (placeholder — CP-4)
-    render_pane(frame, mid_cols[0], theme, "P&L Chart", "Insufficient data");
+    // Mid-left: P&L Chart (live sparkline)
+    crate::view::pnl_chart::render(
+        frame, mid_cols[0], theme, &state.equity_curve,
+    );
     // Mid-right: Signal Log (live data)
     crate::view::signal_log::render(
         frame, mid_cols[1], theme, &state.signal_log,
     );
-    // Bottom-left: Journal Summary (placeholder — CP-4)
-    render_pane(frame, bot_cols[0], theme, "Journal Summary", "No journal entries");
-    // Bottom-right: Risk (placeholder — CP-4)
-    render_pane(frame, bot_cols[1], theme, "Risk", "No risk data");
+    // Bottom-left: Journal Summary
+    if let Some(ref summary) = state.journal_summary {
+        crate::view::journal_pane::render(
+            frame, bot_cols[0], theme, summary,
+        );
+    } else {
+        render_pane(frame, bot_cols[0], theme, "Journal Summary", "No journal entries");
+    }
+    // Bottom-right: Risk
+    if let Some(ref risk) = state.risk_snapshot {
+        crate::view::risk_pane::render(
+            frame, bot_cols[1], theme, risk,
+        );
+    } else {
+        render_pane(frame, bot_cols[1], theme, "Risk", "No risk data");
+    }
 }
 
 fn render_placeholder(frame: &mut Frame, theme: &crate::theme::Theme, screen: Screen) {

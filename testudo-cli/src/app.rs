@@ -45,6 +45,9 @@ pub fn run_app(config: Config) -> io::Result<()> {
         error: None,
         positions: Vec::new(),
         signal_log: Vec::new(),
+        equity_curve: Vec::new(),
+        risk_snapshot: None,
+        journal_summary: None,
     };
 
     // Run the TEA loop in a tokio runtime
