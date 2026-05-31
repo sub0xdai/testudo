@@ -287,13 +287,51 @@ pub fn run_agent(
                 });
 
                 for tc in &response.tool_calls {
-                    let result = execute_tool_locally(&tc.name, &tc.arguments, &agent_mode);
+                    let result = if tc.name == "submit_signal" {
+                        // Rate limiting
+                        if !state.rate_limiter.try_signal() {
+                            format!(
+                                "BLOCKED: Signal rate limit reached ({} per window). \
+                                 Wait for the next window.",
+                                state.rate_limiter.remaining()
+                            )
+                        } else {
+                            // Idempotency
+                            let key = state.idempotency.next_key();
+                            let exec_result = execute_tool_locally(
+                                &tc.name, &tc.arguments, &agent_mode
+                            );
+                            format!(
+                                "{} | idempotency_key: {} | attempt: {}/{}",
+                                exec_result,
+                                key,
+                                state.idempotency.attempt_count() + 1,
+                                state.idempotency.max_retries(),
+                            )
+                        }
+                    } else {
+                        execute_tool_locally(&tc.name, &tc.arguments, &agent_mode)
+                    };
+
                     let display = if result.len() > 100 {
                         format!("{}...", &result[..97])
                     } else {
                         result.clone()
                     };
                     eprintln!("  {}: {}", tc.name, display);
+
+                    // Journal: log signal submissions
+                    if tc.name == "submit_signal" && !result.contains("BLOCKED") {
+                        let reasoning = tc.arguments["reasoning"]
+                            .as_str()
+                            .unwrap_or("(no reasoning)");
+                        tracing::info!(
+                            tool = "submit_signal",
+                            idempotency_key = %state.idempotency.current_key(),
+                            reasoning = reasoning,
+                            "Pre-trade journal: signal submitted"
+                        );
+                    }
 
                     state.messages.push(LlmMessage {
                         role: "tool".into(),

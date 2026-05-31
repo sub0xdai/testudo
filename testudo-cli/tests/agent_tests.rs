@@ -2,6 +2,8 @@
 // @tags api
 
 use testudo_cli::model::agent::{AgentMode, AgentPhase, AgentState};
+use testudo_cli::model::agent::idempotency::IdempotencyTracker;
+use testudo_cli::model::agent::rate_limit::SignalRateLimiter;
 use testudo_cli::config::{ApiConfig, Config, LlmConfig};
 
 #[test]
@@ -92,4 +94,62 @@ fn live_mode_allows_live_execution() {
     let blocked = matches!(mode, AgentMode::Shadow)
         && execution_mode.eq_ignore_ascii_case("LIVE");
     assert!(!blocked, "live mode should allow LIVE execution_mode");
+}
+
+#[test]
+fn idempotency_generates_unique_keys() {
+    let mut tracker = IdempotencyTracker::default();
+    let key1 = tracker.next_key();
+    let key2 = tracker.next_key();
+    assert_ne!(key1, key2, "each signal should have a unique idempotency key");
+}
+
+#[test]
+fn idempotency_key_is_valid_uuid_v4() {
+    let mut tracker = IdempotencyTracker::default();
+    let key = tracker.next_key();
+    assert_eq!(key.get_version_num(), 4, "idempotency key should be UUIDv4");
+}
+
+#[test]
+fn idempotency_retry_reuses_same_key() {
+    let mut tracker = IdempotencyTracker::default();
+    let key = tracker.next_key();
+    let retry_key = tracker.current_key();
+    assert_eq!(key, retry_key, "retry should reuse same idempotency key");
+}
+
+#[test]
+fn idempotency_max_retries_is_three() {
+    let tracker = IdempotencyTracker::new(3);
+    assert_eq!(tracker.max_retries(), 3);
+}
+
+#[test]
+fn rate_limiter_allows_within_limit() {
+    let mut limiter = SignalRateLimiter::new(5);
+    for _ in 0..5 {
+        assert!(limiter.try_signal(), "should allow up to max signals");
+    }
+}
+
+#[test]
+fn rate_limiter_blocks_exceeding_limit() {
+    let mut limiter = SignalRateLimiter::new(3);
+    assert!(limiter.try_signal());
+    assert!(limiter.try_signal());
+    assert!(limiter.try_signal());
+    assert!(!limiter.try_signal(), "should block after max signals reached");
+    assert!(!limiter.try_signal());
+}
+
+#[test]
+fn rate_limiter_resets_after_window() {
+    let mut limiter = SignalRateLimiter::new(2);
+    assert!(limiter.try_signal());
+    assert!(limiter.try_signal());
+    assert!(!limiter.try_signal());
+    // Force reset by advancing window
+    limiter.reset();
+    assert!(limiter.try_signal(), "should allow after reset");
 }

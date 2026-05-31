@@ -80,7 +80,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- agent` passes. Agent loop runs 1 iteration with mock LLM. Phase transitions correct. Shadow-only enforcement works.
 - **Commit message**: `feat: autonomous agent loop with observe-think-act-journal cycle`
 
-### CP-4: Signal idempotency + journal integration
+### CP-4: Signal idempotency + journal integration ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/tools/submit_signal.rs`, `src/cmd.rs`
 - **Tasks**:
