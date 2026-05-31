@@ -38,6 +38,8 @@ pub struct ApiConfig {
     pub base_url: String,
     #[serde(default)]
     pub agent_key: String,
+    #[serde(default = "default_ws_url")]
+    pub ws_url: String,
 }
 
 impl Default for ApiConfig {
@@ -45,6 +47,7 @@ impl Default for ApiConfig {
         Self {
             base_url: default_base_url(),
             agent_key: String::new(),
+            ws_url: default_ws_url(),
         }
     }
 }
@@ -106,6 +109,10 @@ fn default_true() -> bool {
 
 fn default_provider() -> String {
     "anthropic".into()
+}
+
+fn default_ws_url() -> String {
+    "ws://localhost:8081".into()
 }
 
 fn default_model() -> String {
@@ -170,6 +177,8 @@ theme = "{}"
 base_url = "{}"
 # Agent key from AGENT-07 (testudo_sk_...)
 agent_key = "{}"
+# WebSocket stream URL (ws-stream service)
+ws_url = "{}"
 
 [agent]
 # Seconds between agent loop iterations
@@ -188,6 +197,7 @@ model = "{}"
             default_config.ui.theme,
             default_config.api.base_url,
             default_config.api.agent_key,
+            default_config.api.ws_url,
             default_config.agent.loop_interval_secs,
             default_config.agent.shadow_only,
             default_config.llm.provider,

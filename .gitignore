@@ -79,6 +79,9 @@ test-results/
 # Runtime
 scripts/.pids/
 
+# Rust build artifacts
+target/
+
 # AI analysis output (graphify, etc.)
 graphify-out/
 

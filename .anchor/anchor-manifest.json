@@ -32,6 +32,30 @@
         "infra"
       ]
     },
+    "test:cli:commands": {
+      "locations": [
+        "testudo-cli/tests/command_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "test:cli:ws": {
+      "locations": [
+        "testudo-cli/tests/ws_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
+    "test:cli:api": {
+      "locations": [
+        "testudo-cli/tests/api_tests.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "test:cli:parsing": {
       "locations": [
         "testudo-cli/tests/cli_tests.rs"
@@ -322,6 +346,14 @@
         "api"
       ]
     },
+    "infra:cli:api:types": {
+      "locations": [
+        "testudo-cli/src/api/types.rs"
+      ],
+      "tags": [
+        "api"
+      ]
+    },
     "infra:cli:llm:client": {
       "locations": [
         "testudo-cli/src/llm/client.rs"
@@ -375,7 +407,7 @@
         "testudo-cli/src/ws/client.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:ws:stream": {
@@ -383,7 +415,7 @@
         "testudo-cli/src/ws/stream.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:risk:precheck": {

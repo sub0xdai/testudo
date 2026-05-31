@@ -58,7 +58,7 @@ mod llm {
     pub mod stream;
 }
 
-mod api {
+pub mod api {
     pub mod agent_keys;
     pub mod client;
     pub mod exchanges;
@@ -67,9 +67,10 @@ mod api {
     pub mod onboarding;
     pub mod risk;
     pub mod signals;
+    pub mod types;
 }
 
-mod ws {
+pub mod ws {
     pub mod client;
     pub mod stream;
 }

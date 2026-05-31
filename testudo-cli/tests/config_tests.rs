@@ -13,6 +13,7 @@ fn default_config_has_correct_values() {
     // API
     assert_eq!(cfg.api.base_url, "http://localhost:8080/api/v1");
     assert_eq!(cfg.api.agent_key, "");
+    assert_eq!(cfg.api.ws_url, "ws://localhost:8081");
 
     // Agent
     assert_eq!(cfg.agent.loop_interval_secs, 60);
@@ -38,6 +39,7 @@ fn config_roundtrip_serialize_deserialize() {
     assert_eq!(cfg2.ui.theme, cfg.ui.theme);
     assert_eq!(cfg2.api.base_url, cfg.api.base_url);
     assert_eq!(cfg2.api.agent_key, cfg.api.agent_key);
+    assert_eq!(cfg2.api.ws_url, cfg.api.ws_url);
     assert_eq!(cfg2.agent.loop_interval_secs, cfg.agent.loop_interval_secs);
     assert_eq!(cfg2.agent.shadow_only, cfg.agent.shadow_only);
     assert_eq!(cfg2.llm.provider, cfg.llm.provider);
