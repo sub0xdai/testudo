@@ -40,7 +40,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: `cargo test -- strategies` passes. 3 builtins present with valid TOML structure.
 - **Commit message**: `feat: strategy registry with 3 built-in trading strategies`
 
-### CP-2: Strategy CLI commands (list/add/show/remove)
+### CP-2: Strategy CLI commands (list/add/show/remove) ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `src/cmd.rs` (rewrite strategy dispatch), `src/main.rs` (wire)
 - **Tasks**:

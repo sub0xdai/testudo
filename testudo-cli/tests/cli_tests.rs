@@ -2,7 +2,7 @@
 // @tags infra
 
 use clap::Parser;
-use testudo_cli::Command;
+use testudo_cli::{AgentAction, Command};
 
 #[test]
 fn parse_dashboard_command() {
@@ -15,7 +15,15 @@ fn parse_dashboard_command() {
 fn parse_agent_start_command() {
     let cmd = Command::try_parse_from(["testudo", "agent", "start"]);
     assert!(cmd.is_ok(), "agent start should parse");
-    assert!(matches!(cmd.unwrap(), Command::Agent(_)));
+    assert!(matches!(cmd.unwrap(), Command::Agent(AgentAction::Start { .. })));
+}
+
+#[test]
+fn parse_agent_start_with_strategy() {
+    let cmd = Command::try_parse_from([
+        "testudo", "agent", "start", "--strategy", "mean-reversion",
+    ]);
+    assert!(cmd.is_ok(), "agent start --strategy should parse");
 }
 
 #[test]

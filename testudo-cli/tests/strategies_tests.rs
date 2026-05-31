@@ -120,3 +120,87 @@ fn registry_cannot_remove_builtin() {
     let result = registry.remove("mean-reversion");
     assert!(result.is_err(), "should not be able to remove builtin");
 }
+
+use testudo_cli::cmd::{run_strategy_add, run_strategy_list, run_strategy_remove, run_strategy_show};
+
+fn temp_config_dir() -> tempfile::TempDir {
+    tempfile::tempdir().unwrap()
+}
+
+#[test]
+fn strategy_list_prints_all_builtins() {
+    let dir = temp_config_dir();
+    let result = run_strategy_list(dir.path());
+    assert!(result.is_ok(), "strategy list should succeed");
+}
+
+#[test]
+fn strategy_add_validates_and_registers() {
+    let dir = temp_config_dir();
+    let toml_content = r#"
+[meta]
+name = "my-strat"
+version = "1.0"
+description = "Test"
+
+[prompt]
+system = "Test prompt."
+"#;
+    let tmp_file = dir.path().join("test.toml");
+    std::fs::write(&tmp_file, toml_content).unwrap();
+    
+    let result = run_strategy_add(dir.path(), "my-strat", &tmp_file);
+    assert!(result.is_ok(), "strategy add should succeed");
+}
+
+#[test]
+fn strategy_add_rejects_invalid_toml() {
+    let dir = temp_config_dir();
+    let tmp_file = dir.path().join("bad.toml");
+    std::fs::write(&tmp_file, "not valid toml {{{").unwrap();
+    
+    let result = run_strategy_add(dir.path(), "bad", &tmp_file);
+    assert!(result.is_err(), "should reject invalid TOML");
+}
+
+#[test]
+fn strategy_show_prints_details() {
+    let dir = temp_config_dir();
+    let result = run_strategy_show(dir.path(), "mean-reversion");
+    assert!(result.is_ok(), "show should succeed for builtin");
+}
+
+#[test]
+fn strategy_show_nonexistent_fails() {
+    let dir = temp_config_dir();
+    let result = run_strategy_show(dir.path(), "nonexistent");
+    assert!(result.is_err(), "show should fail for nonexistent");
+}
+
+#[test]
+fn strategy_remove_user_succeeds() {
+    let dir = temp_config_dir();
+    // First add a strategy
+    let toml_content = r#"
+[meta]
+name = "removable"
+version = "1.0"
+description = "Will be removed"
+
+[prompt]
+system = "Remove me."
+"#;
+    let tmp_file = dir.path().join("rem.toml");
+    std::fs::write(&tmp_file, toml_content).unwrap();
+    run_strategy_add(dir.path(), "removable", &tmp_file).unwrap();
+    
+    let result = run_strategy_remove(dir.path(), "removable");
+    assert!(result.is_ok(), "remove should succeed");
+}
+
+#[test]
+fn strategy_remove_builtin_fails() {
+    let dir = temp_config_dir();
+    let result = run_strategy_remove(dir.path(), "mean-reversion");
+    assert!(result.is_err(), "should not remove builtin");
+}

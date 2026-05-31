@@ -121,7 +121,7 @@ fn default_model() -> String {
 
 impl Config {
     /// Resolve the XDG config directory for testudo.
-    fn config_dir() -> PathBuf {
+    pub fn config_dir() -> PathBuf {
         directories::ProjectDirs::from("com", "testudo", "tudo")
             .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
             .unwrap_or_else(|| {

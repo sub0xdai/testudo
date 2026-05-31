@@ -45,7 +45,11 @@ pub enum Command {
 #[derive(Subcommand, Debug)]
 pub enum AgentAction {
     /// Start the autonomous agent loop
-    Start,
+    Start {
+        /// Strategy name to use (optional)
+        #[arg(long)]
+        strategy: Option<String>,
+    },
     /// Stop the agent gracefully
     Stop,
     /// Pause the agent (preserves state)
@@ -59,11 +63,23 @@ pub enum StrategyAction {
     /// List all installed strategies
     List,
     /// Add a new strategy from a TOML file
-    Add,
+    Add {
+        /// Name for the strategy
+        name: String,
+        /// Path to the TOML file
+        #[arg(long)]
+        from: String,
+    },
     /// Show a strategy's details
-    Show,
+    Show {
+        /// Strategy name
+        name: String,
+    },
     /// Remove a strategy
-    Remove,
+    Remove {
+        /// Strategy name
+        name: String,
+    },
 }
 
 impl Command {
@@ -72,11 +88,19 @@ impl Command {
     pub fn description(&self) -> String {
         match self {
             Command::Init => "init".into(),
-            Command::Agent(action) => format!("agent {:?}", action).to_lowercase(),
+            Command::Agent(action) => match action {
+                AgentAction::Start { .. } => "agent start".into(),
+                other => format!("agent {:?}", other).to_lowercase(),
+            },
             Command::Dashboard => "dashboard".into(),
             Command::Listen => "listen".into(),
             Command::Journal => "journal".into(),
-            Command::Strategy(action) => format!("strategy {:?}", action).to_lowercase(),
+            Command::Strategy(action) => match action {
+                StrategyAction::List => "strategy list".into(),
+                StrategyAction::Add { .. } => "strategy add".into(),
+                StrategyAction::Show { .. } => "strategy show".into(),
+                StrategyAction::Remove { .. } => "strategy remove".into(),
+            },
             Command::Attach => "attach".into(),
         }
     }
@@ -405,4 +429,105 @@ fn execute_tool_locally(
         "check_onboarding" => "Onboarding: check TUI or /onboarding/status endpoint.".into(),
         unknown => format!("Unknown tool: {}", unknown),
     }
+}
+
+// ── Strategy command handlers ────────────────────────────────────────
+
+use crate::strategies::registry::StrategyRegistry;
+use std::path::Path;
+
+/// `testudo strategy list` — print all available strategies.
+pub fn run_strategy_list(config_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let registry = StrategyRegistry::new(config_dir);
+    let strategies = registry.list();
+
+    if strategies.is_empty() {
+        println!("No strategies registered.");
+        return Ok(());
+    }
+
+    println!("{:<25} {:<10} {:<50} {:<30}", "NAME", "VERSION", "DESCRIPTION", "SOURCE");
+    println!("{:-<115}", "");
+
+    for meta in &strategies {
+        let source = if registry.get(&meta.name).is_some() {
+            "builtin"
+        } else {
+            "user"
+        };
+        println!(
+            "{:<25} {:<10} {:<50} {:<30}",
+            meta.name,
+            meta.version,
+            if meta.description.len() > 48 {
+                format!("{}...", &meta.description[..45])
+            } else {
+                meta.description.clone()
+            },
+            source
+        );
+    }
+
+    Ok(())
+}
+
+/// `testudo strategy add <name> --from <path>` — register a user strategy.
+pub fn run_strategy_add(
+    config_dir: &Path,
+    name: &str,
+    from: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let content = std::fs::read_to_string(from)?;
+    let registry = StrategyRegistry::new(config_dir);
+    registry.add(name, &content)?;
+    println!("Strategy '{}' registered successfully.", name);
+    Ok(())
+}
+
+/// `testudo strategy show <name>` — print strategy details.
+pub fn run_strategy_show(
+    config_dir: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let registry = StrategyRegistry::new(config_dir);
+    let tmpl = registry
+        .get(name)
+        .ok_or_else(|| format!("Strategy '{}' not found.", name))?;
+
+    println!("Name:        {}", tmpl.meta.name);
+    println!("Version:     {}", tmpl.meta.version);
+    println!("Description: {}", tmpl.meta.description);
+    println!();
+    println!("── System Prompt ──────────────────────────────");
+    println!("{}", tmpl.prompt.system);
+
+    if let Some(ref constraints) = tmpl.constraints {
+        println!("── Constraints ─────────────────────────────────");
+        if let Some(lev) = constraints.max_leverage {
+            println!("  Max leverage: {}×", lev);
+        }
+        if let Some(ref symbols) = constraints.allowed_symbols {
+            println!("  Allowed symbols: {}", symbols.join(", "));
+        }
+    }
+
+    if let Some(ref tools) = tmpl.allowed_tools {
+        println!("── Allowed Tools ───────────────────────────────");
+        for tool in &tools.tools {
+            println!("  - {}", tool);
+        }
+    }
+
+    Ok(())
+}
+
+/// `testudo strategy remove <name>` — remove a user strategy.
+pub fn run_strategy_remove(
+    config_dir: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let registry = StrategyRegistry::new(config_dir);
+    registry.remove(name)?;
+    println!("Strategy '{}' removed.", name);
+    Ok(())
 }
