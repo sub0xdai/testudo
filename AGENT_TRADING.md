@@ -7,6 +7,57 @@
 
 ---
 
+## Quick Start: Using the `testudo` CLI
+
+The recommended way to interact with Testudo is through the `testudo` CLI harness.
+It handles authentication, journaling, strategy management, and autonomous trading
+in a single binary.
+
+```bash
+# 1. First-time setup (guided 5-step wizard)
+testudo init
+
+# 2. Browse available trading strategies
+testudo strategy list
+
+# 3. Start autonomous trading (shadow mode — paper trades first)
+testudo agent start --strategy mean-reversion
+
+# 4. Check your trading summary
+testudo journal
+
+# 5. Open the live dashboard
+testudo dashboard
+```
+
+### Daemon Mode
+
+Run the agent 24/7 on a server:
+
+```bash
+# Start daemon (background, socket control)
+testudo agent start --daemon --strategy momentum-breakout
+
+# Check status
+testudo attach
+
+# Stop gracefully
+echo '{"method":"stop"}' | nc -U ~/.config/testudo/testudo.sock
+```
+
+### Strategy Management
+
+```bash
+testudo strategy list                    # List all strategies
+testudo strategy show mean-reversion    # View strategy details
+testudo strategy add my-strat --from ./my-strat.toml  # Install custom
+testudo strategy remove my-strat        # Remove custom strategy
+```
+
+The sections below document the raw API for advanced users and agent developers.
+
+---
+
 ## 0. First Contact: Agent Onboarding
 
 When you connect to Testudo for the first time (or connect on behalf of a new

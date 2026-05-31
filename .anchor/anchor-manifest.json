@@ -120,6 +120,15 @@
         "infra"
       ]
     },
+    "test:cli:integration": {
+      "locations": [
+        "testudo-cli/tests/integration_tests.rs"
+      ],
+      "tags": [
+        "api",
+        "infra"
+      ]
+    },
     "test:cli:daemon": {
       "locations": [
         "testudo-cli/tests/daemon_tests.rs"

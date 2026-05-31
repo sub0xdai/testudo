@@ -81,7 +81,8 @@ Completed 2025-05-31 by /skill:vox build
 - **Verification**: Run `testudo dashboard`. All 6 panes show real or guidance data. Sparkline renders with ≥ 2 data points. Risk gauge shows drawdown %.
 - **Commit message**: `feat: P&L sparkline, risk gauge, and journal summary panes`
 
-### CP-5: Integration tests + docs
+### CP-5: Integration tests + docs ✅
+Completed 2025-05-31 by /skill:vox build
 
 - **Touches**: `tests/integration/loop.rs` (NEW), `AGENT_TRADING.md`, `Cargo.toml` (wiremock dev-dep)
 - **Tasks**:
