@@ -18,7 +18,13 @@ pub fn update(state: &mut AppState, msg: Message) -> bool {
             }
             // Normal mode key handling
             match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => return false,
+                KeyCode::Char('q') | KeyCode::Esc => {
+                    if state.screen == Screen::Settings {
+                        state.screen = Screen::Dashboard;
+                    } else {
+                        return false;
+                    }
+                }
                 KeyCode::Char('/') | KeyCode::Char(':') => {
                     state.command_mode = true;
                     state.command_input = key.code.to_string();

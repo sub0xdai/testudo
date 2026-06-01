@@ -371,6 +371,14 @@
         "ui"
       ]
     },
+    "infra:cli:view:settings": {
+      "locations": [
+        "testudo-cli/src/view/settings.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
     "infra:cli:view:dashboard": {
       "locations": [
         "testudo-cli/src/view/dashboard.rs"

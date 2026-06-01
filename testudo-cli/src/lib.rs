@@ -43,6 +43,7 @@ mod view {
     pub mod pnl_chart;
     pub mod positions_pane;
     pub mod risk_pane;
+    pub mod settings;
     pub mod signal_log;
     pub mod status_bar;
 }

@@ -27,6 +27,7 @@ pub fn render(frame: &mut Frame, state: &AppState) {
     match state.screen {
         Screen::Dashboard => render_dashboard(frame, state, content_area),
         Screen::Help => render_help(frame, theme, content_area),
+        Screen::Settings => crate::view::settings::render(frame, theme, content_area),
         other => render_placeholder(frame, theme, other, content_area),
     }
 
