@@ -39,7 +39,7 @@ pub fn run_app(config: Config) -> io::Result<()> {
     // Build initial model
     let theme = Theme::from_name(&config.ui.theme);
     let state = AppState {
-        screen: crate::model::state::Screen::Dashboard,
+        screen: crate::model::state::Screen::Welcome,
         status: StatusBar::new(),
         theme,
         error: None,

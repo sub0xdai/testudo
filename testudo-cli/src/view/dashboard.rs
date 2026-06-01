@@ -25,6 +25,7 @@ pub fn render(frame: &mut Frame, state: &AppState) {
     };
 
     match state.screen {
+        Screen::Welcome => crate::view::banner::render(frame, theme, content_area),
         Screen::Dashboard => render_dashboard(frame, state, content_area),
         Screen::Help => render_help(frame, theme, content_area),
         Screen::Settings => crate::view::settings::render(frame, theme, content_area),

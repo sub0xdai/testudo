@@ -363,6 +363,14 @@
         "ui"
       ]
     },
+    "infra:cli:view:banner": {
+      "locations": [
+        "testudo-cli/src/view/banner.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
     "infra:cli:view:risk": {
       "locations": [
         "testudo-cli/src/view/risk_pane.rs"

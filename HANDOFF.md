@@ -1,6 +1,6 @@
-# Handoff — Testudo CLI Harness (CLI-07 + CLI-08 complete, CI/release live)
+# Handoff — Testudo CLI Harness (CLI-07 + CLI-08 complete, welcome banner done)
 
-**Date:** 2026-06-01 16:44
+**Date:** 2026-06-01 17:15
 **Project:** testudo (testudo-cli crate)
 **Next focus:** Test the end-to-end install flow; iterate on UX; consider repo split or landing page
 

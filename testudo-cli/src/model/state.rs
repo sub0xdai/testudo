@@ -88,6 +88,7 @@ pub struct JournalSummary {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Screen {
+    Welcome,
     Dashboard,
     Journal,
     Strategies,

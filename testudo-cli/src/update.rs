@@ -12,6 +12,11 @@ use crossterm::event::KeyCode;
 pub fn update(state: &mut AppState, msg: Message) -> bool {
     match msg {
         Message::KeyPress(key) => {
+            // Welcome screen: any key dismisses to Dashboard
+            if state.screen == Screen::Welcome {
+                state.screen = Screen::Dashboard;
+                return true;
+            }
             // In command mode, most keys append to the input buffer
             if state.command_mode {
                 return handle_command_key(state, key.code);
