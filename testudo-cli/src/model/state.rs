@@ -17,6 +17,16 @@ pub struct AppState {
     pub equity_curve: Vec<PnlPoint>,
     pub risk_snapshot: Option<RiskSnapshot>,
     pub journal_summary: Option<JournalSummary>,
+    /// True when the command bar is active (pressed / or :)
+    pub command_mode: bool,
+    /// Current text in the command input buffer
+    pub command_input: String,
+    /// History of executed commands (last 20)
+    pub command_history: Vec<String>,
+    /// Current position in history when navigating (None = at tip)
+    pub command_history_idx: Option<usize>,
+    /// Flash error message shown briefly in the command bar
+    pub command_error: Option<String>,
 }
 
 /// A trading position displayed in the positions pane.

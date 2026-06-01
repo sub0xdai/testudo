@@ -17,4 +17,24 @@ pub enum Message {
     Quit,
     Error(String),
     ClearError,
+    /// User pressed / or : — enter command mode
+    EnterCommandMode(char),
+    /// Character typed while in command mode
+    CommandInput(char),
+    /// Backspace pressed in command mode
+    CommandBackspace,
+    /// Tab pressed for autocomplete (CP-3)
+    CommandTab,
+    /// Enter pressed — execute the command
+    CommandExecute,
+    /// Esc pressed — cancel command mode
+    CommandCancel,
+    /// Up arrow in command mode — previous history
+    CommandHistoryUp,
+    /// Down arrow in command mode — next history
+    CommandHistoryDown,
+    /// Flash error in command bar
+    CommandError(String),
+    /// Clear command error flash
+    ClearCommandError,
 }

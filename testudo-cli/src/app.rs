@@ -48,6 +48,11 @@ pub fn run_app(config: Config) -> io::Result<()> {
         equity_curve: Vec::new(),
         risk_snapshot: None,
         journal_summary: None,
+        command_mode: false,
+        command_input: String::new(),
+        command_history: Vec::new(),
+        command_history_idx: None,
+        command_error: None,
     };
 
     // Run the TEA loop in a tokio runtime

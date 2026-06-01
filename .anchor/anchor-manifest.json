@@ -411,6 +411,14 @@
         "ui"
       ]
     },
+    "infra:cli:view:command_bar": {
+      "locations": [
+        "testudo-cli/src/view/command_bar.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
     "infra:cli:api:klines": {
       "locations": [
         "testudo-cli/src/api/klines.rs"

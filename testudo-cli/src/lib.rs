@@ -36,6 +36,7 @@ mod auth;
 
 mod view {
     pub mod agent_pane;
+    pub mod command_bar;
     pub mod dashboard;
     pub mod journal_pane;
     pub mod pnl_chart;

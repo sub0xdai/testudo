@@ -4,7 +4,7 @@
 //! Full dashboard layout compositor.
 
 use crate::model::state::{AppState, Screen};
-use crate::view::status_bar;
+use crate::view::{command_bar, status_bar};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::Style,
@@ -13,24 +13,45 @@ use ratatui::{
     Frame,
 };
 
-/// Render the full dashboard (6 panes + status bar) or a placeholder screen.
+/// Render the full dashboard (6 panes + optional command bar + status bar).
 pub fn render(frame: &mut Frame, state: &AppState) {
     let theme = &state.theme;
 
+    // Reserve space for status bar (1 row) + optional command bar (2 rows)
+    let bottom_reserved = if state.command_mode { 3 } else { 1 };
+    let content_area = Rect {
+        height: frame.area().height.saturating_sub(bottom_reserved),
+        ..frame.area()
+    };
+
     match state.screen {
-        Screen::Dashboard => render_dashboard(frame, state),
-        Screen::Help => render_help(frame, theme),
-        other => render_placeholder(frame, theme, other),
+        Screen::Dashboard => render_dashboard(frame, state, content_area),
+        Screen::Help => render_help(frame, theme, content_area),
+        other => render_placeholder(frame, theme, other, content_area),
     }
 
-    // Status bar always visible
-    let status_area = status_bar_area(frame.area());
+    // Command bar (above status bar, only when active)
+    if state.command_mode {
+        let cmd_area = Rect {
+            y: content_area.y + content_area.height,
+            height: 2,
+            ..frame.area()
+        };
+        command_bar::render(frame, state, cmd_area);
+    }
+
+    // Status bar always visible at the absolute bottom
+    let status_y = frame.area().y + frame.area().height.saturating_sub(1);
+    let status_area = Rect {
+        y: status_y,
+        height: 1,
+        ..frame.area()
+    };
     status_bar::render(frame, state, status_area);
 }
 
-fn render_dashboard(frame: &mut Frame, state: &AppState) {
+fn render_dashboard(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
-    let main_area = main_area(frame.area());
 
     // 3-row × 2-col grid
     let rows = Layout::default()
@@ -40,7 +61,7 @@ fn render_dashboard(frame: &mut Frame, state: &AppState) {
             Constraint::Ratio(1, 3),
             Constraint::Ratio(1, 3),
         ])
-        .split(main_area);
+        .split(area);
 
     let top_cols = horizontal_split(rows[0]);
     let mid_cols = horizontal_split(rows[1]);
@@ -78,14 +99,13 @@ fn render_dashboard(frame: &mut Frame, state: &AppState) {
     }
 }
 
-fn render_placeholder(frame: &mut Frame, theme: &crate::theme::Theme, screen: Screen) {
+fn render_placeholder(frame: &mut Frame, theme: &crate::theme::Theme, screen: Screen, area: Rect) {
     let label = match screen {
         Screen::Journal => "Journal",
         Screen::Strategies => "Strategies",
         Screen::Logs => "Logs",
         _ => "Unknown",
     };
-    let main = main_area(frame.area());
     let text = format!("{} — Not yet implemented", label);
     let p = Paragraph::new(Text::from(text.as_str()))
         .block(
@@ -96,16 +116,16 @@ fn render_placeholder(frame: &mut Frame, theme: &crate::theme::Theme, screen: Sc
                 .title_style(Style::default().fg(theme.accent)),
         )
         .style(Style::default().fg(theme.muted));
-    frame.render_widget(p, main);
+    frame.render_widget(p, area);
 }
 
-fn render_help(frame: &mut Frame, theme: &crate::theme::Theme) {
-    let main = main_area(frame.area());
+fn render_help(frame: &mut Frame, theme: &crate::theme::Theme, area: Rect) {
     let help_text = [
         "  F1          Dashboard",
         "  F2          Journal",
         "  F3          Strategies",
         "  F4          Logs",
+        "  / or :      Command palette",
         "  ?           This help",
         "  q / Esc     Quit",
     ];
@@ -118,7 +138,7 @@ fn render_help(frame: &mut Frame, theme: &crate::theme::Theme) {
                 .title_style(Style::default().fg(theme.accent)),
         )
         .style(Style::default().fg(theme.fg));
-    frame.render_widget(p, main);
+    frame.render_widget(p, area);
 }
 
 fn render_pane(
@@ -148,21 +168,4 @@ fn horizontal_split(area: Rect) -> [Rect; 2] {
         .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
         .split(area);
     [cols[0], cols[1]]
-}
-
-/// Main area with room at bottom for status bar.
-fn main_area(full: Rect) -> Rect {
-    Rect {
-        height: full.height.saturating_sub(1),
-        ..full
-    }
-}
-
-/// Bottom row for status bar.
-fn status_bar_area(full: Rect) -> Rect {
-    Rect {
-        y: full.y + full.height.saturating_sub(1),
-        height: 1,
-        ..full
-    }
 }

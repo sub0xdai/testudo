@@ -10,18 +10,64 @@ use crossterm::event::KeyCode;
 /// Apply a message to the model. Returns false if the app should quit.
 pub fn update(state: &mut AppState, msg: Message) -> bool {
     match msg {
-        Message::KeyPress(key) => match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => return false,
-            KeyCode::F(1) => state.screen = Screen::Dashboard,
-            KeyCode::F(2) => state.screen = Screen::Journal,
-            KeyCode::F(3) => state.screen = Screen::Strategies,
-            KeyCode::F(4) => state.screen = Screen::Logs,
-            KeyCode::Char('?') => state.screen = Screen::Help,
-            _ => {}
-        },
-        Message::Resize(_cols, _rows) => {
-            // Terminal size stored for future use; no-op for now.
+        Message::KeyPress(key) => {
+            // In command mode, most keys append to the input buffer
+            if state.command_mode {
+                return handle_command_key(state, key.code);
+            }
+            // Normal mode key handling
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => return false,
+                KeyCode::Char('/') | KeyCode::Char(':') => {
+                    state.command_mode = true;
+                    state.command_input = key.code.to_string();
+                }
+                KeyCode::F(1) => state.screen = Screen::Dashboard,
+                KeyCode::F(2) => state.screen = Screen::Journal,
+                KeyCode::F(3) => state.screen = Screen::Strategies,
+                KeyCode::F(4) => state.screen = Screen::Logs,
+                KeyCode::Char('?') => state.screen = Screen::Help,
+                _ => {}
+            }
         }
+        Message::EnterCommandMode(leader) => {
+            state.command_mode = true;
+            state.command_input = leader.to_string();
+        }
+        Message::CommandInput(ch) => {
+            state.command_input.push(ch);
+        }
+        Message::CommandBackspace => {
+            // Don't backspace past the leader char (/ or :)
+            if state.command_input.len() > 1 {
+                state.command_input.pop();
+            }
+        }
+        Message::CommandCancel => {
+            state.command_mode = false;
+            state.command_input.clear();
+        }
+        Message::CommandExecute => {
+            // CP-2: parse and execute
+            state.command_mode = false;
+            state.command_input.clear();
+        }
+        Message::CommandTab => {
+            // CP-3: autocomplete
+        }
+        Message::CommandHistoryUp => {
+            // CP-3: history navigation
+        }
+        Message::CommandHistoryDown => {
+            // CP-3: history navigation
+        }
+        Message::CommandError(_) => {
+            state.command_error = Some("".into());
+        }
+        Message::ClearCommandError => {
+            state.command_error = None;
+        }
+        Message::Resize(_cols, _rows) => {}
         Message::Tick => {
             state.status.uptime_secs = state.status.uptime_secs.saturating_add(1);
         }
@@ -38,6 +84,42 @@ pub fn update(state: &mut AppState, msg: Message) -> bool {
         Message::ClearError => {
             state.error = None;
         }
+    }
+    true
+}
+
+/// Handle a key press while in command mode.
+fn handle_command_key(state: &mut AppState, code: KeyCode) -> bool {
+    match code {
+        KeyCode::Esc => {
+            state.command_mode = false;
+            state.command_input.clear();
+        }
+        KeyCode::Enter => {
+            // CP-2: execute command, for now just exit command mode
+            state.command_mode = false;
+            state.command_input.clear();
+        }
+        KeyCode::Backspace if state.command_input.len() > 1 => {
+            state.command_input.pop();
+        }
+        KeyCode::Backspace => {
+            // At leader char — nothing to backspace
+        }
+        KeyCode::Tab => {
+            // CP-3: autocomplete
+        }
+        KeyCode::Up => {
+            // CP-3: history
+        }
+        KeyCode::Down => {
+            // CP-3: history
+        }
+        KeyCode::Char(c) => {
+            state.command_input.push(c);
+        }
+        // Ignore F-keys and other special keys in command mode
+        _ => {}
     }
     true
 }
