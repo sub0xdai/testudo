@@ -15,7 +15,7 @@ set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────
 
-readonly REPO="testudo/testudo"
+readonly REPO="sub0xdai/testudo"
 readonly BINARY="testudo"
 readonly INSTALL_DIR="${HOME}/.local/bin"
 readonly RELEASE_URL="https://github.com/${REPO}/releases/latest/download"
