@@ -5,6 +5,7 @@
 
 use crate::config::LlmConfig;
 use crate::llm::anthropic::AnthropicClient;
+use crate::llm::gemini::GeminiClient;
 use crate::llm::openai::OpenAiClient;
 use crate::llm::types::{LlmError, LlmMessage, LlmResponse};
 use async_trait::async_trait;
@@ -30,6 +31,7 @@ const OPENAI_COMPATIBLE: &[&str] = &[
 pub fn create_client(config: &LlmConfig) -> Box<dyn LlmClient> {
     match config.provider.as_str() {
         "anthropic" => Box::new(AnthropicClient::new(config)),
+        "gemini" => Box::new(GeminiClient::new(config)),
         p if OPENAI_COMPATIBLE.contains(&p) => Box::new(OpenAiClient::new(config)),
         other => panic!(
             "Unknown LLM provider: {}. Supported: anthropic, {}",

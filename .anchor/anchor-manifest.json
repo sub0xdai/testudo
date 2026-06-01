@@ -515,20 +515,12 @@
         "api"
       ]
     },
-    "infra:cli:llm:ollama": {
-      "locations": [
-        "testudo-cli/src/llm/ollama.rs"
-      ],
-      "tags": [
-        "infra"
-      ]
-    },
     "infra:cli:llm:gemini": {
       "locations": [
         "testudo-cli/src/llm/gemini.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:llm:types": {
