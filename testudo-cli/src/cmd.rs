@@ -594,12 +594,16 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut base_url = config.api.base_url.clone();
     let mut agent_key = config.api.agent_key.clone();
+    let mut llm_provider = config.llm.provider.clone();
+    let mut llm_api_key = config.llm.api_key.clone();
+    let mut llm_model = config.llm.model.clone();
+    let mut llm_base_url: Option<String> = config.llm.base_url.clone();
     let mut leverage: u8 = 5;
     let mut account_risk_pct: f64 = 2.0;
     let mut drawdown_pct: f64 = 20.0;
 
     // Step 1: Base URL
-    println!("── Step 1/5: Backend URL ──────────────────────");
+    println!("── Step 1/6: Backend URL ──────────────────────");
     println!("Just press Enter — the default is correct unless you're");
     println!("running your own Testudo server.");
     println!();
@@ -616,7 +620,7 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // Step 2: Agent Key
-    println!("── Step 2/5: Agent Key ────────────────────────");
+    println!("── Step 2/6: Agent Key ────────────────────────");
     println!("An agent key is a scoped API key that lets the harness submit");
     println!("signals and read your journal on your behalf.");
     println!("Create one in the Testudo web desk → Settings → Agent Keys.");
@@ -639,7 +643,7 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // Step 3: Exchange
-    println!("── Step 3/5: Exchange ─────────────────────────");
+    println!("── Step 3/6: Exchange ─────────────────────────");
     println!("Before trading, you need to connect an exchange account.");
     println!("This is done through the Testudo web desk (not the CLI).");
     println!("Visit your desk → Exchanges → Connect to add one.");
@@ -649,8 +653,123 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     std::io::stdin().read_line(&mut input)?;
     println!();
 
-    // Step 4: Risk Config
-    println!("── Step 4/5: Risk Configuration ───────────────");
+    // Step 4: LLM Configuration
+    println!("── Step 4/6: LLM Configuration ────────────────");
+    println!("The agent loop needs an LLM to think. Pick your provider:");
+    println!();
+    println!("   1. Anthropic (Claude)          api.anthropic.com");
+    println!("   2. OpenAI (GPT)                api.openai.com");
+    println!("   3. DeepSeek                    api.deepseek.com");
+    println!("   4. Groq                        api.groq.com");
+    println!("   5. Together AI                 api.together.xyz");
+    println!("   6. xAI (Grok)                  api.x.ai");
+    println!("   7. Mistral                     api.mistral.ai");
+    println!("   8. OpenRouter                  openrouter.ai");
+    println!("   9. Qwen (Alibaba)              dashscope.aliyuncs.com");
+    println!("  10. Google (Gemini)             generativelanguage.googleapis.com");
+    println!("  11. Ollama (local)              localhost:11434");
+    println!("  12. Custom (enter base URL)     any OpenAI-compatible endpoint");
+    println!();
+
+    let provider_idx = if llm_provider == "anthropic" { 1 }
+        else if llm_provider == "openai" { 2 }
+        else if llm_provider == "deepseek" { 3 }
+        else if llm_provider == "groq" { 4 }
+        else if llm_provider == "together" { 5 }
+        else if llm_provider == "xai" { 6 }
+        else if llm_provider == "mistral" { 7 }
+        else if llm_provider == "openrouter" { 8 }
+        else if llm_provider == "qwen" { 9 }
+        else if llm_provider == "gemini" { 10 }
+        else if llm_provider == "ollama" { 11 }
+        else { 1 };
+
+    print!("Provider [{}]: ", provider_idx);
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    let choice = input.trim().to_string();
+    let choice_str = choice.as_str();
+
+    let chosen = if choice_str.is_empty() {
+        // Keep existing or default to anthropic
+        let (provider, model, url) = match llm_provider.as_str() {
+            "openai" => ("openai", "gpt-4o", "https://api.openai.com/v1"),
+            "deepseek" => ("deepseek", "deepseek-chat", "https://api.deepseek.com/v1"),
+            "groq" => ("groq", "llama-3.3-70b-versatile", "https://api.groq.com/openai/v1"),
+            "together" => ("together", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "https://api.together.xyz/v1"),
+            "xai" => ("xai", "grok-2", "https://api.x.ai/v1"),
+            "mistral" => ("mistral", "mistral-large-latest", "https://api.mistral.ai/v1"),
+            "openrouter" => ("openrouter", "anthropic/claude-sonnet-4", "https://openrouter.ai/api/v1"),
+            "qwen" => ("qwen", "qwen-max", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            "gemini" => ("gemini", "gemini-2.5-flash", "https://generativelanguage.googleapis.com/v1beta/models"),
+            "ollama" => ("ollama", "llama3", "http://localhost:11434/v1"),
+            _ => ("anthropic", "claude-sonnet-4-20250514", "https://api.anthropic.com"),
+        };
+        (provider.to_string(), model.to_string(), url.to_string())
+    } else if choice_str == "12" {
+        // Custom
+        print!("Base URL (must end with /v1 for OpenAI-compatible): ");
+        input.clear();
+        std::io::stdin().read_line(&mut input)?;
+        let custom_url = input.trim().to_string();
+        print!("Model: ");
+        input.clear();
+        std::io::stdin().read_line(&mut input)?;
+        let custom_model = input.trim().to_string();
+        llm_base_url = Some(custom_url.clone());
+        llm_model = custom_model.clone();
+        ("openai".to_string(), custom_model, custom_url)
+    } else {
+        match choice_str {
+            "1" => ("anthropic".to_string(), "claude-sonnet-4-20250514".to_string(), "https://api.anthropic.com".to_string()),
+            "2" => ("openai".to_string(), "gpt-4o".to_string(), "https://api.openai.com/v1".to_string()),
+            "3" => ("deepseek".to_string(), "deepseek-chat".to_string(), "https://api.deepseek.com/v1".to_string()),
+            "4" => ("groq".to_string(), "llama-3.3-70b-versatile".to_string(), "https://api.groq.com/openai/v1".to_string()),
+            "5" => ("together".to_string(), "meta-llama/Llama-3.3-70B-Instruct-Turbo".to_string(), "https://api.together.xyz/v1".to_string()),
+            "6" => ("xai".to_string(), "grok-2".to_string(), "https://api.x.ai/v1".to_string()),
+            "7" => ("mistral".to_string(), "mistral-large-latest".to_string(), "https://api.mistral.ai/v1".to_string()),
+            "8" => ("openrouter".to_string(), "anthropic/claude-sonnet-4".to_string(), "https://openrouter.ai/api/v1".to_string()),
+            "9" => ("qwen".to_string(), "qwen-max".to_string(), "https://dashscope.aliyuncs.com/compatible-mode/v1".to_string()),
+            "10" => ("gemini".to_string(), "gemini-2.5-flash".to_string(), "https://generativelanguage.googleapis.com/v1beta/models".to_string()),
+            "11" => ("ollama".to_string(), "llama3".to_string(), "http://localhost:11434/v1".to_string()),
+            _ => {
+                eprintln!("Invalid choice. Defaulting to Anthropic.");
+                ("anthropic".to_string(), "claude-sonnet-4-20250514".to_string(), "https://api.anthropic.com".to_string())
+            }
+        }
+    };
+
+    llm_provider = chosen.0;
+    if choice_str != "12" && !choice_str.is_empty() {
+        llm_model = chosen.1;
+    }
+    println!();
+
+    // API Key
+    println!("API key for {}:", llm_provider);
+    print!("API key [{}] ", if llm_api_key.is_empty() { "(required)" } else { "****" });
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    let trimmed_key = input.trim();
+    if !trimmed_key.is_empty() {
+        llm_api_key = trimmed_key.to_string();
+    }
+    if llm_api_key.is_empty() {
+        eprintln!("Warning: No API key set. The agent loop won't work until you add one.");
+    }
+
+    // Model
+    print!("Model [{}]: ", llm_model);
+    input.clear();
+    std::io::stdin().read_line(&mut input)?;
+    let trimmed_model = input.trim();
+    if !trimmed_model.is_empty() {
+        llm_model = trimmed_model.to_string();
+    }
+    println!();
+
+    // Step 5: Risk Config
+    println!("── Step 5/6: Risk Configuration ───────────────");
     println!("Set your personal risk limits. These act as a safety net:");
     println!("the harness can only tighten these — never loosen them.");
     println!();
@@ -689,14 +808,19 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    // Step 5: Save
-    println!("── Step 5/5: Save Configuration ───────────────");
+    // Step 6: Save
+    println!("── Step 6/6: Save Configuration ───────────────");
     println!();
-    println!("  Base URL:     {}", base_url);
-    println!("  Agent Key:    {}", if agent_key.is_empty() { "(not set)" } else { "****" });
-    println!("  Max Leverage: {}×", leverage);
-    println!("  Risk/Trade:   {:.1}%", account_risk_pct);
-    println!("  Max Drawdown: {:.1}%", drawdown_pct);
+    println!("  Backend URL:     {}", base_url);
+    println!("  Agent Key:       {}", if agent_key.is_empty() { "(not set)" } else { "****" });
+    println!("  LLM Provider:    {}", llm_provider);
+    println!("  LLM Model:       {}", llm_model);
+    if let Some(ref url) = llm_base_url {
+        println!("  LLM Base URL:    {}", url);
+    }
+    println!("  Max Leverage:    {}×", leverage);
+    println!("  Risk/Trade:      {:.1}%", account_risk_pct);
+    println!("  Max Drawdown:    {:.1}%", drawdown_pct);
     println!();
 
     print!("Save to ~/.config/testudo/config.toml? [Y/n] ");
@@ -714,6 +838,12 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
             base_url,
             agent_key,
             ws_url: config.api.ws_url.clone(),
+        },
+        llm: crate::config::LlmConfig {
+            provider: llm_provider,
+            api_key: llm_api_key,
+            model: llm_model,
+            base_url: llm_base_url,
         },
         ..Config::default()
     };
