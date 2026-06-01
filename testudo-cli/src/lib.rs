@@ -9,8 +9,8 @@
 pub mod cmd;
 pub use cmd::{
     run_agent, run_attach, run_init, run_journal, run_listen,
-    run_strategy_add, run_strategy_list, run_strategy_remove, run_strategy_show,
-    run_strategy_validate,
+    run_strategy_add, run_strategy_create, run_strategy_list, run_strategy_remove,
+    run_strategy_show, run_strategy_validate,
     AgentAction, Command, StrategyAction,
 };
 

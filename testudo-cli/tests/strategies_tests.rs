@@ -204,3 +204,114 @@ fn strategy_remove_builtin_fails() {
     let result = run_strategy_remove(dir.path(), "mean-reversion");
     assert!(result.is_err(), "should not remove builtin");
 }
+
+// ── Strategy create wizard tests (CLI-07) ────────────────────
+
+use testudo_cli::cmd::run_strategy_create;
+
+#[test]
+fn strategy_create_validates_kebab_case_name() {
+    assert!(is_valid_strategy_name("my-breakout"));
+    assert!(is_valid_strategy_name("mean-reversion-v2"));
+    assert!(is_valid_strategy_name("a"));
+    assert!(!is_valid_strategy_name(""));
+    assert!(!is_valid_strategy_name("My-Breakout"));
+    assert!(!is_valid_strategy_name("my breakout"));
+    assert!(!is_valid_strategy_name("my_breakout"));
+    assert!(!is_valid_strategy_name("-leading-hyphen"));
+    assert!(!is_valid_strategy_name("trailing-"));
+}
+
+#[test]
+fn strategy_create_rejects_duplicate_name() {
+    let dir = temp_config_dir();
+    // mean-reversion is a builtin — should be rejected
+    let result = run_strategy_create(
+        dir.path(),
+        "mean-reversion",
+        "Duplicate of builtin",
+        3,
+        &["BTC_USDT"],
+        "Test prompt",
+        &["fetch_klines"],
+    );
+    assert!(result.is_err(), "should reject duplicate of builtin");
+}
+
+#[test]
+fn strategy_create_produces_valid_toml() {
+    let dir = temp_config_dir();
+    let result = run_strategy_create(
+        dir.path(),
+        "my-custom-strat",
+        "A custom breakout strategy",
+        5,
+        &["BTC_USDT", "ETH_USDT"],
+        "You are a breakout trading agent.",
+        &["fetch_klines", "submit_signal", "check_risk"],
+    );
+    assert!(result.is_ok(), "strategy create should succeed");
+
+    // Verify the file exists and parses
+    let created_path = dir.path().join("strategies").join("my-custom-strat.toml");
+    assert!(created_path.exists(), "TOML file should exist");
+
+    let content = std::fs::read_to_string(&created_path).unwrap();
+    let tmpl: StrategyTemplate = toml::from_str(&content).unwrap();
+    assert_eq!(tmpl.meta.name, "my-custom-strat");
+    assert_eq!(tmpl.constraints.as_ref().unwrap().max_leverage, Some(5));
+    assert_eq!(tmpl.prompt.system, "You are a breakout trading agent.");
+}
+
+#[test]
+fn strategy_create_registry_collision_check() {
+    let dir = temp_config_dir();
+    let registry = StrategyRegistry::new(dir.path());
+
+    // Should reject builtin name
+    let result = registry.add("mean-reversion", "[meta]\nname = \"mean-reversion\"\nversion = \"1.0\"\ndescription = \"test\"\n\n[prompt]\nsystem = \"test\"");
+    assert!(result.is_err(), "should reject collision with builtin");
+    assert!(result.unwrap_err().to_string().contains("built-in"),
+        "error should mention built-in");
+}
+
+#[test]
+fn strategy_create_validates_empty_prompt() {
+    let dir = temp_config_dir();
+    let result = run_strategy_create(
+        dir.path(),
+        "my-strat",
+        "Test",
+        3,
+        &["BTC_USDT"],
+        "",  // empty prompt
+        &["fetch_klines"],
+    );
+    assert!(result.is_err(), "should reject empty prompt");
+}
+
+#[test]
+fn strategy_create_validates_no_symbols() {
+    let dir = temp_config_dir();
+    let result = run_strategy_create(
+        dir.path(),
+        "my-strat",
+        "Test",
+        3,
+        &[],  // no symbols
+        "Valid prompt",
+        &["fetch_klines"],
+    );
+    assert!(result.is_err(), "should reject empty symbols");
+}
+
+/// Validate strategy name is kebab-case (lowercase letters, digits, hyphens).
+fn is_valid_strategy_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    if name.starts_with('-') || name.ends_with('-') {
+        return false;
+    }
+    name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}

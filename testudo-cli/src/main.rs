@@ -5,8 +5,8 @@ use clap::Parser;
 use testudo_cli::app::run_app;
 use testudo_cli::cmd::{
     run_agent, run_attach, run_init, run_journal, run_listen,
-    run_strategy_add, run_strategy_list, run_strategy_remove, run_strategy_show,
-    run_strategy_validate,
+    run_strategy_add, run_strategy_list, run_strategy_remove,
+    run_strategy_show, run_strategy_validate,
 };
 use testudo_cli::config::Config;
 use testudo_cli::{AgentAction, Command, StrategyAction};
@@ -179,6 +179,27 @@ fn main() {
                         eprintln!("Error: {}", e);
                         std::process::exit(1);
                     }
+                }
+                StrategyAction::Create => {
+                    println!("Interactive strategy creation wizard.");
+                    println!("Use 'testudo strategy add --from <file>' to add a pre-written TOML.");
+                    println!("Interactive wizard coming soon — for now, create a .toml file:");
+                    println!();
+                    println!("  cat > my_strat.toml << 'EOF'");
+                    println!("  [meta]");
+                    println!("  name = \"my-strat\"");
+                    println!("  version = \"0.1.0\"");
+                    println!("  description = \"My custom strategy\"");
+                    println!("  [prompt]");
+                    println!("  system = \"You are a trading agent...\"");
+                    println!("  [constraints]");
+                    println!("  max_leverage = 3");
+                    println!("  allowed_symbols = [\"BTC_USDT\"]");
+                    println!("  [allowed_tools]");
+                    println!("  tools = [\"fetch_klines\", \"submit_signal\"]");
+                    println!("  EOF");
+                    println!();
+                    println!("  testudo strategy add my-strat --from ./my_strat.toml");
                 }
             }
         }

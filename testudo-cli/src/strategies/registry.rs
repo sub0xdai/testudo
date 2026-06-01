@@ -114,6 +114,23 @@ impl StrategyRegistry {
 
     /// Add a user strategy. Validates TOML structure and saves to user dir.
     pub fn add(&self, name: &str, content: &str) -> Result<(), RegistryError> {
+        // Reject collision with builtins
+        if self.builtins.contains_key(name) {
+            return Err(RegistryError::CannotRemoveBuiltin(format!(
+                "'{}' is a built-in strategy and cannot be overwritten",
+                name
+            )));
+        }
+
+        // Reject collision with existing user strategy
+        let user_path = self.user_dir.join(format!("{}.toml", name));
+        if user_path.exists() {
+            return Err(RegistryError::InvalidToml(format!(
+                "Strategy '{}' already exists. Remove it first with 'strategy remove'.",
+                name
+            )));
+        }
+
         let tmpl: StrategyTemplate = toml::from_str(content)
             .map_err(|e| RegistryError::InvalidToml(e.to_string()))?;
 
