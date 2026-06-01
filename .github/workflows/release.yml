@@ -11,13 +11,22 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            ext: .exe
 
     steps:
       - uses: actions/checkout@v4
@@ -31,20 +40,29 @@ jobs:
         working-directory: testudo-cli
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package tarball
+      - name: Package (unix)
+        if: runner.os != 'Windows'
         working-directory: testudo-cli
         run: |
           cd target/${{ matrix.target }}/release
           tar -czf testudo-${{ matrix.target }}.tar.gz testudo
           shasum -a 256 testudo-${{ matrix.target }}.tar.gz > testudo-${{ matrix.target }}.tar.gz.sha256
 
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        working-directory: testudo-cli
+        shell: pwsh
+        run: |
+          cd target/${{ matrix.target }}/release
+          Compress-Archive -Path testudo.exe -DestinationPath testudo-${{ matrix.target }}.zip
+          Get-FileHash testudo-${{ matrix.target }}.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  testudo-${{ matrix.target }}.zip" } > testudo-${{ matrix.target }}.zip.sha256
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: testudo-${{ matrix.target }}
           path: |
-            testudo-cli/target/${{ matrix.target }}/release/testudo-${{ matrix.target }}.tar.gz
-            testudo-cli/target/${{ matrix.target }}/release/testudo-${{ matrix.target }}.tar.gz.sha256
+            testudo-cli/target/${{ matrix.target }}/release/testudo-${{ matrix.target }}.*
 
   publish:
     name: Publish GitHub Release
@@ -62,13 +80,13 @@ jobs:
           body: |
             ## Install
 
+            **Linux & macOS:**
             ```bash
             curl -fsSL https://api.testudo.vip/install.sh | bash
             ```
 
-            ## Checksums
-
-            See `.sha256` files below.
+            **Windows:**
+            Download the `.zip` below and extract.
           files: artifacts/**/*
           draft: false
           prerelease: false
