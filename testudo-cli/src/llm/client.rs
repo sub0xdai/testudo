@@ -5,6 +5,7 @@
 
 use crate::config::LlmConfig;
 use crate::llm::anthropic::AnthropicClient;
+use crate::llm::openai::OpenAiClient;
 use crate::llm::types::{LlmError, LlmMessage, LlmResponse};
 use async_trait::async_trait;
 
@@ -19,13 +20,21 @@ pub trait LlmClient: Send + Sync {
     ) -> Result<LlmResponse, LlmError>;
 }
 
+/// Providers that use the OpenAI-compatible client.
+const OPENAI_COMPATIBLE: &[&str] = &[
+    "openai", "deepseek", "groq", "together", "xai",
+    "mistral", "openrouter", "qwen", "ollama",
+];
+
 /// Create an LLM client for the configured provider.
 pub fn create_client(config: &LlmConfig) -> Box<dyn LlmClient> {
     match config.provider.as_str() {
         "anthropic" => Box::new(AnthropicClient::new(config)),
+        p if OPENAI_COMPATIBLE.contains(&p) => Box::new(OpenAiClient::new(config)),
         other => panic!(
-            "Unknown LLM provider: {}. Supported: anthropic",
-            other
+            "Unknown LLM provider: {}. Supported: anthropic, {}",
+            other,
+            OPENAI_COMPATIBLE.join(", ")
         ),
     }
 }

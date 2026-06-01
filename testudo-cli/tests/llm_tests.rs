@@ -44,6 +44,7 @@ fn create_client_does_not_panic() {
         provider: "anthropic".into(),
         api_key: "sk-ant-test".into(),
         model: "claude-sonnet-4-20250514".into(),
+        base_url: None,
     };
     let _client = testudo_cli::llm::client::create_client(&config);
     // Just verify it doesn't panic

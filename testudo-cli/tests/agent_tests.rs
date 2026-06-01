@@ -44,6 +44,7 @@ fn agent_phase_transitions_are_distinct() {
 fn agent_requires_llm_api_key() {
     let config = Config {
         llm: LlmConfig {
+            base_url: None,
             provider: "anthropic".into(),
             api_key: "".into(),
             model: "claude-sonnet-4-20250514".into(),
@@ -68,6 +69,7 @@ fn agent_requires_agent_key() {
             ws_url: "ws://localhost:8081".into(),
         },
         llm: LlmConfig {
+            base_url: None,
             provider: "anthropic".into(),
             api_key: "sk-ant-test".into(),
             model: "claude-sonnet-4-20250514".into(),

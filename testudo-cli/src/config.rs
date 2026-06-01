@@ -77,6 +77,11 @@ pub struct LlmConfig {
     pub api_key: String,
     #[serde(default = "default_model")]
     pub model: String,
+    /// Override the provider's default base URL. When set, this URL is used
+    /// instead of the provider's standard endpoint. Must end with /v1 for
+    /// OpenAI-compatible providers.
+    #[serde(default)]
+    pub base_url: Option<String>,
 }
 
 impl Default for LlmConfig {
@@ -85,6 +90,7 @@ impl Default for LlmConfig {
             provider: default_provider(),
             api_key: String::new(),
             model: default_model(),
+            base_url: None,
         }
     }
 }

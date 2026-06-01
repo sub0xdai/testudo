@@ -512,7 +512,7 @@
         "testudo-cli/src/llm/openai.rs"
       ],
       "tags": [
-        "infra"
+        "api"
       ]
     },
     "infra:cli:llm:ollama": {
