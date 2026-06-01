@@ -26,19 +26,25 @@ Workflow:
 - [x] **CLI-01-core-tui** — `testudo-cli/` crate, clap CLI (7 subcommands, 6 stubs), TEA event loop (`tokio::select!`), ratatui dashboard with 6 panes + status bar, config loading from `~/.config/testudo/config.toml` (auto-creates defaults), screen navigation (F1-F4). `testudo dashboard` opens a working TUI.
 
 ### CLI-02 — API Client + Network
-- [ ] **CLI-02-api-client** — Typed REST client for all 7 Testudo endpoints (signals, journal, klines, exchanges, onboarding, risk, agent-keys). WebSocket client with exponential backoff reconnection. `testudo listen` streams JSON Lines to stdout. `testudo journal` prints markdown summary. `X-Agent-Key` header injection. Type sharing via `common-utils` path dependency.
+- [x] **CLI-02-api-client** — Typed REST client for all 7 Testudo endpoints (signals, journal, klines, exchanges, onboarding, risk, agent-keys). WebSocket client with exponential backoff reconnection. `testudo listen` streams JSON Lines to stdout. `testudo journal` prints markdown summary. `X-Agent-Key` header injection. Type sharing via `common-utils` path dependency.
 
 ### CLI-03 — Agent Loop + LLM + Tools
-- [ ] **CLI-03-agent-loop** — LLM provider trait + Anthropic implementation (OpenAI second). 7 typed tools (fetch_klines, submit_signal, read_journal, write_journal, list_positions, check_risk, check_onboarding) with JSON Schema + OpenAI function calling. `testudo agent start` autonomous loop: observe → think → act → journal → sleep. Signal idempotency (UUIDv4). Journal write-after-signal (pre-trade thesis + post-trade from execution reports). Agent phase tracking.
+- [x] **CLI-03-agent-loop** — LLM provider trait + Anthropic implementation (OpenAI second). 7 typed tools (fetch_klines, submit_signal, read_journal, write_journal, list_positions, check_risk, check_onboarding) with JSON Schema + OpenAI function calling. `testudo agent start` autonomous loop: observe → think → act → journal → sleep. Signal idempotency (UUIDv4). Journal write-after-signal (pre-trade thesis + post-trade from execution reports). Agent phase tracking.
 
 ### CLI-04 — Strategy Registry + Risk + Init
-- [ ] **CLI-04-strategy-registry** — Strategy TOML loading from `~/.config/testudo/strategies/`. 3 built-in strategies (mean-reversion, momentum-breakout, funding-arb). `testudo strategy list/add/show/remove`. Client-side risk pre-check (leverage, positions, symbols, drawdown). `testudo agent start --strategy <name>` loads strategy prompt + constraints + tool filter. `testudo init` 5-step TUI onboarding wizard (URL → auth → exchange → risk → save).
+- [x] **CLI-04-strategy-registry** — Strategy TOML loading from `~/.config/testudo/strategies/`. 3 built-in strategies (mean-reversion, momentum-breakout, funding-arb). `testudo strategy list/add/show/remove`. Client-side risk pre-check (leverage, positions, symbols, drawdown). `testudo agent start --strategy <name>` loads strategy prompt + constraints + tool filter. `testudo init` 5-step TUI onboarding wizard (URL → auth → exchange → risk → save).
 
 ### CLI-05 — Daemon + TUI Polish + Integration
-- [ ] **CLI-05-daemon-polish** — `testudo agent start --daemon` headless mode with file logging (daily rotation, JSON). Unix domain socket for control (`status`, `stop`, `attach`). `testudo attach` reconnects TUI to running daemon (read-only, `q` to detach). All 6 TUI panes wired to live data (positions, P&L sparkline, signal log, risk gauge, agent stream, journal stats). Integration test suite with mock LLM + mock HTTP backend. `AGENT_TRADING.md` updated with `testudo`-first workflow.
+- [x] **CLI-05-daemon-polish** — `testudo agent start --daemon` headless mode with file logging (daily rotation, JSON). Unix domain socket for control (`status`, `stop`, `attach`). `testudo attach` reconnects TUI to running daemon (read-only, `q` to detach). All 6 TUI panes wired to live data (positions, P&L sparkline, signal log, risk gauge, agent stream, journal stats). Integration test suite with mock LLM + mock HTTP backend. `AGENT_TRADING.md` updated with `testudo`-first workflow.
 
 ### CLI-06 — Strategy System Bridge
-- [ ] **CLI-06-strategy-system** — Bridge connecting STRAT-01 Lean proofs to the harness. `StrategyLoader` loads `.toml` artifacts, `ConstraintMerger` combines constraints (most conservative wins) + intersects with user risk config (user can only tighten), `ToolConstrainer` bakes proof-derived bounds into LLM tool JSON Schemas, `StrategyValidator` cross-references strategies against proofs. `testudo strategy validate <name>` CLI.
+- [x] **CLI-06-strategy-system**
+
+### CLI-07 — Onboarding & Distribution
+- [ ] **CLI-07-onboarding-distribution** — `install.sh` one-line installer with PATH append. Multi-provider LLM stack: Anthropic (native), OpenAI-compatible client covering 8 providers (OpenAI, DeepSeek, Groq, Together, xAI, Mistral, OpenRouter, Qwen, Ollama), Gemini (native). `testudo init` full provider menu. `testudo strategy create` interactive TOML builder.
+
+### CLI-08 — Command Palette + Settings
+- [ ] **CLI-08-command-palette** — `/` or `:` opens command bar with autocomplete (Tab cycles, Up/Down history). 7 slash commands: `/dashboard`, `/journal`, `/strategies`, `/logs`, `/help`, `/settings`, `/quit`. `/settings` renders read-only config screen with masked API keys. F-keys preserved alongside commands. — Bridge connecting STRAT-01 Lean proofs to the harness. `StrategyLoader` loads `.toml` artifacts, `ConstraintMerger` combines constraints (most conservative wins) + intersects with user risk config (user can only tighten), `ToolConstrainer` bakes proof-derived bounds into LLM tool JSON Schemas, `StrategyValidator` cross-references strategies against proofs. `testudo strategy validate <name>` CLI.
 
 ---
 

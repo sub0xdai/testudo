@@ -876,6 +876,7 @@ pub fn run_init(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// `testudo attach` — connect to a running daemon and show live status.
+#[cfg(unix)]
 pub fn run_attach() -> Result<(), Box<dyn std::error::Error>> {
     let socket_path = crate::daemon::socket_path();
 
@@ -936,6 +937,12 @@ pub fn run_attach() -> Result<(), Box<dyn std::error::Error>> {
 
         Ok(())
     })
+}
+
+/// Stub for Windows — daemon mode is Unix-only.
+#[cfg(not(unix))]
+pub fn run_attach() -> Result<(), Box<dyn std::error::Error>> {
+    Err("Daemon attach is only supported on Linux and macOS.".into())
 }
 
 /// `testudo strategy validate <name>` — validate strategy against proof artifacts.

@@ -3,14 +3,14 @@
 
 //! Daemon mode — background agent with Unix socket control.
 //!
-//! The daemon stays foreground (no fork) but writes a PID file and opens
-//! a Unix domain socket for JSON-RPC control commands. Users can background
-//! the process with `nohup`, `systemd`, or `screen`.
+//! Unix-only (uses Unix domain sockets). On Windows, daemon mode is unavailable.
 
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use tokio::net::UnixStream;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+#[cfg(unix)]
+mod unix_daemon {
+    use serde::{Deserialize, Serialize};
+    use std::path::PathBuf;
+    use tokio::net::UnixStream;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 /// State published by the daemon via watch channel and status RPC.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,5 +176,27 @@ mod tests {
     fn socket_path_has_correct_suffix() {
         let path = socket_path();
         assert!(path.ends_with("testudo.sock"));
+    }
+}
+} // end unix_daemon
+
+// Re-export for Unix, stub for Windows
+#[cfg(unix)]
+pub use unix_daemon::*;
+
+#[cfg(not(unix))]
+pub mod unix_daemon {
+    use std::path::PathBuf;
+    pub fn write_pid_file() -> Result<(), std::io::Error> { Ok(()) }
+    pub fn print_startup_info() {}
+    pub fn daemon_dir() -> PathBuf { PathBuf::from(".") }
+    pub fn socket_path() -> PathBuf { PathBuf::from("testudo.sock") }
+    pub async fn handle_control_connection(_stream: tokio::net::TcpStream, _rx: tokio::sync::watch::Receiver<DaemonState>) {}
+    #[derive(Debug, Clone, Default)]
+    pub struct DaemonState {
+        pub phase: String,
+        pub signal_count: u64,
+        pub uptime_secs: u64,
+        pub last_error: Option<String>,
     }
 }
