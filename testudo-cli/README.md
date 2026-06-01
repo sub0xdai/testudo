@@ -4,52 +4,29 @@
 
 ## Quick Start
 
+**Linux & macOS:**
 ```bash
-# Install (from source)
-git clone https://github.com/your-org/testudo.git
-cd testudo/testudo-cli
-cargo build --release
-
-# First-time setup
-./target/release/testudo init
-
-# Browse strategies
-./target/release/testudo strategy list
-
-# Start autonomous trading (shadow mode)
-./target/release/testudo agent start --strategy mean-reversion
-
-# Check your trading results
-./target/release/testudo journal
-
-# Open the live dashboard
-./target/release/testudo dashboard
+curl -fsSL https://api.testudo.vip/install.sh | bash
 ```
 
-## Configuration
-
-All configuration lives at `~/.config/testudo/config.toml`:
-
-```toml
-[ui]
-theme = "vanilla-amoled"
-
-[api]
-base_url = "http://localhost:8080/api/v1"
-agent_key = "testudo_sk_your_key_here"
-ws_url = "ws://localhost:8081"
-
-[agent]
-loop_interval_secs = 60
-shadow_only = true
-
-[llm]
-provider = "anthropic"
-api_key = "sk-ant-your-key-here"
-model = "claude-sonnet-4-20250514"
+**Windows (PowerShell):**
+```powershell
+powershell -c "irm https://api.testudo.vip/install.ps1 | iex"
 ```
 
-Run `testudo init` for a guided 5-step setup wizard.
+**Windows (Git Bash / WSL):**
+```bash
+curl -fsSL https://api.testudo.vip/install.sh | bash
+```
+
+After install:
+```bash
+testudo init                    # Complete setup wizard (6 steps)
+testudo strategy list           # Browse strategies
+testudo agent start --strategy mean-reversion   # Start trading
+testudo journal                 # Check results
+testudo dashboard               # Open live TUI
+```
 
 ## Commands
 
