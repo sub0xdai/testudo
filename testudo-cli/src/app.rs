@@ -53,6 +53,8 @@ pub fn run_app(config: Config) -> io::Result<()> {
         command_history: Vec::new(),
         command_history_idx: None,
         command_error: None,
+        autocomplete_matches: Vec::new(),
+        autocomplete_idx: 0,
     };
 
     // Run the TEA loop in a tokio runtime

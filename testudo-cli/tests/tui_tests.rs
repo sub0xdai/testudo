@@ -28,6 +28,8 @@ fn make_state() -> AppState {
         command_history: Vec::new(),
         command_history_idx: None,
         command_error: None,
+        autocomplete_matches: Vec::new(),
+        autocomplete_idx: 0,
     }
 }
 
@@ -238,4 +240,48 @@ fn command_mode_q_not_quit() {
     let should_continue = update(&mut state, Message::KeyPress(key_event(KeyCode::Char('q'))));
     assert!(should_continue, "q in command mode should not quit");
     assert_eq!(state.command_input, "/q");
+}
+
+// ── Autocomplete + history tests ──────────────────────────────
+
+#[test]
+fn autocomplete_tab_replaces_input() {
+    let mut state = make_state();
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('/'))));
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('d'))));
+    // Tab should complete "/d" to "/dashboard"
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Tab)));
+    assert_eq!(state.command_input, "/dashboard");
+}
+
+#[test]
+fn autocomplete_tab_cycles_multiple_matches() {
+    let mut state = make_state();
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('/'))));
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('s'))));
+
+    // First Tab: /s → /settings (or /strategies)
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Tab)));
+    let first = state.command_input.clone();
+
+    // Second Tab: cycles to next match
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Tab)));
+    let second = state.command_input.clone();
+
+    assert_ne!(first, second, "Tab should cycle between /settings and /strategies");
+    assert!(first.starts_with("/s"));
+    assert!(second.starts_with("/s"));
+}
+
+#[test]
+fn autocomplete_tab_no_match_does_nothing() {
+    let mut state = make_state();
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('/'))));
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('z'))));
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('z'))));
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Char('z'))));
+
+    let before = state.command_input.clone();
+    update(&mut state, Message::KeyPress(key_event(KeyCode::Tab)));
+    assert_eq!(state.command_input, before, "Tab does nothing with no matches");
 }

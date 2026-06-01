@@ -45,6 +45,31 @@ impl TuiCommand {
     }
 }
 
+/// Return matching commands for the given input prefix.
+/// Handles both / and : prefixes by normalizing to / for search.
+pub fn autocomplete(input: &str) -> Vec<String> {
+    let all = TuiCommand::all();
+    if input.len() <= 1 {
+        return all.iter().map(|s| s.to_string()).collect();
+    }
+    let is_colon = input.starts_with(':');
+    let search = if is_colon {
+        format!("/{}", &input[1..])
+    } else {
+        input.to_string()
+    };
+    all.iter()
+        .filter(|cmd| (*cmd).starts_with(&search))
+        .map(|s| {
+            if is_colon {
+                s.replacen('/', ":", 1)
+            } else {
+                s.to_string()
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +150,39 @@ mod tests {
             let parsed = TuiCommand::from_input(cmd_str);
             assert!(parsed.is_some(), "failed to parse: {}", cmd_str);
         }
+    }
+
+    // ── Autocomplete tests ────────────────────────────────────
+
+    #[test]
+    fn autocomplete_empty_returns_all() {
+        let results = autocomplete("/");
+        assert_eq!(results.len(), 7, "empty query returns all commands");
+    }
+
+    #[test]
+    fn autocomplete_prefix_match() {
+        let results = autocomplete("/s");
+        assert!(results.contains(&"/strategies".to_string()));
+        assert!(results.contains(&"/settings".to_string()));
+        assert!(!results.contains(&"/dashboard".to_string()));
+    }
+
+    #[test]
+    fn autocomplete_exact_match() {
+        let results = autocomplete("/dashboard");
+        assert_eq!(results, vec!["/dashboard".to_string()]);
+    }
+
+    #[test]
+    fn autocomplete_no_match() {
+        let results = autocomplete("/xyz");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn autocomplete_colon_prefix() {
+        let results = autocomplete(":q");
+        assert_eq!(results, vec![":quit".to_string()]);
     }
 }

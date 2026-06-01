@@ -3,7 +3,7 @@
 
 //! Pure update function: (&mut Model, Message) → bool (continue).
 
-use crate::commands::TuiCommand;
+use crate::commands::{self, TuiCommand};
 use crate::model::state::{AppState, Screen};
 use crate::msg::Message;
 use crossterm::event::KeyCode;
@@ -106,16 +106,44 @@ fn handle_command_key(state: &mut AppState, code: KeyCode) -> bool {
             // At leader char — nothing to backspace
         }
         KeyCode::Tab => {
-            // CP-3: autocomplete
+            if state.autocomplete_matches.is_empty() {
+                return true;
+            }
+            state.autocomplete_idx = (state.autocomplete_idx + 1) % state.autocomplete_matches.len();
+            state.command_input = state.autocomplete_matches[state.autocomplete_idx].clone();
+            // Store the matches for display in command bar
         }
         KeyCode::Up => {
-            // CP-3: history
+            if state.command_history.is_empty() {
+                return true;
+            }
+            let idx = match state.command_history_idx {
+                None => state.command_history.len().saturating_sub(1),
+                Some(0) => 0,
+                Some(i) => i.saturating_sub(1),
+            };
+            state.command_history_idx = Some(idx);
+            state.command_input = state.command_history[idx].clone();
         }
         KeyCode::Down => {
-            // CP-3: history
+            match state.command_history_idx {
+                None => return true,
+                Some(i) if i + 1 >= state.command_history.len() => {
+                    state.command_history_idx = None;
+                    state.command_input.clear();
+                    state.command_input.push('/');
+                }
+                Some(i) => {
+                    state.command_history_idx = Some(i + 1);
+                    state.command_input = state.command_history[i + 1].clone();
+                }
+            }
         }
         KeyCode::Char(c) => {
             state.command_input.push(c);
+            // Recompute autocomplete matches on each keystroke
+            state.autocomplete_matches = commands::autocomplete(&state.command_input);
+            state.autocomplete_idx = 0;
         }
         // Ignore F-keys and other special keys in command mode
         _ => {}
@@ -127,13 +155,14 @@ fn handle_command_key(state: &mut AppState, code: KeyCode) -> bool {
 fn execute_command(state: &mut AppState) -> bool {
     let input = state.command_input.clone();
     state.command_history.push(input.clone());
-    // Trim history to last 20 entries
     if state.command_history.len() > 20 {
         state.command_history.remove(0);
     }
     state.command_history_idx = None;
     state.command_mode = false;
     state.command_input.clear();
+    state.autocomplete_idx = 0;
+    state.autocomplete_matches.clear();
 
     match TuiCommand::from_input(&input) {
         Some(TuiCommand::Dashboard) => state.screen = Screen::Dashboard,

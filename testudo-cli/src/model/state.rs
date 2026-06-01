@@ -27,6 +27,10 @@ pub struct AppState {
     pub command_history_idx: Option<usize>,
     /// Flash error message shown briefly in the command bar
     pub command_error: Option<String>,
+    /// Autocomplete matches for current input
+    pub autocomplete_matches: Vec<String>,
+    /// Current index in autocomplete matches (for Tab cycling)
+    pub autocomplete_idx: usize,
 }
 
 /// A trading position displayed in the positions pane.
