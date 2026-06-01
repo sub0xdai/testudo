@@ -89,6 +89,7 @@ pub enum Screen {
     Strategies,
     Logs,
     Help,
+    Settings,
 }
 
 #[derive(Debug, Clone)]

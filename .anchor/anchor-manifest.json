@@ -227,6 +227,14 @@
         "ui"
       ]
     },
+    "infra:cli:commands": {
+      "locations": [
+        "testudo-cli/src/commands.rs"
+      ],
+      "tags": [
+        "ui"
+      ]
+    },
     "infra:cli:tools:submit_signal": {
       "locations": [
         "testudo-cli/src/tools/submit_signal.rs"

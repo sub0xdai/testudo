@@ -104,6 +104,7 @@ fn render_placeholder(frame: &mut Frame, theme: &crate::theme::Theme, screen: Sc
         Screen::Journal => "Journal",
         Screen::Strategies => "Strategies",
         Screen::Logs => "Logs",
+        Screen::Settings => "Settings",
         _ => "Unknown",
     };
     let text = format!("{} — Not yet implemented", label);

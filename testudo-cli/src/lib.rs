@@ -7,6 +7,7 @@
 //! positions, journal results. Consumes the Testudo REST + WebSocket API.
 
 pub mod cmd;
+pub mod commands;
 pub use cmd::{
     run_agent, run_attach, run_init, run_journal, run_listen,
     run_strategy_add, run_strategy_create, run_strategy_list, run_strategy_remove,

@@ -3,6 +3,7 @@
 
 //! Pure update function: (&mut Model, Message) → bool (continue).
 
+use crate::commands::TuiCommand;
 use crate::model::state::{AppState, Screen};
 use crate::msg::Message;
 use crossterm::event::KeyCode;
@@ -96,9 +97,7 @@ fn handle_command_key(state: &mut AppState, code: KeyCode) -> bool {
             state.command_input.clear();
         }
         KeyCode::Enter => {
-            // CP-2: execute command, for now just exit command mode
-            state.command_mode = false;
-            state.command_input.clear();
+            return execute_command(state);
         }
         KeyCode::Backspace if state.command_input.len() > 1 => {
             state.command_input.pop();
@@ -120,6 +119,34 @@ fn handle_command_key(state: &mut AppState, code: KeyCode) -> bool {
         }
         // Ignore F-keys and other special keys in command mode
         _ => {}
+    }
+    true
+}
+
+/// Parse the command input and execute the corresponding action.
+fn execute_command(state: &mut AppState) -> bool {
+    let input = state.command_input.clone();
+    state.command_history.push(input.clone());
+    // Trim history to last 20 entries
+    if state.command_history.len() > 20 {
+        state.command_history.remove(0);
+    }
+    state.command_history_idx = None;
+    state.command_mode = false;
+    state.command_input.clear();
+
+    match TuiCommand::from_input(&input) {
+        Some(TuiCommand::Dashboard) => state.screen = Screen::Dashboard,
+        Some(TuiCommand::Journal) => state.screen = Screen::Journal,
+        Some(TuiCommand::Strategies) => state.screen = Screen::Strategies,
+        Some(TuiCommand::Logs) => state.screen = Screen::Logs,
+        Some(TuiCommand::Help) => state.screen = Screen::Help,
+        Some(TuiCommand::Settings) => state.screen = Screen::Settings,
+        Some(TuiCommand::Quit) => return false,
+        None => {
+            // Invalid command — flash error but it'll be implemented in CP-4
+            state.command_error = Some(format!("Unknown command: {}", input));
+        }
     }
     true
 }
