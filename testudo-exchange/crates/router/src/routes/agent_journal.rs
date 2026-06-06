@@ -15,7 +15,7 @@ use actix_web::{web, HttpResponse};
 use crate::{
     middleware::AuthenticatedUser,
     models::agent_journal::{AgentSummaryQuery, SummaryFormat},
-    models::agent_key::AgentPermission,
+    policy::{Action, ActionContext},
     services::agent_journal::AgentJournalService,
     types::app::AppState,
 };
@@ -29,10 +29,10 @@ pub async fn get_summary(
     user: AuthenticatedUser,
     query: web::Query<AgentSummaryQuery>,
 ) -> HttpResponse {
-    if let Err(e) = user.require_permission(&AgentPermission::JournalRead) {
+    if let Err(e) = user.authorize(Action::JournalRead, &ActionContext::default()) {
         return HttpResponse::Forbidden().json(serde_json::json!({
             "code": "insufficient_permissions",
-            "message": e.to_string(),
+            "message": format!("{:?}", e),
         }));
     }
 
@@ -74,10 +74,10 @@ pub async fn get_insights(
     app_state: web::Data<AppState>,
     user: AuthenticatedUser,
 ) -> HttpResponse {
-    if let Err(e) = user.require_permission(&AgentPermission::JournalRead) {
+    if let Err(e) = user.authorize(Action::JournalRead, &ActionContext::default()) {
         return HttpResponse::Forbidden().json(serde_json::json!({
             "code": "insufficient_permissions",
-            "message": e.to_string(),
+            "message": format!("{:?}", e),
         }));
     }
 
@@ -105,10 +105,10 @@ pub async fn post_compare(
     user: AuthenticatedUser,
     body: web::Json<crate::models::agent_journal::CompareRequest>,
 ) -> HttpResponse {
-    if let Err(e) = user.require_permission(&AgentPermission::JournalRead) {
+    if let Err(e) = user.authorize(Action::JournalRead, &ActionContext::default()) {
         return HttpResponse::Forbidden().json(serde_json::json!({
             "code": "insufficient_permissions",
-            "message": e.to_string(),
+            "message": format!("{:?}", e),
         }));
     }
 

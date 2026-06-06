@@ -105,7 +105,7 @@ pub async fn list_keys(
     let keys: Vec<AgentKeySummary> = rows
         .into_iter()
         .map(|r| {
-            let permissions: Vec<crate::models::agent_key::AgentPermission> =
+            let permissions: Vec<crate::policy::Permission> =
                 serde_json::from_value(r.permissions).unwrap_or_default();
             AgentKeySummary {
                 id: r.id,

@@ -14,7 +14,8 @@ use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::agent_key::{AgentKeyClaims, AgentKeyRow};
+use crate::models::agent_key::AgentKeyRow;
+use crate::policy::{AgentKeyClaims, Permission};
 
 /// Generate a new agent API key.
 ///
@@ -91,7 +92,7 @@ pub async fn resolve_agent_key(
     }
 
     // Deserialize permissions from JSONB
-    let permissions: Vec<crate::models::agent_key::AgentPermission> =
+    let permissions: Vec<Permission> =
         serde_json::from_value(row.permissions).unwrap_or_default();
 
     // Update last_used_at asynchronously — fire and forget.

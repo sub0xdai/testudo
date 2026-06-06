@@ -11,53 +11,13 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-/// Permission scopes for agent API keys.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum AgentPermission {
-    /// Submit trade signals (POST /api/v1/signals)
-    TradeExecute,
-    /// Read journal data (GET /journal/agent/*)
-    JournalRead,
-    /// Write journal entries (POST /journal/entries, /journal/tags, etc.)
-    JournalWrite,
-    /// Manage exchange accounts (POST /exchanges/accounts)
-    ExchangeManage,
-    /// Configure risk settings (PUT /risk-config)
-    RiskConfigure,
-    /// Read account data (GET /auth/me, GET /exchanges/accounts, GET /onboarding/status)
-    AccountRead,
-}
+// AUTH-03: Permission, AuthMethod, and AgentKeyClaims now live in the policy module.
+pub use crate::policy::{AgentKeyClaims, AuthMethod, Permission};
 
 /// Default permission set for trading agents.
 /// Sufficient for the autonomous trading loop: signal + journal read/write.
-pub fn default_agent_permissions() -> Vec<AgentPermission> {
-    vec![
-        AgentPermission::TradeExecute,
-        AgentPermission::JournalRead,
-        AgentPermission::JournalWrite,
-        AgentPermission::AccountRead,
-    ]
-}
-
-/// How this request was authenticated.
-#[derive(Debug, Clone)]
-pub enum AuthMethod {
-    /// Full-access SIWE/SIWS bearer token.
-    Siwe,
-    /// Scoped agent API key.
-    AgentKey {
-        key_id: Uuid,
-        permissions: Vec<AgentPermission>,
-    },
-}
-
-/// Claims extracted from an agent key, stored in request extensions.
-#[derive(Debug, Clone)]
-pub struct AgentKeyClaims {
-    pub user_id: Uuid,
-    pub key_id: Uuid,
-    pub permissions: Vec<AgentPermission>,
+pub fn default_agent_permissions() -> Vec<Permission> {
+    crate::policy::default_permissions()
 }
 
 // ── Request types ─────────────────────────────────────────────────────
@@ -69,7 +29,7 @@ pub struct CreateAgentKeyRequest {
     pub name: String,
 
     #[serde(default = "default_agent_permissions")]
-    pub permissions: Vec<AgentPermission>,
+    pub permissions: Vec<Permission>,
 
     /// Days until expiry. None = never expires (until revoked). Max 365.
     #[validate(range(min = 1, max = 365))]
@@ -81,7 +41,7 @@ pub struct CreateAgentKeyRequest {
 pub struct UpdateAgentKeyRequest {
     #[validate(length(min = 1, max = 128))]
     pub name: Option<String>,
-    pub permissions: Option<Vec<AgentPermission>>,
+    pub permissions: Option<Vec<Permission>>,
 }
 
 // ── Response types ─────────────────────────────────────────────────────
@@ -92,7 +52,7 @@ pub struct CreateAgentKeyResponse {
     pub id: Uuid,
     pub name: String,
     pub key: String,
-    pub permissions: Vec<AgentPermission>,
+    pub permissions: Vec<Permission>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -104,7 +64,7 @@ pub struct AgentKeySummary {
     pub id: Uuid,
     pub name: String,
     pub key_prefix: String,
-    pub permissions: Vec<AgentPermission>,
+    pub permissions: Vec<Permission>,
     pub created_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<DateTime<Utc>>,

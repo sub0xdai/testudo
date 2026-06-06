@@ -17,7 +17,7 @@ use crate::decision_loop::{
     DecisionInputBuilder, DecisionLoop, DecisionOrderSide, DecisionOrderType, DecisionResult,
 };
 use crate::middleware::auth::AuthenticatedUser;
-use crate::models::agent_key::AgentPermission;
+use crate::policy::{Action, ActionContext};
 use crate::models::agent_signal::{ExecutionMode, SignalInput, SignalResult, SignalSide};
 use crate::services::agent_alert::{
     alert_from_rejection, alert_from_warning, build_execution_report,
@@ -77,11 +77,16 @@ pub async fn create_signal(
 ) -> HttpResponse {
     let input = body.into_inner();
 
-    // AGENT-07: Enforce agent key permission. SIWE users always pass.
-    if let Err(e) = user.require_permission(&AgentPermission::TradeExecute) {
+    // AUTH-03: Enforce agent key permission via policy engine.
+    // SIWE users always pass. Symbol is checked now; exchange/risk/position
+    // checks are deferred until the account and position size are resolved.
+    if let Err(e) = user.authorize(Action::Trade, &ActionContext {
+        symbol: Some(&input.symbol),
+        ..Default::default()
+    }) {
         return HttpResponse::Forbidden().json(serde_json::json!({
             "code": "insufficient_permissions",
-            "message": e.to_string(),
+            "message": format!("{:?}", e),
         }));
     }
 

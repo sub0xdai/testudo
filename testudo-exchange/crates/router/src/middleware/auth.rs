@@ -11,7 +11,7 @@ use actix_web::{
 use common_utils::auth::{TokenClaims, TokenService};
 use futures_util::future::{ready, Ready};
 
-use crate::models::agent_key::{AgentKeyClaims, AgentPermission, AuthMethod};
+use crate::policy::{Action, ActionContext, AgentKeyClaims, AuthMethod, Permission, PolicyEngine, PolicyError};
 use crate::services::agent_key;
 use std::{
     collections::HashMap,
@@ -318,30 +318,19 @@ impl AuthenticatedUser {
         }
     }
 
-    /// Check if this authenticated principal has a specific permission.
-    /// SIWE-authenticated users have all permissions (full access).
-    pub fn has_permission(&self, perm: &AgentPermission) -> bool {
+    /// AUTH-03: Authorize an action via the centralized policy engine.
+    /// SIWE users always pass (fast path).
+    /// AgentKey users are evaluated against their permission set.
+    pub fn authorize(
+        &self,
+        action: Action,
+        ctx: &ActionContext,
+    ) -> Result<(), PolicyError> {
         match &self.auth_method {
-            AuthMethod::Siwe => true,
-            AuthMethod::AgentKey { permissions, .. } => permissions.contains(perm),
-        }
-    }
-
-    /// Assert that the user has a permission, returning 403 Forbidden if not.
-    /// SIWE-authenticated users always pass.
-    pub fn require_permission(&self, perm: &AgentPermission) -> Result<(), actix_web::Error> {
-        if self.has_permission(perm) {
-            Ok(())
-        } else {
-            Err(actix_web::error::ErrorForbidden(format!(
-                "Agent key lacks permission: {:?}. Required: {:?}",
-                match &self.auth_method {
-                    AuthMethod::AgentKey { permissions, .. } =>
-                        format!("{:?}", permissions),
-                    AuthMethod::Siwe => "full".into(),
-                },
-                perm,
-            )))
+            AuthMethod::Siwe => Ok(()),
+            AuthMethod::AgentKey { permissions, .. } => {
+                PolicyEngine::authorize(permissions, action, ctx)
+            }
         }
     }
 
@@ -673,5 +662,71 @@ mod tests {
 
         std::thread::sleep(Duration::from_millis(150));
         assert!(rate_limiter.is_allowed(ip));
+    }
+
+    // ── AUTH-03: PolicyEngine integration tests ───────────────────────
+
+    #[actix_web::test]
+    async fn siwe_user_authorize_always_passes() {
+        let user = AuthenticatedUser::siwe(
+            Uuid::new_v4(),
+            "0xC285000000000000000000000000000000005b36".into(),
+        );
+        let result = user.authorize(
+            crate::policy::Action::Trade,
+            &crate::policy::ActionContext::default(),
+        );
+        assert!(result.is_ok(), "SIWE user should always pass");
+    }
+
+    #[actix_web::test]
+    async fn agent_key_with_trade_execute_passes_trade() {
+        let permissions = vec![Permission::TradeExecute {
+            symbols: None,
+            exchanges: None,
+            max_risk_per_trade: None,
+            max_open_positions: None,
+        }];
+        let user = AuthenticatedUser {
+            user_id: Uuid::new_v4(),
+            wallet_address: String::new(),
+            auth_method: AuthMethod::AgentKey {
+                key_id: Uuid::new_v4(),
+                permissions,
+            },
+        };
+        let result = user.authorize(
+            crate::policy::Action::Trade,
+            &crate::policy::ActionContext::default(),
+        );
+        assert!(result.is_ok(), "agent key with TradeExecute should pass");
+    }
+
+    #[actix_web::test]
+    async fn agent_key_with_symbol_restriction_fails_wrong_symbol() {
+        let permissions = vec![Permission::TradeExecute {
+            symbols: Some(vec!["ETH_USDT".into()]),
+            exchanges: None,
+            max_risk_per_trade: None,
+            max_open_positions: None,
+        }];
+        let user = AuthenticatedUser {
+            user_id: Uuid::new_v4(),
+            wallet_address: String::new(),
+            auth_method: AuthMethod::AgentKey {
+                key_id: Uuid::new_v4(),
+                permissions,
+            },
+        };
+        let ctx = crate::policy::ActionContext {
+            symbol: Some("BTC_USDT"),
+            ..Default::default()
+        };
+        let result = user.authorize(crate::policy::Action::Trade, &ctx);
+        assert!(
+            matches!(result, Err(crate::policy::PolicyError::SymbolNotAllowed { .. })),
+            "should reject disallowed symbol, got {:?}",
+            result
+        );
     }
 }

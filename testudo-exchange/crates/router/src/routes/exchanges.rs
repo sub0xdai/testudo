@@ -7,6 +7,7 @@ use validator::Validate;
 
 use crate::{
     middleware::AuthenticatedUser,
+    policy::{Action, ActionContext},
     repositories::exchange_account::RepoError,
     services::{
         hyperliquid::agent_approval,
@@ -150,6 +151,17 @@ pub async fn add_exchange_account(
         return Ok(HttpResponse::BadRequest().json(ErrorResponse::validation_error(errors)));
     }
 
+    // AUTH-03: Enforce ExchangeManage permission for mutation endpoints.
+    if let Err(e) = user.authorize(Action::ExchangeManage, &ActionContext {
+        exchange: Some(&req.exchange_name),
+        ..Default::default()
+    }) {
+        return Ok(HttpResponse::Forbidden().json(ErrorResponse::new(
+            "insufficient_permissions",
+            &format!("{:?}", e),
+        )));
+    }
+
     // FR-5.4: Validate credentials — Hyperliquid native or CEX sidecar
     let validated_permissions = if req.exchange_name.eq_ignore_ascii_case(exchanges::HYPERLIQUID) {
         // Hyperliquid: validate by querying clearinghouseState with the address
@@ -275,6 +287,14 @@ pub async fn delete_exchange_account(
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
     let account_id = path.into_inner();
+
+    // AUTH-03: Enforce ExchangeManage permission.
+    if let Err(e) = user.authorize(Action::ExchangeManage, &ActionContext::default()) {
+        return Ok(HttpResponse::Forbidden().json(ErrorResponse::new(
+            "insufficient_permissions",
+            &format!("{:?}", e),
+        )));
+    }
 
     let deleted = app_state
         .exchange_account_repo

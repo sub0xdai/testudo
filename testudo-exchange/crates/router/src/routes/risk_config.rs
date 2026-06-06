@@ -14,7 +14,7 @@ use common_utils::{
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use crate::{middleware::AuthenticatedUser, models::agent_key::AgentPermission, types::app::AppState};
+use crate::{middleware::AuthenticatedUser, policy::{Action, ActionContext}, types::app::AppState};
 
 /// Response for GET /risk-config
 #[derive(Debug, Serialize)]
@@ -108,8 +108,12 @@ pub async fn update_risk_config(
     user: AuthenticatedUser,
     req: web::Json<UpdateRiskConfigRequest>,
 ) -> Result<HttpResponse> {
-    user.require_permission(&AgentPermission::RiskConfigure)
-        .map_err(|e| actix_web::error::ErrorForbidden(e))?;
+    if let Err(e) = user.authorize(Action::RiskConfigure, &ActionContext::default()) {
+        return Ok(HttpResponse::Forbidden().json(ErrorResponse::new(
+            "insufficient_permissions",
+            &format!("{:?}", e),
+        )));
+    }
 
     let cache = PgCacheService::new(app_state.pool.clone());
     let storage = PgRiskConfigStorage::new(cache);

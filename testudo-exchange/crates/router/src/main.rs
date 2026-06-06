@@ -61,6 +61,7 @@ pub mod decision_loop; // Decision Loop for risk validation and position sizing
 pub mod exchange; // Add exchange module
 pub mod metrics; // AUD-05: Prometheus metrics
 pub mod middleware;
+pub mod policy; // AUTH-03: centralized permission policy engine
 pub mod models; // JNL-01: Journal data models
 pub mod repositories;
 pub mod routes;
