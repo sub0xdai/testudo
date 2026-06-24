@@ -1,2 +1,0 @@
-iteration	status	metric	description
-1	kept	1105	Extract apiRequest() helper handling settings/tokens/auth/fetch/401-retry/error-parsing; migrate 12 API functions to thin wrappers

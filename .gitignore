@@ -36,6 +36,7 @@ node_modules/
 tmp/
 temp/
 .tmp/
+target/
 
 # Docker data (should not be committed)
 **/postgres-data/
