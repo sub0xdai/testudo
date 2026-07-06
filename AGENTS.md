@@ -127,8 +127,6 @@ AI agents on this project should:
 
 ```text
 type: description
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
