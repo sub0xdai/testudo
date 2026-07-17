@@ -1,9 +1,11 @@
 name: Deploy Web
 
 on:
+  workflow_dispatch:
   push:
     branches: [master]
     paths:
+      - '.github/workflows/deploy-web.yml'
       - 'testudo-web'
       - 'testudo-web/**'
 
