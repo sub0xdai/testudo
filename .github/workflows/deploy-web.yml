@@ -27,16 +27,23 @@ jobs:
         run: cd testudo-web && bun run build
 
       - name: Deploy
-        run: cd testudo-web && npx wrangler versions upload src/entry.js --assets=./dist
+        id: deploy
+        run: |
+          cd testudo-web
+          npx wrangler versions upload src/entry.js --assets=./dist 2>&1 | tee /tmp/deploy-out
+          echo "version=$(grep -oP 'Version ID: \K[a-f0-9-]+' /tmp/deploy-out)" >> $GITHUB_OUTPUT
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Promote to production
-        run: |
-          cd testudo-web
-          LATEST=$(npx wrangler versions list 2>&1 | head -12 | grep "Version ID" | head -1 | awk '{print $3}')
-          npx wrangler versions deploy "$LATEST" --percentage 100
+        run: cd testudo-web && npx wrangler versions deploy ${{ steps.deploy.outputs.version }} --percentage 100
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sync triggers
+        run: cd testudo-web && npx wrangler triggers deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
