@@ -67,7 +67,7 @@ echo ""
 echo "[5/6] Building journal..."
 cd "$TESTUDO_DIR/testudo-journal"
 bun install --frozen-lockfile 2>/dev/null || bun install
-VITE_BASE_PATH=/ VITE_API_URL=https://api.testudo.vip VITE_WALLETCONNECT_PROJECT_ID="${WALLETCONNECT_PROJECT_ID:-}" bun run build
+VITE_BASE_PATH=/ VITE_API_URL=https://api.testudo.vip bun run build
 rm -rf "$JOURNAL_DIST"/*
 cp -r dist/* "$JOURNAL_DIST/"
 echo "  ↳ deployed to $JOURNAL_DIST"
