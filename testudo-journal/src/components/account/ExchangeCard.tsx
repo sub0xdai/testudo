@@ -226,10 +226,18 @@ export function ExchangeCard(props: ExchangeCardProps) {
   const isHlAgent = () => props.account.exchange_name === 'hyperliquid' && isAgentWallet()
   
   // Live balance for Hyperliquid agent wallets
-  const [liveBal] = createResource(
+  const [liveBal, { refetch }] = createResource(
     () => isHlAgent() ? props.account.id : null,
-    (id) => exchangeApi.fetchBalance(id),
+    async (id) => {
+      const bal = await exchangeApi.fetchBalance(id);
+      console.log('[ExchangeCard] live balance fetched:', bal);
+      return bal;
+    },
   )
+  // Re-fetch on mount
+  createEffect(() => {
+    if (isHlAgent()) refetch();
+  })
   const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
   const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
