@@ -49,9 +49,9 @@ function stepIndex(step: WalletFlowState['step'], isReauth: boolean): number {
   }
 }
 
-function CheckIcon(props: { size: number }): <DATE_TIME> {
+function CheckIcon(props: { size: number }): JSX.Element {
   return (
-    <svg xmlns=<URL> width={<URL>ze} height={<URL>ze} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   )
@@ -81,8 +81,8 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
   function getConnectedAddress(): string | undefined {
     const kit = getLoadedWallet()
     if (!kit) return undefined
-    // AppKit <US_DRIVER_LICENSE>.x: getAddress(chainNamespace) — eip155 for EVM wallets
-    return <URL>tAddress('eip155') ?? <URL>tAddress() ?? undefined
+    // AppKit v1.x: pass explicit chain namespace for EVM wallets
+    return kit.getAddress('eip155') ?? kit.getAddress() ?? undefined
   }
 
   async function startFlow() {
@@ -98,8 +98,8 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
       if (props.existingAccountId) {
         // Re-authorize path: skip init, go straight to approve-data
         account_id = props.existingAccountId
-        const approveData = await <URL>tApproveData(account_id)
-        agent_address = <PERSON>
+        const approveData = await exchangeApi.getApproveData(account_id)
+        agent_address = approveData.agent_address
         const { typed_data, nonce } = approveData
 
         setState({
@@ -110,24 +110,24 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
           nonce,
         })
 
-        const provider = <URL>hereum
+        const provider = window.ethereum
         if (!provider) throw new Error('No wallet provider found')
 
         const signature = await (provider as { request: (args: { method: string; params: [string, string] }) => Promise<string> }).request({
           method: 'eth_signTypedData_v4',
-          params: [address, <URL>ringify(typed_data)],
+          params: [address, JSON.stringify(typed_data)],
         })
 
         setState({ step: 'approving', accountId: account_id, signature, nonce })
 
-        await <URL>roveAgent(account_id, signature, nonce)
+        await exchangeApi.approveAgent(account_id, signature, nonce)
       } else {
         // Normal init path
-        const initResult = await <URL>itAgentWallet(address)
-        account_id = <URL>count_id
-        agent_address = <URL>ent_address
+        const initResult = await exchangeApi.initAgentWallet(address)
+        account_id = initResult.account_id
+        agent_address = initResult.agent_address
 
-        const approveData = await <URL>tApproveData(account_id)
+        const approveData = await exchangeApi.getApproveData(account_id)
         const { typed_data, nonce } = approveData
 
         setState({
@@ -138,17 +138,17 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
           nonce,
         })
 
-        const provider = <URL>hereum
+        const provider = window.ethereum
         if (!provider) throw new Error('No wallet provider found')
 
         const signature = await (provider as { request: (args: { method: string; params: [string, string] }) => Promise<string> }).request({
           method: 'eth_signTypedData_v4',
-          params: [address, <URL>ringify(typed_data)],
+          params: [address, JSON.stringify(typed_data)],
         })
 
         setState({ step: 'approving', accountId: account_id, signature, nonce })
 
-        await <URL>roveAgent(account_id, signature, nonce)
+        await exchangeApi.approveAgent(account_id, signature, nonce)
       }
 
       setState({ step: 'success', accountId: account_id, agentAddress: agent_address })
@@ -184,14 +184,14 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                 <div class="w-12 h-12 mx-auto border-2 border-text-primary flex items-center justify-center mb-4">
                   <CheckIcon size={24} />
                 </div>
-                <<US_DRIVER_LICENSE> class="font-display text-lg font-bold text-text-primary mb-2">
+                <h3 class="font-display text-lg font-bold text-text-primary mb-2">
                   {isReauth() ? 'WALLET RE-AUTHORIZED' : 'WALLET CONNECTED'}
-                </<US_DRIVER_LICENSE>>
+                </h3>
                 <p class="font-mono text-sm text-text-secondary">
                   Agent wallet approved and active
                 </p>
                 <p class="font-mono text-xs text-text-tertiary mt-2">
-                  Agent: {<URL>ice(0, 6)}...{<URL>ice(-4)}
+                  Agent: {s.agentAddress.slice(0, 6)}...{s.agentAddress.slice(-4)}
                 </p>
               </div>
               <button
@@ -212,7 +212,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
           return (
             <div class="space-y-4">
               <div class="px-4 py-3 border border-signal-red bg-signal-red/10">
-                <p class="font-mono text-sm text-signal-red">{<URL>ssage}</p>
+                <p class="font-mono text-sm text-signal-red">{s.message}</p>
               </div>
               <button
                 onClick={handleRetry}
@@ -230,15 +230,15 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
         {(() => {
           const current = state()
           const labels = getStepLabels(isReauth())
-          const idx = stepIndex(<URL>ep, isReauth())
-          const isProcessing = <URL>ep === 'init-agent' || <URL>ep === 'signing' || <URL>ep === 'approving'
+          const idx = stepIndex(current.step, isReauth())
+          const isProcessing = current.step === 'init-agent' || current.step === 'signing' || current.step === 'approving'
           const address = getConnectedAddress()
 
           return (
             <div class="space-y-6">
               {/* Step progress */}
               <div class="flex items-center justify-between">
-                <For each={[<URL>bels]}>
+                <For each={[...labels]}>
                   {(label, i) => (
                     <div class="flex items-center">
                       <div class={`w-6 h-6 flex items-center justify-center text-xs font-mono font-bold ${
@@ -316,11 +316,11 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                     <div class="text-center py-4">
                       <div class="inline-block w-6 h-6 border-2 border-text-primary border-t-transparent rounded-full animate-spin mb-3" />
                       <p class="font-mono text-sm text-text-secondary">
-                        {<URL>ep === 'init-agent' && (isReauth() ? 'Fetching agent data...' : 'Generating agent keypair...')}
-                        {<URL>ep === 'signing' && 'Waiting for wallet signature...'}
-                        {<URL>ep === 'approving' && 'Submitting approval to Hyperliquid...'}
+                        {current.step === 'init-agent' && (isReauth() ? 'Fetching agent data...' : 'Generating agent keypair...')}
+                        {current.step === 'signing' && 'Waiting for wallet signature...'}
+                        {current.step === 'approving' && 'Submitting approval to Hyperliquid...'}
                       </p>
-                      <Show when={<URL>ep === 'signing'}>
+                      <Show when={current.step === 'signing'}>
                         <p class="font-mono text-xs text-text-tertiary mt-2">
                           Check your wallet for the signing prompt
                         </p>
