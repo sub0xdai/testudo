@@ -1,7 +1,7 @@
 /** @anchor ui:journal:ExchangeCard
  * @tags ui */
 
-import { createSignal, createEffect, onMount, onCleanup, For, Show } from 'solid-js'
+import { createSignal, createEffect, onCleanup, For, Show } from 'solid-js'
 import type {
   ExchangeAccount,
   TestConnectionResult,
@@ -227,15 +227,17 @@ export function ExchangeCard(props: ExchangeCardProps) {
   
   // Live balance for Hyperliquid agent wallets
   const [liveBalance, setLiveBalance] = createSignal<{ spot: string; perp: string } | null>(null)
-  // Fetch immediately — Solid re-runs component body on reactive updates
-  if (isHlAgent() && props.account.id && !liveBalance()) {
-    exchangeApi.fetchBalance(props.account.id).then(b => {
+  createEffect(() => {
+    const hl = isHlAgent()
+    const id = props.account.id
+    if (!hl || !id) return
+    exchangeApi.fetchBalance(id).then(b => {
       setLiveBalance({
         spot: b.balances.find(x => x.asset === 'USDC (Spot)')?.total ?? '0',
         perp: b.balances.find(x => x.asset === 'USDC (Perp)')?.total ?? '0',
       })
     }).catch(() => {})
-  }
+  })
   const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
   const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
