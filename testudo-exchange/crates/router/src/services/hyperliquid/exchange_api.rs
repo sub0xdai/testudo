@@ -428,7 +428,19 @@ impl ExchangeApi for HyperliquidExchangeApi {
             }
         }
 
-        let mut hl_order = build_order_request(asset_index, &req, sz_decimals)?;
+        // Round limit price to tick size derived from L2 book precision
+        if let Ok(mids) = self.info.all_mids().await {
+            if let Some(mid_str) = mids.get(coin) {
+                // Tick = 0.1 for ETH, 0.5-1.0 for BTC, 0.01 for sub-$1 assets.
+                let mid_val = Decimal::from_str(mid_str).unwrap_or(Decimal::ONE);
+                let tick = if mid_val >= Decimal::from(10000) { Decimal::new(1, 0) }    // 1.0
+                else if mid_val >= Decimal::from(1000) { Decimal::new(1, 1) }            // 0.1
+                else if mid_val >= Decimal::from(100) { Decimal::new(1, 2) }             // 0.01
+                else { Decimal::new(1, 3) };                                              // 0.001
+                let raw = Decimal::from_str(&hl_order.limit_px).unwrap_or(Decimal::ZERO);
+                hl_order.limit_px = ((raw / tick).round_dp(0) * tick).normalize().to_string();
+            }
+        }
         let cloid = req.client_order_id.as_ref().map(|c| generate_cloid(c));
 
         // Fix CLOID format: Hyperliquid API requires "0x" prefix + 32 hex chars.
