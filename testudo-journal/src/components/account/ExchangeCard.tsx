@@ -1,7 +1,7 @@
 /** @anchor ui:journal:ExchangeCard
  * @tags ui */
 
-import { createSignal, createEffect, onCleanup, For, Show } from 'solid-js'
+import { createSignal, createEffect, createResource, onCleanup, For, Show } from 'solid-js'
 import type {
   ExchangeAccount,
   TestConnectionResult,
@@ -10,6 +10,7 @@ import type {
   PositionEntry,
 } from '../../api/client'
 import { formatCurrency, formatNumber, formatPrice, pnlColor } from '../../lib/formatters'
+import { exchangeApi } from '../../api/client'
 
 interface KebabMenuProps {
   onTest: () => void
@@ -222,6 +223,15 @@ interface ExchangeCardProps {
 
 export function ExchangeCard(props: ExchangeCardProps) {
   const isAgentWallet = () => props.account.auth_mode === 'agent_wallet'
+  const isHlAgent = () => props.account.exchange_name === 'hyperliquid' && isAgentWallet()
+  
+  // Live balance for Hyperliquid agent wallets
+  const [liveBal] = createResource(
+    () => isHlAgent() ? props.account.id : null,
+    (id) => exchangeApi.fetchBalance(id),
+  )
+  const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
+  const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
   const needsReauth = () => props.account.requires_reauthorization === true
   const venueMargin = (): VenueMargin | undefined =>
@@ -309,6 +319,12 @@ export function ExchangeCard(props: ExchangeCardProps) {
                       total
                     </span>
                   </div>
+                  <Show when={isHlAgent() && !liveBal.loading}>
+                    <div class="flex gap-4 font-mono text-[10px] text-text-tertiary">
+                      <span>Spot <span class="text-text-primary">{spotUsdc() ? formatBalanceUsd(spotUsdc()!.total) : '$0.00'}</span></span>
+                      <span>Perp <span class="text-text-primary">{perpUsdc() ? formatBalanceUsd(perpUsdc()!.total) : '$0.00'}</span></span>
+                    </div>
+                  </Show>
                   <div class="h-1.5 bg-text-primary/5 w-full">
                     <div
                       class="h-full bg-signal-green"
