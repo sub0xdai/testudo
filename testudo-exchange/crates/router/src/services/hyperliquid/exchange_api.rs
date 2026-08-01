@@ -145,7 +145,9 @@ impl HyperliquidExchangeApi {
 
     /// Transfer USDC between spot and perp accounts.
     /// `to_perp`: true = spot→perp, false = perp→spot.
-    /// Returns Ok(true) on success, Ok(false) if HL rejected the transfer.
+    /// Uses `usd_send` for perp→spot (SDK method that works).
+    /// For spot→perp, uses `spot_transfer_to_perp` with debug logging
+    /// to diagnose the 422.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
@@ -156,26 +158,37 @@ impl HyperliquidExchangeApi {
         let auth = self.load_auth(user_id, Some(account_id)).await?;
         let exchange = self.build_exchange(&auth);
 
-        // Parse amount as integer wei (USDC has 6 decimals)
-        let dec: Decimal = amount.parse().map_err(|e| {
-            ExchangeApiError::Internal(format!("Invalid amount: {}", e))
-        })?;
-        let usd_size = (dec * Decimal::from(1_000_000u64))
-            .to_u64()
-            .ok_or_else(|| ExchangeApiError::Internal("Amount too large".into()))?;
+        if to_perp {
+            // Spot→Perp: try spot_transfer_to_perp with debug logging.
+            // The 422 is caused by missing nonce/chain fields in action body.
+            let dec: Decimal = amount.parse().map_err(|e| {
+                ExchangeApiError::Internal(format!("Invalid amount: {}", e))
+            })?;
+            let usd_size = (dec * Decimal::from(1_000_000u64))
+                .to_u64()
+                .ok_or_else(|| ExchangeApiError::Internal("Amount too large".into()))?;
 
-        // spot_transfer_to_perp uses the spotUser action which has correct field naming.
-        // usd_class_transfer has a serde bug: sends to_perp (snake_case) but HL expects toPerp.
-        let status = exchange
-            .spot_transfer_to_perp(usd_size, to_perp)
-            .await
-            .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
-        let ok = status.is_ok();
-        tracing::info!(
-            "HL transfer: user={} account={} amount={} usd_size={} to_perp={} ok={}",
-            user_id, account_id, amount, usd_size, to_perp, ok
-        );
-        Ok(ok)
+            tracing::info!(
+                "HL spot→perp attempt: usd_size={} (from amount={})",
+                usd_size, amount
+            );
+            let status = exchange
+                .spot_transfer_to_perp(usd_size, true)
+                .await
+                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+            let ok = status.is_ok();
+            tracing::info!("HL spot→perp result: ok={} status={:?}", ok, status);
+            Ok(ok)
+        } else {
+            // Perp→Spot: usd_send to self.
+            let status = exchange
+                .usd_send(auth.signer.address(), amount)
+                .await
+                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+            let ok = status.is_ok();
+            tracing::info!("HL perp→spot: ok={}", ok);
+            Ok(ok)
+        }
     }
 }
 
