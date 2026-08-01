@@ -320,7 +320,16 @@ export function ExchangeCard(props: ExchangeCardProps) {
               {(m) => (
                 <div class="flex flex-col gap-1.5">
                   {/* Live balance for HL agent wallets, snapshot for everything else */}
-                  <Show when={isHlAgent() && liveBalance()}>
+                  <Show when={isHlAgent() && liveBalance()} fallback={
+                    <div class="flex items-baseline gap-2">
+                      <span class="font-mono text-2xl font-bold text-text-primary">
+                        {formatBalanceUsd(m().total_usd)}
+                      </span>
+                      <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
+                        total
+                      </span>
+                    </div>
+                  }>
                     {(b) => (
                       <>
                         <div class="flex items-baseline gap-2">
