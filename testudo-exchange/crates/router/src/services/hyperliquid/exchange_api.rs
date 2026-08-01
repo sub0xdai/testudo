@@ -6,9 +6,7 @@
 // @anchor exchange:router:exchange_api
 // @tags api
 
-use alloy::primitives::{keccak256, Address, B256, U256};
 use alloy::signers::local::PrivateKeySigner;
-use alloy::signers::Signer;
 use async_trait::async_trait;
 use hyperliquid_sdk_rs::{
     types::{
@@ -20,7 +18,6 @@ use hyperliquid_sdk_rs::{
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 use super::auth::{AuthCache, AuthError, AuthMode, HyperliquidAuth};
@@ -132,6 +129,10 @@ impl HyperliquidExchangeApi {
     }
 
     /// Build an `ExchangeProvider` from a cached signer.
+    ///
+    /// Always uses the plain constructor (no agent wrapping, no vault).
+    /// Agent wallets sign with their own key; the HL API recovers the
+    /// signer address and looks up the agent→user approval mapping.
     fn build_exchange(
         &self,
         auth: &HyperliquidAuth,
@@ -142,6 +143,42 @@ impl HyperliquidExchangeApi {
         }
     }
 
+    /// Transfer USDC between spot and perp accounts.
+    /// `to_perp`: true = spot→perp, false = perp→spot.
+    pub async fn transfer_usdc(
+        &self,
+        user_id: Uuid,
+        account_id: Uuid,
+        amount: &str,
+        to_perp: bool,
+    ) -> Result<bool, ExchangeApiError> {
+        let auth = self.load_auth(user_id, Some(account_id)).await?;
+        let exchange = self.build_exchange(&auth);
+
+        if to_perp {
+            // Spot→Perp: spot_transfer_to_perp (SDK field `usdc` patched from `usd_size`).
+            let dec: Decimal = amount.parse().map_err(|e| {
+                ExchangeApiError::Internal(format!("Invalid amount: {}", e))
+            })?;
+            let usdc: u64 = (dec * Decimal::from(1_000_000u64))
+                .trunc().to_string().parse::<u64>().unwrap_or(0);
+            let status = exchange
+                .spot_transfer_to_perp(usdc, true)
+                .await
+                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+            let ok = status.is_ok();
+            tracing::info!("HL spot→perp: usdc={} ok={}", usdc, ok);
+            Ok(ok)
+        } else {
+            let status = exchange
+                .usd_transfer(auth.signer.address(), amount)
+                .await
+                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+            let ok = status.is_ok();
+            tracing::info!("HL perp→spot: ok={}", ok);
+            Ok(ok)
+        }
+    }
 }
 
 /// Generate a deterministic CLOID (UUID v5) from a client order ID string.
@@ -241,12 +278,8 @@ pub fn build_order_request(
 /// Hyperliquid requires a valid `limit_px` even when `isMarket = true`.
 /// The SDK defaults to "0" which is rejected as "Order has invalid price."
 /// Per HL SDK convention: set limit_px = trigger_px for market triggers.
-fn trigger_limit_px(trigger_px: &Decimal, is_buy: bool) -> String {
-    // Market trigger orders: set limit price far beyond trigger (5% margin)
-    // to ensure execution. Round to 2 decimals to match HL price format.
-    let margin = trigger_px * Decimal::new(5, 2); // 5%
-    let limit = if is_buy { trigger_px + margin } else { trigger_px - margin };
-    limit.round_dp(2).normalize().to_string()
+fn trigger_limit_px(trigger_px: &Decimal, _is_buy: bool) -> String {
+    trigger_px.normalize().to_string()
 }
 
 /// Format a quantity to the correct number of decimal places for Hyperliquid.
@@ -317,49 +350,41 @@ impl ExchangeApi for HyperliquidExchangeApi {
         };
 
         // For unified accounts, spotClearinghouseState is the source of truth
-        // for trading balance across both spot and perps.
-        let client = reqwest::Client::new();
-        let spot_payload = serde_json::json!({
-            "type": "spotClearinghouseState",
-            "user": format!("{:#x}", query_addr),
-        });
-        let spot_resp = client.post(info_url).json(&spot_payload).send().await
-            .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch spot state: {}", e)))?;
-        let spot_body: serde_json::Value = spot_resp.json().await
-            .map_err(|e| ExchangeApiError::Exchange(format!("Invalid spot response: {}", e)))?;
-
-        let balance: Decimal = spot_body
-            .get("balances")
-            .and_then(|b| b.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|e| {
-                        e.get("total")
-                            .and_then(|v| v.as_str())
-                            .and_then(|s| s.parse::<Decimal>().ok())
-                    })
-                    .sum::<Decimal>()
-            })
-            .unwrap_or_default();
-
-        // Fall back to perp clearinghouse if spot returns empty
-        let balance = if balance > Decimal::ZERO {
-            balance
-        } else {
-            let state = self
-                .info
-                .user_state(query_addr)
-                .await
-                .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
-            parse_decimal(&state.margin_summary.account_value)?
+        // for trading balance across spot and perps.
+        let spot_total = {
+            let client = reqwest::Client::new();
+            let spot_payload = serde_json::json!({
+                "type": "spotClearinghouseState",
+                "user": format!("{:#x}", query_addr),
+            });
+            let resp = client.post(info_url).json(&spot_payload).send().await;
+            let body: serde_json::Value = match resp {
+                Ok(r) => r.json().await.unwrap_or_default(),
+                Err(_) => serde_json::Value::Null,
+            };
+            body.get("balances")
+                .and_then(|b| b.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|e| {
+                            e.get("total")
+                                .and_then(|v| v.as_str())
+                                .and_then(|s| s.parse::<Decimal>().ok())
+                        })
+                        .sum::<Decimal>()
+                })
+                .unwrap_or_default()
         };
 
-        tracing::info!(
-            query_address = %format!("{:#x}", query_addr),
-            balance = %balance,
-            "HL get_balance for sizing"
-        );
-        Ok(balance)
+        if spot_total > Decimal::ZERO {
+            return Ok(spot_total);
+        }
+
+        // Fall back to perp clearinghouse
+        let state = self.info.user_state(query_addr).await
+            .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
+        let account_value = parse_decimal(&state.margin_summary.account_value)?;
+        Ok(account_value)
     }
 
     async fn place_order(
@@ -401,16 +426,6 @@ impl ExchangeApi for HyperliquidExchangeApi {
                     }
                 }
             }
-        }
-
-        // Round limit price to HL tick size.
-        if let Some(ref mut p) = req.price {
-            let tick = match coin {
-                "ETH" => Decimal::new(2, 2),     // 0.02
-                "BTC" => Decimal::new(1, 1),      // 0.1
-                _ => Decimal::new(1, 2),           // 0.01 default
-            };
-            *p = ((*p / tick).round_dp(0) * tick).normalize();
         }
 
         let mut hl_order = build_order_request(asset_index, &req, sz_decimals)?;
@@ -458,14 +473,9 @@ impl ExchangeApi for HyperliquidExchangeApi {
         let order_id = if let Some(oid) = extract_order_id(statuses) {
             oid.to_string()
         } else {
-            // Check for error statuses before falling back to CLOID lookup.
-            // Without this, rejected orders silently appear as "placed".
+            // Check for error statuses before falling back to CLOID.
             let error_msg = statuses.iter().find_map(|s| {
-                if let ExchangeDataStatus::Error(msg) = s {
-                    Some(msg.clone())
-                } else {
-                    None
-                }
+                if let ExchangeDataStatus::Error(msg) = s { Some(msg.clone()) } else { None }
             });
             if let Some(msg) = error_msg {
                 return Err(ExchangeApiError::Exchange(msg));
@@ -473,9 +483,7 @@ impl ExchangeApi for HyperliquidExchangeApi {
             if let Some(cloid_uuid) = cloid {
                 match self.find_oid_by_cloid(&auth, cloid_uuid).await {
                     Ok(oid) => oid.to_string(),
-                    Err(_) => {
-                        format!("cloid:{:032x}", cloid_uuid.as_u128())
-                    }
+                    Err(_) => format!("cloid:{:032x}", cloid_uuid.as_u128()),
                 }
             } else {
                 "success".to_string()
