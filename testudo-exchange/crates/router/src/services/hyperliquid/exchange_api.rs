@@ -155,14 +155,25 @@ impl HyperliquidExchangeApi {
     ) -> Result<bool, ExchangeApiError> {
         let auth = self.load_auth(user_id, Some(account_id)).await?;
         let exchange = self.build_exchange(&auth);
+
+        // Parse amount as integer wei (USDC has 6 decimals)
+        let dec: Decimal = amount.parse().map_err(|e| {
+            ExchangeApiError::Internal(format!("Invalid amount: {}", e))
+        })?;
+        let usd_size = (dec * Decimal::from(1_000_000u64))
+            .to_u64()
+            .ok_or_else(|| ExchangeApiError::Internal("Amount too large".into()))?;
+
+        // spot_transfer_to_perp uses the spotUser action which has correct field naming.
+        // usd_class_transfer has a serde bug: sends to_perp (snake_case) but HL expects toPerp.
         let status = exchange
-            .usd_class_transfer(amount, to_perp)
+            .spot_transfer_to_perp(usd_size, to_perp)
             .await
             .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
         let ok = status.is_ok();
         tracing::info!(
-            "HL transfer: user={} account={} amount={} to_perp={} ok={}",
-            user_id, account_id, amount, to_perp, ok
+            "HL transfer: user={} account={} amount={} usd_size={} to_perp={} ok={}",
+            user_id, account_id, amount, usd_size, to_perp, ok
         );
         Ok(ok)
     }
