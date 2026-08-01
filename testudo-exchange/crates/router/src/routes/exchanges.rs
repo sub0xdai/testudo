@@ -481,7 +481,7 @@ pub async fn get_exchange_balance(
     }
 }
 
-/// Fetch Hyperliquid balance via native info API.
+/// Fetch Hyperliquid balance via native info API — queries both perp and spot balances.
 async fn get_hyperliquid_balance(
     account_id: Uuid,
     user_id: Uuid,
@@ -499,68 +499,105 @@ async fn get_hyperliquid_balance(
         hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
     };
 
-    let payload = serde_json::json!({
+    let client = &app_state.hl_http_client;
+
+    // Query perp account
+    let perp_payload = serde_json::json!({
         "type": "clearinghouseState",
         "user": query_address,
     });
 
-    let resp = app_state
-        .hl_http_client
-        .post(info_url)
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| {
-            tracing::error!("Hyperliquid balance fetch failed: {}", e);
-            actix_web::error::ErrorBadGateway("Failed to reach Hyperliquid API")
-        })?;
+    let perp_resp = client.post(info_url).json(&perp_payload).send().await.map_err(|e| {
+        tracing::error!("Hyperliquid perp balance fetch failed: {}", e);
+        actix_web::error::ErrorBadGateway("Failed to reach Hyperliquid API")
+    })?;
 
-    let body: serde_json::Value = resp.json().await.map_err(|e| {
-        tracing::error!("Hyperliquid balance parse failed: {}", e);
+    let perp_body: serde_json::Value = perp_resp.json().await.map_err(|e| {
+        tracing::error!("Hyperliquid perp balance parse failed: {}", e);
         actix_web::error::ErrorBadGateway("Invalid response from Hyperliquid")
     })?;
 
-    // DEBUG: log raw Hyperliquid clearinghouseState response
-    tracing::info!(
-        "HL balance raw response for {}: {}",
-        query_address,
-        serde_json::to_string(&body).unwrap_or_default()
-    );
-
-    let account_value = body
+    let perp_value: Decimal = perp_body
         .get("marginSummary")
         .and_then(|m| m.get("accountValue"))
         .and_then(|v| v.as_str())
-        .unwrap_or("0");
+        .unwrap_or("0")
+        .parse()
+        .unwrap_or_default();
 
-    let total_margin = body
+    let perp_margin: Decimal = perp_body
         .get("marginSummary")
         .and_then(|m| m.get("totalMarginUsed"))
         .and_then(|v| v.as_str())
-        .unwrap_or("0");
+        .unwrap_or("0")
+        .parse()
+        .unwrap_or_default();
 
-    let available = account_value
-        .parse::<Decimal>()
-        .unwrap_or_default()
-        - total_margin.parse::<Decimal>().unwrap_or_default();
+    // Query spot account
+    let spot_payload = serde_json::json!({
+        "type": "spotClearinghouseState",
+        "user": query_address,
+    });
+
+    let spot_resp = client.post(info_url).json(&spot_payload).send().await.map_err(|e| {
+        tracing::error!("Hyperliquid spot balance fetch failed: {}", e);
+        actix_web::error::ErrorBadGateway("Failed to reach Hyperliquid API")
+    })?;
+
+    let spot_body: serde_json::Value = spot_resp.json().await.map_err(|e| {
+        tracing::error!("Hyperliquid spot balance parse failed: {}", e);
+        actix_web::error::ErrorBadGateway("Invalid response from Hyperliquid")
+    })?;
+
+    // Spot USDC is token 0; sum all spot balances for total
+    let spot_total: Decimal = spot_body
+        .get("balances")
+        .and_then(|b| b.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|entry| {
+                    entry.get("total").and_then(|v| v.as_str()).and_then(|s| s.parse::<Decimal>().ok())
+                })
+                .sum::<Decimal>()
+        })
+        .unwrap_or_default();
+
+    let spot_hold: Decimal = spot_body
+        .get("balances")
+        .and_then(|b| b.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|entry| {
+                    entry.get("hold").and_then(|v| v.as_str()).and_then(|s| s.parse::<Decimal>().ok())
+                })
+                .sum::<Decimal>()
+        })
+        .unwrap_or_default();
+
+    // USDC balance entry: sum perp + spot
+    let total_usdc = perp_value + spot_total;
+    let free_usdc = total_usdc - perp_margin - spot_hold;
+    let used_usdc = perp_margin + spot_hold;
 
     let response = ExchangeBalanceResponse {
         account_id,
         exchange_name: exchanges::HYPERLIQUID.to_string(),
         balances: vec![ExchangeBalanceEntry {
             asset: "USDC".to_string(),
-            total: account_value.to_string(),
-            free: available.to_string(),
-            used: total_margin.to_string(),
+            total: total_usdc.to_string(),
+            free: free_usdc.to_string(),
+            used: used_usdc.to_string(),
         }],
         fetched_at: chrono::Utc::now(),
     };
 
     tracing::info!(
-        "Fetched Hyperliquid balance for account {} (user {}): {}",
+        "Fetched Hyperliquid balance for account {} (user {}): perp={} spot={} total={}",
         account_id,
         user_id,
-        account_value
+        perp_value,
+        spot_total,
+        total_usdc
     );
     Ok(HttpResponse::Ok().json(response))
 }
