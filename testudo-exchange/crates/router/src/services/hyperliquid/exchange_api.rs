@@ -403,6 +403,18 @@ impl ExchangeApi for HyperliquidExchangeApi {
             }
         }
 
+        // Round limit price to HL tick size.
+        // ETH tick size is 0.05, BTC is 0.1, most others 0.01.
+        if let Some(ref mut p) = req.price {
+            let tick = match coin {
+                "ETH" => Decimal::new(5, 2),    // 0.05
+                "BTC" => Decimal::new(1, 1),     // 0.1
+                _ => Decimal::new(1, 2),          // 0.01 default
+            };
+            let scaled = *p / tick;
+            *p = scaled.round_dp(0) * tick;
+        }
+
         let mut hl_order = build_order_request(asset_index, &req, sz_decimals)?;
         let cloid = req.client_order_id.as_ref().map(|c| generate_cloid(c));
 
