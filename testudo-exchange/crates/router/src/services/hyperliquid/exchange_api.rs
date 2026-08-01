@@ -132,23 +132,13 @@ impl HyperliquidExchangeApi {
     }
 
     /// Build an `ExchangeProvider` from a cached signer.
-    ///
-    /// For agent wallets, passes the agent address so `send_l1_action`
-    /// wraps actions with `{"type": "agent", "agentAddress": ..., "agentAction": ...}`.
-    /// Without wrapping, HL treats the agent as the account owner.
     fn build_exchange(
         &self,
         auth: &HyperliquidAuth,
     ) -> ExchangeProvider<PrivateKeySigner> {
-        match &auth.auth_mode {
-            super::auth::AuthMode::Agent { user_address: _ } => match self.network {
-                Network::Mainnet => ExchangeProvider::mainnet_agent(auth.signer.clone(), auth.address),
-                Network::Testnet => ExchangeProvider::testnet_agent(auth.signer.clone(), auth.address),
-            },
-            super::auth::AuthMode::Direct => match self.network {
-                Network::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
-                Network::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
-            },
+        match self.network {
+            Network::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
+            Network::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
         }
     }
 
