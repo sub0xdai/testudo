@@ -148,6 +148,8 @@ impl HyperliquidExchangeApi {
 
     /// Transfer USDC between spot and perp accounts.
     /// `to_perp`: true = spot→perp, false = perp→spot.
+    /// Returns Ok(true) on success, Ok(false) on HL rejection,
+    /// or Err on internal failure.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
@@ -265,14 +267,17 @@ impl HyperliquidExchangeApi {
         if status_code.is_success() {
             let ok = body.get("status").and_then(|s| s.as_str()) == Some("ok");
             if !ok {
-                // Some successful HTTP responses still have status "err"
                 let msg = body
                     .get("response")
                     .and_then(|r| r.as_str())
                     .unwrap_or("unknown");
                 tracing::warn!("HL spot→perp rejected: {}", msg);
+                return Err(ExchangeApiError::Internal(format!(
+                    "HL rejected: {}",
+                    msg
+                )));
             }
-            Ok(ok)
+            Ok(true)
         } else {
             let body_str = serde_json::to_string(&body).unwrap_or_default();
             Err(ExchangeApiError::Internal(format!(
