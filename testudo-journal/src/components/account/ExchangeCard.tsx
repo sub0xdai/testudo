@@ -238,8 +238,6 @@ export function ExchangeCard(props: ExchangeCardProps) {
       })
     }).catch(() => {})
   })
-  const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
-  const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
   const needsReauth = () => props.account.requires_reauthorization === true
   const venueMargin = (): VenueMargin | undefined =>
