@@ -521,17 +521,25 @@ impl ExchangeApi for HyperliquidExchangeApi {
         let mut sl_order_id = None;
         let mut tp_order_id = None;
 
+        // Round trigger prices to HL tick size
+        let tick = self.info.all_mids().await.ok()
+            .and_then(|mids| mids.get(coin).cloned())
+            .map(|mid| tick_size_from_mid(&mid))
+            .unwrap_or(Decimal::new(1, 2)); // default 0.01
+
         if let Some(sl_trigger) = req.stop_loss_trigger {
+            let sl_rounded = ((sl_trigger / tick).round_dp(0) * tick).normalize();
             sl_order_id = self.place_trigger_order(
                 &exchange, &auth, asset_index, close_is_buy,
-                sl_trigger, &sz, "sl", req.client_order_id.as_deref(),
+                sl_rounded, &sz, "sl", req.client_order_id.as_deref(),
             ).await;
         }
 
         if let Some(tp_trigger) = req.take_profit_trigger {
+            let tp_rounded = ((tp_trigger / tick).round_dp(0) * tick).normalize();
             tp_order_id = self.place_trigger_order(
                 &exchange, &auth, asset_index, close_is_buy,
-                tp_trigger, &sz, "tp", req.client_order_id.as_deref(),
+                tp_rounded, &sz, "tp", req.client_order_id.as_deref(),
             ).await;
         }
 
