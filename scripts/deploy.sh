@@ -37,6 +37,13 @@ done
 echo ""
 echo "[2/6] Building Rust backend..."
 cd "$TESTUDO_DIR/testudo-exchange"
+
+# Patch SDK: ClassTransfer.usd_size → usdc (Hyperliquid expects "usdc" not "usdSize")
+SDK_ACTIONS=$(find /root/.cargo/registry/src -path '*/hyperliquid-sdk-rs-*/src/types/actions.rs' 2>/dev/null | head -1)
+if [ -n "$SDK_ACTIONS" ]; then
+  sed -i 's/pub usd_size: u64,/pub usdc: u64,/' "$SDK_ACTIONS"
+fi
+
 find crates -name "*.rs" -exec touch {} + 2>/dev/null || true  # bust cargo cache after git pull
 cargo build --release 2>&1 | tail -3
 
