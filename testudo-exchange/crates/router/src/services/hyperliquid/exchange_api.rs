@@ -322,7 +322,41 @@ impl ExchangeApi for HyperliquidExchangeApi {
             .await
             .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
 
-        let account_value = parse_decimal(&state.margin_summary.account_value)?;
+        let mut account_value = parse_decimal(&state.margin_summary.account_value)?;
+
+        // Include spot USDC balance so sizing works when funds are in spot
+        let info_url = match self.network {
+            Network::Mainnet => "https://api.hyperliquid.xyz/info",
+            Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
+        };
+        let spot_payload = serde_json::json!({
+            "type": "spotClearinghouseState",
+            "user": format!("{:#x}", auth.query_address()),
+        });
+        if let Ok(spot_resp) = reqwest::Client::new()
+            .post(info_url)
+            .json(&spot_payload)
+            .send()
+            .await
+        {
+            if let Ok(spot_body) = spot_resp.json::<serde_json::Value>().await {
+                let spot_total: Decimal = spot_body
+                    .get("balances")
+                    .and_then(|b| b.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|e| {
+                                e.get("total")
+                                    .and_then(|v| v.as_str())
+                                    .and_then(|s| s.parse::<Decimal>().ok())
+                            })
+                            .sum::<Decimal>()
+                    })
+                    .unwrap_or_default();
+                account_value += spot_total;
+            }
+        }
+
         Ok(account_value)
     }
 
