@@ -10,8 +10,9 @@ DB_KEY = [
 ]
 
 DEV_ID = [
-    Pattern("api_key", r'(?:API_KEY|apiKey|SECRET_KEY|secretKey|AUTH_TOKEN)\s*[:=]\s*\S+', 1.0),
-    Pattern("dev_id", r'(?:dev_id|developer_id)\s*[:=]\s*\S+', 0.85),
+    # Match secrets in config files: KEY = "actual-secret-value" or KEY=hexstring
+    Pattern("secret_assignment", r'(?i)(?:api_key|secret_key|auth_token|private_key)\s*[:=]\s*["\x27]([^"\x27]{16,})["\x27]', 1.0),
+    Pattern("secret_env", r'(?i)(?:api_key|secret_key|auth_token|private_key)\s*[:=]\s*[A-Za-z0-9+/=]{32,}', 0.95),
 ]
 
 
