@@ -317,20 +317,55 @@ impl ExchangeApi for HyperliquidExchangeApi {
     ) -> Result<Decimal, ExchangeApiError> {
         let auth = self.load_auth(user_id, exchange_account_id).await?;
         let query_addr = auth.query_address();
-        let state = self
-            .info
-            .user_state(query_addr)
-            .await
-            .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
+        let info_url = match self.network {
+            Network::Mainnet => "https://api.hyperliquid.xyz/info",
+            Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
+        };
+
+        // For unified accounts, spotClearinghouseState is the source of truth
+        // for trading balance across both spot and perps.
+        let client = reqwest::Client::new();
+        let spot_payload = serde_json::json!({
+            "type": "spotClearinghouseState",
+            "user": format!("{:#x}", query_addr),
+        });
+        let spot_resp = client.post(info_url).json(&spot_payload).send().await
+            .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch spot state: {}", e)))?;
+        let spot_body: serde_json::Value = spot_resp.json().await
+            .map_err(|e| ExchangeApiError::Exchange(format!("Invalid spot response: {}", e)))?;
+
+        let balance: Decimal = spot_body
+            .get("balances")
+            .and_then(|b| b.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|e| {
+                        e.get("total")
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| s.parse::<Decimal>().ok())
+                    })
+                    .sum::<Decimal>()
+            })
+            .unwrap_or_default();
+
+        // Fall back to perp clearinghouse if spot returns empty
+        let balance = if balance > Decimal::ZERO {
+            balance
+        } else {
+            let state = self
+                .info
+                .user_state(query_addr)
+                .await
+                .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
+            parse_decimal(&state.margin_summary.account_value)?
+        };
 
         tracing::info!(
             query_address = %format!("{:#x}", query_addr),
-            account_value = %state.margin_summary.account_value,
-            auth_mode = ?auth.auth_mode,
+            balance = %balance,
             "HL get_balance for sizing"
         );
-        let account_value = parse_decimal(&state.margin_summary.account_value)?;
-        Ok(account_value)
+        Ok(balance)
     }
 
     async fn place_order(
