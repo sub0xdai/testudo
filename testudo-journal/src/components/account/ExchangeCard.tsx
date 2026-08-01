@@ -230,13 +230,15 @@ export function ExchangeCard(props: ExchangeCardProps) {
   createEffect(() => {
     const hl = isHlAgent()
     const id = props.account.id
+    console.log('[ExchangeCard] effect running:', { hl, id, authMode: props.account.auth_mode })
     if (!hl || !id) return
     exchangeApi.fetchBalance(id).then(b => {
+      console.log('[ExchangeCard] balance ok:', b)
       setLiveBalance({
         spot: b.balances.find(x => x.asset === 'USDC (Spot)')?.total ?? '0',
         perp: b.balances.find(x => x.asset === 'USDC (Perp)')?.total ?? '0',
       })
-    }).catch(() => {})
+    }).catch(e => { console.error('[ExchangeCard] balance fail:', e) })
   })
   const walletAddr = () => props.account.agent_wallet_address
   const needsReauth = () => props.account.requires_reauthorization === true
