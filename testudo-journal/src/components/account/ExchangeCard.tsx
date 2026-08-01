@@ -1,7 +1,7 @@
 /** @anchor ui:journal:ExchangeCard
  * @tags ui */
 
-import { createSignal, createEffect, createResource, onCleanup, For, Show } from 'solid-js'
+import { createSignal, createEffect, onCleanup, For, Show } from 'solid-js'
 import type {
   ExchangeAccount,
   TestConnectionResult,
@@ -9,7 +9,6 @@ import type {
   VenueMargin,
   PositionEntry,
 } from '../../api/client'
-import { exchangeApi } from '../../api/client'
 import { formatCurrency, formatNumber, formatPrice, pnlColor } from '../../lib/formatters'
 
 interface KebabMenuProps {
@@ -231,38 +230,6 @@ export function ExchangeCard(props: ExchangeCardProps) {
     props.snapshot?.positions_by_venue.find((v) => v.exchange_id === props.account.id)
       ?.positions ?? []
 
-  // Transfer state (Hyperliquid only)
-  const isHl = () => props.account.exchange_name === 'hyperliquid' && isAgentWallet();
-  const [liveBal] = createResource(
-    () => isHl() ? props.account.id : null,
-    (id) => exchangeApi.fetchBalance(id),
-  );
-  const spotEntry = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)');
-  const perpEntry = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)');
-  const [trAmount, setTrAmount] = createSignal('');
-  const [trPending, setTrPending] = createSignal(false);
-  const [trMsg, setTrMsg] = createSignal('');
-  const [toPerp, setToPerp] = createSignal(true); // spot→perp by default
-
-  const sourceEntry = () => toPerp() ? spotEntry() : perpEntry();
-  const destEntry = () => toPerp() ? perpEntry() : spotEntry();
-
-  async function doTransfer() {
-    const amt = trAmount().trim();
-    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) { setTrMsg('Invalid amount'); return; }
-    const max = parseFloat(sourceEntry()?.total ?? '0');
-    if (Number(amt) > max) { setTrMsg('Insufficient balance'); return; }
-    setTrPending(true); setTrMsg('');
-    try {
-      await exchangeApi.transferFunds(props.account.id, amt, toPerp());
-      setTrAmount('');
-      setTrMsg(`Sent ${amt} → ${toPerp() ? 'Perp' : 'Spot'}`);
-    } catch (e: any) {
-      setTrMsg(e?.message ?? 'Failed');
-    }
-    setTrPending(false);
-  }
-
   return (
     <div class={`border ${
       needsReauth()
@@ -352,67 +319,6 @@ export function ExchangeCard(props: ExchangeCardProps) {
                     {formatBalanceUsd(m().free_usd)} free · {formatBalanceUsd(m().used_usd)} used
                   </div>
 
-                  {/* Spot/Perp transfer — Hyperliquid agent wallets */}
-                  <Show when={isHl() && !liveBal.loading}>
-                    <div class="mt-2 pt-2 border-t border-container-border/30">
-                      {/* Direction toggle + balances */}
-                      <div class="flex items-center gap-1.5 mb-1.5">
-                        <button onClick={() => setToPerp(true)}
-                          class={`flex-1 text-center py-1 text-[10px] font-mono border transition-colors ${
-                            toPerp() ? 'border-text-primary/40 bg-text-primary/5' : 'border-container-border'
-                          }`}
-                        >
-                          <span class="block text-text-dim text-[8px] tracking-wider">SPOT</span>
-                          <span class="font-bold text-signal-green">
-                            {spotEntry() ? formatBalanceUsd(spotEntry()!.total) : '$0.00'}
-                          </span>
-                        </button>
-                        <span class="text-text-dim text-sm">
-                          {toPerp() ? <>&rarr;</> : <>&larr;</>}
-                        </span>
-                        <button onClick={() => setToPerp(false)}
-                          class={`flex-1 text-center py-1 text-[10px] font-mono border transition-colors ${
-                            !toPerp() ? 'border-text-primary/40 bg-text-primary/5' : 'border-container-border'
-                          }`}
-                        >
-                          <span class="block text-text-dim text-[8px] tracking-wider">PERP</span>
-                          <span class="font-bold text-signal-green">
-                            {perpEntry() ? formatBalanceUsd(perpEntry()!.total) : '$0.00'}
-                          </span>
-                        </button>
-                      </div>
-                      {/* Amount input + action */}
-                      <div class="flex gap-1">
-                        <div class="flex-1 relative">
-                          <input
-                            type="number" step="0.01" min="0" placeholder="USDC"
-                            value={trAmount()}
-                            onInput={(e) => setTrAmount(e.currentTarget.value)}
-                            class="w-full px-2 py-1.5 text-[11px] font-mono bg-main-bg border border-container-border text-text-primary"
-                          />
-                          <button
-                            onClick={() => {
-                              const src = sourceEntry();
-                              if (src) setTrAmount(src.total)
-                            }}
-                            class="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[9px] font-mono font-bold text-text-dim hover:text-text-primary border border-container-border"
-                          >
-                            MAX
-                          </button>
-                        </div>
-                        <button
-                          onClick={doTransfer}
-                          disabled={trPending()}
-                          class="px-3 py-1.5 text-[10px] font-mono font-bold border border-text-primary text-text-primary hover:bg-text-primary hover:text-main-bg transition-colors disabled:opacity-50 whitespace-nowrap"
-                        >
-                          {toPerp() ? '→ Perp' : '→ Spot'}
-                        </button>
-                      </div>
-                      <Show when={trMsg()}>
-                        <p class={`text-[9px] font-mono mt-1 ${trMsg().startsWith('Sent') ? 'text-signal-green' : 'text-signal-red'}`}>{trMsg()}</p>
-                      </Show>
-                    </div>
-                  </Show>
                 </div>
               )}
             </Show>

@@ -1175,10 +1175,6 @@ async fn main() -> std::io::Result<()> {
                                         web::get().to(exchanges::get_exchange_balance),
                                     ) // GET /exchanges/accounts/{id}/balance (EXT-17)
                                     .route(
-                                        "/{id}/transfer",
-                                        web::post().to(exchanges::transfer_funds),
-                                    ) // POST /exchanges/accounts/{id}/transfer (spot↔perp)
-                                    .route(
                                         "/{id}/positions",
                                         web::get().to(exchanges::get_exchange_positions),
                                     ) // GET /exchanges/accounts/{id}/positions

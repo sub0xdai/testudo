@@ -22,7 +22,6 @@ use crate::{
             ExchangeAccountRequest, ExchangeAccountResponse, ExchangeBalanceEntry,
             ExchangeBalanceResponse, ExchangeListResponse, InitAgentWalletRequest,
             InitAgentWalletResponse, MigrateToAgentWalletRequest, MigrateToAgentWalletResponse,
-            TransferRequest, TransferResponse,
             RevokeAgentResponse, TestConnectionResponse,
         },
     },
@@ -630,66 +629,6 @@ async fn get_hyperliquid_balance(
     Ok(HttpResponse::Ok().json(response))
 }
 
-/// POST /api/v1/exchanges/accounts/{id}/transfer
-/// Transfer USDC between Hyperliquid spot and perp accounts.
-pub async fn transfer_funds(
-    account_id: web::Path<Uuid>,
-    user: AuthenticatedUser,
-    app_state: web::Data<AppState>,
-    req: web::Json<TransferRequest>,
-) -> Result<HttpResponse> {
-    let account_id = account_id.into_inner();
-    let amount = req.amount.trim();
-
-    if amount.is_empty() || amount.parse::<Decimal>().is_err() {
-        return Ok(HttpResponse::BadRequest().json(ErrorResponse::new(
-            "invalid_amount",
-            "Amount must be a valid decimal string",
-        )));
-    }
-
-    // Verify the account belongs to this user and is Hyperliquid
-    let creds = app_state
-        .exchange_account_repo
-        .load_credentials(account_id, user.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to load account {} for user {}: {}", account_id, user.user_id, e);
-            actix_web::error::ErrorNotFound("Account not found")
-        })?;
-
-    if !creds.exchange_name.eq_ignore_ascii_case("hyperliquid") {
-        return Ok(HttpResponse::BadRequest().json(ErrorResponse::new(
-            "not_hyperliquid",
-            "Transfer is only supported for Hyperliquid accounts",
-        )));
-    }
-
-    let hl_api = app_state.hl_exchange_api.as_ref().ok_or_else(|| {
-        actix_web::error::ErrorServiceUnavailable("Hyperliquid not enabled")
-    })?;
-
-    let success = hl_api
-        .transfer_usdc(user.user_id, account_id, amount, req.to_perp)
-        .await
-        .map_err(|e| {
-            tracing::error!("HL transfer failed: {}", e);
-            actix_web::error::ErrorInternalServerError(format!("Transfer failed: {}", e))
-        })?;
-
-    if success {
-        let direction = if req.to_perp { "spot → perp" } else { "perp → spot" };
-        Ok(HttpResponse::Ok().json(TransferResponse {
-            success: true,
-            message: format!("Transferred {} USDC ({})", amount, direction),
-        }))
-    } else {
-        Ok(HttpResponse::BadGateway().json(ErrorResponse::new(
-            "transfer_rejected",
-            "Hyperliquid rejected the transfer — check your balance",
-        )))
-    }
-}
 
 /// Fetch Hyperliquid positions and open orders via native info API.
 async fn get_hyperliquid_positions(

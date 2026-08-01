@@ -282,7 +282,6 @@ export const RuntimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("LIST_TRADES") }),
   z.object({ type: z.literal("CANCEL_TRADE"), tradeId: z.string() }),
   z.object({ type: z.literal("GET_BALANCE") }),
-  z.object({ type: z.literal("TRANSFER_FUNDS"), amount: z.string(), toPerp: z.boolean() }),
   z.object({ type: z.literal("LIST_EXCHANGES") }),
   z.object({ type: z.literal("LIST_EXCHANGE_ACCOUNTS") }),
   z.object({

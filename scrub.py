@@ -5,7 +5,7 @@ from presidio_anonymizer import AnonymizerEngine
 
 DB_KEY = [
     Pattern("db_url_env", r'(?:DATABASE_URL|DB_URL|MONGO_URI|REDIS_URL)\s*=\s*\S+', 0.95),
-    Pattern("db_password", r'(?:password|passwd|pwd)\s*[:=]\s*\S+', 0.9),
+    Pattern("db_password", r'(?i)(?:password|passwd|pwd)\s*[:=]\s*["\x27]([^"\x27]{8,})["\x27]', 0.9),
     Pattern("conn_string", r'(?:mongodb|postgres(?:ql)?|mysql|redis)://[^\s\'"]+', 1.0),
 ]
 

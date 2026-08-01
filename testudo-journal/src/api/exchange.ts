@@ -63,8 +63,4 @@ export const exchangeApi = {
         }),
     revokeAgent: (id: string) =>
         fetchExchange<RevokeAgentResponse>(`/agent-wallet/${id}/revoke`, { method: 'DELETE' }),
-    transferFunds: (id: string, amount: string, toPerp: boolean) =>
-        fetchExchange<{ success: boolean; message: string }>(`/accounts/${id}/transfer`, {
-            method: 'POST', body: JSON.stringify({ amount, to_perp: toPerp }),
-        }),
 }

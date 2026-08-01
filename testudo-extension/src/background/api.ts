@@ -430,30 +430,6 @@ export async function getLiveBalance(): Promise<{ success: boolean; data?: LiveB
   return { success: true, data: { exchange_name: json.data.exchange_name, balances } };
 }
 
-// --- Spot/Perp Transfer (Hyperliquid) ---
-
-export async function transferFunds(
-  amount: string,
-  toPerp: boolean,
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  const activeId = await getActiveExchangeId();
-  if (!activeId) return { success: false, error: "No active exchange selected" };
-
-  const result = await apiRequest(`/api/v1/exchanges/accounts/${activeId}/transfer`, {
-    method: "POST",
-    body: { amount, to_perp: toPerp },
-    auth: "hard",
-    authError: "Authentication required for transfer",
-    timeout: 15000,
-  });
-  if (!result.ok) return { success: false, error: result.error };
-  const raw = result.raw as Record<string, unknown> | undefined;
-  return {
-    success: true,
-    message: typeof raw?.message === "string" ? raw.message : "Transfer complete",
-  };
-}
-
 // --- Exchange Positions ---
 
 export async function fetchExchangePositions(): Promise<{ success: boolean; data?: ExchangePositionsResponse; error?: string }> {

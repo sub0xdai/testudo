@@ -36,11 +36,6 @@ export default function MainView(props: { onLogout: () => void }) {
   const [exchangeMode, setExchangeMode] = createSignal<ExchangeMode>("cex");
   let balanceRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Transfer state
-  const [transferAmount, setTransferAmount] = createSignal("");
-  const [transferring, setTransferring] = createSignal(false);
-  const [transferMsg, setTransferMsg] = createSignal("");
-
   const isHyperliquid = () => (exchangeName() ?? "").toLowerCase() === "hyperliquid";
   const spotBalance = () => balance()?.find(b => b.asset === "USDC (Spot)");
   const perpBalance = () => balance()?.find(b => b.asset === "USDC (Perp)");
@@ -65,33 +60,6 @@ export default function MainView(props: { onLogout: () => void }) {
       /* non-blocking */
     }
     setBalanceLoading(false);
-  }
-
-  async function doTransfer(toPerp: boolean) {
-    const amount = transferAmount().trim();
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      setTransferMsg("Enter a valid amount");
-      return;
-    }
-    setTransferring(true);
-    setTransferMsg("");
-    try {
-      const resp = await browser.runtime.sendMessage({
-        type: "TRANSFER_FUNDS",
-        amount,
-        toPerp,
-      }) as { success?: boolean; message?: string; error?: string };
-      if (resp?.success) {
-        setTransferMsg(resp.message ?? "Done");
-        setTransferAmount("");
-        fetchBalance(); // refresh
-      } else {
-        setTransferMsg(resp?.error ?? "Transfer failed");
-      }
-    } catch (e: any) {
-      setTransferMsg(e?.message ?? "Transfer failed");
-    }
-    setTransferring(false);
   }
 
   const usdt = () => balance()?.find((b) => b.asset === "USDT" || b.asset === "USDC");
@@ -346,7 +314,7 @@ export default function MainView(props: { onLogout: () => void }) {
               </Show>
             </Show>
 
-            {/* Spot/Perp transfer — Hyperliquid only */}
+            {/* Spot/Perp balance display — Hyperliquid only */}
             <Show when={isHyperliquid() && !balanceLoading()}>
               <div class="space-y-2">
                 <Show when={spotBalance()}>
@@ -360,37 +328,6 @@ export default function MainView(props: { onLogout: () => void }) {
                     <span class="text-text-dim">Perp</span>
                     <span class="text-signal-green">{formatBalance(parseFloat(perpBalance()!.total))}</span>
                   </div>
-                </Show>
-                <div class="flex gap-1 mt-1">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Amount"
-                    value={transferAmount()}
-                    onInput={(e) => setTransferAmount(e.currentTarget.value)}
-                    class="flex-1 px-2 py-1 text-[11px] font-mono bg-main-bg border border-container-border text-text-primary rounded"
-                  />
-                  <button
-                    onClick={() => doTransfer(true)}
-                    disabled={transferring()}
-                    class="px-2 py-1 text-[10px] font-mono font-bold border border-text-primary/30 text-text-primary hover:bg-text-primary/10 rounded disabled:opacity-50"
-                  >
-                    Spot→Perp
-                  </button>
-                  <button
-                    onClick={() => doTransfer(false)}
-                    disabled={transferring()}
-                    class="px-2 py-1 text-[10px] font-mono font-bold border border-text-primary/30 text-text-primary hover:bg-text-primary/10 rounded disabled:opacity-50"
-                  >
-                    Perp→Spot
-                  </button>
-                  </div>
-                <Show when={transferMsg()}>
-                  <p class="text-[10px] font-mono text-text-dim">{transferMsg()}</p>
-                </Show>
-                <Show when={transferring()}>
-                  <p class="text-[10px] font-mono text-text-dim">Processing...</p>
                 </Show>
               </div>
             </Show>

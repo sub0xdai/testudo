@@ -18,7 +18,6 @@ import {
   deleteExchangeAccount,
   testExchangeConnection,
   getLiveBalance,
-  transferFunds,
   fetchExchangePositions,
   closeExchangePosition,
   listSetupTags,
@@ -109,11 +108,6 @@ function handleCleanupTrades(): Promise<unknown> {
 
 function handleGetBalance(): Promise<unknown> {
   return getLiveBalance();
-}
-
-function handleTransferFunds(msg: ParsedMessage): Promise<unknown> {
-  const { amount, toPerp } = msg as MsgOf<"TRANSFER_FUNDS">;
-  return transferFunds(amount, toPerp);
 }
 
 function handleListExchanges(): Promise<unknown> {
@@ -240,7 +234,6 @@ export const messageHandlers: Record<string, MessageHandler> = {
   CANCEL_TRADE: handleCancelTrade,
   CLEANUP_TRADES: handleCleanupTrades,
   GET_BALANCE: handleGetBalance,
-  TRANSFER_FUNDS: handleTransferFunds,
   LIST_EXCHANGES: handleListExchanges,
   LIST_EXCHANGE_ACCOUNTS: handleListExchangeAccounts,
   ADD_EXCHANGE_ACCOUNT: handleAddExchangeAccount,
