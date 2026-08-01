@@ -520,6 +520,13 @@ async fn get_hyperliquid_balance(
         actix_web::error::ErrorBadGateway("Invalid response from Hyperliquid")
     })?;
 
+    // DEBUG: log raw Hyperliquid clearinghouseState response
+    tracing::info!(
+        "HL balance raw response for {}: {}",
+        query_address,
+        serde_json::to_string(&body).unwrap_or_default()
+    );
+
     let account_value = body
         .get("marginSummary")
         .and_then(|m| m.get("accountValue"))
