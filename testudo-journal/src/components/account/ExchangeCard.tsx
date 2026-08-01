@@ -1,7 +1,7 @@
 /** @anchor ui:journal:ExchangeCard
  * @tags ui */
 
-import { createSignal, createEffect, createResource, onCleanup, For, Show } from 'solid-js'
+import { createSignal, createEffect, onMount, onCleanup, For, Show } from 'solid-js'
 import type {
   ExchangeAccount,
   TestConnectionResult,
@@ -225,19 +225,17 @@ export function ExchangeCard(props: ExchangeCardProps) {
   const isAgentWallet = () => props.account.auth_mode === 'agent_wallet'
   const isHlAgent = () => props.account.exchange_name === 'hyperliquid' && isAgentWallet()
   
-  // Live balance for Hyperliquid agent wallets (same pattern as extension popup)
+  // Live balance for Hyperliquid agent wallets
   const [liveBalance, setLiveBalance] = createSignal<{ spot: string; perp: string } | null>(null)
-  const fetchLiveBalance = async () => {
+  onMount(() => {
     if (!isHlAgent()) return
-    try {
-      const b = await exchangeApi.fetchBalance(props.account.id)
+    exchangeApi.fetchBalance(props.account.id).then(b => {
       setLiveBalance({
         spot: b.balances.find(x => x.asset === 'USDC (Spot)')?.total ?? '0',
         perp: b.balances.find(x => x.asset === 'USDC (Perp)')?.total ?? '0',
       })
-    } catch {}
-  }
-  createEffect(() => { fetchLiveBalance() })
+    }).catch(() => {})
+  })
   const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
   const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
