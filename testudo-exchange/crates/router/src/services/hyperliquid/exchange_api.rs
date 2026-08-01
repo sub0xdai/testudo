@@ -133,16 +133,22 @@ impl HyperliquidExchangeApi {
 
     /// Build an `ExchangeProvider` from a cached signer.
     ///
-    /// Always uses the plain constructor (no agent wrapping, no vault).
-    /// Agent wallets sign with their own key; the HL API recovers the
-    /// signer address and looks up the agent→user approval mapping.
+    /// For agent wallets, passes the agent address so `send_l1_action`
+    /// wraps actions with `{"type": "agent", "agentAddress": ..., "agentAction": ...}`.
+    /// Without wrapping, HL treats the agent as the account owner.
     fn build_exchange(
         &self,
         auth: &HyperliquidAuth,
     ) -> ExchangeProvider<PrivateKeySigner> {
-        match self.network {
-            Network::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
-            Network::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
+        match &auth.auth_mode {
+            super::auth::AuthMode::Agent { user_address: _ } => match self.network {
+                Network::Mainnet => ExchangeProvider::mainnet_agent(auth.signer.clone(), auth.address),
+                Network::Testnet => ExchangeProvider::testnet_agent(auth.signer.clone(), auth.address),
+            },
+            super::auth::AuthMode::Direct => match self.network {
+                Network::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
+                Network::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
+            },
         }
     }
 
@@ -161,9 +167,28 @@ impl HyperliquidExchangeApi {
         let exchange = self.build_exchange(&auth);
 
         if to_perp {
-            // Spot→Perp: direct HTTP call with EIP-712 signing.
-            // Matches Python SDK's usd_class_transfer exactly.
-            self.transfer_usdc_to_perp_raw(&auth, amount).await
+            let is_agent = matches!(auth.auth_mode, super::auth::AuthMode::Agent { .. });
+            if is_agent {
+                // Agent wallets: use spot_transfer_to_perp (L1 action).
+                // build_exchange sets agent_address so send_l1_action wraps
+                // with {"type":"agent","agentAddress":...,"agentAction":...},
+                // routing the transfer to the user's account.
+                let dec: Decimal = amount.parse().map_err(|e| {
+                    ExchangeApiError::Internal(format!("Invalid amount: {}", e))
+                })?;
+                let usdc: u64 = (dec * Decimal::from(1_000_000u64))
+                    .trunc().to_string().parse::<u64>().unwrap_or(0);
+                let status = exchange
+                    .spot_transfer_to_perp(usdc, true)
+                    .await
+                    .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+                let ok = status.is_ok();
+                tracing::info!("HL agent spot→perp: usdc={} ok={}", usdc, ok);
+                Ok(ok)
+            } else {
+                // Direct key: EIP-712 user-signed usdClassTransfer.
+                self.transfer_usdc_to_perp_raw(&auth, amount).await
+            }
         } else {
             // Perp→Spot: usd_transfer to self (SDK method that works).
             let status = exchange
