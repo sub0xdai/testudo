@@ -145,24 +145,26 @@ impl HyperliquidExchangeApi {
 
     /// Transfer USDC between spot and perp accounts.
     /// `to_perp`: true = spot→perp, false = perp→spot.
+    /// Returns Ok(true) on success, Ok(false) if HL rejected the transfer.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
+        account_id: Uuid,
         amount: &str,
         to_perp: bool,
-    ) -> Result<String, ExchangeApiError> {
-        let auth = self.load_auth(user_id, None).await?;
+    ) -> Result<bool, ExchangeApiError> {
+        let auth = self.load_auth(user_id, Some(account_id)).await?;
         let exchange = self.build_exchange(&auth);
-        let result = exchange
+        let status = exchange
             .usd_class_transfer(amount, to_perp)
             .await
             .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
-        let status = format!("{:?}", result);
+        let ok = status.is_ok();
         tracing::info!(
-            "HL transfer: user={} amount={} to_perp={} status={}",
-            user_id, amount, to_perp, status
+            "HL transfer: user={} account={} amount={} to_perp={} ok={}",
+            user_id, account_id, amount, to_perp, ok
         );
-        Ok(status)
+        Ok(ok)
     }
 }
 

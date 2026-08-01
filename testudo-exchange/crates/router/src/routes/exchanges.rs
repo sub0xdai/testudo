@@ -648,23 +648,47 @@ pub async fn transfer_funds(
         )));
     }
 
+    // Verify the account belongs to this user and is Hyperliquid
+    let creds = app_state
+        .exchange_account_repo
+        .load_credentials(account_id, user.user_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to load account {} for user {}: {}", account_id, user.user_id, e);
+            actix_web::error::ErrorNotFound("Account not found")
+        })?;
+
+    if !creds.exchange_name.eq_ignore_ascii_case("hyperliquid") {
+        return Ok(HttpResponse::BadRequest().json(ErrorResponse::new(
+            "not_hyperliquid",
+            "Transfer is only supported for Hyperliquid accounts",
+        )));
+    }
+
     let hl_api = app_state.hl_exchange_api.as_ref().ok_or_else(|| {
         actix_web::error::ErrorServiceUnavailable("Hyperliquid not enabled")
     })?;
 
-    let status = hl_api
-        .transfer_usdc(user.user_id, amount, req.to_perp)
+    let success = hl_api
+        .transfer_usdc(user.user_id, account_id, amount, req.to_perp)
         .await
         .map_err(|e| {
             tracing::error!("HL transfer failed: {}", e);
             actix_web::error::ErrorInternalServerError(format!("Transfer failed: {}", e))
         })?;
 
-    let direction = if req.to_perp { "spot → perp" } else { "perp → spot" };
-    Ok(HttpResponse::Ok().json(TransferResponse {
-        success: true,
-        message: format!("Transferred {} USDC ({})", amount, direction),
-    }))
+    if success {
+        let direction = if req.to_perp { "spot → perp" } else { "perp → spot" };
+        Ok(HttpResponse::Ok().json(TransferResponse {
+            success: true,
+            message: format!("Transferred {} USDC ({})", amount, direction),
+        }))
+    } else {
+        Ok(HttpResponse::BadGateway().json(ErrorResponse::new(
+            "transfer_rejected",
+            "Hyperliquid rejected the transfer — check your balance",
+        )))
+    }
 }
 
 /// Fetch Hyperliquid positions and open orders via native info API.

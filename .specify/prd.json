@@ -1,0 +1,336 @@
+[
+  {
+    "id": "UNIFY-01",
+    "spec": "001-deprecate-legacy-engine",
+    "description": "Deprecate legacy engine - route all traffic through Shadow Engine",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/engine/engine.rs",
+      "testudo-exchange/crates/engine/src/main.rs",
+      "testudo-exchange/crates/router/src/routes/order.rs"
+    ],
+    "acceptance_criteria": "No order can reach matching engine without DecisionLoop validation, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 1,
+    "depends_on": [],
+    "completed_date": "2026-01-20"
+  },
+  {
+    "id": "UNIFY-02",
+    "spec": "002-panic-prevention",
+    "description": "Replace unwrap() calls with Result propagation and EngineError enum",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/engine/engine.rs",
+      "testudo-exchange/crates/engine/src/engine/mod.rs",
+      "testudo-exchange/crates/redis/src/lib.rs"
+    ],
+    "acceptance_criteria": "Zero unwrap() on DB/Redis paths, EngineError enum exists, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 1,
+    "depends_on": [],
+    "completed_date": "2026-01-20"
+  },
+  {
+    "id": "UNIFY-03",
+    "spec": "003-risk-enforcement",
+    "description": "Add risk_validated field to ShadowOrder, enforce on all orders",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/orders.rs",
+      "testudo-exchange/crates/router/src/decision_loop.rs",
+      "testudo-exchange/crates/engine/src/shadow/mod.rs"
+    ],
+    "acceptance_criteria": "ShadowOrder has risk_validated field, orders without validation rejected, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 1,
+    "depends_on": ["UNIFY-01"],
+    "completed_date": "2026-01-20"
+  },
+  {
+    "id": "PERF-01",
+    "spec": "004-read-compute-write",
+    "description": "Refactor process_price_update to Read-Compute-Write pattern",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/mod.rs"
+    ],
+    "acceptance_criteria": "Read locks first, compute without locks, write locks batch apply, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": ["UNIFY-01", "UNIFY-02", "UNIFY-03"],
+    "completed_date": "2026-01-20"
+  },
+  {
+    "id": "PERF-02",
+    "spec": "005-atomic-cascades",
+    "description": "Implement TransactionContext for atomic SL/TP creation",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/mod.rs",
+      "testudo-exchange/crates/engine/src/shadow/orders.rs",
+      "testudo-exchange/crates/engine/src/shadow/order_group.rs"
+    ],
+    "acceptance_criteria": "TransactionContext struct exists, cascade ops atomic, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": ["UNIFY-03"],
+    "completed_date": "2026-01-21"
+  },
+  {
+    "id": "PERF-03",
+    "spec": "006-execution-latency",
+    "description": "Optimize draw-to-trade latency with auto-sizing and P99 <10ms target",
+    "file_context": [
+      "testudo-exchange/crates/router/src/services/execution_service.rs",
+      "testudo-exchange/crates/common_utils/src/risk/calculator.rs"
+    ],
+    "acceptance_criteria": "TradeIntent with auto-sizing, P99 internal latency <10ms, 100 orders/sec throughput, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": ["PERF-01", "PERF-02"],
+    "completed_date": "2026-01-26",
+    "notes": "Achieved 3us avg latency, 70,565 orders/sec throughput"
+  },
+  {
+    "id": "INFRA-01",
+    "spec": "007-redis-to-postgres",
+    "description": "Migrate message queuing from Redis to PostgreSQL pg_queue",
+    "file_context": [
+      "testudo-exchange/crates/pg_queue/src/lib.rs",
+      "testudo-exchange/crates/redis/src/lib.rs",
+      "testudo-exchange/crates/engine/src/engine/db.rs"
+    ],
+    "acceptance_criteria": "pg_queue crate functional, Redis deprecated with warnings, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 2,
+    "depends_on": [],
+    "completed_date": "2026-01-26"
+  },
+  {
+    "id": "FILL-01",
+    "spec": "008-shadow-fill-engine",
+    "description": "Wire live Binance prices to Shadow Engine so paper trading orders actually fill",
+    "file_context": [
+      "testudo-exchange/crates/engine/src/shadow/mod.rs",
+      "testudo-exchange/crates/router/src/services/price_feed.rs",
+      "testudo-exchange/crates/router/src/main.rs",
+      "testudo-exchange/crates/router/src/routes/trade_management.rs",
+      "testudo-web/apps/web/src/components/OpenOrders.tsx"
+    ],
+    "acceptance_criteria": "Orders fill when price crosses entry, balance wired to Decision Loop, correct UI labels, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 3,
+    "depends_on": ["PERF-03"],
+    "completed_date": "2026-02-07"
+  },
+  {
+    "id": "EXT-01",
+    "spec": "EXT-01-extension-scaffold",
+    "description": "Browser extension scaffold with Manifest V3, esbuild, content script, background worker, popup",
+    "file_context": [
+      "testudo-extension/manifest.json",
+      "testudo-extension/src/content.ts",
+      "testudo-extension/src/background.ts",
+      "testudo-extension/src/popup/popup.ts",
+      "testudo-extension/build.ts"
+    ],
+    "acceptance_criteria": "Extension builds for Chrome and Firefox, bun run typecheck clean",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 4,
+    "depends_on": [],
+    "completed_date": "2026-02-08"
+  },
+  {
+    "id": "EXT-02",
+    "spec": "EXT-02-dom-scraper",
+    "description": "TradingView DOM scraper with multi-strategy position tool extraction",
+    "file_context": [
+      "testudo-extension/src/scraper.ts",
+      "testudo-extension/src/content.ts"
+    ],
+    "acceptance_criteria": "Scraper extracts entry, stop, target from TradingView position tools with fallback strategies",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 4,
+    "depends_on": ["EXT-01"],
+    "completed_date": "2026-02-08"
+  },
+  {
+    "id": "EXT-03",
+    "spec": "EXT-03-confirmation-modal",
+    "description": "Shadow DOM confirmation modal with R:R ratio, Alt+X hotkey, keyboard controls",
+    "file_context": [
+      "testudo-extension/src/modal.ts",
+      "testudo-extension/src/content.ts"
+    ],
+    "acceptance_criteria": "Alt+X opens modal with scraped data, Enter confirms, Escape dismisses, R:R displayed",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 4,
+    "depends_on": ["EXT-02"],
+    "completed_date": "2026-02-08"
+  },
+  {
+    "id": "EXT-04",
+    "spec": "EXT-04-rest-execution",
+    "description": "REST trade execution via background service worker with symbol normalization",
+    "file_context": [
+      "testudo-extension/src/background.ts",
+      "testudo-extension/src/content.ts"
+    ],
+    "acceptance_criteria": "POST /api/v1/trades sends normalized symbol, calculated quantity, correct headers",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 4,
+    "depends_on": ["EXT-03"],
+    "completed_date": "2026-02-08"
+  },
+  {
+    "id": "EXT-05",
+    "spec": "EXT-05-auth-live",
+    "description": "JWT auth with paper/live mode, login UI, double-Enter safety for live trades",
+    "file_context": [
+      "testudo-extension/src/background.ts",
+      "testudo-extension/src/popup/popup.ts",
+      "testudo-extension/src/modal.ts"
+    ],
+    "acceptance_criteria": "JWT login/refresh works, LIVE mode requires double-Enter, paper mode uses X-User-Id",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 4,
+    "depends_on": ["EXT-04"],
+    "completed_date": "2026-02-08"
+  },
+  {
+    "id": "EXT-06",
+    "spec": "EXT-06-websocket",
+    "description": "WebSocket connection to ws-stream with exponential backoff and order update forwarding",
+    "file_context": [
+      "testudo-extension/src/background.ts",
+      "testudo-extension/src/popup/popup.ts",
+      "testudo-extension/src/content.ts"
+    ],
+    "acceptance_criteria": "WS auto-connects, subscribes to order channel, forwards updates to tabs, status indicator works",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 4,
+    "depends_on": ["EXT-05"],
+    "completed_date": "2026-02-08"
+  },
+  {
+    "id": "EXT-07",
+    "spec": "EXT-07-e2e-testing",
+    "description": "Vitest unit tests (54) and Playwright E2E tests (8) for extension",
+    "file_context": [
+      "testudo-extension/src/utils.test.ts",
+      "testudo-extension/src/background.test.ts",
+      "testudo-extension/tests/e2e/popup.spec.ts",
+      "testudo-extension/tests/e2e/trade-flow.spec.ts",
+      "testudo-extension/playwright.config.ts"
+    ],
+    "acceptance_criteria": "54 unit tests pass, 8 E2E tests pass, bun run test && bun run test:e2e clean",
+    "status": "completed",
+    "priority": "P2",
+    "phase": 4,
+    "depends_on": ["EXT-06"],
+    "completed_date": "2026-02-09"
+  },
+  {
+    "id": "EXT-08",
+    "spec": "EXT-08-solid-trade-management",
+    "description": "Rewrite extension UI in Solid.js + Tailwind, add trade management config (risk %, break-even, trailing stop, partial TP), update payload",
+    "file_context": [
+      "testudo-extension/src/popup/App.tsx",
+      "testudo-extension/src/popup/components/TradeManagement.tsx",
+      "testudo-extension/src/modal.tsx",
+      "testudo-extension/src/types.ts",
+      "testudo-extension/build.ts",
+      "testudo-extension/tailwind.config.ts"
+    ],
+    "acceptance_criteria": "Solid.js popup and modal render, management config persists, payload includes management block, all tests pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 5,
+    "depends_on": ["EXT-07"],
+    "completed_date": "2026-02-10"
+  },
+  {
+    "id": "EXT-09",
+    "spec": "EXT-09-backend-trade-manager",
+    "description": "Backend trade management engine: ExchangeApi trait, Binance adapter, rule evaluation (break-even, trailing stop, partial TP) against live price feed",
+    "file_context": [
+      "testudo-exchange/crates/router/src/services/trade_manager.rs",
+      "testudo-exchange/crates/router/src/services/exchange_api.rs",
+      "testudo-exchange/crates/router/src/services/binance_adapter.rs",
+      "testudo-exchange/crates/router/src/services/execution_service.rs",
+      "testudo-exchange/crates/router/src/services/price_feed.rs"
+    ],
+    "acceptance_criteria": "Rules evaluate against price feed, orders amended on exchange, positions persist across restarts, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 5,
+    "depends_on": ["EXT-08", "FILL-01"],
+    "completed_date": "2026-02-10"
+  },
+  {
+    "id": "EXT-10",
+    "spec": "EXT-10-binance-futures-execution",
+    "description": "Binance USDT-M Futures live execution: BinanceFuturesExecutor, BinanceFuturesExchangeApi, mode-aware trade manager wiring",
+    "file_context": [
+      "testudo-exchange/crates/common_utils/src/adapters/binance_futures_executor.rs",
+      "testudo-exchange/crates/common_utils/src/adapters/futures_types.rs",
+      "testudo-exchange/crates/router/src/services/exchange_api.rs",
+      "testudo-exchange/crates/router/src/routes/trade_management.rs",
+      "testudo-exchange/crates/router/src/main.rs"
+    ],
+    "acceptance_criteria": "BinanceFuturesExecutor mock tests pass, ExchangeApi implemented, mode-aware routing works, rate limiting tracks weight, testnet default, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P0",
+    "phase": 6,
+    "depends_on": ["EXT-09", "EXT-05"],
+    "completed_date": "2026-02-11"
+  },
+  {
+    "id": "HARDEN-01",
+    "spec": "010-backend-hardening",
+    "description": "Replace all Phase 1 placeholder stubs with real implementations: user repository SQLx, exchange account CRUD with AES-256-GCM, execution mode routing, market data pricing, order query/cancel, account state from shadow engine and Binance",
+    "file_context": [
+      "testudo-exchange/crates/router/src/repositories/user.rs",
+      "testudo-exchange/crates/router/src/repositories/exchange_account.rs",
+      "testudo-exchange/crates/router/src/routes/order.rs",
+      "testudo-exchange/crates/router/src/routes/exchanges.rs",
+      "testudo-exchange/crates/router/src/adapters/binance_adapter.rs",
+      "testudo-exchange/crates/common_utils/src/adapters/account_state.rs"
+    ],
+    "acceptance_criteria": "Zero Phase 2 TODO stubs remaining, user repository queries PostgreSQL, credentials encrypted at rest, execution mode header-derived, market orders use real prices, cargo clippy && cargo test pass",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 7,
+    "depends_on": ["INFRA-01", "FILL-01", "EXT-09", "EXT-10"],
+    "completed_date": "2026-02-12"
+  },
+  {
+    "id": "EXT-13",
+    "spec": "011-popup-redesign",
+    "description": "Redesign extension popup: 3-tab layout (Trade/Positions/Account), persistent header balance, visual range sliders, rich PositionCards with accent borders and management badges",
+    "file_context": [
+      "testudo-extension/src/popup/components/MainView.tsx",
+      "testudo-extension/src/popup/components/TradeManagement.tsx",
+      "testudo-extension/src/popup/components/ActiveOrders.tsx",
+      "testudo-extension/src/popup/components/ModeToggle.tsx",
+      "testudo-extension/src/popup/popup.css",
+      "testudo-extension/tests/e2e/popup.spec.ts"
+    ],
+    "acceptance_criteria": "3-tab layout renders, header balance visible, range sliders functional, PositionCards display, all E2E tests pass, bun run build && bun run typecheck clean",
+    "status": "completed",
+    "priority": "P1",
+    "phase": 8,
+    "depends_on": ["EXT-08", "EXT-12"],
+    "completed_date": "2026-02-12"
+  }
+]

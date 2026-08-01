@@ -447,7 +447,11 @@ export async function transferFunds(
     timeout: 15000,
   });
   if (!result.ok) return { success: false, error: result.error };
-  return { success: true, message: (result.raw as any)?.message ?? "Transfer complete" };
+  const raw = result.raw as Record<string, unknown> | undefined;
+  return {
+    success: true,
+    message: typeof raw?.message === "string" ? raw.message : "Transfer complete",
+  };
 }
 
 // --- Exchange Positions ---
