@@ -156,14 +156,18 @@ impl HyperliquidExchangeApi {
         let exchange = self.build_exchange(&auth);
 
         if to_perp {
-            // Spot→Perp: usd_class_transfer uses `amount`/`toPerp` fields.
-            // spot_transfer_to_perp is broken (sends `usdSize` instead of `usdc`).
+            // Spot→Perp: spot_transfer_to_perp (SDK field `usdc` patched from `usd_size`).
+            let dec: Decimal = amount.parse().map_err(|e| {
+                ExchangeApiError::Internal(format!("Invalid amount: {}", e))
+            })?;
+            let usdc: u64 = (dec * Decimal::from(1_000_000u64))
+                .trunc().to_string().parse::<u64>().unwrap_or(0);
             let status = exchange
-                .usd_class_transfer(amount, true)
+                .spot_transfer_to_perp(usdc, true)
                 .await
                 .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
             let ok = status.is_ok();
-            tracing::info!("HL spot→perp: ok={}", ok);
+            tracing::info!("HL spot→perp: usdc={} ok={}", usdc, ok);
             Ok(ok)
         } else {
             let status = exchange
