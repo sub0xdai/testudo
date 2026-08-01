@@ -227,16 +227,15 @@ export function ExchangeCard(props: ExchangeCardProps) {
   
   // Live balance for Hyperliquid agent wallets
   const [liveBalance, setLiveBalance] = createSignal<{ spot: string; perp: string } | null>(null)
-  createEffect(() => {
-    const id = props.account.id
-    if (!isHlAgent() || !id) return
-    exchangeApi.fetchBalance(id).then(b => {
+  // Fetch immediately — Solid re-runs component body on reactive updates
+  if (isHlAgent() && props.account.id && !liveBalance()) {
+    exchangeApi.fetchBalance(props.account.id).then(b => {
       setLiveBalance({
         spot: b.balances.find(x => x.asset === 'USDC (Spot)')?.total ?? '0',
         perp: b.balances.find(x => x.asset === 'USDC (Perp)')?.total ?? '0',
       })
     }).catch(() => {})
-  })
+  }
   const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
   const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
