@@ -2,7 +2,8 @@
  * @tags ui */
 
 import { createSignal, Show, For, type JSX } from 'solid-js'
-import { loadWallet, getLoadedWallet } from '../../config/wallet'
+import { loadWallet } from '../../config/wallet'
+import { useAuth } from '../../context/AuthContext'
 import { exchangeApi } from '../../api/client'
 
 // ─── State Machine ───
@@ -75,14 +76,13 @@ function extractErrorMessage(err: unknown): string {
 // ─── Component ───
 
 export function WalletConnectFlow(props: WalletConnectFlowProps) {
+  const auth = useAuth()
   const [state, setState] = createSignal<WalletFlowState>({ step: 'idle' })
   const isReauth = () => !!props.existingAccountId
 
+  // Derive wallet address from AuthContext — the source of truth after SIWE.
   function getConnectedAddress(): string | undefined {
-    const kit = getLoadedWallet()
-    if (!kit) return undefined
-    // AppKit v1.x: pass explicit chain namespace for EVM wallets
-    return kit.getAddress('eip155') ?? kit.getAddress() ?? undefined
+    return auth.user()?.wallet_address
   }
 
   async function startFlow() {
@@ -276,7 +276,7 @@ export function WalletConnectFlow(props: WalletConnectFlowProps) {
                       : 'Connect your Ethereum wallet to authorize an agent keypair for Hyperliquid trading.'}
                   </p>
                   <button
-                    onClick={() => loadWallet().then(k => k.open())}
+                    onClick={() => auth.connectWallet()}
                     class="w-full px-8 py-4 bg-transparent btn-primary font-mono font-bold text-lg"
                   >
                     CONNECT WALLET
