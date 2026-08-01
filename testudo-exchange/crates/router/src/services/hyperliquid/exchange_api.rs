@@ -282,6 +282,17 @@ fn trigger_limit_px(trigger_px: &Decimal, _is_buy: bool) -> String {
     trigger_px.normalize().to_string()
 }
 
+/// Derive tick size from the nearest price steps in the L2 order book.
+fn tick_size_from_mid(mid: &str) -> Decimal {
+    // Conservative: use 1 decimal place for prices > 1000, 2 for > 100
+    let val: f64 = mid.parse().unwrap_or(0.0);
+    if val >= 10000.0 { Decimal::new(1, 0) }
+    else if val >= 1000.0 { Decimal::new(1, 1) }
+    else if val >= 100.0 { Decimal::new(1, 2) }
+    else if val >= 1.0 { Decimal::new(1, 3) }
+    else { Decimal::new(1, 5) }
+}
+
 /// Format a quantity to the correct number of decimal places for Hyperliquid.
 pub fn format_sz(quantity: Decimal, sz_decimals: u32) -> String {
     let scaled = quantity
@@ -428,15 +439,12 @@ impl ExchangeApi for HyperliquidExchangeApi {
             }
         }
 
-        // Round limit price to tick size derived from L2 book precision
+        let mut hl_order = build_order_request(asset_index, &req, sz_decimals)?;
+
+        // Round limit price to HL tick size derived from L2 order book.
         if let Ok(mids) = self.info.all_mids().await {
             if let Some(mid_str) = mids.get(coin) {
-                // Tick = 0.1 for ETH, 0.5-1.0 for BTC, 0.01 for sub-$1 assets.
-                let mid_val = Decimal::from_str(mid_str).unwrap_or(Decimal::ONE);
-                let tick = if mid_val >= Decimal::from(10000) { Decimal::new(1, 0) }    // 1.0
-                else if mid_val >= Decimal::from(1000) { Decimal::new(1, 1) }            // 0.1
-                else if mid_val >= Decimal::from(100) { Decimal::new(1, 2) }             // 0.01
-                else { Decimal::new(1, 3) };                                              // 0.001
+                let tick = tick_size_from_mid(mid_str);
                 let raw = Decimal::from_str(&hl_order.limit_px).unwrap_or(Decimal::ZERO);
                 hl_order.limit_px = ((raw / tick).round_dp(0) * tick).normalize().to_string();
             }
