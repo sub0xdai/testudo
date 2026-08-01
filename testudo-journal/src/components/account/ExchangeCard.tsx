@@ -225,19 +225,19 @@ export function ExchangeCard(props: ExchangeCardProps) {
   const isAgentWallet = () => props.account.auth_mode === 'agent_wallet'
   const isHlAgent = () => props.account.exchange_name === 'hyperliquid' && isAgentWallet()
   
-  // Live balance for Hyperliquid agent wallets
-  const [liveBal, { refetch }] = createResource(
-    () => isHlAgent() ? props.account.id : null,
-    async (id) => {
-      const bal = await exchangeApi.fetchBalance(id);
-      console.log('[ExchangeCard] live balance fetched:', bal);
-      return bal;
-    },
-  )
-  // Re-fetch on mount
-  createEffect(() => {
-    if (isHlAgent()) refetch();
-  })
+  // Live balance for Hyperliquid agent wallets (same pattern as extension popup)
+  const [liveBalance, setLiveBalance] = createSignal<{ spot: string; perp: string } | null>(null)
+  const fetchLiveBalance = async () => {
+    if (!isHlAgent()) return
+    try {
+      const b = await exchangeApi.fetchBalance(props.account.id)
+      setLiveBalance({
+        spot: b.balances.find(x => x.asset === 'USDC (Spot)')?.total ?? '0',
+        perp: b.balances.find(x => x.asset === 'USDC (Perp)')?.total ?? '0',
+      })
+    } catch {}
+  }
+  createEffect(() => { fetchLiveBalance() })
   const spotUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)')
   const perpUsdc = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)')
   const walletAddr = () => props.account.agent_wallet_address
@@ -320,35 +320,23 @@ export function ExchangeCard(props: ExchangeCardProps) {
               {(m) => (
                 <div class="flex flex-col gap-1.5">
                   {/* Live balance for HL agent wallets, snapshot for everything else */}
-                  <Show
-                    when={isHlAgent() && liveBal() && !liveBal.loading}
-                    fallback={
-                      <div class="flex items-baseline gap-2">
-                        <span class="font-mono text-2xl font-bold text-text-primary">
-                          {formatBalanceUsd(m().total_usd)}
-                        </span>
-                        <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
-                          total
-                        </span>
-                      </div>
-                    }
-                  >
-                    <div class="flex items-baseline gap-2">
-                      <span class="font-mono text-2xl font-bold text-text-primary">
-                        {formatBalanceUsd(String(
-                          (parseFloat(spotUsdc()?.total ?? '0') + parseFloat(perpUsdc()?.total ?? '0')).toString()
-                        ))}
-                      </span>
-                      <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
-                        total
-                      </span>
-                    </div>
-                  </Show>
-                  <Show when={isHlAgent() && !liveBal.loading}>
-                    <div class="flex gap-4 font-mono text-[10px] text-text-tertiary">
-                      <span>Spot <span class="text-text-primary">{spotUsdc() ? formatBalanceUsd(spotUsdc()!.total) : '$0.00'}</span></span>
-                      <span>Perp <span class="text-text-primary">{perpUsdc() ? formatBalanceUsd(perpUsdc()!.total) : '$0.00'}</span></span>
-                    </div>
+                  <Show when={isHlAgent() && liveBalance()}>
+                    {(b) => (
+                      <>
+                        <div class="flex items-baseline gap-2">
+                          <span class="font-mono text-2xl font-bold text-text-primary">
+                            {formatBalanceUsd(String(parseFloat(b().spot) + parseFloat(b().perp)))}
+                          </span>
+                          <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
+                            total
+                          </span>
+                        </div>
+                        <div class="flex gap-4 font-mono text-[10px] text-text-tertiary">
+                          <span>Spot <span class="text-text-primary">{formatBalanceUsd(b().spot)}</span></span>
+                          <span>Perp <span class="text-text-primary">{formatBalanceUsd(b().perp)}</span></span>
+                        </div>
+                      </>
+                    )}
                   </Show>
                   <div class="h-1.5 bg-text-primary/5 w-full">
                     <div
