@@ -164,25 +164,27 @@ impl HyperliquidExchangeApi {
             let dec: Decimal = amount.parse().map_err(|e| {
                 ExchangeApiError::Internal(format!("Invalid amount: {}", e))
             })?;
-            let usd_size = (dec * Decimal::from(1_000_000u64))
-                .to_u64()
-                .ok_or_else(|| ExchangeApiError::Internal("Amount too large".into()))?;
+            let usdc: u64 = (dec * Decimal::from(1_000_000u64))
+                .trunc()
+                .to_string()
+                .parse::<u64>()
+                .unwrap_or(0);
 
             tracing::info!(
-                "HL spot→perp attempt: usd_size={} (from amount={})",
-                usd_size, amount
+                "HL spot→perp attempt: usdc={} (from amount={})",
+                usdc, amount
             );
             let status = exchange
-                .spot_transfer_to_perp(usd_size, true)
+                .spot_transfer_to_perp(usdc, true)
                 .await
                 .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
             let ok = status.is_ok();
             tracing::info!("HL spot→perp result: ok={} status={:?}", ok, status);
             Ok(ok)
         } else {
-            // Perp→Spot: usd_send to self.
+            // Perp→Spot: usd_transfer to self.
             let status = exchange
-                .usd_send(auth.signer.address(), amount)
+                .usd_transfer(auth.signer.address(), amount)
                 .await
                 .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
             let ok = status.is_ok();
