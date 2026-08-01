@@ -311,14 +311,31 @@ export function ExchangeCard(props: ExchangeCardProps) {
             >
               {(m) => (
                 <div class="flex flex-col gap-1.5">
-                  <div class="flex items-baseline gap-2">
-                    <span class="font-mono text-2xl font-bold text-text-primary">
-                      {formatBalanceUsd(m().total_usd)}
-                    </span>
-                    <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
-                      total
-                    </span>
-                  </div>
+                  {/* Live balance for HL agent wallets, snapshot for everything else */}
+                  <Show
+                    when={isHlAgent() && liveBal() && !liveBal.loading}
+                    fallback={
+                      <div class="flex items-baseline gap-2">
+                        <span class="font-mono text-2xl font-bold text-text-primary">
+                          {formatBalanceUsd(m().total_usd)}
+                        </span>
+                        <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
+                          total
+                        </span>
+                      </div>
+                    }
+                  >
+                    <div class="flex items-baseline gap-2">
+                      <span class="font-mono text-2xl font-bold text-text-primary">
+                        {formatBalanceUsd(String(
+                          (parseFloat(spotUsdc()?.total ?? '0') + parseFloat(perpUsdc()?.total ?? '0')).toString()
+                        ))}
+                      </span>
+                      <span class="font-mono text-[10px] uppercase tracking-wider text-text-tertiary">
+                        total
+                      </span>
+                    </div>
+                  </Show>
                   <Show when={isHlAgent() && !liveBal.loading}>
                     <div class="flex gap-4 font-mono text-[10px] text-text-tertiary">
                       <span>Spot <span class="text-text-primary">{spotUsdc() ? formatBalanceUsd(spotUsdc()!.total) : '$0.00'}</span></span>
