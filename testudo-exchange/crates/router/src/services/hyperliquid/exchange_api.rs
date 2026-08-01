@@ -241,8 +241,12 @@ pub fn build_order_request(
 /// Hyperliquid requires a valid `limit_px` even when `isMarket = true`.
 /// The SDK defaults to "0" which is rejected as "Order has invalid price."
 /// Per HL SDK convention: set limit_px = trigger_px for market triggers.
-fn trigger_limit_px(trigger_px: &Decimal, _is_buy: bool) -> String {
-    trigger_px.normalize().to_string()
+fn trigger_limit_px(trigger_px: &Decimal, is_buy: bool) -> String {
+    // ponytail: use trigger_px with 0.1% offset to avoid "Invalid TP/SL price"
+    // when limit_px == trigger_px. Add when HL fixes this server-side.
+    let offset = trigger_px * Decimal::new(1, 3); // 0.1%
+    let limit = if is_buy { trigger_px + offset } else { trigger_px - offset };
+    limit.normalize().to_string()
 }
 
 /// Format a quantity to the correct number of decimal places for Hyperliquid.
