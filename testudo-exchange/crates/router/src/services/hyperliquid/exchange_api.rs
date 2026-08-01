@@ -6,7 +6,9 @@
 // @anchor exchange:router:exchange_api
 // @tags api
 
+use alloy::primitives::{keccak256, Address, B256, U256};
 use alloy::signers::local::PrivateKeySigner;
+use alloy::signers::Signer;
 use async_trait::async_trait;
 use hyperliquid_sdk_rs::{
     types::{
@@ -18,6 +20,7 @@ use hyperliquid_sdk_rs::{
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 use super::auth::{AuthCache, AuthError, AuthMode, HyperliquidAuth};
@@ -145,9 +148,6 @@ impl HyperliquidExchangeApi {
 
     /// Transfer USDC between spot and perp accounts.
     /// `to_perp`: true = spot→perp, false = perp→spot.
-    /// Uses `usd_send` for perp→spot (SDK method that works).
-    /// For spot→perp, uses `spot_transfer_to_perp` with debug logging
-    /// to diagnose the 422.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
@@ -159,18 +159,11 @@ impl HyperliquidExchangeApi {
         let exchange = self.build_exchange(&auth);
 
         if to_perp {
-            // Spot→Perp: usd_class_transfer via EIP-712 typed data signing.
-            // signature_chain_id is hardcoded to 421614 (Arbitrum Sepolia),
-            // matching the Python SDK and official Rust SDK PR #148.
-            let status = exchange
-                .usd_class_transfer(amount, true)
-                .await
-                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
-            let ok = status.is_ok();
-            tracing::info!("HL spot→perp: amount={} ok={}", amount, ok);
-            Ok(ok)
+            // Spot→Perp: direct HTTP call with EIP-712 signing.
+            // Matches Python SDK's usd_class_transfer exactly.
+            self.transfer_usdc_to_perp_raw(&auth, amount).await
         } else {
-            // Perp→Spot: usd_transfer to self.
+            // Perp→Spot: usd_transfer to self (SDK method that works).
             let status = exchange
                 .usd_transfer(auth.signer.address(), amount)
                 .await
@@ -180,6 +173,166 @@ impl HyperliquidExchangeApi {
             Ok(ok)
         }
     }
+
+    /// Spot→Perp transfer via direct HTTP call with manual EIP-712 signing.
+    /// Bypasses the SDK's send_user_action to control the exact payload.
+    async fn transfer_usdc_to_perp_raw(
+        &self,
+        auth: &super::auth::HyperliquidAuth,
+        amount: &str,
+    ) -> Result<bool, ExchangeApiError> {
+        let chain = match self.network {
+            Network::Mainnet => "Mainnet",
+            Network::Testnet => "Testnet",
+        };
+        let exchange_url = match self.network {
+            Network::Mainnet => "https://api.hyperliquid.xyz/exchange",
+            Network::Testnet => "https://api.hyperliquid-testnet.xyz/exchange",
+        };
+
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        let signature_chain_id: u64 = 421614; // Arbitrum Sepolia, always
+
+        // Build the action JSON (exactly like Python SDK)
+        let action = serde_json::json!({
+            "type": "usdClassTransfer",
+            "hyperliquidChain": chain,
+            "signatureChainId": format!("0x{:x}", signature_chain_id),
+            "amount": amount,
+            "toPerp": true,
+            "nonce": nonce,
+        });
+
+        // Compute EIP-712 signing hash for HyperliquidTransaction:UsdClassTransfer
+        let signing_hash = eip712_usd_class_transfer_hash(
+            chain,
+            amount,
+            true,
+            nonce,
+            signature_chain_id,
+        );
+
+        // Sign with the agent/user key
+        let sig = auth.signer.sign_hash(&signing_hash).await.map_err(|e| {
+            ExchangeApiError::Internal(format!("Signing failed: {}", e))
+        })?;
+
+        let r = format!("0x{:064x}", sig.r());
+        let s = format!("0x{:064x}", sig.s());
+        let v = sig.v().to_u64();
+        // alloy's signature v is 0 or 1, but Ethereum expects 27 or 28
+        let v = if v <= 1 { v as u8 + 27 } else { v as u8 };
+
+        let payload = serde_json::json!({
+            "action": action,
+            "nonce": nonce,
+            "signature": {
+                "r": r,
+                "s": s,
+                "v": v,
+            },
+        });
+
+        tracing::info!(
+            payload = %serde_json::to_string_pretty(&payload).unwrap_or_default(),
+            "HL spot→perp raw request"
+        );
+
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(exchange_url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| ExchangeApiError::Internal(format!("HTTP error: {}", e)))?;
+
+        let status_code = resp.status();
+        let body: serde_json::Value = resp
+            .json()
+            .await
+            .unwrap_or_else(|_| serde_json::json!({"error": "failed to parse body"}));
+
+        tracing::info!(
+            status = %status_code,
+            body = %body,
+            "HL spot→perp raw response"
+        );
+
+        if status_code.is_success() {
+            let ok = body.get("status").and_then(|s| s.as_str()) == Some("ok");
+            if !ok {
+                // Some successful HTTP responses still have status "err"
+                let msg = body
+                    .get("response")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("unknown");
+                tracing::warn!("HL spot→perp rejected: {}", msg);
+            }
+            Ok(ok)
+        } else {
+            let body_str = serde_json::to_string(&body).unwrap_or_default();
+            Err(ExchangeApiError::Internal(format!(
+                "HTTP {}: {}",
+                status_code, body_str
+            )))
+        }
+    }
+}
+
+/// Compute the EIP-712 signing hash for `HyperliquidTransaction:UsdClassTransfer`.
+///
+/// Matches the Python SDK's `sign_usd_class_transfer_action` exactly.
+fn eip712_usd_class_transfer_hash(
+    hyperliquid_chain: &str,
+    amount: &str,
+    to_perp: bool,
+    nonce: u64,
+    signature_chain_id: u64,
+) -> B256 {
+    // Domain: HyperliquidSignTransaction
+    let domain_type_hash = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+            .as_bytes(),
+    );
+    let domain_name_hash = keccak256("HyperliquidSignTransaction".as_bytes());
+    let domain_version_hash = keccak256("1".as_bytes());
+    let mut domain_encoded = Vec::new();
+    domain_encoded.extend_from_slice(domain_type_hash.as_ref());
+    domain_encoded.extend_from_slice(domain_name_hash.as_ref());
+    domain_encoded.extend_from_slice(domain_version_hash.as_ref());
+    domain_encoded.extend_from_slice(&U256::from(signature_chain_id).to_be_bytes::<32>());
+    domain_encoded.extend_from_slice(&[0u8; 32]); // verifyingContract = address(0)
+    let domain_separator = keccak256(&domain_encoded);
+
+    // Struct type: HyperliquidTransaction:UsdClassTransfer
+    let type_hash = keccak256(
+        "HyperliquidTransaction:UsdClassTransfer(string hyperliquidChain,string amount,bool toPerp,uint64 nonce)"
+            .as_bytes(),
+    );
+
+    // Encode struct fields
+    let chain_hash = keccak256(hyperliquid_chain.as_bytes());
+    let amount_hash = keccak256(amount.as_bytes());
+    let to_perp_encoded = U256::from(if to_perp { 1u64 } else { 0u64 }).to_be_bytes::<32>();
+    let nonce_encoded = U256::from(nonce).to_be_bytes::<32>();
+
+    let mut struct_encoded = Vec::new();
+    struct_encoded.extend_from_slice(type_hash.as_ref());
+    struct_encoded.extend_from_slice(chain_hash.as_ref());
+    struct_encoded.extend_from_slice(amount_hash.as_ref());
+    struct_encoded.extend_from_slice(&to_perp_encoded);
+    struct_encoded.extend_from_slice(&nonce_encoded);
+    let struct_hash = keccak256(&struct_encoded);
+
+    // Final: \x19\x01 || domain_separator || struct_hash
+    let mut final_hash = vec![0x19u8, 0x01u8];
+    final_hash.extend_from_slice(domain_separator.as_ref());
+    final_hash.extend_from_slice(struct_hash.as_ref());
+    keccak256(&final_hash)
 }
 
 /// Generate a deterministic CLOID (UUID v5) from a client order ID string.
