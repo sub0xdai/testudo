@@ -1,7 +1,7 @@
 /** @anchor ui:journal:ExchangeCard
  * @tags ui */
 
-import { createSignal, createEffect, onCleanup, For, Show } from 'solid-js'
+import { createSignal, createEffect, createResource, onCleanup, For, Show } from 'solid-js'
 import type {
   ExchangeAccount,
   TestConnectionResult,
@@ -9,6 +9,7 @@ import type {
   VenueMargin,
   PositionEntry,
 } from '../../api/client'
+import { exchangeApi } from '../../api/client'
 import { formatCurrency, formatNumber, formatPrice, pnlColor } from '../../lib/formatters'
 
 interface KebabMenuProps {
@@ -230,6 +231,32 @@ export function ExchangeCard(props: ExchangeCardProps) {
     props.snapshot?.positions_by_venue.find((v) => v.exchange_id === props.account.id)
       ?.positions ?? []
 
+  // Transfer state (Hyperliquid only)
+  const isHl = () => props.account.exchange_name === 'hyperliquid' && isAgentWallet();
+  const [liveBal] = createResource(
+    () => isHl() ? props.account.id : null,
+    (id) => exchangeApi.fetchBalance(id),
+  );
+  const spotEntry = () => liveBal()?.balances.find(b => b.asset === 'USDC (Spot)');
+  const perpEntry = () => liveBal()?.balances.find(b => b.asset === 'USDC (Perp)');
+  const [trAmount, setTrAmount] = createSignal('');
+  const [trPending, setTrPending] = createSignal(false);
+  const [trMsg, setTrMsg] = createSignal('');
+
+  async function doTransfer(toPerp: boolean) {
+    const amt = trAmount().trim();
+    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) { setTrMsg('Invalid amount'); return; }
+    setTrPending(true); setTrMsg('');
+    try {
+      await exchangeApi.transferFunds(props.account.id, amt, toPerp);
+      setTrAmount('');
+      setTrMsg(toPerp ? 'Sent to Perp' : 'Sent to Spot');
+    } catch (e: any) {
+      setTrMsg(e?.message ?? 'Failed');
+    }
+    setTrPending(false);
+  }
+
   return (
     <div class={`border ${
       needsReauth()
@@ -318,6 +345,45 @@ export function ExchangeCard(props: ExchangeCardProps) {
                   <div class="font-mono text-[10px] text-text-tertiary tracking-wider uppercase">
                     {formatBalanceUsd(m().free_usd)} free · {formatBalanceUsd(m().used_usd)} used
                   </div>
+
+                  {/* Spot/Perp transfer — Hyperliquid agent wallets */}
+                  <Show when={isHl() && !liveBal.loading}>
+                    <div class="mt-2 pt-2 border-t border-container-border/30 space-y-1">
+                      <Show when={spotEntry()}>
+                        <div class="flex justify-between text-[10px] font-mono">
+                          <span class="text-text-dim">Spot</span>
+                          <span class="text-signal-green">{formatBalanceUsd(spotEntry()!.total)}</span>
+                        </div>
+                      </Show>
+                      <Show when={perpEntry()}>
+                        <div class="flex justify-between text-[10px] font-mono">
+                          <span class="text-text-dim">Perp</span>
+                          <span class="text-signal-green">{formatBalanceUsd(perpEntry()!.total)}</span>
+                        </div>
+                      </Show>
+                      <div class="flex gap-1 mt-1">
+                        <input
+                          type="number" step="0.01" min="0" placeholder="USDC"
+                          value={trAmount()}
+                          onInput={(e) => setTrAmount(e.currentTarget.value)}
+                          class="flex-1 px-2 py-1 text-[10px] font-mono bg-main-bg border border-container-border text-text-primary"
+                        />
+                        <button onClick={() => doTransfer(true)} disabled={trPending()}
+                          class="px-2 py-1 text-[9px] font-mono font-bold border border-text-primary/30 text-text-primary hover:bg-text-primary/10 disabled:opacity-50"
+                        >
+                          →Perp
+                        </button>
+                        <button onClick={() => doTransfer(false)} disabled={trPending()}
+                          class="px-2 py-1 text-[9px] font-mono font-bold border border-text-primary/30 text-text-primary hover:bg-text-primary/10 disabled:opacity-50"
+                        >
+                          →Spot
+                        </button>
+                      </div>
+                      <Show when={trMsg()}>
+                        <p class="text-[9px] font-mono text-text-dim">{trMsg()}</p>
+                      </Show>
+                    </div>
+                  </Show>
                 </div>
               )}
             </Show>
