@@ -242,11 +242,11 @@ pub fn build_order_request(
 /// The SDK defaults to "0" which is rejected as "Order has invalid price."
 /// Per HL SDK convention: set limit_px = trigger_px for market triggers.
 fn trigger_limit_px(trigger_px: &Decimal, is_buy: bool) -> String {
-    // Market trigger orders need limit_px far beyond trigger_px to avoid
-    // HL rejection. Use 5% margin — worst acceptable price for execution.
+    // Market trigger orders: set limit price far beyond trigger (5% margin)
+    // to ensure execution. Round to 2 decimals to match HL price format.
     let margin = trigger_px * Decimal::new(5, 2); // 5%
     let limit = if is_buy { trigger_px + margin } else { trigger_px - margin };
-    limit.normalize().to_string()
+    limit.round_dp(2).normalize().to_string()
 }
 
 /// Format a quantity to the correct number of decimal places for Hyperliquid.
@@ -447,20 +447,9 @@ impl ExchangeApi for HyperliquidExchangeApi {
         // Extract OID from response
         let order_id = if let Some(oid) = extract_order_id(statuses) {
             oid.to_string()
-        } else if let Some(cloid_uuid) = cloid {
-            // For trigger orders (WaitingForTrigger), query open orders to find OID
-            match self.find_oid_by_cloid(&auth, cloid_uuid).await {
-                Ok(oid) => oid.to_string(),
-                Err(_) => {
-                    // Fallback: return CLOID hex as ID
-                    format!("cloid:{:032x}", cloid_uuid.as_u128())
-                }
-            }
         } else {
-            // FR-7: No OID extracted and no CLOID — check for errors in statuses.
-            // into_result() already confirmed the response envelope was OK,
-            // so if there's no Error status, the exchange accepted the order
-            // (e.g. atomically-filled market close, WaitingForFill, Success).
+            // Check for error statuses before falling back to CLOID lookup.
+            // Without this, rejected orders silently appear as "placed".
             let error_msg = statuses.iter().find_map(|s| {
                 if let ExchangeDataStatus::Error(msg) = s {
                     Some(msg.clone())
@@ -471,7 +460,16 @@ impl ExchangeApi for HyperliquidExchangeApi {
             if let Some(msg) = error_msg {
                 return Err(ExchangeApiError::Exchange(msg));
             }
-            "success".to_string()
+            if let Some(cloid_uuid) = cloid {
+                match self.find_oid_by_cloid(&auth, cloid_uuid).await {
+                    Ok(oid) => oid.to_string(),
+                    Err(_) => {
+                        format!("cloid:{:032x}", cloid_uuid.as_u128())
+                    }
+                }
+            } else {
+                "success".to_string()
+            }
         };
 
         let avg_price = extract_avg_price(statuses);
