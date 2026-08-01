@@ -159,22 +159,15 @@ impl HyperliquidExchangeApi {
         let exchange = self.build_exchange(&auth);
 
         if to_perp {
-            // Spot→Perp: L1 spotUser action with ClassTransfer.
-            // SDK's send_l1_action signs via phantom agent + action hash.
-            let dec: Decimal = amount.parse().map_err(|e| {
-                ExchangeApiError::Internal(format!("Invalid amount: {}", e))
-            })?;
-            let usdc: u64 = (dec * Decimal::from(1_000_000u64))
-                .trunc()
-                .to_string()
-                .parse::<u64>()
-                .unwrap_or(0);
+            // Spot→Perp: usd_class_transfer via EIP-712 typed data signing.
+            // signature_chain_id is hardcoded to 421614 (Arbitrum Sepolia),
+            // matching the Python SDK and official Rust SDK PR #148.
             let status = exchange
-                .spot_transfer_to_perp(usdc, true)
+                .usd_class_transfer(amount, true)
                 .await
                 .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
             let ok = status.is_ok();
-            tracing::info!("HL spot→perp: usdc={} ok={}", usdc, ok);
+            tracing::info!("HL spot→perp: amount={} ok={}", amount, ok);
             Ok(ok)
         } else {
             // Perp→Spot: usd_transfer to self.
