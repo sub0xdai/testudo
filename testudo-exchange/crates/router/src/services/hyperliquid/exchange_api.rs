@@ -145,9 +145,6 @@ impl HyperliquidExchangeApi {
 
     /// Transfer USDC between spot and perp accounts.
     /// `to_perp`: true = spot→perp, false = perp→spot.
-    /// Uses `usd_send` for perp→spot (SDK method that works).
-    /// For spot→perp, uses `spot_transfer_to_perp` with debug logging
-    /// to diagnose the 422.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
@@ -159,30 +156,16 @@ impl HyperliquidExchangeApi {
         let exchange = self.build_exchange(&auth);
 
         if to_perp {
-            // Spot→Perp: try spot_transfer_to_perp with debug logging.
-            // The 422 is caused by missing nonce/chain fields in action body.
-            let dec: Decimal = amount.parse().map_err(|e| {
-                ExchangeApiError::Internal(format!("Invalid amount: {}", e))
-            })?;
-            let usdc: u64 = (dec * Decimal::from(1_000_000u64))
-                .trunc()
-                .to_string()
-                .parse::<u64>()
-                .unwrap_or(0);
-
-            tracing::info!(
-                "HL spot→perp attempt: usdc={} (from amount={})",
-                usdc, amount
-            );
+            // Spot→Perp: usd_class_transfer uses `amount`/`toPerp` fields.
+            // spot_transfer_to_perp is broken (sends `usdSize` instead of `usdc`).
             let status = exchange
-                .spot_transfer_to_perp(usdc, true)
+                .usd_class_transfer(amount, true)
                 .await
                 .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
             let ok = status.is_ok();
-            tracing::info!("HL spot→perp result: ok={} status={:?}", ok, status);
+            tracing::info!("HL spot→perp: ok={}", ok);
             Ok(ok)
         } else {
-            // Perp→Spot: usd_transfer to self.
             let status = exchange
                 .usd_transfer(auth.signer.address(), amount)
                 .await
