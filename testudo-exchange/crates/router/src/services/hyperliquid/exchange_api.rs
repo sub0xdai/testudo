@@ -242,10 +242,10 @@ pub fn build_order_request(
 /// The SDK defaults to "0" which is rejected as "Order has invalid price."
 /// Per HL SDK convention: set limit_px = trigger_px for market triggers.
 fn trigger_limit_px(trigger_px: &Decimal, is_buy: bool) -> String {
-    // ponytail: use trigger_px with 0.1% offset to avoid "Invalid TP/SL price"
-    // when limit_px == trigger_px. Add when HL fixes this server-side.
-    let offset = trigger_px * Decimal::new(1, 3); // 0.1%
-    let limit = if is_buy { trigger_px + offset } else { trigger_px - offset };
+    // Market trigger orders need limit_px far beyond trigger_px to avoid
+    // HL rejection. Use 5% margin — worst acceptable price for execution.
+    let margin = trigger_px * Decimal::new(5, 2); // 5%
+    let limit = if is_buy { trigger_px + margin } else { trigger_px - margin };
     limit.normalize().to_string()
 }
 
