@@ -219,6 +219,24 @@ pub struct RevokeAgentResponse {
     pub message: String,
 }
 
+/// Request to transfer USDC between spot and perp on Hyperliquid.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransferRequest {
+    /// Amount of USDC to transfer (string for Decimal precision)
+    pub amount: String,
+    /// true = spot → perp, false = perp → spot
+    pub to_perp: bool,
+}
+
+/// Response from a USDC transfer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransferResponse {
+    /// Whether the transfer was successful
+    pub success: bool,
+    /// Human-readable status
+    pub message: String,
+}
+
 /// Request to update exchange account settings
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct UpdateExchangeAccountRequest {

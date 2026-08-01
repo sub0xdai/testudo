@@ -6,6 +6,7 @@ use crate::repositories::exchange_account::ExchangeAccountRepository;
 use crate::services::calibration::CalibrationEngine;
 use crate::services::coach::CoachService;
 use crate::services::hyperliquid::auth::AuthCache;
+use crate::services::hyperliquid::exchange_api::HyperliquidExchangeApi;
 use crate::services::hyperliquid::universe::AssetUniverse;
 use crate::services::{CexClient, ExecutionService};
 use common_utils::adapters::CredentialValidator;
@@ -44,6 +45,8 @@ pub struct AppState {
     pub hl_http_client: reqwest::Client,
     /// FIX-07: Hyperliquid network resolved once at startup
     pub hl_network: Network,
+    /// HL-03: Native Hyperliquid exchange API for trading + transfers
+    pub hl_exchange_api: Option<Arc<HyperliquidExchangeApi>>,
     /// JNL-12 FR-7: Dedicated pool for journal analytics queries
     pub analytics_pool: sqlx::Pool<sqlx::Postgres>,
     /// RSK-03: Weekly AI trade coach orchestrator.

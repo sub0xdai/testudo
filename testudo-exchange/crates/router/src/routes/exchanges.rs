@@ -22,6 +22,7 @@ use crate::{
             ExchangeAccountRequest, ExchangeAccountResponse, ExchangeBalanceEntry,
             ExchangeBalanceResponse, ExchangeListResponse, InitAgentWalletRequest,
             InitAgentWalletResponse, MigrateToAgentWalletRequest, MigrateToAgentWalletResponse,
+            TransferRequest, TransferResponse,
             RevokeAgentResponse, TestConnectionResponse,
         },
     },
@@ -574,20 +575,47 @@ async fn get_hyperliquid_balance(
         })
         .unwrap_or_default();
 
-    // USDC balance entry: sum perp + spot
+    // USDC balance entry: perp + spot as separate entries so the UI can show both
+    let perp_free = perp_value - perp_margin;
+    let spot_free = spot_total - spot_hold;
+
+    let mut balances = Vec::new();
+
+    // Perp entry
+    if perp_value > Decimal::ZERO || perp_margin > Decimal::ZERO {
+        balances.push(ExchangeBalanceEntry {
+            asset: "USDC (Perp)".to_string(),
+            total: perp_value.to_string(),
+            free: perp_free.to_string(),
+            used: perp_margin.to_string(),
+        });
+    }
+
+    // Spot entry
+    if spot_total > Decimal::ZERO {
+        balances.push(ExchangeBalanceEntry {
+            asset: "USDC (Spot)".to_string(),
+            total: spot_total.to_string(),
+            free: spot_free.to_string(),
+            used: spot_hold.to_string(),
+        });
+    }
+
+    // Always include a total row for backward compat
     let total_usdc = perp_value + spot_total;
-    let free_usdc = total_usdc - perp_margin - spot_hold;
+    let free_usdc = perp_free + spot_free;
     let used_usdc = perp_margin + spot_hold;
+    balances.push(ExchangeBalanceEntry {
+        asset: "USDC".to_string(),
+        total: total_usdc.to_string(),
+        free: free_usdc.to_string(),
+        used: used_usdc.to_string(),
+    });
 
     let response = ExchangeBalanceResponse {
         account_id,
         exchange_name: exchanges::HYPERLIQUID.to_string(),
-        balances: vec![ExchangeBalanceEntry {
-            asset: "USDC".to_string(),
-            total: total_usdc.to_string(),
-            free: free_usdc.to_string(),
-            used: used_usdc.to_string(),
-        }],
+        balances,
         fetched_at: chrono::Utc::now(),
     };
 
@@ -600,6 +628,43 @@ async fn get_hyperliquid_balance(
         total_usdc
     );
     Ok(HttpResponse::Ok().json(response))
+}
+
+/// POST /api/v1/exchanges/accounts/{id}/transfer
+/// Transfer USDC between Hyperliquid spot and perp accounts.
+pub async fn transfer_funds(
+    account_id: web::Path<Uuid>,
+    user: AuthenticatedUser,
+    app_state: web::Data<AppState>,
+    req: web::Json<TransferRequest>,
+) -> Result<HttpResponse> {
+    let account_id = account_id.into_inner();
+    let amount = req.amount.trim();
+
+    if amount.is_empty() || amount.parse::<Decimal>().is_err() {
+        return Ok(HttpResponse::BadRequest().json(ErrorResponse::new(
+            "invalid_amount",
+            "Amount must be a valid decimal string",
+        )));
+    }
+
+    let hl_api = app_state.hl_exchange_api.as_ref().ok_or_else(|| {
+        actix_web::error::ErrorServiceUnavailable("Hyperliquid not enabled")
+    })?;
+
+    let status = hl_api
+        .transfer_usdc(user.user_id, amount, req.to_perp)
+        .await
+        .map_err(|e| {
+            tracing::error!("HL transfer failed: {}", e);
+            actix_web::error::ErrorInternalServerError(format!("Transfer failed: {}", e))
+        })?;
+
+    let direction = if req.to_perp { "spot → perp" } else { "perp → spot" };
+    Ok(HttpResponse::Ok().json(TransferResponse {
+        success: true,
+        message: format!("Transferred {} USDC ({})", amount, direction),
+    }))
 }
 
 /// Fetch Hyperliquid positions and open orders via native info API.

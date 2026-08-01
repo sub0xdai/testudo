@@ -392,6 +392,21 @@ async fn main() -> std::io::Result<()> {
         None
     };
 
+    // HL-05: Build native Hyperliquid exchange API (if HL is enabled)
+    let hl_exchange_api: Option<Arc<services::hyperliquid::HyperliquidExchangeApi>> =
+        if let (Some(universe), Some(auth_cache)) =
+            (hl_universe.as_ref(), hl_auth_cache.as_ref())
+        {
+            Some(Arc::new(services::hyperliquid::HyperliquidExchangeApi::new(
+                universe.clone(),
+                auth_cache.clone(),
+                exchange_account_repo.clone(),
+                hl_network,
+            )))
+        } else {
+            None
+        };
+
     // RSK-03: Build the weekly AI trade coach pipeline.
     // Narrator uses an OpenAI-compatible endpoint so DeepSeek/GLM/OpenRouter
     // all work via config. API key is fetched from env (fail-fast in prod).
@@ -481,6 +496,7 @@ async fn main() -> std::io::Result<()> {
         hl_universe: hl_universe.clone(),
         hl_http_client: hl_http_client.clone(),
         hl_network,
+        hl_exchange_api: hl_exchange_api.clone(),
         analytics_pool,
         cex_sandbox: sandbox,
         coach_service: coach_service.clone(),
@@ -515,35 +531,19 @@ async fn main() -> std::io::Result<()> {
 
     // HL-05: Build the live exchange API — routing, HL-only, or CEX-only
     let live_exchange_api: Option<Arc<dyn services::ExchangeApi>> =
-        if let (Some(cex_api), Some(universe), Some(auth_cache)) =
-            (cex_exchange_api.as_ref(), hl_universe.as_ref(), hl_auth_cache.as_ref())
+        if let (Some(cex_api), Some(hl_api)) =
+            (cex_exchange_api.as_ref(), hl_exchange_api.as_ref())
         {
             // Both CEX sidecar and Hyperliquid available — use routing layer
-            let hl_api = Arc::new(services::hyperliquid::HyperliquidExchangeApi::new(
-                universe.clone(),
-                auth_cache.clone(),
-                exchange_account_repo.clone(),
-                hl_network,
-            ));
             let routing_api = Arc::new(services::RoutingExchangeApi::new(
                 cex_api.clone(),
-                hl_api,
+                hl_api.clone(),
                 exchange_account_repo.clone(),
             ));
             tracing::info!("RoutingExchangeApi enabled (Hyperliquid + CEX sidecar)");
             Some(routing_api)
-        } else if let (Some(universe), Some(auth_cache)) =
-            (hl_universe.as_ref(), hl_auth_cache.as_ref())
-        {
-            // Hyperliquid only — no CEX sidecar needed
-            let hl_api = Arc::new(services::hyperliquid::HyperliquidExchangeApi::new(
-                universe.clone(),
-                auth_cache.clone(),
-                exchange_account_repo.clone(),
-                hl_network,
-            ));
-            tracing::info!("HyperliquidExchangeApi enabled (Hyperliquid only, no CEX sidecar)");
-            Some(hl_api)
+        } else if let Some(hl_api) = hl_exchange_api.as_ref() {
+            Some(hl_api.clone())
         } else {
             cex_exchange_api.clone().map(|api| api as Arc<dyn services::ExchangeApi>)
         };
@@ -1174,6 +1174,10 @@ async fn main() -> std::io::Result<()> {
                                         "/{id}/balance",
                                         web::get().to(exchanges::get_exchange_balance),
                                     ) // GET /exchanges/accounts/{id}/balance (EXT-17)
+                                    .route(
+                                        "/{id}/transfer",
+                                        web::post().to(exchanges::transfer_funds),
+                                    ) // POST /exchanges/accounts/{id}/transfer (spot↔perp)
                                     .route(
                                         "/{id}/positions",
                                         web::get().to(exchanges::get_exchange_positions),

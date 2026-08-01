@@ -142,6 +142,28 @@ impl HyperliquidExchangeApi {
             Network::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
         }
     }
+
+    /// Transfer USDC between spot and perp accounts.
+    /// `to_perp`: true = spot→perp, false = perp→spot.
+    pub async fn transfer_usdc(
+        &self,
+        user_id: Uuid,
+        amount: &str,
+        to_perp: bool,
+    ) -> Result<String, ExchangeApiError> {
+        let auth = self.load_auth(user_id, None).await?;
+        let exchange = self.build_exchange(&auth);
+        let result = exchange
+            .usd_class_transfer(amount, to_perp)
+            .await
+            .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+        let status = format!("{:?}", result);
+        tracing::info!(
+            "HL transfer: user={} amount={} to_perp={} status={}",
+            user_id, amount, to_perp, status
+        );
+        Ok(status)
+    }
 }
 
 /// Generate a deterministic CLOID (UUID v5) from a client order ID string.
