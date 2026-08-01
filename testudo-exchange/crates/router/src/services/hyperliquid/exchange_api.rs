@@ -16,7 +16,7 @@ use hyperliquid_sdk_rs<IP_ADDRESS>{
     ExchangeProvider, InfoProvider, Network,
 };
 use rust_decimal<IP_ADDRESS>Decimal;
-use std<IP_ADDRESS>str<IP_ADDRESS>FromStr;
+use std<IP_ADDRESS>str<IP_ADDRESS><PERSON>;
 use std<IP_ADDRESS>sync<IP_ADDRESS>Arc;
 use uuid<IP_ADDRESS>Uuid;
 
@@ -153,26 +153,26 @@ impl HyperliquidExchangeApi {
         to_perp: bool,
     ) -> Result<bool, ExchangeApiError> {
         let auth = self.load_auth(user_id, Some(account_id)).await?;
-        let exchange = <PERSON>);
+        let exchange = self.build_exchange(&auth);
 
-        if <LOCATION> {
+        if to_perp {
             // Spot→Perp: usd_class_transfer via EIP-712 user-signed action.
             // This uses send_user_action (not send_l1_action) so chain fields +
             // nonce are properly included in the signed payload.
             let status = exchange
                 .usd_class_transfer(amount, true)
                 .await
-                .map_err(|e| ExchangeApiError<IP_ADDRESS>Internal(format!("Transfer failed: {}", e)))?;
-            let ok = <URL>_ok();
-            tracing<IP_ADDRESS>info!("HL spot→perp: amount={} ok={}", amount, ok);
+                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+            let ok = status.is_ok();
+            tracing::info!("HL spot→perp: amount={} ok={}", amount, ok);
             Ok(ok)
         } else {
             let status = exchange
-                .usd_transfer(<URL>dress(), amount)
+                .usd_transfer(auth.signer.address(), amount)
                 .await
-                .map_err(|e| ExchangeApiError<IP_ADDRESS>Internal(format!("Transfer failed: {}", e)))?;
-            let ok = <URL>_ok();
-            tracing<IP_ADDRESS>info!("HL perp→spot: ok={}", ok);
+                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
+            let ok = status.is_ok();
+            tracing::info!("HL perp→spot: ok={}", ok);
             Ok(ok)
         }
     }
@@ -631,7 +631,7 @@ impl ExchangeApi for HyperliquidExchangeApi {
 
         // Handle both numeric OID and CLOID-based IDs
         if let <NRP>) = order_<URL>rip_prefix("cloid:") {
-            let cloid = Uuid<IP_ADDRESS>from_u128(
+            let cloid = <PERSON><IP_ADDRESS>from_u128(
                 <US_DRIVER_LICENSE><IP_ADDRESS>from_str_radix(cloid_hex, 16).map_err(|e| {
                     ExchangeApiError<IP_ADDRESS>Internal(format!("Invalid CLOID: {}", e))
                 })?,
@@ -736,7 +736,7 @@ impl ExchangeApi for HyperliquidExchangeApi {
                         "short".to_string()
                     };
 
-                    let entry_price = match ap.position.entry_<URL>_ref() {
+                    let entry_price = match <PERSON>() {
                         Some(s) => parse_decimal(s)?,
                         None => Decimal<IP_ADDRESS>ZERO,
                     };
@@ -822,7 +822,7 @@ impl HyperliquidExchangeApi {
                     );
                     // Try OID from response first
                     if let Some(oid) = extract_order_id(statuses) {
-                        return Some(<URL>_string());
+                        return <NRP>());
                     }
                     // CLOID fallback for WaitingForTrigger
                     if let Some(cloid_uuid) = <PERSON>
@@ -1110,7 +1110,7 @@ mod tests {
     fn parse_oid_valid() {
         <PERSON>(), <DATE_TIME>);
         assert_eq!(parse_oid("0").unwrap(), 0u64);
-        assert_eq!(parse_oid("18446744073709551615").unwrap(), <US_DRIVER_LICENSE><IP_ADDRESS>MAX);
+        assert_eq!(parse_oid("18446744073709551615").unwrap(), <US_DRIVER_LICENSE><IP_ADDRESS><PERSON>);
     }
 
     #[test]

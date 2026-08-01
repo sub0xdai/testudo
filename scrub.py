@@ -22,13 +22,16 @@ def scrub(path):
     except Exception:
         return False
 
-    analyzer = AnalyzerEngine()
-    analyzer.registry.add_recognizer(
+    # Create analyzer without built-in recognizers (they match code identifiers as PII).
+    from presidio_analyzer import RecognizerRegistry
+    registry = RecognizerRegistry()
+    registry.add_recognizer(
         PatternRecognizer(supported_entity="DB_KEY", patterns=DB_KEY)
     )
-    analyzer.registry.add_recognizer(
+    registry.add_recognizer(
         PatternRecognizer(supported_entity="DEV_ID", patterns=DEV_ID)
     )
+    analyzer = AnalyzerEngine(registry=registry)
 
     results = analyzer.analyze(text=text, language="en")
     if not results:
