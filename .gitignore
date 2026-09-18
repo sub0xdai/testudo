@@ -113,3 +113,26 @@ lorentzian-bot.md
 CLAUDE.md
 tigerbeetle
 .wrangler/
+# Lab generated artifacts
+/AGENTS.md
+/CLAUDE.md
+/CLAUDE.local.md
+/.prime/
+/.agents/skills/
+/.claude/skills/
+/.cursor/skills/
+/.factory/skills/
+/.opencode/skills/
+/.pi/skills/
+/outputs/
+/prime-rl/
+/environments/AGENTS.md
+/environments/*/outputs/
+/environments/*/dist/
+/environments/*/*.egg-info/
+/environments/*/__pycache__/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
