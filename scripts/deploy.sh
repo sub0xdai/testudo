@@ -38,11 +38,34 @@ echo ""
 echo "[2/6] Building Rust backend..."
 cd "$TESTUDO_DIR/testudo-exchange"
 
-# Patch SDK: ClassTransfer.usd_size → usdc (Hyperliquid expects "usdc" not "usdSize")
-SDK_ACTIONS=$(find /root/.cargo/registry/src -path '*/hyperliquid-sdk-rs-*/src/types/actions.rs' 2>/dev/null | head -1)
-if [ -n "$SDK_ACTIONS" ]; then
-  sed -i 's/pub usd_size: u64,/pub usdc: u64,/' "$SDK_ACTIONS"
+# Patch SDK: ClassTransfer field usd_size -> usdc.
+#
+# Hyperliquid expects the wire field "usdc", but the struct derives camelCase
+# from `usd_size`, so it sends "usdSize" and the API rejects the action. The
+# rename breaks the struct's own construction site, which builds it with
+# field-init shorthand, so the field and that call site have to move together.
+# Renaming only the field is a hard compile error (E0560), not a silent bug.
+SDK_ROOT=$(find /root/.cargo/registry/src -maxdepth 2 -type d \
+  -name 'hyperliquid-sdk-rs-*' | sort | head -1)
+if [ -z "$SDK_ROOT" ]; then
+  echo "  x hyperliquid-sdk-rs not found in the cargo registry; cannot patch"
+  exit 1
 fi
+SDK_ACTIONS="$SDK_ROOT/src/types/actions.rs"
+SDK_EXCHANGE="$SDK_ROOT/src/providers/exchange/mod.rs"
+
+sed -i 's/pub usd_size: u64,/pub usdc: u64,/' "$SDK_ACTIONS"
+sed -i 's/ClassTransfer { usd_size, to_perp }/ClassTransfer { usdc: usd_size, to_perp }/' \
+  "$SDK_EXCHANGE"
+
+# Verify both halves. A silent no-op (SDK version bump, registry path change)
+# would otherwise surface as a confusing compile error, or worse as a build
+# that puts "usdSize" on the wire and fails at trade time.
+grep -q 'pub usdc: u64,' "$SDK_ACTIONS" \
+  || { echo "  x usdc field rename did not apply"; exit 1; }
+grep -q 'ClassTransfer { usdc: usd_size, to_perp }' "$SDK_EXCHANGE" \
+  || { echo "  x ClassTransfer patch did not apply"; exit 1; }
+echo "  > SDK patched: ClassTransfer.usd_size -> usdc (field + call site)"
 
 find crates -name "*.rs" -exec touch {} + 2>/dev/null || true  # bust cargo cache after git pull
 cargo build --release 2>&1 | tail -3
