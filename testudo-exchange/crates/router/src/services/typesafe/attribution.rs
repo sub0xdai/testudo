@@ -98,6 +98,53 @@ const NOVEL_TAG_RUBRIC: &str = "The note does not place this trade on a listed s
 // Stored shape
 // ─────────────────────────────────────────────────────────────────────────
 
+/// What asked for this attribution.
+///
+/// Recorded in the audit row so a sweep and a trader's note save stay
+/// distinguishable in the log: the two differ in cost and in what a failure
+/// means, and a log that cannot tell them apart cannot answer either question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttributionTrigger {
+    /// The trader saved a note.
+    NoteSave,
+    /// The backlog sweeper picked the row up.
+    Sweep,
+}
+
+impl AttributionTrigger {
+    fn as_db_str(self) -> &'static str {
+        match self {
+            Self::NoteSave => "note_save",
+            Self::Sweep => "sweep",
+        }
+    }
+}
+
+/// What to do with a failed attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FailureDisposition {
+    /// Leave the row at `not_attempted` so it is retried later. The attempt is
+    /// still logged.
+    RetryLater,
+    /// Mark the row `failed`. Another attempt cannot help.
+    GiveUp,
+}
+
+/// Classifies a failure.
+///
+/// This is the difference between a transient outage costing nothing and a
+/// transient outage costing attribution permanently. A timeout, a 429, an
+/// overload, or a dropped connection says nothing about whether the judgement
+/// is answerable, so the work stays queued. Only a rejected credential or a
+/// malformed request is terminal.
+fn failure_disposition(err: &TypeSafeError) -> FailureDisposition {
+    if err.is_retryable() {
+        FailureDisposition::RetryLater
+    } else {
+        FailureDisposition::GiveUp
+    }
+}
+
 /// Discriminant for the `judgment_*` columns, mirrored by a CHECK constraint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttributionStatus {
@@ -419,15 +466,21 @@ pub async fn attribute_note(
     client: &dyn SystemOneClient,
     context: &NoteContext,
     candidates: &[TagCandidate],
+    trigger: AttributionTrigger,
 ) -> Result<Attribution, sqlx::Error> {
     let attribution = decide_attribution(client, context, candidates).await;
 
     match &attribution {
         Attribution::Attributed { stored, audit } => {
-            persist_attributed(pool, context, stored, audit).await?;
+            persist_attributed(pool, context, stored, audit, trigger).await?;
         }
         Attribution::NoNote => persist_status(pool, context, AttributionStatus::NoNote).await?,
-        Attribution::Failed(err) => persist_failure(pool, context, err).await?,
+        Attribution::Failed(err) => match failure_disposition(err) {
+            FailureDisposition::RetryLater => {
+                persist_retry_later(pool, context, err, trigger).await?
+            }
+            FailureDisposition::GiveUp => persist_give_up(pool, context, err, trigger).await?,
+        },
     }
 
     Ok(attribution)
@@ -466,6 +519,7 @@ async fn persist_attributed(
     context: &NoteContext,
     stored: &NoteAttribution,
     audit: &AttributionAudit,
+    trigger: AttributionTrigger,
 ) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
 
@@ -493,23 +547,45 @@ async fn persist_attributed(
         "kind": "note_attribution",
         "trade_id": context.id,
         "status": AttributionStatus::Attributed.as_db_str(),
+        "trigger": trigger.as_db_str(),
         "model": audit.model,
         "usage": audit.usage,
         "answers": audit.answers,
     });
 
-    insert_audit_row(&mut tx, context, payload).await?;
+    insert_audit_row(&mut *tx, context, payload).await?;
 
     tx.commit().await?;
     Ok(())
 }
 
-/// Records a failed attempt. The error string names the failure class so
-/// service failures stay separable from model errors.
-async fn persist_failure(
+/// Logs a failed attempt without changing the row's status.
+///
+/// The row is already `not_attempted`, which is precisely the state that keeps
+/// it in the sweeper's queue, so the only durable effect of a transient
+/// failure is the audit line.
+///
+/// A row that already carries an attribution keeps it. A stale judgement beats
+/// a destroyed one: nulling the columns to requeue would need the status to
+/// move to `not_attempted`, and the constraint forbids carrying values there.
+/// The trader's edit simply goes unattributed until they save again.
+async fn persist_retry_later(
     pool: &PgPool,
     context: &NoteContext,
     err: &TypeSafeError,
+    trigger: AttributionTrigger,
+) -> Result<(), sqlx::Error> {
+    let payload = failure_payload(context, err, trigger);
+    insert_audit_row(pool, context, payload).await
+}
+
+/// Marks the row `failed` and logs why. A rejected credential or malformed
+/// request will not resolve itself, so the row leaves the queue.
+async fn persist_give_up(
+    pool: &PgPool,
+    context: &NoteContext,
+    err: &TypeSafeError,
+    trigger: AttributionTrigger,
 ) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
 
@@ -522,18 +598,28 @@ async fn persist_failure(
     .execute(&mut *tx)
     .await?;
 
-    let payload = json!({
-        "kind": "note_attribution",
-        "trade_id": context.id,
-        "status": AttributionStatus::Failed.as_db_str(),
-        "error": err.to_string(),
-        "retryable": err.is_retryable(),
-    });
-
-    insert_audit_row(&mut tx, context, payload).await?;
+    let payload = failure_payload(context, err, trigger);
+    insert_audit_row(&mut *tx, context, payload).await?;
 
     tx.commit().await?;
     Ok(())
+}
+
+/// The audit payload for a failed attempt. Shared by both dispositions so the
+/// log records the same shape whichever way it was resolved.
+fn failure_payload(
+    context: &NoteContext,
+    err: &TypeSafeError,
+    trigger: AttributionTrigger,
+) -> serde_json::Value {
+    json!({
+        "kind": "note_attribution",
+        "trade_id": context.id,
+        "status": AttributionStatus::Failed.as_db_str(),
+        "trigger": trigger.as_db_str(),
+        "error": err.to_string(),
+        "retryable": matches!(failure_disposition(err), FailureDisposition::RetryLater),
+    })
 }
 
 /// Appends one row to the append-only event log.
@@ -542,11 +628,14 @@ async fn persist_failure(
 /// by the engine's closed `TradeEventType` enum, and routing a judgement
 /// through it would put a model call on the engine's channel. Writing inside
 /// the caller's transaction also makes the state and its audit land together.
-async fn insert_audit_row(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+async fn insert_audit_row<'e, E>(
+    executor: E,
     context: &NoteContext,
     payload: serde_json::Value,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     sqlx::query(
         "INSERT INTO trade_events (event_type, group_id, user_id, symbol, payload) \
          VALUES ($1, $2, $3, $4, $5)",
@@ -556,7 +645,7 @@ async fn insert_audit_row(
     .bind(context.user_id)
     .bind(&context.symbol)
     .bind(payload)
-    .execute(&mut **tx)
+    .execute(executor)
     .await?;
     Ok(())
 }
@@ -617,7 +706,15 @@ pub fn spawn_note_attribution(
             }
         };
 
-        match attribute_note(&pool, client.as_ref(), &context, &candidates).await {
+        match attribute_note(
+            &pool,
+            client.as_ref(),
+            &context,
+            &candidates,
+            AttributionTrigger::NoteSave,
+        )
+        .await
+        {
             Ok(outcome) => tracing::debug!(
                 %trade_id,
                 outcome = ?outcome,

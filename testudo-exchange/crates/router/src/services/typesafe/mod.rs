@@ -21,16 +21,19 @@
 pub mod attribution;
 pub mod client;
 pub mod service;
+pub mod sweep;
 pub mod types;
 
 pub use attribution::{
     attribute_note, decide_attribution, spawn_note_attribution, Attribution, AttributionAudit,
-    AttributionStatus, NoteAttribution, NoteContext, EVENT_TYPE, EXIT_DISCIPLINE_LEVELS,
+    AttributionStatus, AttributionTrigger, NoteAttribution, NoteContext, EVENT_TYPE,
+    EXIT_DISCIPLINE_LEVELS,
 };
 pub use client::{HttpSystemOneClient, MockSystemOneClient, SystemOneClient};
 pub use service::{
     resolve_setup_tag, TagCandidate, TagResolution, TagResolutionInput, SETUP_TAG_QUESTION_ID,
 };
+pub use sweep::{spawn_sweep_task, sweep_interval, SweepSummary, INTERVAL_ENV, SWEEP_BATCH_SIZE};
 pub use types::{
     backoff_delay, Answer, CallPolicy, ChoiceCriteria, NoulCriteria, Question, ScoreCriteria,
     State, SystemOneRequest, SystemOneResponse, TypeSafeError, Usage, API_KEY_ENV,

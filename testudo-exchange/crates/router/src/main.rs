@@ -489,6 +489,30 @@ async fn main() -> std::io::Result<()> {
             }
         };
 
+    // TS-01 UC-3: spawn the note-attribution backlog sweeper.
+    //
+    // Only when a client exists, so `TYPESAFE_ENABLED=false` (or a missing
+    // credential) means the task is never created rather than created and
+    // idling. The sweeper is the recovery path for attributions lost to a
+    // restart, to a transient failure the trader never revisits, and for every
+    // note written before this feature existed: all three are rows sitting at
+    // `judgment_status = 'not_attempted'`.
+    if let Some(client) = typesafe_client.clone() {
+        let sweep_interval = services::typesafe::sweep_interval(
+            std::env::var(services::typesafe::INTERVAL_ENV)
+                .ok()
+                .and_then(|v| v.parse().ok()),
+        );
+        services::typesafe::spawn_sweep_task(
+            client,
+            pg_pool.clone(),
+            sweep_interval,
+            shutdown.clone(),
+        );
+    } else {
+        tracing::info!("TypeSafe backlog sweeper not started (no client)");
+    }
+
     // QNT-01a: Calibration engine — shared across HTTP handlers and the
     // trade-management state.
     let calibration_engine =
