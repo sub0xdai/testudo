@@ -45,7 +45,18 @@ cd "$TESTUDO_DIR/testudo-exchange"
 # sed (the field moved but its call site did not) broke the build outright.
 
 find crates -name "*.rs" -exec touch {} + 2>/dev/null || true  # bust cargo cache after git pull
-cargo build --release 2>&1 | tail -3
+
+# The full compiler output goes to a log rather than through `tail -3`, which
+# swallowed the actual error. That truncation is why a failed build only
+# reported "could not compile hyperliquid-sdk-rs" with no reason.
+BUILD_LOG=/tmp/testudo-build.log
+if ! cargo build --release > "$BUILD_LOG" 2>&1; then
+  echo "  x cargo build failed. Last 40 lines of $BUILD_LOG:"
+  tail -40 "$BUILD_LOG" | sed 's/^/    /'
+  echo "  (full log: $BUILD_LOG)"
+  exit 1
+fi
+echo "  > build ok (full log: $BUILD_LOG)"
 
 # 3. Build safe-cex (if needed)
 echo ""
