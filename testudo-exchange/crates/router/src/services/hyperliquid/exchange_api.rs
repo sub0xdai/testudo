@@ -156,7 +156,10 @@ impl HyperliquidExchangeApi {
         let exchange = self.build_exchange(&auth);
 
         if to_perp {
-            // Spot→Perp: spot_transfer_to_perp (SDK field `usdc` patched from `usd_size`).
+            // Spot→Perp: spot_transfer_to_perp. The SDK sends this action's
+            // amount as `usdc`, which is a field-level serde rename in
+            // `vendor/hyperliquid-sdk-rs`; the wire shape is pinned by
+            // `class_transfer_serializes_the_field_name_hyperliquid_expects`.
             let dec: Decimal = amount.parse().map_err(|e| {
                 ExchangeApiError::Internal(format!("Invalid amount: {}", e))
             })?;
@@ -1297,5 +1300,45 @@ mod tests {
     fn status_error_maps_to_error_prefix() {
         let status = ExchangeDataStatus::Error("insufficient margin".to_string());
         assert_eq!(normalize_status(&status), "error:insufficient margin");
+    }
+
+    /// Pins the wire shape `spot_transfer_to_perp` sends.
+    ///
+    /// The SDK derives field names from `rename_all = "camelCase"`, so a Rust
+    /// field named `usd_size` goes on the wire as `usdSize`. Hyperliquid wants
+    /// `usdc` and rejects the action otherwise. This is fixed by a one-line
+    /// `#[serde(rename = "usdc")]` in `vendor/hyperliquid-sdk-rs`, wired in
+    /// through `[patch.crates-io]`.
+    ///
+    /// The assertion is the guard: dropping the `[patch]` entry, or bumping the
+    /// SDK past the fix, makes this fail here instead of failing at trade time
+    /// against the live exchange. Nothing else in the codebase observes the
+    /// serialized name, because the field is only ever read by serde.
+    #[test]
+    fn class_transfer_serializes_the_field_name_hyperliquid_expects() {
+        use hyperliquid_sdk_rs::types::actions::ClassTransfer;
+
+        let transfer = ClassTransfer {
+            usd_size: 50_000_000,
+            to_perp: true,
+        };
+        let value = serde_json::to_value(&transfer).expect("ClassTransfer serializes");
+
+        assert_eq!(
+            value.get("usdc").and_then(|v| v.as_u64()),
+            Some(50_000_000),
+            "Hyperliquid rejects the action unless the amount is sent as `usdc`; \
+             got keys {value:?}. Is the [patch.crates-io] entry still present?"
+        );
+        assert_eq!(value["toPerp"], serde_json::json!(true));
+        assert!(
+            value.get("usdSize").is_none(),
+            "the camelCase-derived name must not appear on the wire"
+        );
+        assert_eq!(
+            value.as_object().map(|o| o.len()),
+            Some(2),
+            "exactly usdc and toPerp, nothing else"
+        );
     }
 }

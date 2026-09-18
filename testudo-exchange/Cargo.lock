@@ -2959,8 +2959,6 @@ dependencies = [
 [[package]]
 name = "hyperliquid-sdk-rs"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94a8bb9d319d0368bc1643f654a16bf7dbdda7366b0d2c959f07e1e44a2afbb1"
 dependencies = [
  "alloy",
  "async-trait",

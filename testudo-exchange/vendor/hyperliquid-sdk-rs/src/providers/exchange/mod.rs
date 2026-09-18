@@ -1,0 +1,1762 @@
+//! Exchange provider for interacting with the Hyperliquid exchange API.
+//!
+//! This module provides two main types:
+//! - [`RawExchangeProvider`]: Low-level provider for direct API access
+//! - [`ManagedExchangeProvider`]: High-level provider with safety features and optimizations
+//!
+//! # Example
+//! ```ignore
+//! use hyperliquid_sdk_rs::providers::exchange::RawExchangeProvider;
+//!
+//! let provider = RawExchangeProvider::mainnet(signer);
+//! let response = provider.place_order(&order).await?;
+//! ```
+
+mod builder;
+mod managed;
+
+pub use builder::OrderBuilder;
+pub use managed::{
+    ManagedExchangeConfig, ManagedExchangeProvider, ManagedExchangeProviderBuilder,
+};
+
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use alloy::primitives::{keccak256, Address, B256};
+use http_body_util::{BodyExt, Full};
+use hyper::{body::Bytes, Method, Request};
+use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
+use hyper_util::client::legacy::{connect::HttpConnector, Client};
+use serde::Serialize;
+use serde_json::{json, Value};
+use uuid::Uuid;
+
+use crate::{
+    constants::*,
+    errors::HyperliquidError,
+    providers::order_tracker::{OrderStatus, OrderTracker, TrackedOrder},
+    signers::{HyperliquidSignature, HyperliquidSigner},
+    types::{
+        actions::{
+            Agent,
+            AgentEnableDexAbstraction,
+            ApproveAgent,
+            ApproveBuilderFee,
+            BulkCancel,
+            BulkCancelCloid,
+            BulkModify,
+            BulkOrder,
+            BulkTwapOrder,
+            // Phase 3 imports
+            CSignerJailSelf,
+            CSignerUnjailSelf,
+            CValidatorChangeProfile,
+            CValidatorRegister,
+            CValidatorUnregister,
+            ClassTransfer,
+            ConvertToMultiSigUser,
+            CreateSubAccount,
+            MultiSig,
+            MultiSigSignature,
+            MultiSigSigner,
+            Noop,
+            PerpDeployRegisterAsset,
+            PerpDeploySetOracle,
+            ScheduleCancel,
+            SetReferrer,
+            SpotDeployEnableFreezePrivilege,
+            SpotDeployEnableQuoteToken,
+            SpotDeployFreezeUser,
+            SpotDeployGenesis,
+            SpotDeployRegisterHyperliquidity,
+            SpotDeployRegisterSpot,
+            SpotDeployRegisterToken,
+            SpotDeployRevokeFreezePrivilege,
+            SpotDeploySetDeployerTradingFeeShare,
+            SpotDeployUserGenesis,
+            SpotSend,
+            SpotUser,
+            SubAccountSpotTransfer,
+            SubAccountTransfer,
+            TokenDelegate,
+            TwapCancel,
+            TwapOrder,
+            UpdateIsolatedMargin,
+            UpdateLeverage,
+            UsdClassTransfer,
+            UsdSend,
+            UseBigBlocks,
+            VaultTransfer,
+            Withdraw,
+        },
+        eip712::HyperliquidAction,
+        requests::*,
+        responses::ExchangeResponseStatus,
+        Symbol,
+    },
+};
+
+type Result<T> = std::result::Result<T, HyperliquidError>;
+
+/// Format a float for use in API requests.
+/// Formats to 8 decimal places and removes trailing zeros.
+pub(crate) fn format_float_string(value: f64) -> String {
+    let mut x = format!("{:.8}", value);
+    while x.ends_with('0') {
+        x.pop();
+    }
+    if x.ends_with('.') {
+        x.pop();
+    }
+    if x == "-0" {
+        "0".to_string()
+    } else {
+        x
+    }
+}
+
+/// Raw exchange provider for direct API access.
+///
+/// This provider offers low-level access to all exchange endpoints.
+/// For most use cases, consider using [`ManagedExchangeProvider`] instead.
+pub struct RawExchangeProvider<S: HyperliquidSigner> {
+    client: Client<HttpsConnector<HttpConnector>, Full<Bytes>>,
+    endpoint: &'static str,
+    rate_limiter: Arc<crate::providers::info::RateLimiter>,
+    signer: S,
+    vault_address: Option<Address>,
+    agent: Option<Address>,
+    builder: Option<Address>,
+    order_tracker: Option<OrderTracker>,
+}
+
+impl<S: HyperliquidSigner> RawExchangeProvider<S> {
+    // ==================== Helper Methods ====================
+
+    pub(crate) fn infer_network(&self) -> (u64, &'static str) {
+        if self.endpoint.contains("testnet") {
+            (CHAIN_ID_TESTNET, AGENT_SOURCE_TESTNET)
+        } else {
+            (CHAIN_ID_MAINNET, AGENT_SOURCE_MAINNET)
+        }
+    }
+
+    /// Get the configured builder address.
+    pub fn builder(&self) -> Option<Address> {
+        self.builder
+    }
+
+    /// Enable order tracking for this exchange instance.
+    pub fn with_order_tracking(mut self) -> Self {
+        self.order_tracker = Some(OrderTracker::new());
+        self
+    }
+
+    // ==================== Order Tracking Methods ====================
+
+    /// Get a tracked order by CLOID.
+    pub fn get_tracked_order(&self, cloid: &Uuid) -> Option<TrackedOrder> {
+        self.order_tracker.as_ref()?.get_order(cloid)
+    }
+
+    /// Get all tracked orders.
+    pub fn get_all_tracked_orders(&self) -> Vec<TrackedOrder> {
+        self.order_tracker
+            .as_ref()
+            .map(|tracker| tracker.get_all_orders())
+            .unwrap_or_default()
+    }
+
+    /// Get orders by status.
+    pub fn get_orders_by_status(&self, status: &OrderStatus) -> Vec<TrackedOrder> {
+        self.order_tracker
+            .as_ref()
+            .map(|tracker| tracker.get_orders_by_status(status))
+            .unwrap_or_default()
+    }
+
+    /// Get pending orders.
+    pub fn get_pending_orders(&self) -> Vec<TrackedOrder> {
+        self.order_tracker
+            .as_ref()
+            .map(|tracker| tracker.get_pending_orders())
+            .unwrap_or_default()
+    }
+
+    /// Get submitted orders.
+    pub fn get_submitted_orders(&self) -> Vec<TrackedOrder> {
+        self.order_tracker
+            .as_ref()
+            .map(|tracker| tracker.get_submitted_orders())
+            .unwrap_or_default()
+    }
+
+    /// Get failed orders.
+    pub fn get_failed_orders(&self) -> Vec<TrackedOrder> {
+        self.order_tracker
+            .as_ref()
+            .map(|tracker| tracker.get_failed_orders())
+            .unwrap_or_default()
+    }
+
+    /// Clear tracked orders.
+    pub fn clear_tracked_orders(&self) {
+        if let Some(tracker) = &self.order_tracker {
+            tracker.clear();
+        }
+    }
+
+    /// Get the number of tracked orders.
+    pub fn tracked_order_count(&self) -> usize {
+        self.order_tracker
+            .as_ref()
+            .map(|tracker| tracker.len())
+            .unwrap_or(0)
+    }
+
+    // ==================== Constructors ====================
+
+    /// Create a mainnet provider.
+    pub fn mainnet(signer: S) -> Self {
+        Self::new(signer, EXCHANGE_ENDPOINT_MAINNET, None, None, None)
+    }
+
+    /// Create a testnet provider.
+    pub fn testnet(signer: S) -> Self {
+        Self::new(signer, EXCHANGE_ENDPOINT_TESTNET, None, None, None)
+    }
+
+    /// Create a mainnet provider with vault.
+    pub fn mainnet_vault(signer: S, vault_address: Address) -> Self {
+        Self::new(
+            signer,
+            EXCHANGE_ENDPOINT_MAINNET,
+            Some(vault_address),
+            None,
+            None,
+        )
+    }
+
+    /// Create a testnet provider with vault.
+    pub fn testnet_vault(signer: S, vault_address: Address) -> Self {
+        Self::new(
+            signer,
+            EXCHANGE_ENDPOINT_TESTNET,
+            Some(vault_address),
+            None,
+            None,
+        )
+    }
+
+    /// Create a mainnet provider with agent.
+    pub fn mainnet_agent(signer: S, agent_address: Address) -> Self {
+        Self::new(
+            signer,
+            EXCHANGE_ENDPOINT_MAINNET,
+            None,
+            Some(agent_address),
+            None,
+        )
+    }
+
+    /// Create a testnet provider with agent.
+    pub fn testnet_agent(signer: S, agent_address: Address) -> Self {
+        Self::new(
+            signer,
+            EXCHANGE_ENDPOINT_TESTNET,
+            None,
+            Some(agent_address),
+            None,
+        )
+    }
+
+    /// Create a mainnet provider with builder.
+    pub fn mainnet_builder(signer: S, builder_address: Address) -> Self {
+        Self::new(
+            signer,
+            EXCHANGE_ENDPOINT_MAINNET,
+            None,
+            None,
+            Some(builder_address),
+        )
+    }
+
+    /// Create a testnet provider with builder.
+    pub fn testnet_builder(signer: S, builder_address: Address) -> Self {
+        Self::new(
+            signer,
+            EXCHANGE_ENDPOINT_TESTNET,
+            None,
+            None,
+            Some(builder_address),
+        )
+    }
+
+    /// Create a mainnet provider with all options.
+    pub fn mainnet_with_options(
+        signer: S,
+        vault: Option<Address>,
+        agent: Option<Address>,
+        builder: Option<Address>,
+    ) -> Self {
+        Self::new(signer, EXCHANGE_ENDPOINT_MAINNET, vault, agent, builder)
+    }
+
+    /// Create a testnet provider with all options.
+    pub fn testnet_with_options(
+        signer: S,
+        vault: Option<Address>,
+        agent: Option<Address>,
+        builder: Option<Address>,
+    ) -> Self {
+        Self::new(signer, EXCHANGE_ENDPOINT_TESTNET, vault, agent, builder)
+    }
+
+    fn new(
+        signer: S,
+        endpoint: &'static str,
+        vault_address: Option<Address>,
+        agent: Option<Address>,
+        builder: Option<Address>,
+    ) -> Self {
+        let https = HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .unwrap()
+            .https_only()
+            .enable_http1()
+            .build();
+        let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build(https);
+        let rate_limiter = Arc::new(crate::providers::info::RateLimiter::new(
+            RATE_LIMIT_MAX_TOKENS,
+            RATE_LIMIT_REFILL_RATE,
+        ));
+
+        Self {
+            client,
+            endpoint,
+            rate_limiter,
+            signer,
+            vault_address,
+            agent,
+            builder,
+            order_tracker: None,
+        }
+    }
+
+    // ==================== Direct Order Operations ====================
+
+    /// Place a single order.
+    pub async fn place_order(
+        &self,
+        order: &OrderRequest,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_PLACE_ORDER)?;
+
+        // Auto-generate CLOID if tracking is enabled and order doesn't have one
+        let mut order = order.clone();
+        let cloid = if let Some(tracker) = &self.order_tracker {
+            let cloid = order
+                .cloid
+                .as_ref()
+                .and_then(|c| Uuid::parse_str(c).ok())
+                .unwrap_or_else(Uuid::new_v4);
+
+            // Ensure the order has a cloid
+            if order.cloid.is_none() {
+                order = order.with_cloid(Some(cloid));
+            }
+
+            // Track the order
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time before UNIX epoch")
+                .as_secs();
+            tracker.track_order(cloid, order.clone(), timestamp);
+
+            Some(cloid)
+        } else {
+            order.cloid.as_ref().and_then(|c| Uuid::parse_str(c).ok())
+        };
+
+        let bulk_order = BulkOrder {
+            orders: vec![order],
+            grouping: "na".to_string(),
+            builder: self.builder.map(|addr| BuilderInfo {
+                builder: format!("0x{}", hex::encode(addr)),
+                fee: 0, // Default fee, use place_order_with_builder_fee to specify
+            }),
+        };
+
+        let result = self.send_l1_action("order", &bulk_order).await;
+
+        // Update tracking status based on result
+        if let Some(tracker) = &self.order_tracker {
+            if let Some(cloid) = cloid {
+                match &result {
+                    Ok(response) => {
+                        tracker.update_order_status(
+                            &cloid,
+                            OrderStatus::Submitted,
+                            Some(response.clone()),
+                        );
+                    }
+                    Err(e) => {
+                        tracker.update_order_status(
+                            &cloid,
+                            OrderStatus::Failed(e.to_string()),
+                            None,
+                        );
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Place an order with a specific builder fee.
+    pub async fn place_order_with_builder_fee(
+        &self,
+        order: &OrderRequest,
+        builder_fee: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_PLACE_ORDER)?;
+
+        // Auto-generate CLOID if tracking is enabled and order doesn't have one
+        let mut order = order.clone();
+        let cloid = if let Some(tracker) = &self.order_tracker {
+            let cloid = order
+                .cloid
+                .as_ref()
+                .and_then(|c| Uuid::parse_str(c).ok())
+                .unwrap_or_else(Uuid::new_v4);
+
+            // Ensure the order has a cloid
+            if order.cloid.is_none() {
+                order = order.with_cloid(Some(cloid));
+            }
+
+            // Track the order
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time before UNIX epoch")
+                .as_secs();
+            tracker.track_order(cloid, order.clone(), timestamp);
+
+            Some(cloid)
+        } else {
+            order.cloid.as_ref().and_then(|c| Uuid::parse_str(c).ok())
+        };
+
+        let bulk_order = BulkOrder {
+            orders: vec![order],
+            grouping: "na".to_string(),
+            builder: self.builder.map(|addr| BuilderInfo {
+                builder: format!("0x{}", hex::encode(addr)),
+                fee: builder_fee,
+            }),
+        };
+
+        let result = self.send_l1_action("order", &bulk_order).await;
+
+        // Update tracking status based on result
+        if let Some(tracker) = &self.order_tracker {
+            if let Some(cloid) = cloid {
+                match &result {
+                    Ok(response) => {
+                        tracker.update_order_status(
+                            &cloid,
+                            OrderStatus::Submitted,
+                            Some(response.clone()),
+                        );
+                    }
+                    Err(e) => {
+                        tracker.update_order_status(
+                            &cloid,
+                            OrderStatus::Failed(e.to_string()),
+                            None,
+                        );
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Place an order with a specific client order ID.
+    pub async fn place_order_with_cloid(
+        &self,
+        mut order: OrderRequest,
+        cloid: Uuid,
+    ) -> Result<ExchangeResponseStatus> {
+        order = order.with_cloid(Some(cloid));
+        // place_order will handle tracking with the provided cloid
+        self.place_order(&order).await
+    }
+
+    /// Cancel an order by order ID.
+    pub async fn cancel_order(
+        &self,
+        asset: u32,
+        oid: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_CANCEL_ORDER)?;
+
+        let bulk_cancel = BulkCancel {
+            cancels: vec![CancelRequest { asset, oid }],
+        };
+
+        self.send_l1_action("cancel", &bulk_cancel).await
+    }
+
+    /// Cancel an order by client order ID.
+    pub async fn cancel_order_by_cloid(
+        &self,
+        asset: u32,
+        cloid: Uuid,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_CANCEL_ORDER)?;
+
+        let bulk_cancel = BulkCancelCloid {
+            cancels: vec![CancelRequestCloid::new(asset, cloid)],
+        };
+
+        self.send_l1_action("cancelByCloid", &bulk_cancel).await
+    }
+
+    /// Modify an existing order.
+    pub async fn modify_order(
+        &self,
+        oid: u64,
+        new_order: OrderRequest,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_MODIFY_ORDER)?;
+
+        let bulk_modify = BulkModify {
+            modifies: vec![ModifyRequest {
+                oid,
+                order: new_order,
+            }],
+        };
+
+        self.send_l1_action("batchModify", &bulk_modify).await
+    }
+
+    // ==================== Bulk Operations ====================
+
+    /// Place multiple orders in a single request.
+    pub async fn bulk_orders(
+        &self,
+        orders: Vec<OrderRequest>,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_BULK_ORDER)?;
+
+        let bulk_order = BulkOrder {
+            orders,
+            grouping: "na".to_string(),
+            builder: self.builder.map(|addr| BuilderInfo {
+                builder: format!("0x{}", hex::encode(addr)),
+                fee: 0, // Default fee, use bulk_orders_with_builder_fee to specify
+            }),
+        };
+
+        self.send_l1_action("order", &bulk_order).await
+    }
+
+    /// Place multiple orders with a specific builder fee.
+    pub async fn bulk_orders_with_builder_fee(
+        &self,
+        orders: Vec<OrderRequest>,
+        builder_fee: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_BULK_ORDER)?;
+
+        let bulk_order = BulkOrder {
+            orders,
+            grouping: "na".to_string(),
+            builder: self.builder.map(|addr| BuilderInfo {
+                builder: format!("0x{}", hex::encode(addr)),
+                fee: builder_fee,
+            }),
+        };
+
+        self.send_l1_action("order", &bulk_order).await
+    }
+
+    /// Place multiple orders with client order IDs.
+    pub async fn bulk_orders_with_cloids(
+        &self,
+        orders: Vec<(OrderRequest, Option<Uuid>)>,
+    ) -> Result<ExchangeResponseStatus> {
+        let orders = orders
+            .into_iter()
+            .map(|(order, cloid)| order.with_cloid(cloid))
+            .collect();
+
+        self.bulk_orders(orders).await
+    }
+
+    /// Cancel multiple orders.
+    pub async fn bulk_cancel(
+        &self,
+        cancels: Vec<CancelRequest>,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_BULK_CANCEL)?;
+
+        let bulk_cancel = BulkCancel { cancels };
+        self.send_l1_action("cancel", &bulk_cancel).await
+    }
+
+    /// Cancel multiple orders by client order ID.
+    pub async fn bulk_cancel_by_cloid(
+        &self,
+        cancels: Vec<CancelRequestCloid>,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_BULK_CANCEL)?;
+
+        let bulk_cancel = BulkCancelCloid { cancels };
+        self.send_l1_action("cancelByCloid", &bulk_cancel).await
+    }
+
+    /// Modify multiple orders.
+    pub async fn bulk_modify(
+        &self,
+        modifies: Vec<ModifyRequest>,
+    ) -> Result<ExchangeResponseStatus> {
+        self.rate_limiter.check_weight(WEIGHT_BULK_ORDER)?;
+
+        let bulk_modify = BulkModify { modifies };
+        self.send_l1_action("batchModify", &bulk_modify).await
+    }
+
+    // ==================== Account Management ====================
+
+    /// Update leverage for an asset.
+    pub async fn update_leverage(
+        &self,
+        asset: u32,
+        is_cross: bool,
+        leverage: u32,
+    ) -> Result<ExchangeResponseStatus> {
+        let update = UpdateLeverage {
+            asset,
+            is_cross,
+            leverage,
+        };
+        self.send_l1_action("updateLeverage", &update).await
+    }
+
+    /// Update isolated margin for an asset.
+    pub async fn update_isolated_margin(
+        &self,
+        asset: u32,
+        is_buy: bool,
+        ntli: i64,
+    ) -> Result<ExchangeResponseStatus> {
+        let update = UpdateIsolatedMargin {
+            asset,
+            is_buy,
+            ntli,
+        };
+        self.send_l1_action("updateIsolatedMargin", &update).await
+    }
+
+    /// Set a referrer code.
+    pub async fn set_referrer(&self, code: String) -> Result<ExchangeResponseStatus> {
+        let referrer = SetReferrer { code };
+        self.send_l1_action("setReferrer", &referrer).await
+    }
+
+    // ==================== User Actions (EIP-712) ====================
+
+    /// Transfer USD to another address.
+    pub async fn usd_transfer(
+        &self,
+        destination: Address,
+        amount: &str,
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+        let chain = if chain_id == CHAIN_ID_MAINNET {
+            "Mainnet"
+        } else {
+            "Testnet"
+        };
+
+        let action = UsdSend {
+            signature_chain_id: chain_id,
+            hyperliquid_chain: chain.to_string(),
+            destination: format!("{:#x}", destination),
+            amount: amount.to_string(),
+            time: Self::current_nonce(),
+        };
+
+        self.send_user_action(&action).await
+    }
+
+    /// Withdraw funds to an address.
+    pub async fn withdraw(
+        &self,
+        destination: Address,
+        amount: &str,
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+        let chain = if chain_id == CHAIN_ID_MAINNET {
+            "Mainnet"
+        } else {
+            "Testnet"
+        };
+
+        let action = Withdraw {
+            signature_chain_id: chain_id,
+            hyperliquid_chain: chain.to_string(),
+            destination: format!("{:#x}", destination),
+            amount: amount.to_string(),
+            time: Self::current_nonce(),
+        };
+
+        self.send_user_action(&action).await
+    }
+
+    /// Transfer spot tokens to another address.
+    pub async fn spot_transfer(
+        &self,
+        destination: Address,
+        token: impl Into<Symbol>,
+        amount: &str,
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+        let chain = if chain_id == CHAIN_ID_MAINNET {
+            "Mainnet"
+        } else {
+            "Testnet"
+        };
+
+        let symbol = token.into();
+        let action = SpotSend {
+            signature_chain_id: chain_id,
+            hyperliquid_chain: chain.to_string(),
+            destination: format!("{:#x}", destination),
+            token: symbol.as_str().to_string(),
+            amount: amount.to_string(),
+            time: Self::current_nonce(),
+        };
+
+        self.send_user_action(&action).await
+    }
+
+    /// Approve an agent to act on behalf of this account.
+    pub async fn approve_agent(
+        &self,
+        agent_address: Address,
+        agent_name: Option<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+        let chain = if chain_id == CHAIN_ID_MAINNET {
+            "Mainnet"
+        } else {
+            "Testnet"
+        };
+
+        let action = ApproveAgent {
+            signature_chain_id: 421614, // Always use Arbitrum Sepolia chain ID like SDK
+            hyperliquid_chain: chain.to_string(),
+            agent_address,
+            agent_name,
+            nonce: Self::current_nonce(),
+        };
+
+        self.send_user_action(&action).await
+    }
+
+    /// Approve a new agent, generating a random key like the original SDK.
+    /// Returns (private_key_hex, response).
+    pub async fn approve_agent_new(&self) -> Result<(String, ExchangeResponseStatus)> {
+        use alloy::primitives::B256;
+        use alloy::signers::local::PrivateKeySigner;
+        use rand::Rng;
+
+        // Generate random key
+        let mut rng = rand::thread_rng();
+        let mut key_bytes = [0u8; 32];
+        rng.fill(&mut key_bytes);
+        let key_hex = hex::encode(key_bytes);
+
+        // Create a signer from the key to get the address
+        let signer =
+            PrivateKeySigner::from_bytes(&B256::from(key_bytes)).map_err(|e| {
+                HyperliquidError::InvalidRequest(format!(
+                    "Failed to create signer: {}",
+                    e
+                ))
+            })?;
+        let agent_address = signer.address();
+
+        // Get chain info
+        let (_, _) = self.infer_network();
+        let chain = if self.endpoint.contains("testnet") {
+            "Testnet"
+        } else {
+            "Mainnet"
+        };
+
+        // Create the action with proper Address type
+        let action = ApproveAgent {
+            signature_chain_id: 421614, // Always use Arbitrum Sepolia chain ID
+            hyperliquid_chain: chain.to_string(),
+            agent_address,
+            agent_name: None,
+            nonce: Self::current_nonce(),
+        };
+
+        // Use send_user_action which handles EIP-712 signing
+        let response = self.send_user_action(&action).await?;
+
+        Ok((key_hex, response))
+    }
+
+    /// Approve a builder fee.
+    pub async fn approve_builder_fee(
+        &self,
+        builder: Address,
+        max_fee_rate: String,
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+        let chain = if chain_id == CHAIN_ID_MAINNET {
+            "Mainnet"
+        } else {
+            "Testnet"
+        };
+
+        let action = ApproveBuilderFee {
+            signature_chain_id: chain_id,
+            hyperliquid_chain: chain.to_string(),
+            builder: format!("0x{}", hex::encode(builder)),
+            max_fee_rate,
+            nonce: Self::current_nonce(),
+        };
+
+        self.send_user_action(&action).await
+    }
+
+    // ==================== Vault Operations ====================
+
+    /// Transfer funds to/from a vault.
+    pub async fn vault_transfer(
+        &self,
+        vault_address: Address,
+        is_deposit: bool,
+        usd: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        let transfer = VaultTransfer {
+            vault_address: format!("0x{}", hex::encode(vault_address)),
+            is_deposit,
+            usd,
+        };
+
+        self.send_l1_action("vaultTransfer", &transfer).await
+    }
+
+    // ==================== Spot Operations ====================
+
+    /// Transfer between spot and perp accounts.
+    pub async fn spot_transfer_to_perp(
+        &self,
+        usd_size: u64,
+        to_perp: bool,
+    ) -> Result<ExchangeResponseStatus> {
+        let transfer = ClassTransfer { usd_size, to_perp };
+
+        let spot_user = SpotUser {
+            class_transfer: transfer,
+        };
+
+        self.send_l1_action("spotUser", &spot_user).await
+    }
+
+    // ==================== Phase 1 New Actions ====================
+
+    /// Schedule automatic order cancellation.
+    ///
+    /// Set a time at which all open orders will be cancelled.
+    /// Pass `None` to cancel the scheduled cancellation.
+    pub async fn schedule_cancel(
+        &self,
+        time: Option<u64>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = ScheduleCancel { time };
+        self.send_l1_action("scheduleCancel", &action).await
+    }
+
+    /// Create a sub-account.
+    ///
+    /// Sub-accounts are separate trading accounts under the same master account.
+    /// They have isolated margin and positions.
+    pub async fn create_sub_account(
+        &self,
+        name: Option<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = CreateSubAccount { name };
+        self.send_l1_action("createSubAccount", &action).await
+    }
+
+    /// Transfer USD to/from a sub-account.
+    ///
+    /// * `sub_account_user` - The sub-account address
+    /// * `is_deposit` - true to deposit to sub-account, false to withdraw from sub-account
+    /// * `usd` - Amount in raw USD (multiply by 1e6 for USDC)
+    pub async fn sub_account_transfer(
+        &self,
+        sub_account_user: Address,
+        is_deposit: bool,
+        usd: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SubAccountTransfer {
+            sub_account_user: format!("{:#x}", sub_account_user),
+            is_deposit,
+            usd,
+        };
+        self.send_l1_action("subAccountTransfer", &action).await
+    }
+
+    /// Transfer spot tokens to/from a sub-account.
+    ///
+    /// * `sub_account_user` - The sub-account address
+    /// * `is_deposit` - true to deposit to sub-account, false to withdraw from sub-account
+    /// * `token` - Token symbol (e.g., "ETH", "BTC")
+    /// * `amount` - Amount as a string
+    pub async fn sub_account_spot_transfer(
+        &self,
+        sub_account_user: Address,
+        is_deposit: bool,
+        token: impl Into<Symbol>,
+        amount: &str,
+    ) -> Result<ExchangeResponseStatus> {
+        let symbol = token.into();
+        let action = SubAccountSpotTransfer {
+            sub_account_user: format!("{:#x}", sub_account_user),
+            is_deposit,
+            token: symbol.as_str().to_string(),
+            amount: amount.to_string(),
+        };
+        self.send_l1_action("subAccountSpotTransfer", &action).await
+    }
+
+    /// Transfer USD between perp and spot classes.
+    ///
+    /// This is an alternative to `spot_transfer_to_perp` that takes a string amount.
+    ///
+    /// * `amount` - Amount as a string
+    /// * `to_perp` - true to transfer from spot to perp, false for perp to spot
+    pub async fn usd_class_transfer(
+        &self,
+        amount: &str,
+        to_perp: bool,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = UsdClassTransfer {
+            amount: amount.to_string(),
+            to_perp,
+        };
+        self.send_l1_action("usdClassTransfer", &action).await
+    }
+
+    // ==================== Phase 2 New Actions ====================
+
+    /// Place a TWAP (Time-Weighted Average Price) order.
+    ///
+    /// TWAP orders split a large order into smaller pieces executed over time
+    /// to minimize market impact.
+    ///
+    /// * `asset` - Asset index
+    /// * `is_buy` - true for buy, false for sell
+    /// * `sz` - Total size to execute
+    /// * `reduce_only` - Whether this should only reduce position
+    /// * `duration_minutes` - Duration over which to execute (in minutes)
+    /// * `randomize` - Whether to randomize execution timing
+    pub async fn twap_order(
+        &self,
+        asset: u32,
+        is_buy: bool,
+        sz: &str,
+        reduce_only: bool,
+        duration_minutes: u32,
+        randomize: bool,
+    ) -> Result<ExchangeResponseStatus> {
+        let twap = TwapOrder {
+            asset,
+            is_buy,
+            sz: sz.to_string(),
+            reduce_only,
+            duration_minutes,
+            randomize,
+        };
+        let action = BulkTwapOrder { twap };
+        self.send_l1_action("twapOrder", &action).await
+    }
+
+    /// Cancel a TWAP order.
+    ///
+    /// * `asset` - Asset index
+    /// * `twap_id` - The TWAP order ID to cancel
+    pub async fn twap_cancel(
+        &self,
+        asset: u32,
+        twap_id: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = TwapCancel { asset, twap_id };
+        self.send_l1_action("twapCancel", &action).await
+    }
+
+    /// Convert account to multi-sig user.
+    ///
+    /// Once converted, actions require multiple signatures based on the threshold.
+    ///
+    /// * `authorized_users` - List of addresses and their weights (must be sorted)
+    /// * `threshold` - Required total weight for approval
+    pub async fn convert_to_multi_sig_user(
+        &self,
+        authorized_users: Vec<(Address, u32)>,
+        threshold: u32,
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+        let chain = if chain_id == CHAIN_ID_MAINNET {
+            "Mainnet"
+        } else {
+            "Testnet"
+        };
+
+        // Sort users by address and create signer structs
+        let mut signers: Vec<MultiSigSigner> = authorized_users
+            .into_iter()
+            .map(|(addr, weight)| MultiSigSigner {
+                address: format!("{:#x}", addr),
+                weight,
+            })
+            .collect();
+        signers.sort_by(|a, b| a.address.cmp(&b.address));
+
+        let action = ConvertToMultiSigUser {
+            signature_chain_id: chain_id,
+            hyperliquid_chain: chain.to_string(),
+            signers,
+            threshold,
+            nonce: Self::current_nonce(),
+        };
+
+        self.send_user_action(&action).await
+    }
+
+    /// Execute a multi-sig transaction.
+    ///
+    /// Used to execute actions on a multi-sig account with collected signatures.
+    ///
+    /// * `multi_sig_user` - The multi-sig account address
+    /// * `inner_action` - The action to execute (as JSON value)
+    /// * `signatures` - Signatures from other authorized users
+    pub async fn multi_sig(
+        &self,
+        multi_sig_user: Address,
+        inner_action: serde_json::Value,
+        signatures: Vec<(String, String, u8)>, // (r, s, v)
+    ) -> Result<ExchangeResponseStatus> {
+        let (chain_id, _) = self.infer_network();
+
+        let sigs: Vec<MultiSigSignature> = signatures
+            .into_iter()
+            .map(|(r, s, v)| MultiSigSignature { r, s, v })
+            .collect();
+
+        let action = MultiSig {
+            signature_chain_id: chain_id,
+            multi_sig_user: format!("{:#x}", multi_sig_user),
+            outer_signer: format!("{:#x}", self.signer.address()),
+            inner_action,
+            signatures: sigs,
+            nonce: Self::current_nonce(),
+        };
+
+        // Multi-sig actions are posted directly without additional signing
+        let nonce = action.nonce;
+        let action_value = serde_json::to_value(&action)?;
+        let mut action_with_type = action_value;
+        if let serde_json::Value::Object(ref mut map) = action_with_type {
+            map.insert("type".to_string(), json!("multiSig"));
+        }
+
+        // For multi-sig, we need a dummy signature since the actual signatures are in the payload
+        let signature = crate::signers::HyperliquidSignature {
+            r: alloy::primitives::U256::ZERO,
+            s: alloy::primitives::U256::ZERO,
+            v: 27,
+        };
+
+        self.post(action_with_type, signature, nonce).await
+    }
+
+    /// Enable DEX abstraction for the current agent.
+    ///
+    /// This allows the agent to interact with DEX features.
+    pub async fn agent_enable_dex_abstraction(&self) -> Result<ExchangeResponseStatus> {
+        let action = AgentEnableDexAbstraction {};
+        self.send_l1_action("agentEnableDexAbstraction", &action)
+            .await
+    }
+
+    // ==================== Phase 3 New Actions ====================
+
+    // --- Spot Deployment Actions ---
+
+    /// Register a new spot token.
+    ///
+    /// * `token_name` - Token name/symbol
+    /// * `sz_decimals` - Size decimals for trading
+    /// * `wei_decimals` - Wei decimals for on-chain representation
+    /// * `max_gas` - Maximum gas for deployment
+    /// * `full_name` - Optional full name of the token
+    pub async fn spot_deploy_register_token(
+        &self,
+        token_name: impl Into<String>,
+        sz_decimals: u32,
+        wei_decimals: u32,
+        max_gas: impl Into<String>,
+        full_name: Option<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployRegisterToken {
+            token_name: token_name.into(),
+            sz_decimals,
+            wei_decimals,
+            max_gas: max_gas.into(),
+            full_name,
+        };
+        self.send_l1_action("spotDeployRegisterToken", &action)
+            .await
+    }
+
+    /// User genesis for spot deployment.
+    ///
+    /// * `token` - Token identifier
+    /// * `user_and_wei` - List of (user address, wei amount) for initial distribution
+    /// * `existing_token_and_wei` - Optional existing token and wei to use
+    pub async fn spot_deploy_user_genesis(
+        &self,
+        token: impl Into<String>,
+        user_and_wei: Vec<(String, String)>,
+        existing_token_and_wei: Option<(String, String)>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployUserGenesis {
+            token: token.into(),
+            user_and_wei,
+            existing_token_and_wei,
+        };
+        self.send_l1_action("spotDeployUserGenesis", &action).await
+    }
+
+    /// Freeze or unfreeze a user in spot deployment.
+    ///
+    /// * `token` - Token identifier
+    /// * `user` - User address to freeze/unfreeze
+    /// * `freeze` - Whether to freeze (true) or unfreeze (false)
+    pub async fn spot_deploy_freeze_user(
+        &self,
+        token: impl Into<String>,
+        user: Address,
+        freeze: bool,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployFreezeUser {
+            token: token.into(),
+            user: format!("{:#x}", user),
+            freeze,
+        };
+        self.send_l1_action("spotDeployFreezeUser", &action).await
+    }
+
+    /// Enable freeze privilege for a token.
+    ///
+    /// * `token` - Token identifier
+    pub async fn spot_deploy_enable_freeze_privilege(
+        &self,
+        token: impl Into<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployEnableFreezePrivilege {
+            token: token.into(),
+        };
+        self.send_l1_action("spotDeployEnableFreezePrivilege", &action)
+            .await
+    }
+
+    /// Revoke freeze privilege for a token.
+    ///
+    /// * `token` - Token identifier
+    pub async fn spot_deploy_revoke_freeze_privilege(
+        &self,
+        token: impl Into<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployRevokeFreezePrivilege {
+            token: token.into(),
+        };
+        self.send_l1_action("spotDeployRevokeFreezePrivilege", &action)
+            .await
+    }
+
+    /// Enable quote token for spot deployment.
+    ///
+    /// * `token` - Token identifier to enable as quote
+    pub async fn spot_deploy_enable_quote_token(
+        &self,
+        token: impl Into<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployEnableQuoteToken {
+            token: token.into(),
+        };
+        self.send_l1_action("spotDeployEnableQuoteToken", &action)
+            .await
+    }
+
+    /// Genesis for spot deployment.
+    ///
+    /// * `token` - Token identifier
+    /// * `max_supply` - Maximum supply
+    /// * `no_hyperliquidity` - Whether to disable hyperliquidity
+    pub async fn spot_deploy_genesis(
+        &self,
+        token: impl Into<String>,
+        max_supply: impl Into<String>,
+        no_hyperliquidity: Option<bool>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployGenesis {
+            token: token.into(),
+            max_supply: max_supply.into(),
+            no_hyperliquidity,
+        };
+        self.send_l1_action("spotDeployGenesis", &action).await
+    }
+
+    /// Register a spot trading pair.
+    ///
+    /// * `base_token` - Base token identifier
+    /// * `quote_token` - Quote token identifier
+    pub async fn spot_deploy_register_spot(
+        &self,
+        base_token: impl Into<String>,
+        quote_token: impl Into<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployRegisterSpot {
+            base_token: base_token.into(),
+            quote_token: quote_token.into(),
+        };
+        self.send_l1_action("spotDeployRegisterSpot", &action).await
+    }
+
+    /// Register hyperliquidity for a spot pair.
+    ///
+    /// * `spot` - Spot pair identifier
+    /// * `start_px` - Starting price
+    /// * `order_sz` - Order size
+    /// * `n_orders` - Number of orders
+    /// * `n_seeded_levels` - Number of seeded levels
+    pub async fn spot_deploy_register_hyperliquidity(
+        &self,
+        spot: impl Into<String>,
+        start_px: impl Into<String>,
+        order_sz: impl Into<String>,
+        n_orders: u32,
+        n_seeded_levels: u32,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeployRegisterHyperliquidity {
+            spot: spot.into(),
+            start_px: start_px.into(),
+            order_sz: order_sz.into(),
+            n_orders,
+            n_seeded_levels,
+        };
+        self.send_l1_action("spotDeployRegisterHyperliquidity", &action)
+            .await
+    }
+
+    /// Set deployer trading fee share for a token.
+    ///
+    /// * `token` - Token identifier
+    /// * `share` - Fee share as decimal string (e.g., "0.001" for 0.1%)
+    pub async fn spot_deploy_set_deployer_trading_fee_share(
+        &self,
+        token: impl Into<String>,
+        share: impl Into<String>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = SpotDeploySetDeployerTradingFeeShare {
+            token: token.into(),
+            share: share.into(),
+        };
+        self.send_l1_action("spotDeploySetDeployerTradingFeeShare", &action)
+            .await
+    }
+
+    // --- Perp Deployment Actions ---
+
+    /// Register a perpetual asset.
+    ///
+    /// # Example
+    /// ```ignore
+    /// use hyperliquid_sdk_rs::types::actions::PerpDeployRegisterAsset;
+    ///
+    /// let asset = PerpDeployRegisterAsset {
+    ///     dex: 1,
+    ///     max_gas: "1000000".to_string(),
+    ///     coin: "MYPERP".to_string(),
+    ///     sz_decimals: 4,
+    ///     oracle_px: "100.0".to_string(),
+    ///     margin_table_id: None,
+    ///     only_isolated: Some(false),
+    ///     schema: None,
+    /// };
+    /// exchange.perp_deploy_register_asset(asset).await?;
+    /// ```
+    pub async fn perp_deploy_register_asset(
+        &self,
+        asset: PerpDeployRegisterAsset,
+    ) -> Result<ExchangeResponseStatus> {
+        self.send_l1_action("perpDeployRegisterAsset", &asset).await
+    }
+
+    /// Set oracle for perpetual asset.
+    ///
+    /// * `dex` - DEX identifier
+    /// * `oracle_pxs` - Oracle prices
+    /// * `all_mark_pxs` - All mark prices
+    /// * `external_perp_pxs` - Optional external perp prices
+    pub async fn perp_deploy_set_oracle(
+        &self,
+        dex: u32,
+        oracle_pxs: Vec<String>,
+        all_mark_pxs: Vec<String>,
+        external_perp_pxs: Option<Vec<String>>,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = PerpDeploySetOracle {
+            dex,
+            oracle_pxs,
+            all_mark_pxs,
+            external_perp_pxs,
+        };
+        self.send_l1_action("perpDeploySetOracle", &action).await
+    }
+
+    // --- Validator/Staking Actions ---
+
+    /// Unjail self (signer).
+    ///
+    /// Used to unjail a previously jailed signer.
+    pub async fn c_signer_unjail_self(&self) -> Result<ExchangeResponseStatus> {
+        let action = CSignerUnjailSelf {};
+        self.send_l1_action("cSignerUnjailSelf", &action).await
+    }
+
+    /// Jail self (signer).
+    ///
+    /// Used to voluntarily jail oneself as a signer.
+    pub async fn c_signer_jail_self(&self) -> Result<ExchangeResponseStatus> {
+        let action = CSignerJailSelf {};
+        self.send_l1_action("cSignerJailSelf", &action).await
+    }
+
+    /// Register as a validator.
+    ///
+    /// # Example
+    /// ```ignore
+    /// use hyperliquid_sdk_rs::types::actions::CValidatorRegister;
+    ///
+    /// let registration = CValidatorRegister {
+    ///     node_ip: "192.168.1.1".to_string(),
+    ///     name: "My Validator".to_string(),
+    ///     description: "Secure and reliable validator".to_string(),
+    ///     delegations_disabled: false,
+    ///     commission_bps: 500, // 5%
+    ///     signer: format!("{:#x}", signer_address),
+    ///     unjailed: true,
+    ///     initial_wei: "10000000000000000000000".to_string(), // 10,000 HYPE
+    /// };
+    /// exchange.c_validator_register(registration).await?;
+    /// ```
+    pub async fn c_validator_register(
+        &self,
+        registration: CValidatorRegister,
+    ) -> Result<ExchangeResponseStatus> {
+        self.send_l1_action("cValidatorRegister", &registration)
+            .await
+    }
+
+    /// Change validator profile.
+    ///
+    /// All fields are optional - only provided values will be updated.
+    ///
+    /// # Example
+    /// ```ignore
+    /// use hyperliquid_sdk_rs::types::actions::CValidatorChangeProfile;
+    ///
+    /// let update = CValidatorChangeProfile {
+    ///     node_ip: Some("192.168.1.2".to_string()),
+    ///     name: Some("New Name".to_string()),
+    ///     description: None,  // keep existing
+    ///     unjailed: None,     // keep existing
+    ///     disable_delegations: None,
+    ///     commission_bps: Some(300), // 3%
+    ///     signer: None,       // keep existing
+    /// };
+    /// exchange.c_validator_change_profile(update).await?;
+    /// ```
+    pub async fn c_validator_change_profile(
+        &self,
+        profile: CValidatorChangeProfile,
+    ) -> Result<ExchangeResponseStatus> {
+        self.send_l1_action("cValidatorChangeProfile", &profile)
+            .await
+    }
+
+    /// Unregister as a validator.
+    pub async fn c_validator_unregister(&self) -> Result<ExchangeResponseStatus> {
+        let action = CValidatorUnregister {};
+        self.send_l1_action("cValidatorUnregister", &action).await
+    }
+
+    /// Delegate tokens to a validator.
+    ///
+    /// * `validator` - Validator address to delegate to
+    /// * `wei` - Amount in wei
+    /// * `is_undelegate` - Whether this is an undelegation (false = delegate, true = undelegate)
+    pub async fn token_delegate(
+        &self,
+        validator: Address,
+        wei: impl Into<String>,
+        is_undelegate: bool,
+    ) -> Result<ExchangeResponseStatus> {
+        let action = TokenDelegate {
+            validator: format!("{:#x}", validator),
+            wei: wei.into(),
+            is_undelegate,
+        };
+        self.send_l1_action("tokenDelegate", &action).await
+    }
+
+    // --- Other Actions ---
+
+    /// Enable or disable large block mode.
+    ///
+    /// * `enable` - Whether to enable (true) or disable (false) big blocks
+    pub async fn use_big_blocks(&self, enable: bool) -> Result<ExchangeResponseStatus> {
+        let action = UseBigBlocks { enable };
+        self.send_l1_action("useBigBlocks", &action).await
+    }
+
+    /// No-operation action.
+    ///
+    /// Useful for testing or keeping connection alive.
+    ///
+    /// * `nonce` - Nonce for the action
+    pub async fn noop(&self, nonce: u64) -> Result<ExchangeResponseStatus> {
+        let action = Noop { nonce };
+        self.send_l1_action("noop", &action).await
+    }
+
+    // ==================== Helper Methods ====================
+
+    fn current_nonce() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before UNIX epoch")
+            .as_millis() as u64
+    }
+
+    fn hash_action<T: Serialize>(
+        action_type: &str,
+        action: &T,
+        timestamp: u64,
+        vault_address: Option<Address>,
+    ) -> Result<B256> {
+        // Create an enum wrapper for proper serialization
+        // This matches how the original Hyperliquid SDK serializes actions
+        // The enum variant becomes the "type" field in the serialized output
+        #[derive(serde::Serialize)]
+        #[serde(tag = "type")]
+        #[serde(rename_all = "camelCase")]
+        enum ActionWrapper<'a, T> {
+            Order(&'a T),
+            Cancel(&'a T),
+            CancelByCloid(&'a T),
+            BatchModify(&'a T),
+            UpdateLeverage(&'a T),
+            UpdateIsolatedMargin(&'a T),
+            UsdSend(&'a T),
+            SpotSend(&'a T),
+            SpotUser(&'a T),
+            VaultTransfer(&'a T),
+            SetReferrer(&'a T),
+            ApproveAgent(&'a T),
+            ApproveBuilderFee(&'a T),
+            Withdraw3(&'a T),
+            // Phase 1 new actions
+            ScheduleCancel(&'a T),
+            CreateSubAccount(&'a T),
+            SubAccountTransfer(&'a T),
+            SubAccountSpotTransfer(&'a T),
+            UsdClassTransfer(&'a T),
+            // Phase 2 new actions
+            TwapOrder(&'a T),
+            TwapCancel(&'a T),
+            AgentEnableDexAbstraction(&'a T),
+            // Phase 3 new actions - Spot Deployment
+            SpotDeployRegisterToken(&'a T),
+            SpotDeployUserGenesis(&'a T),
+            SpotDeployFreezeUser(&'a T),
+            SpotDeployEnableFreezePrivilege(&'a T),
+            SpotDeployRevokeFreezePrivilege(&'a T),
+            SpotDeployEnableQuoteToken(&'a T),
+            SpotDeployGenesis(&'a T),
+            SpotDeployRegisterSpot(&'a T),
+            SpotDeployRegisterHyperliquidity(&'a T),
+            SpotDeploySetDeployerTradingFeeShare(&'a T),
+            // Phase 3 new actions - Perp Deployment
+            PerpDeployRegisterAsset(&'a T),
+            PerpDeploySetOracle(&'a T),
+            // Phase 3 new actions - Validator/Staking
+            CSignerUnjailSelf(&'a T),
+            CSignerJailSelf(&'a T),
+            CValidatorRegister(&'a T),
+            CValidatorChangeProfile(&'a T),
+            CValidatorUnregister(&'a T),
+            TokenDelegate(&'a T),
+            // Phase 3 new actions - Other
+            UseBigBlocks(&'a T),
+            Noop(&'a T),
+        }
+
+        // Wrap the action based on type
+        let wrapped = match action_type {
+            "order" => ActionWrapper::Order(action),
+            "cancel" => ActionWrapper::Cancel(action),
+            "cancelByCloid" => ActionWrapper::CancelByCloid(action),
+            "batchModify" => ActionWrapper::BatchModify(action),
+            "updateLeverage" => ActionWrapper::UpdateLeverage(action),
+            "updateIsolatedMargin" => ActionWrapper::UpdateIsolatedMargin(action),
+            "usdSend" => ActionWrapper::UsdSend(action),
+            "spotSend" => ActionWrapper::SpotSend(action),
+            "spotUser" => ActionWrapper::SpotUser(action),
+            "vaultTransfer" => ActionWrapper::VaultTransfer(action),
+            "setReferrer" => ActionWrapper::SetReferrer(action),
+            "approveAgent" => ActionWrapper::ApproveAgent(action),
+            "approveBuilderFee" => ActionWrapper::ApproveBuilderFee(action),
+            "withdraw3" => ActionWrapper::Withdraw3(action),
+            // Phase 1 new actions
+            "scheduleCancel" => ActionWrapper::ScheduleCancel(action),
+            "createSubAccount" => ActionWrapper::CreateSubAccount(action),
+            "subAccountTransfer" => ActionWrapper::SubAccountTransfer(action),
+            "subAccountSpotTransfer" => ActionWrapper::SubAccountSpotTransfer(action),
+            "usdClassTransfer" => ActionWrapper::UsdClassTransfer(action),
+            // Phase 2 new actions
+            "twapOrder" => ActionWrapper::TwapOrder(action),
+            "twapCancel" => ActionWrapper::TwapCancel(action),
+            "agentEnableDexAbstraction" => {
+                ActionWrapper::AgentEnableDexAbstraction(action)
+            }
+            // Phase 3 new actions - Spot Deployment
+            "spotDeployRegisterToken" => ActionWrapper::SpotDeployRegisterToken(action),
+            "spotDeployUserGenesis" => ActionWrapper::SpotDeployUserGenesis(action),
+            "spotDeployFreezeUser" => ActionWrapper::SpotDeployFreezeUser(action),
+            "spotDeployEnableFreezePrivilege" => {
+                ActionWrapper::SpotDeployEnableFreezePrivilege(action)
+            }
+            "spotDeployRevokeFreezePrivilege" => {
+                ActionWrapper::SpotDeployRevokeFreezePrivilege(action)
+            }
+            "spotDeployEnableQuoteToken" => {
+                ActionWrapper::SpotDeployEnableQuoteToken(action)
+            }
+            "spotDeployGenesis" => ActionWrapper::SpotDeployGenesis(action),
+            "spotDeployRegisterSpot" => ActionWrapper::SpotDeployRegisterSpot(action),
+            "spotDeployRegisterHyperliquidity" => {
+                ActionWrapper::SpotDeployRegisterHyperliquidity(action)
+            }
+            "spotDeploySetDeployerTradingFeeShare" => {
+                ActionWrapper::SpotDeploySetDeployerTradingFeeShare(action)
+            }
+            // Phase 3 new actions - Perp Deployment
+            "perpDeployRegisterAsset" => ActionWrapper::PerpDeployRegisterAsset(action),
+            "perpDeploySetOracle" => ActionWrapper::PerpDeploySetOracle(action),
+            // Phase 3 new actions - Validator/Staking
+            "cSignerUnjailSelf" => ActionWrapper::CSignerUnjailSelf(action),
+            "cSignerJailSelf" => ActionWrapper::CSignerJailSelf(action),
+            "cValidatorRegister" => ActionWrapper::CValidatorRegister(action),
+            "cValidatorChangeProfile" => ActionWrapper::CValidatorChangeProfile(action),
+            "cValidatorUnregister" => ActionWrapper::CValidatorUnregister(action),
+            "tokenDelegate" => ActionWrapper::TokenDelegate(action),
+            // Phase 3 new actions - Other
+            "useBigBlocks" => ActionWrapper::UseBigBlocks(action),
+            "noop" => ActionWrapper::Noop(action),
+            _ => {
+                return Err(HyperliquidError::InvalidRequest(format!(
+                    "Unknown action type: {}",
+                    action_type
+                )))
+            }
+        };
+
+        // NOTE: Hyperliquid uses MessagePack (rmp_serde) for action serialization
+        // This is different from typical EVM systems that use RLP
+        let mut bytes = rmp_serde::to_vec_named(&wrapped).map_err(|e| {
+            HyperliquidError::InvalidRequest(format!("Failed to serialize action: {}", e))
+        })?;
+        bytes.extend(timestamp.to_be_bytes());
+        if let Some(vault) = vault_address {
+            bytes.push(1);
+            bytes.extend(vault.as_slice());
+        } else {
+            bytes.push(0);
+        }
+        Ok(keccak256(bytes))
+    }
+
+    async fn send_l1_action<T: Serialize>(
+        &self,
+        action_type: &str,
+        action: &T,
+    ) -> Result<ExchangeResponseStatus> {
+        let nonce = Self::current_nonce();
+        let connection_id =
+            Self::hash_action(action_type, action, nonce, self.vault_address)?;
+
+        // Create Agent L1 action
+        let (_, agent_source) = self.infer_network();
+        let agent = Agent {
+            source: agent_source.to_string(),
+            connection_id,
+        };
+
+        // Sign using EIP-712
+        let domain = agent.domain();
+        let signing_hash = agent.eip712_signing_hash(&domain);
+        let signature = self.signer.sign_hash(signing_hash).await?;
+
+        // Build action value with type tag
+        let mut action_value = serde_json::to_value(action)?;
+        if let Value::Object(ref mut map) = action_value {
+            map.insert("type".to_string(), json!(action_type));
+        }
+
+        // Wrap action if using agent
+        let final_action = if let Some(agent_address) = &self.agent {
+            let (_, agent_source) = self.infer_network();
+            json!({
+                "type": "agent",
+                "agentAddress": format!("{:#x}", agent_address),
+                "agentAction": action_value,
+                "source": agent_source,
+            })
+        } else {
+            action_value
+        };
+
+        self.post(final_action, signature, nonce).await
+    }
+
+    async fn send_user_action<T: HyperliquidAction + Serialize>(
+        &self,
+        action: &T,
+    ) -> Result<ExchangeResponseStatus> {
+        let domain = action.domain();
+        let signing_hash = action.eip712_signing_hash(&domain);
+        let signature = self.signer.sign_hash(signing_hash).await?;
+
+        // Get action type from type name
+        // This extracts "UsdSend" from "ferrofluid::types::actions::UsdSend"
+        let action_type = std::any::type_name::<T>()
+            .split("::")
+            .last()
+            .unwrap_or("Unknown");
+
+        // Get action value and extract nonce
+        let mut action_value = serde_json::to_value(action)?;
+        let nonce = action_value
+            .get("time")
+            .or_else(|| action_value.get("nonce"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or_else(Self::current_nonce);
+
+        // For ApproveAgent, we need to use camelCase type name to match SDK
+        let type_tag = match action_type {
+            "ApproveAgent" => "approveAgent",
+            "UsdSend" => "usdSend",
+            "Withdraw" => "withdraw3",
+            "SpotSend" => "spotSend",
+            "ApproveBuilderFee" => "approveBuilderFee",
+            _ => action_type,
+        };
+
+        // Add type tag
+        if let Value::Object(ref mut map) = action_value {
+            map.insert("type".to_string(), json!(type_tag));
+        }
+
+        // Send directly without L1 wrapping for user actions
+        self.post(action_value, signature, nonce).await
+    }
+
+    async fn post(
+        &self,
+        action: Value,
+        signature: HyperliquidSignature,
+        nonce: u64,
+    ) -> Result<ExchangeResponseStatus> {
+        // Hyperliquid expects signature as an object with r, s, v fields
+        // not as a concatenated hex string
+        let payload = json!({
+            "action": action,
+            "signature": {
+                "r": format!("0x{:064x}", signature.r),
+                "s": format!("0x{:064x}", signature.s),
+                "v": signature.v,
+            },
+            "nonce": nonce,
+            "vaultAddress": self.vault_address,
+        });
+
+        let body = Full::new(Bytes::from(serde_json::to_vec(&payload)?));
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri(self.endpoint)
+            .header("Content-Type", "application/json")
+            .body(body)
+            .map_err(|e| HyperliquidError::Network(e.to_string()))?;
+
+        let response = self
+            .client
+            .request(request)
+            .await
+            .map_err(|e| HyperliquidError::Network(e.to_string()))?;
+        let status = response.status();
+        let body_bytes = response
+            .into_body()
+            .collect()
+            .await
+            .map_err(|e| HyperliquidError::Network(e.to_string()))?
+            .to_bytes();
+
+        // Always try to deserialize the response as ExchangeResponseStatus
+        // The API returns this format even for error status codes
+        serde_json::from_slice(&body_bytes).map_err(|e| {
+            // If deserialization fails and we have an error status,
+            // return the HTTP error with the body
+            if !status.is_success() {
+                let body_text = String::from_utf8_lossy(&body_bytes);
+                HyperliquidError::Http {
+                    status: status.as_u16(),
+                    body: body_text.to_string(),
+                }
+            } else {
+                HyperliquidError::InvalidResponse(format!(
+                    "Failed to parse exchange response: {}",
+                    e
+                ))
+            }
+        })
+    }
+}
