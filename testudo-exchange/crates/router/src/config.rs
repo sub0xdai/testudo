@@ -46,6 +46,29 @@ pub struct RouterConfig {
     /// RSK-03 — Per-week trade threshold below which the coach skips the user.
     #[confik(default = 3)]
     pub coach_min_week_trades: i64,
+
+    /// TS-01 — Global TypeSafe (Jev) kill-switch.
+    ///
+    /// `false`, the default, builds no client at all: the extension keeps its
+    /// pre-judgement behaviour and no trade context leaves the server. Keep it
+    /// off until a `TYPESAFE_API_KEY` exists and the privacy copy covers the
+    /// egress.
+    #[confik(default = false)]
+    pub typesafe_enabled: bool,
+
+    /// TS-01 — Evaluation endpoint host, no trailing slash.
+    ///
+    /// Overridable so staging and tests can point at a local server.
+    #[confik(default = "https://api.typesafe.ai")]
+    pub typesafe_base_url: String,
+
+    /// TS-01 — Model id sent in the `model` field.
+    ///
+    /// A pinned id rather than an alias, so a threshold tuned against one
+    /// build is not silently moved to the next. confik needs a literal here,
+    /// so `default_typesafe_model_stays_pinned` guards the duplication.
+    #[confik(default = "jev-1.13.0")]
+    pub typesafe_model: String,
 }
 
 impl RouterConfig {
@@ -72,5 +95,20 @@ impl RouterConfig {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The confik attribute needs a string literal, so the pinned model id
+    /// exists in two places. This pins them together: changing one without
+    /// the other is caught here rather than in production answers.
+    #[test]
+    fn default_typesafe_model_stays_pinned() {
+        assert_eq!(
+            crate::services::typesafe::MODEL_PINNED,
+            "jev-1.13.0",
+            "update the typesafe_model confik default in the same change"
+        );
     }
 }

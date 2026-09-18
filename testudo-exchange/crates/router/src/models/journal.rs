@@ -111,3 +111,19 @@ pub struct JournalDailyStat {
     pub drawdown: Decimal,
     pub drawdown_pct: Decimal,
 }
+
+// ---------------------------------------------------------------------------
+// RSK-02 / TS-01: setup tag vocabulary
+// ---------------------------------------------------------------------------
+
+/// A setup tag the trader has already used, with its sample size.
+///
+/// Read by the tag picker and by TS-01, which offers these as the only options
+/// the model is allowed to choose. A tag missing from this list cannot be
+/// selected, which is why the loader lives in one place.
+#[derive(Debug, Clone, PartialEq, Eq, FromRow, Serialize, Deserialize)]
+pub struct SetupTagEntry {
+    pub name: String,
+    pub last_used: DateTime<Utc>,
+    pub uses: i64,
+}

@@ -8,6 +8,7 @@ use crate::services::coach::CoachService;
 use crate::services::hyperliquid::auth::AuthCache;
 use crate::services::hyperliquid::exchange_api::HyperliquidExchangeApi;
 use crate::services::hyperliquid::universe::AssetUniverse;
+use crate::services::typesafe::SystemOneClient;
 use crate::services::{CexClient, ExecutionService};
 use common_utils::adapters::CredentialValidator;
 use common_utils::auth::TokenService;
@@ -72,4 +73,11 @@ pub struct AppState {
     pub signal_rate_limit_max: usize,
     /// AGENT-01: Time window for signal rate limiter.
     pub signal_rate_limit_window: std::time::Duration,
+    /// TS-01: TypeSafe System One (Jev) client.
+    ///
+    /// `None` means the integration is disabled, or enabled without a
+    /// credential. It is the only feature flag below `main`: there is no
+    /// `enabled` boolean for a call site to forget to check, and every
+    /// judgement degrades to "unavailable" when this is `None`.
+    pub typesafe_client: Option<Arc<dyn SystemOneClient>>,
 }

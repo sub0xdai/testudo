@@ -16,9 +16,10 @@ use chrono::{DateTime, NaiveDate, Utc};
 use common_utils::models::canonical_exchange_name;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
+use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::models::journal::JournalTrade;
+use crate::models::journal::{JournalTrade, SetupTagEntry};
 
 /// Input from any trade close event — exchange-agnostic.
 #[derive(Debug, Clone)]
@@ -182,11 +183,30 @@ pub(crate) async fn upsert_auto_tag(
 /// Service for persisting trade closes to the journal schema.
 pub struct JournalService {
     pool: PgPool,
+    /// TS-01 UC-3: attribution client. `None` disables import-time attribution,
+    /// which is the default so callers that do not care cannot accidentally
+    /// enable egress.
+    typesafe_client: Option<Arc<dyn crate::services::typesafe::SystemOneClient>>,
 }
 
 impl JournalService {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            typesafe_client: None,
+        }
+    }
+
+    /// Opts this service into TS-01 note attribution.
+    ///
+    /// Required rather than defaulted: attributing sends the note text to a
+    /// third party, so a caller has to ask for it.
+    pub fn with_typesafe(
+        mut self,
+        client: Option<Arc<dyn crate::services::typesafe::SystemOneClient>>,
+    ) -> Self {
+        self.typesafe_client = client;
+        self
     }
 
     /// Persist a closed trade to journal_trades and update daily stats.
@@ -311,18 +331,43 @@ impl JournalService {
             .await
             {
                 if !notes.is_empty() {
-                    let _ = sqlx::query(
+                    // JNL-20: draft notes are what the trader wrote about the
+                    // trade while it was open, so they usually carry the
+                    // entry thesis. TS-01 attributes them here because this
+                    // merge, not the notes route, is how the note arrives for
+                    // a trader who wrote it before entering and never touched
+                    // it again.
+                    let merged = sqlx::query(
                         "UPDATE journal_trades SET notes = $1 WHERE id = $2 AND (notes IS NULL OR notes = '')"
                     )
                     .bind(&notes)
                     .bind(trade.id)
                     .execute(&self.pool)
                     .await;
-                    tracing::info!(
-                        trade_id = %trade.id,
-                        group_id = %group_id,
-                        "Merged draft notes into closed trade"
-                    );
+
+                    match merged {
+                        Ok(result) if result.rows_affected() > 0 => {
+                            tracing::info!(
+                                trade_id = %trade.id,
+                                group_id = %group_id,
+                                "Merged draft notes into closed trade"
+                            );
+                            crate::services::typesafe::spawn_note_attribution(
+                                self.typesafe_client.clone(),
+                                self.pool.clone(),
+                                trade.id,
+                                trade.user_id,
+                            );
+                        }
+                        // Zero rows means a note was already present, so there
+                        // is nothing new to attribute.
+                        Ok(_) => {}
+                        Err(e) => tracing::warn!(
+                            error = %e,
+                            trade_id = %trade.id,
+                            "Draft note merge failed"
+                        ),
+                    }
                 }
             }
         }
@@ -570,6 +615,45 @@ pub(crate) async fn recompute_cumulative_pnl_from(
     Ok(())
 }
 
+/// The trader's setup tag vocabulary, most recently used first.
+///
+/// One query serves the tag picker, TS-01 UC-1's candidate set, and TS-01 UC-3's
+/// option set. Both TS-01 callers hand this list to the model as the only
+/// options it may choose from, so a second copy of the query drifting out of
+/// sync would silently drop choices the model is not allowed to invent.
+///
+/// Ordered by recency because every caller truncates: if the list is longer
+/// than the caller's limit, the tags the trader actually uses are the ones to
+/// keep.
+pub async fn fetch_setup_tags(
+    pool: &PgPool,
+    user_id: Uuid,
+    limit: i64,
+) -> Result<Vec<SetupTagEntry>, sqlx::Error> {
+    // The limit is clamped rather than trusted: a negative LIMIT is a Postgres
+    // error, and an unbounded one would let a large vocabulary inflate every
+    // TS-01 request that offers it as options.
+    let limit = limit.clamp(1, MAX_SETUP_TAG_LIMIT);
+    sqlx::query_as::<_, SetupTagEntry>(
+        "SELECT setup_tag AS name, MAX(closed_at) AS last_used, COUNT(*) AS uses \
+         FROM journal_trades \
+         WHERE user_id = $1 AND setup_tag IS NOT NULL AND setup_tag <> '' \
+         GROUP BY setup_tag \
+         ORDER BY last_used DESC, uses DESC \
+         LIMIT $2",
+    )
+    .bind(user_id)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}
+
+/// Upper bound on the tag vocabulary any caller may load.
+///
+/// Every TS-01 option is a tag plus a rubric in the request body, so this is a
+/// direct token cost on a path the trader may be waiting on.
+pub const MAX_SETUP_TAG_LIMIT: i64 = 40;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -683,6 +767,38 @@ mod tests {
         assert_eq!(derived.risk_amount, Some(dec!(100)));
         // net = 95, R = 95/100 = 0.95
         assert_eq!(derived.r_multiple, Some(dec!(0.95)));
+    }
+
+    #[tokio::test]
+    async fn test_attribution_is_opt_in() {
+        // TS-01 UC-3: attributing sends the note text to a third party, so a
+        // service built the ordinary way must not do it. A caller that wants
+        // it has to ask with `with_typesafe`.
+        //
+        // Uses a lazy pool with no connection string: the point is the
+        // field's default, not a connection, and no URL literal here should
+        // look like a credential.
+        let lazy = PgPool::connect_lazy_with(sqlx::postgres::PgConnectOptions::new());
+
+        let default_service = JournalService::new(lazy.clone());
+        assert!(
+            default_service.typesafe_client.is_none(),
+            "JournalService::new must not enable third-party egress"
+        );
+
+        let opted_in = JournalService::new(lazy).with_typesafe(Some(Arc::new(
+            crate::services::typesafe::MockSystemOneClient::new(Ok(
+                crate::services::typesafe::SystemOneResponse {
+                    model: "mock".to_string(),
+                    answers: std::collections::BTreeMap::new(),
+                    usage: crate::services::typesafe::Usage::default(),
+                },
+            )),
+        )));
+        assert!(
+            opted_in.typesafe_client.is_some(),
+            "with_typesafe must carry the client through"
+        );
     }
 
     #[test]
@@ -813,12 +929,11 @@ mod tests {
 /// HIST-03 CP-4: integration tests for idempotent re-import.
 ///
 /// These tests physically verify the partial unique index contract by hitting a real
-/// Postgres pool. They are `#[ignore]` by default and only run when `DATABASE_URL` is
-/// set:
+/// Postgres pool. They are `#[ignore]` by default and only run when the database
+/// connection environment is pointed at a scratch database:
 ///
 /// ```bash
-/// DATABASE_URL=postgres://user:pass@localhost/testudo \
-///     cargo test -p router hist03_idempotency -- --ignored
+/// cargo test -p router hist03_idempotency -- --ignored
 /// ```
 #[cfg(test)]
 mod hist03_idempotency {

@@ -31,9 +31,9 @@ use confik::{Configuration as _, EnvSource};
 use dotenvy::dotenv;
 use engine::{EngineActor, ShadowEngine};
 use routes::{
-    agent_journal, agent_keys, auth, coach, depth, dignitas, exchanges, imports, internal, journal, klines,
-    market_data, onboarding, order, paper_balance, public_profile, risk, risk_config, signal, sync, tickers,
-    trade, trade_events, trade_management, user_settings,
+    agent_journal, agent_keys, auth, coach, depth, dignitas, exchanges, imports, internal, journal,
+    judgment, klines, market_data, onboarding, order, paper_balance, public_profile, risk,
+    risk_config, signal, sync, tickers, trade, trade_events, trade_management, user_settings,
 };
 use dashmap::DashMap;
 use sqlx_postgres::PostgresDb;
@@ -453,6 +453,42 @@ async fn main() -> std::io::Result<()> {
     services::dignitas::schedule::spawn_daily_task(pg_pool.clone(), shutdown.clone());
     tracing::info!("Dignitas daily scheduler spawned (UTC 00:xx)");
 
+    // TS-01: TypeSafe System One (Jev) client.
+    //
+    // Built only when the flag is on AND a credential exists. A flag without a
+    // key is a misconfiguration, so it resolves to no client with a warning
+    // rather than an empty key that 401s on every request. Credential comes
+    // from the environment, mirroring OPENAI_API_KEY above: never from the
+    // extension, where every user would share it.
+    let typesafe_client: Option<Arc<dyn services::typesafe::SystemOneClient>> =
+        if !config.typesafe_enabled {
+            tracing::info!("TypeSafe judgements disabled (TYPESAFE_ENABLED=false)");
+            None
+        } else {
+            match std::env::var(services::typesafe::API_KEY_ENV) {
+                Ok(api_key) if !api_key.trim().is_empty() => {
+                    tracing::info!(
+                        model = %config.typesafe_model,
+                        endpoint = %config.typesafe_base_url,
+                        "TypeSafe judgements enabled"
+                    );
+                    Some(Arc::new(services::typesafe::HttpSystemOneClient::new(
+                        config.typesafe_base_url.clone(),
+                        api_key,
+                        config.typesafe_model.clone(),
+                    )))
+                }
+                _ => {
+                    tracing::warn!(
+                        "{} is not set — TypeSafe judgements stay unavailable and the \
+                         extension keeps its pre-judgement tag behaviour.",
+                        services::typesafe::API_KEY_ENV
+                    );
+                    None
+                }
+            }
+        };
+
     // QNT-01a: Calibration engine — shared across HTTP handlers and the
     // trade-management state.
     let calibration_engine =
@@ -507,6 +543,7 @@ async fn main() -> std::io::Result<()> {
         signal_rate_limiter: signal_rate_limiter.clone(),
         signal_rate_limit_max: *signal_rate_limit_max,
         signal_rate_limit_window: *signal_rate_limit_window,
+        typesafe_client: typesafe_client.clone(),
     });
 
     let cex_exchange_api: Option<Arc<services::CexExchangeApi>> = if ccxt_enabled {
@@ -557,10 +594,13 @@ async fn main() -> std::io::Result<()> {
             )
         });
 
-    // JNL-13: Instantiate journal service for trade close recording
-    let journal_service = Arc::new(services::journal_service::JournalService::new(
-        pg_pool.clone(),
-    ));
+    // JNL-13: Instantiate journal service for trade close recording.
+    // TS-01 UC-3: opted into note attribution so the JNL-20 draft-merge path
+    // (pre-written theses) reaches the judgement, not just the notes route.
+    let journal_service = Arc::new(
+        services::journal_service::JournalService::new(pg_pool.clone())
+            .with_typesafe(typesafe_client.clone()),
+    );
 
     // HL-05: WsSubscriptionManager with optional Hyperliquid native WS
     // REL-02: Also wires JournalService for direct HL closing fill writes
@@ -916,9 +956,10 @@ async fn main() -> std::io::Result<()> {
             .and_then(|v| v.parse().ok())
             .unwrap_or(30);
 
-        let journal_service_for_sync = Arc::new(services::journal_service::JournalService::new(
-            pg_pool.clone(),
-        ));
+        let journal_service_for_sync = Arc::new(
+            services::journal_service::JournalService::new(pg_pool.clone())
+                .with_typesafe(typesafe_client.clone()),
+        );
 
         // Query all active non-HL accounts at startup.
         let accounts: Vec<(uuid::Uuid, uuid::Uuid, String)> = sqlx::query_as(
@@ -975,8 +1016,10 @@ async fn main() -> std::io::Result<()> {
             .and_then(|v| v.parse().ok())
             .unwrap_or(30);
 
-        let journal_service_for_hl_sync =
-            Arc::new(services::journal_service::JournalService::new(pg_pool.clone()));
+        let journal_service_for_hl_sync = Arc::new(
+            services::journal_service::JournalService::new(pg_pool.clone())
+                .with_typesafe(typesafe_client.clone()),
+        );
 
         let hl_accounts: Vec<(uuid::Uuid, uuid::Uuid)> = sqlx::query_as(
             "SELECT id, user_id FROM exchange_accounts \
@@ -1065,9 +1108,14 @@ async fn main() -> std::io::Result<()> {
                     .app_data(order_update_sender.clone())
                     .service(
                         web::scope("/health")
-                            .route("", web::get().to(HttpResponse::Ok)) // GET /health (liveness)
-                            .route("/ready", web::get().to(health_ready)) // GET /health/ready (AUD-06 FR-2: readiness)
-                            .route("/sidecar", web::get().to(get_sidecar_health)), // GET /health/sidecar (EXT-16 FR-1.5)
+                            // GET /health (liveness)
+                            .route("", web::get().to(HttpResponse::Ok))
+                            // GET /health/ready (AUD-06 FR-2: readiness)
+                            .route("/ready", web::get().to(health_ready))
+                            // GET /health/sidecar (EXT-16 FR-1.5)
+                            .route("/sidecar", web::get().to(get_sidecar_health))
+                            // GET /health/typesafe (TS-01 FR-1)
+                            .route("/typesafe", web::get().to(judgment::health)),
                     )
                     // AUD-05 FR-4: Prometheus metrics endpoint
                     .route("/metrics", web::get().to(prometheus_metrics))
@@ -1217,6 +1265,13 @@ async fn main() -> std::io::Result<()> {
                                 "/{report_id}/dismiss-banner",
                                 web::patch().to(coach::dismiss_banner),
                             ), // PATCH /coach/{id}/dismiss-banner
+                    )
+                    .service(
+                        // TS-01: TypeSafe judgements. `data: null` when
+                        // unavailable, never an HTTP error.
+                        web::scope("/judgment")
+                            .wrap(JwtMiddleware::new(token_service.clone()))
+                            .route("/pre-trade", web::post().to(judgment::pre_trade)),
                     )
                     .service(
                         // ENG-01a/ENG-01b: Dignitas score + public identity

@@ -9,8 +9,14 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    middleware::{content_negotiation::{wants_jsonld, wrap_jsonld, wrap_jsonld_collection, jsonld_response}, AuthenticatedUser},
-    models::journal::{JournalEntry, JournalTag, JournalTrade},
+    middleware::{
+        content_negotiation::{
+            jsonld_response, wants_jsonld, wrap_jsonld, wrap_jsonld_collection,
+        },
+        AuthenticatedUser,
+    },
+    models::journal::{JournalEntry, JournalTag, JournalTrade, SetupTagEntry},
+    services::journal_service::fetch_setup_tags,
     services::journal_stats::{StatsEngine, StatsFilter},
     services::journal_timeseries::TimeSeriesService,
     types::{app::AppState, auth::ErrorResponse},
@@ -619,6 +625,17 @@ pub async fn update_trade_notes(
 
     match result {
         Some(trade) => {
+            // TS-01 UC-3: attribute the note. Spawned, not awaited — the
+            // post-trade policy allows a 30s timeout with retries, and the
+            // trader should not wait on a judgement to get their note saved.
+            // Leaves the row at `not_attempted` when no client is configured.
+            crate::services::typesafe::spawn_note_attribution(
+                app_state.typesafe_client.clone(),
+                app_state.pool.clone(),
+                trade_id,
+                user.user_id,
+            );
+
             if wants_jsonld(&req) {
                 return Ok(jsonld_response(wrap_jsonld(
                     &trade,
@@ -1033,13 +1050,6 @@ pub struct ListSetupTagsQuery {
     pub limit: Option<i64>,
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
-pub struct SetupTagEntry {
-    pub name: String,
-    pub last_used: DateTime<Utc>,
-    pub uses: i64,
-}
-
 pub async fn list_setup_tags(
     app_state: web::Data<AppState>,
     user: AuthenticatedUser,
@@ -1047,22 +1057,12 @@ pub async fn list_setup_tags(
 ) -> Result<HttpResponse> {
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
 
-    let tags = sqlx::query_as::<_, SetupTagEntry>(
-        "SELECT setup_tag AS name, MAX(closed_at) AS last_used, COUNT(*) AS uses \
-         FROM journal_trades \
-         WHERE user_id = $1 AND setup_tag IS NOT NULL AND setup_tag <> '' \
-         GROUP BY setup_tag \
-         ORDER BY last_used DESC, uses DESC \
-         LIMIT $2",
-    )
-    .bind(user.user_id)
-    .bind(limit)
-    .fetch_all(&app_state.pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to list setup tags: {e}");
-        actix_web::error::ErrorInternalServerError("Database error")
-    })?;
+    let tags = fetch_setup_tags(&app_state.pool, user.user_id, limit)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to list setup tags: {e}");
+            actix_web::error::ErrorInternalServerError("Database error")
+        })?;
 
     Ok(HttpResponse::Ok().json(tags))
 }

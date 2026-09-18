@@ -14,6 +14,7 @@ pub mod depth;
 pub mod exchanges;
 pub mod imports;
 pub mod journal;
+pub mod judgment;
 pub mod klines;
 pub mod market_data;
 pub mod onboarding;

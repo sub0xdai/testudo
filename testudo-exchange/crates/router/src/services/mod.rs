@@ -36,6 +36,7 @@ pub mod sizing_preview;
 pub mod sync_service;
 pub mod trade_event_writer;
 pub mod trade_manager;
+pub mod typesafe;
 pub mod ws_subscription_manager;
 
 pub use cex_client::{
