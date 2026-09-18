@@ -1,14 +1,19 @@
-# Handoff — Hyperliquid Spot/Perp Transfer + WalletConnect Fixes
+# Handoff
 
-**Date:** 2026-08-01 07:35 UTC
+**Date:** 2026-09-18
 **Project:** testudo
-**Next focus:** Fix Hyperliquid spot→perp transfer; use Python SDK's `usd_class_transfer` as reference implementation
+**HEAD:** `0c342402` (pushed; droplet at `434e912a`, one commit behind)
+**Next focus:** HL-12, the migration off `hyperliquid-sdk-rs`. Spec written, awaiting `/vox plan`.
 
 ---
 
 ## Summary
 
-Implemented Hyperliquid spot/perp balance display and transfer functionality across backend (Rust router), journal (Solid.js exchange cards), and extension (Solid.js popup). Also fixed WalletConnect/Reown onboarding by wiring AuthContext into WalletConnectFlow and fixing a deploy script env-var override bug. The transfer endpoint is functional for perp→spot (`usd_transfer`), but spot→perp is blocked by a Rust SDK bug: `spot_transfer_to_perp` in hyperliquid-sdk-rs v0.1.2 uses `send_l1_action` which omits `nonce`/`hyperliquidChain`/`signatureChainId` from the action body, and the `ClassTransfer` struct field `usd_size` serializes to `usdSize` instead of `usdc`.
+Three strands landed today, in this order.
+
+1. **TS-01 Phase 1 + UC-1 + UC-3 + the backlog sweeper.** A server-side TypeSafe (Jev) client, setup-tag resolution on the pre-trade path, journal note attribution on the post-close path, an audit log, and a recovery sweeper. Off by default; `TYPESAFE_ENABLED=false`.
+2. **Production recovery.** `testudo-api` had been down since 2026-09-16 10:09 UTC with `target/release/router` missing. Two independent failures were stacked: an incomplete registry patch (`E0560`) and a migration checksum divergence that would have caused a second outage on restart.
+3. **Dependency hygiene.** The registry `sed` is gone; the SDK is vendored with a one-line fix and a regression test. A spec exists for leaving that crate entirely.
 
 ---
 
@@ -16,79 +21,91 @@ Implemented Hyperliquid spot/perp balance display and transfer functionality acr
 
 | What | Status |
 |------|--------|
-| WalletConnect projectId fix (deploy script) | ✅ Done |
-| WalletConnectFlow uses AuthContext | ✅ Done |
-| Backend: spot+perp balance query | ✅ Done |
-| Backend: transfer endpoint with account validation | ✅ Done |
-| Backend: perp→spot transfer (usd_transfer) | ✅ Working |
-| Backend: spot→perp transfer | 🔴 Blocked by SDK bug |
-| Journal: ExchangeCard transfer UI | ✅ Done (published) |
-| Extension: transfer UI | ✅ Done (not yet deployed) |
-| SDK patch: ClassTransfer field rename | 🔄 Applied on droplet, not sufficient |
+| TS-01 transport, UC-1, UC-3, migration, sweeper | Done, 938 tests pass |
+| `TYPESAFE_ENABLED` | `false` in production. Client absent, sweeper not spawned |
+| `judgment_*` columns on `journal_trades` | Applied. 169 rows at `not_attempted` |
+| `testudo-api` / `testudo-ws` / `testudo-cex` | active, health 200 |
+| `hyperliquid-sdk-rs` | Vendored at `vendor/`, one-field patch, `[patch.crates-io]` |
+| Spot-to-perp transfer | **Still broken.** Wrong action; see below |
+| HL-12 hypersdk migration | Spec written, not planned or built |
+
+---
+
+## The 2026-09-16 Outage
+
+`target/release/router` and `ws-stream` did not exist, so systemd returned `203/EXEC` every 5 seconds. The restart counter reached **36,315** over roughly 49 hours before anyone looked.
+
+Two causes, both now fixed:
+
+**1. Incomplete registry patch.** `deploy.sh` renamed the `ClassTransfer` struct field but not its field-init call site, so `ClassTransfer { usd_size, to_perp }` referenced a field that no longer existed. `E0560` on every build.
+
+**2. A second outage waiting behind the first.** The production database had been migrated with a droplet-only, uncommitted edit to `20260530000001_agent_key_audit_trail.up.sql` (guarding `ALTER TABLE trade_groups`, which does not exist in prod). sqlx records a SHA-384 of the up-migration, and `main.rs` calls `std::process::exit(1)` on a migration error with `Restart=always` behind it. The recorded checksum was `8ae16236...`, matching the droplet file and not the committed `58acfec3...`, so any binary built from the repo would have aborted on startup. Committed the deployed version.
+
+Diagnostic method worth reusing: for an unmodified neighbouring migration, worktree checksum == committed checksum == database checksum. That control validates the method before you trust a mismatch.
+
+---
+
+## Correction to the Previous Handoff
+
+The previous version of this file recorded that the Rust SDK's `send_l1_action` "omits `nonce`/`hyperliquidChain`/`signatureChainId` from the action body". **That is wrong about `nonce`.** Both `send_l1_action` and `send_user_action` end in `self.post(action_value, signature, nonce)`, which places `nonce` at the top level of the payload, where Hyperliquid expects it.
+
+The real defect is narrower and still stands: the *action body* for `spotUser`/`classTransfer` lacks `hyperliquidChain` and `signatureChainId`. `ClassTransfer` carries only an amount and a direction. Corroborated by `hypersdk`, whose `UsdClassTransferAction` includes `signature_chain_id`, `hyperliquid_chain`, and `nonce`.
+
+This matters because the previous note sent us toward the wrong fix. Do not patch `ClassTransfer` and call the transfer solved.
 
 ---
 
 ## Key Decisions
 
-- **Used `usd_transfer` for perp→spot**: This SDK method works because it goes through `send_user_action` which properly includes chain fields.
-- **Did NOT implement raw EIP-712 signing**: Attempted, but it's error-prone. The Python SDK reference shows the correct approach is `usd_class_transfer`.
-- **SDK patch approach**: Patched `ClassTransfer.usd_size` → `usdc` on the droplet, but `send_l1_action` still doesn't add `nonce`/chain fields — the patch alone isn't enough.
-
----
-
-## The Fix (from Python SDK research)
-
-The Python SDK's `usd_class_transfer(amount=50.0, to_perp=True)` works for both directions. The Rust SDK has `usd_class_transfer` at line 954 but it also uses `send_l1_action` — same bug.
-
-**Recommended fix path**: Replace `transfer_usdc` to make a direct HTTP POST to `https://api.hyperliquid.xyz/exchange` with a properly formatted `usdClassTransfer` action that includes `hyperliquidChain`, `signatureChainId`, and `nonce`, signed with the agent's key. The Python SDK's working implementation can be referenced in the hyperliquid-python-sdk repo.
-
-Alternatively: implement `send_asset` with `sourceDex: "spot"`, `destinationDex: ""` (default perp DEX) as the Hyperliquid docs describe.
+- **`Option<Arc<dyn SystemOneClient>>` on `AppState` is the feature flag.** No boolean to forget, and every judgement degrades to a null payload rather than an error.
+- **Retry splits by path.** Pre-trade never retries: a 500 ms budget cannot absorb a `retry-after`. Post-trade retries with jittered backoff.
+- **A transient failure leaves the row queued** (`not_attempted`), not `failed`. That is what makes the sweeper a retry loop instead of a one-hop loss.
+- **Vendoring over registry patching.** Production must build the same dependency tree as every other environment.
+- **The vendored fix is behaviour-preserving.** The `usdc` serde rename matches what prod already ran. Migrating to `hypersdk` is the behavioural fix, and it is a separate spec.
 
 ---
 
 ## Artifacts
 
-| Artifact | Path | Description |
-|----------|------|-------------|
-| Backend routes | `testudo-exchange/crates/router/src/routes/exchanges.rs` | Balance endpoint split spot/perp; transfer_funds handler with account validation |
-| HL exchange API | `testudo-exchange/crates/router/src/services/hyperliquid/exchange_api.rs` | `transfer_usdc` method, `transfer_to_perp_raw` (unused) |
-| Types | `testudo-exchange/crates/router/src/types/exchanges.rs` | TransferRequest/TransferResponse |
-| App state | `testudo-exchange/crates/router/src/types/app.rs` | Added `hl_exchange_api` field |
-| Router main | `testudo-exchange/crates/router/src/main.rs` | HL API refactored, transfer route added |
-| Journal card | `testudo-journal/src/components/account/ExchangeCard.tsx` | Spot/perp display + transfer UI with direction toggle |
-| Journal API | `testudo-journal/src/api/exchange.ts` | `transferFunds` method |
-| WalletConnect flow | `testudo-journal/src/components/account/WalletConnectFlow.tsx` | Now uses `useAuth()` context |
-| Extension transfer | `testudo-extension/src/popup/components/MainView.tsx` | Transfer UI in Account tab |
-| Extension BG | `testudo-extension/src/background/api.ts`, `handlers.ts` | `transferFunds` + handler |
-| Deploy script | `scripts/deploy.sh` | Fixed env-var override; SDK patch added |
-| Droplet patch | `/root/.cargo/registry/.../hyperliquid-sdk-rs-0.1.2/src/types/actions.rs:246` | `usd_size` → `usdc` |
-| Droplet patch | `/root/.cargo/registry/.../hyperliquid-sdk-rs-0.1.2/src/providers/exchange/mod.rs` | Parameter rename in `spot_transfer_to_perp` |
-| Previous handoff | `HANDOFF.md` (this file) | Pre-existing CLIs handoff |
+| Artifact | Path |
+|----------|------|
+| TypeSafe client, wire types | `testudo-exchange/crates/router/src/services/typesafe/{client,types}.rs` |
+| UC-1 setup tag resolution | `.../services/typesafe/service.rs` |
+| UC-3 note attribution | `.../services/typesafe/attribution.rs` |
+| Backlog sweeper | `.../services/typesafe/sweep.rs` |
+| Judgement routes | `.../routes/judgment.rs` |
+| UC-3 migration | `.../sqlx_postgres/migrations/20260605000000_judgment_attribution.{up,down}.sql` |
+| Vendored SDK | `testudo-exchange/vendor/hyperliquid-sdk-rs/` |
+| Wire-shape regression test | `.../services/hyperliquid/exchange_api.rs` (`class_transfer_serializes_*`) |
+| Deploy script | `scripts/deploy.sh` |
+| HL-12 spec | `.specify/specs/HL-12-hypersdk-migration/spec.md` |
+| Design doc for TS-01 | `docs/plans/typesafe-jev-sniper-integration.md` |
 
 ---
 
-## Suggested Skills
+## Open Items
 
-| Skill | Relevance | Invocation |
-|-------|-----------|------------|
-| audit | Review the transfer implementation for security/safety | `/skill:audit` |
-| graphify | Map the transfer code paths across backend/frontend | `/skill:graphify .` |
+**HL-12 (next).** Spec at `.specify/specs/HL-12-hypersdk-migration/spec.md`. Per `.specify/WORKFLOW.md` the next step is `/vox plan` then the advisor gate. Three `[CLARIFY]` items are unresolved, and one of them gates the whole spec: whether a funded Hyperliquid testnet account with an approved agent wallet exists. Without it the transfer fix cannot be verified, which is the main reason to migrate.
 
-Also consider:
-- **Read first**: `testudo-exchange/crates/router/src/services/hyperliquid/exchange_api.rs` lines 146-190
-- **Read first**: Python SDK reference: https://github.com/hyperliquid-dex/hyperliquid-python-sdk
-- **Droplet**: SSH `root@n0x-server`, `cd /opt/testudo && bash scripts/deploy.sh`
-- **Git state**: `master`, clean, up to date with remote
+**Known-broken UI.** The journal and extension still offer spot-to-perp transfer, which cannot succeed. Either hide it until HL-12 lands or accept that it is a live control that always fails.
 
----
+**No liveness alert.** The API was down for 49 hours and nothing told anyone. A health check on `testudo-api` that pages would have caught it in minutes. Worth doing before the next migration, not after.
 
-## Open Questions / Blockers
+**Pre-existing, unrelated.** `./uploads/journal` does not exist relative to `WorkingDirectory=/opt/testudo/testudo-exchange`, so actix-files logs an error at every startup and journal image uploads will fail. Disk on the droplet is 85% full (12 GB free).
 
-- **Spot→perp 422**: SDK `send_l1_action` doesn't include chain fields. Need to implement raw HTTP call or fix SDK.
-- **Extension not deployed**: Only journal was deployed via `deploy.sh`. Extension needs separate build+deploy.
+**Scrub hook.** Fixed in this clone: `vendor/` excluded, and `set -e` removed so the hook's own `case $?` can handle scrub.py's exit code. The canonical version of that hook has the same bug and no path exclusion, so other projects scaffolded from it will silently rewrite files. Worth fixing at the source.
 
 ---
 
 ## Redactions
 
-- (None)
+None.
+
+---
+
+## Environment Notes
+
+- Build the router locally with `SQLX_OFFLINE=true`. `db-processor` uses `sqlx::query!` and there is no local Postgres on `localhost:5000`.
+- The droplet builds without it by finding `/opt/testudo/.env` through dotenvy's parent-directory walk.
+- Deploy: `ssh n0x 'cd /opt/testudo && bash scripts/deploy.sh'`. Full compiler output now goes to `/tmp/testudo-build.log` and the last 40 lines print on failure.
+- Do not use `pkill -f "cargo build"` over SSH. It matches the SSH command's own argv and kills the session.
