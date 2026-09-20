@@ -66,7 +66,7 @@ Note on Jev: `~/dotfiles/scripts/vox_jev.sh gaps HL-12-hypersdk-migration` retur
 
 Six checkpoints. Each leaves a tree that builds and passes the full suite. CP-2 through CP-5 have no dependency on testnet credentials; CP-6 is the only one that does.
 
-**Plan revised 2026-09-20 after CP-2 failed.** The original CP-2 assumed `hypersdk` could be added alongside `hyperliquid-sdk-rs` under an `alloy2` alias, with the old crate removed in a later checkpoint. Cargo forbids that: alloy 0.1 and alloy 2 cannot share a dependency graph. The swap is therefore atomic, and this plan places a router-owned seam in front of it so the swap's diff stays concentrated. Evidence and the six experiments behind the conclusion are in `LEARNINGS.md`.
+**Plan revised 2026-09-20 after CP-2 failed.** The original CP-2 assumed `hypersdk` could be added alongside `hyperliquid-sdk-rs` under an `alloy2` alias, with the old crate removed in a later checkpoint. Cargo forbids that: alloy 0.1 and alloy 2 cannot share a dependency graph. The swap is therefore atomic, and this plan places a router-owned boundary in front of it so the swap's diff stays concentrated. Evidence and the six experiments behind the conclusion are in `LEARNINGS.md`.
 
 ### On slicing - Jev adjudication
 
@@ -76,7 +76,7 @@ It is also the expected answer, and the reason is structural. Vox's vertical-sli
 
 Two honest consequences follow. First, CP-1 and CP-5 really are convoys, not slices - a type swap and a deletion - and their only verification is that the suite count does not move. They are prerequisites for the slices around them, and they are called out as such in the sequencing rules. Second, the risk Jev is pointing at is real and is covered elsewhere: because no checkpoint produces a user-visible change, the failure mode that matters is a checkpoint that compiles and passes while changing behaviour silently. That is what CP-2's conversion tests, CP-3's pinned signing hash and body assertions, CP-4's amount assertion, and the baseline-count check on every checkpoint exist to catch.
 
-CP-3 cannot be re-sliced. The dependency swap is atomic, so the order-path rewrite has to land with it; the mitigation is CP-2's seam, which keeps five files out of CP-3 rather than splitting CP-3 itself.
+CP-3 cannot be re-sliced. The dependency swap is atomic, so the order-path rewrite has to land with it; the mitigation is CP-2's boundary, which keeps five files out of CP-3 rather than splitting CP-3 itself.
 
 ### CP-1: Network resolution becomes local ✅
 
@@ -92,11 +92,11 @@ Completed 2026-09-20 by /skill:vox build.
 - **Verification**: `SQLX_OFFLINE=true cargo test -p router --bin router` produces `960 tests` plus the new URL test, and `grep -rn "hyperliquid_sdk_rs::Network" crates/router/src/{types/app.rs,main.rs,routes/exchanges.rs,services/risk_snapshot.rs,services/ws_subscription_manager.rs,services/hyperliquid/agent_approval.rs}` produces nothing.
 - **Commit message**: `refactor(hl): resolve hyperliquid network locally, not through the sdk`
 
-### CP-2: Read paths behind a router-owned seam ✅
+### CP-2: Read paths behind a router-owned boundary ✅
 
 Completed 2026-09-20 by /skill:vox build.
 
-The read paths are the only place the old SDK's types leak outside the Hyperliquid adapter. Sealing them costs one small port and removes five files from the swap's blast radius, so CP-3's diff is concentrated rather than scattered. The seam is not scaffolding: after CP-3 it is implemented over `hypersdk`, which is exactly the SDK boundary FR-6 asks for.
+The read paths are the only place the old SDK's types leak outside the Hyperliquid adapter. Sealing them costs one small port and removes five files from the swap's blast radius, so CP-3's diff is concentrated rather than scattered. The boundary is not scaffolding: after CP-3 it is implemented over `hypersdk`, which is exactly the SDK boundary FR-6 asks for.
 
 - **Touches**: new `crates/router/src/services/hyperliquid/market_data.rs`, `services/hyperliquid/universe.rs`, `services/hyperliquid/ws_fills.rs`, `services/import_worker.rs`, `services/hl_fill_journal.rs`, `services/journal_syncer/hyperliquid.rs`
 - **Tasks**:
@@ -105,10 +105,12 @@ The read paths are the only place the old SDK's types leak outside the Hyperliqu
   3. RED first: one unit test converting a fixed SDK fill into `HlFill` and asserting every field, and one asserting the perp mapping.
   4. Migrate `universe.rs` (`meta()` to `perps()`), `ws_fills.rs`, `import_worker.rs`, `journal_syncer/hyperliquid.rs`, and `hl_fill_journal.rs` off `InfoProvider` and `UserFillByTime`, including their `make_fill` test helpers.
   5. Leave `exchange_api.rs` alone. Its `all_mids`, `user_state`, and `frontend_open_orders` calls are internal to that file, which already returns router-owned types through `ExchangeApi`.
-- **Verification**: `SQLX_OFFLINE=true cargo test -p router --bin router` reports the baseline 960 listed tests plus 5 new seam tests, and `grep -rln "hyperliquid_sdk_rs" crates/router/src --include=*.rs` names only `services/hyperliquid/market_data.rs`, `services/hyperliquid/exchange_api.rs`, `types/hl_network.rs`, and the two `services/hyperliquid/tests/` integration files, which are testnet-only and migrate in CP-3.
-- **Commit message**: `refactor(hl): read market data and fills through a router-owned seam`
+- **Verification**: `SQLX_OFFLINE=true cargo test -p router --bin router` reports the baseline 960 listed tests plus 5 new conversion tests, and `grep -rln "hyperliquid_sdk_rs" crates/router/src --include=*.rs` names only `services/hyperliquid/market_data.rs`, `services/hyperliquid/exchange_api.rs`, `types/hl_network.rs`, and the two `services/hyperliquid/tests/` integration files, which are testnet-only and migrate in CP-3.
+- **Commit message**: `refactor(hl): resolve network locally and seal the read paths` (CP-1 and CP-2 landed together, so this is the actual subject)
 
-### CP-3: Atomic swap to hypersdk
+### CP-3: Atomic swap to hypersdk ✅
+
+Completed 2026-09-20 by /skill:vox build.
 
 **Needs a dedicated session.** Decision 2026-09-20: keep this checkpoint atomic rather than splitting it into a reads-only commit with order placement failing closed. Nothing ships in a state where trading is disabled at any point. The cost is that this checkpoint cannot be worked partially; it is a three to four hour block that must run to completion, because the tree does not build in the middle of it.
 
@@ -118,15 +120,17 @@ The dependency swap cannot be split. alloy 0.1 and alloy 2 cannot share a depend
 
 The transfer is deliberately *not* fixed here. `spotUser`/`classTransfer` has no hypersdk equivalent, so rather than silently shipping an untested replacement inside a large mechanical commit, `transfer_usdc` returns a typed "not yet implemented" error for one commit. That keeps this commit behaviourally neutral and leaves the transfer change isolated in CP-4, which is what FR-9 asks for.
 
-- **Touches**: `testudo-exchange/Cargo.toml`, `Cargo.lock`, `crates/router/Cargo.toml`, `vendor/` (deleted), `services/hyperliquid/{market_data,exchange_api,auth}.rs`, `services/auth/siwe.rs`, `routes/exchanges.rs`, `services/hyperliquid/tests/*`, `types/hl_network.rs`
+- **Touches**: `testudo-exchange/Cargo.toml`, `Cargo.lock`, `crates/router/Cargo.toml`, `vendor/` (deleted), `services/hyperliquid/{market_data,exchange_api,auth}.rs`, `services/auth/siwe.rs`, `services/exchange_api.rs`, `routes/{exchanges,trade_management}.rs`, `services/hyperliquid/tests/*`, `types/hl_network.rs`
+
+  **Corrected 2026-09-20 after the fact.** The original list omitted `services/exchange_api.rs` and `routes/trade_management.rs`. The typed "not implemented" transfer error of task 3 needs a variant on `ExchangeApiError`, and `routes/trade_management.rs` matches that enum exhaustively in two places, so both files move. Four lines of real change in total.
 - **Tasks**:
   1. Remove `hyperliquid-sdk-rs` from `crates/router/Cargo.toml`, remove the `[patch.crates-io]` block and its comment from `testudo-exchange/Cargo.toml`, and delete `testudo-exchange/vendor/`.
   2. Add `hypersdk = "0.2.15"` and `alloy = { version = "=2.4.2", default-features = false, features = ["signers", "signer-local", "k256"] }`. The exact pin is load-bearing: alloy 2.2+ declares `rust-version = 1.94.1`, which is exactly what the droplet runs, so a caret range can lock a version the droplet refuses to build. `default-features = false` matters too: alloy's defaults pull `essentials`, and with it the AWS KMS, GCP, Turnkey, and Ledger signer backends and a kzg stack the router never uses.
-  3. Reimplement `HlMarketData` over hypersdk's `HttpClient` (`perps()`, `user_fills_by_time()`), leaving `HlFill` and `HlPerp` unchanged. That the seam makes this a small, contained change is the point of CP-2.
+  3. Reimplement `HlMarketData` over hypersdk's `HttpClient` (`perps()`, `user_fills_by_time()`), leaving `HlFill` and `HlPerp` unchanged. That the boundary makes this a small, contained change is the point of CP-2.
   4. Rewrite `exchange_api.rs` internals against `Client::place`/`modify`/`cancel`/`cancel_by_cloid`/`clearinghouse_state`/`open_orders`: `build_order_request` to hypersdk's typed `OrderRequest` wrapped in `BatchOrder`, `place_order`, `place_trigger_order`, `amend_order`, `cancel_order`, `get_balance`, `find_oid_by_cloid`, and the response mapping for `OrderResponseStatus`'s struct variants, with its unit tests moved onto the new variants.
   5. Keep the existing tick rounding (`tick_size_from_mid` plus `round_dp(0) * tick`). Do not switch to `PerpMarket::round_price`; it rounds midpoint-toward-zero and would be a behaviour change under FR-4.
   6. Migrate the signer to alloy 2. `routes/exchanges.rs` needs no change (`PrivateKeySigner::random()` and `::address()` are unchanged). `services/auth/siwe.rs` needs exactly one: alloy 2's `Signature::from_bytes_and_parity` is infallible and returns `Signature`, not `Result`, so the `?` and its error mapping go. Delete `HlNetwork::to_sdk()`.
-  7. RED first, then pin. Assert `Action::Order(fixture).prehash(nonce, None, None, Chain::Mainnet)` equals `0x6c43321e0f67bbafa52f8ad0cca68ce5e6700cac04fd5f8ccc1df6d4d3e799b0` for the order fixture described in the verified mapping below, and assert `ActionRequest::recover()` returns the signing key's address. **Do not pin a signature.** The plan originally proposed pinning the vendored crate's expected signature `fa8a41f6...`; that value does not survive the alloy bump and was corrected on 2026-09-20 after measurement. Add serde-level body assertions for `order`, `cancel`, `modify`, and `cancelByCloid`.
+  7. RED first, then pin. Assert the EIP-712 digest directly, and assert `ActionRequest::recover()` returns the signing key's address. **Do not pin a signature.** The plan originally proposed pinning the vendored crate's expected signature `fa8a41f6...`; that value does not survive the alloy bump and was corrected on 2026-09-20 after measurement. The digest is pinned in two layers: `agent_signing_hash(Chain::Mainnet, 0xde6c4037...)` against the vendored crate's external vector, which is the exchange-verified value, and `Action::Order(fixture).prehash(...)` plus its msgpack connection id against measured goldens. The plan originally described the second digest as "the order fixture described in the verified mapping below"; no such fixture was ever written down, and `0x6c43321e...` is the *agent* hash for connection id `0xde6c4037...`, not a `prehash` of any order. Corrected 2026-09-20 rather than written into a test that would have failed. Add serde-level body assertions for `order`, `cancel`, `modify`, and `cancelByCloid`.
 - **Verification**: `cargo tree -p router -i hyperliquid-sdk-rs` fails; `cargo tree -p router -i hypersdk` resolves to 0.2.15; `SQLX_OFFLINE=true cargo clippy -p router --all-targets` reports no more warnings than the CP-1 baseline; `SQLX_OFFLINE=true cargo test -p router --bin router` passes with the new assertions.
 
 #### Verified API mapping (measured 2026-09-20)
@@ -176,6 +180,8 @@ Isolated from the swap so the behavioural change is reviewable on its own, which
   1. Delete the stale comment block at `scripts/deploy.sh:41-45` that describes the removed registry patch. FR-8.
   2. Prune `.cargo/audit.toml`: `RUSTSEC-2025-0073`, `RUSTSEC-2024-0388`, `RUSTSEC-2024-0436`, `RUSTSEC-2024-0370`, and `RUSTSEC-2026-0002` exist only because of alloy 0.1.x, and four of them say so in their own justification text. Keep `RUSTSEC-2023-0071` (`rsa` via `sqlx-mysql`, no upstream fix).
   3. Update the `hl_network.rs` doc comment, which currently says `to_sdk` is deleted in CP-6.
+
+     **Done in CP-3 (2026-09-20).** `to_sdk` was deleted by the swap, so the comment naming CP-6 would have been false. Nothing left to do here.
 - **Verification**: `grep -rn "sed" scripts/deploy.sh` shows no dependency patching, and `cargo audit` reports nothing outside the pruned ignore list.
 - **Commit message**: `chore(hl): drop the dependency-patching desk clutter`
 
@@ -210,7 +216,7 @@ Isolated from the swap so the behavioural change is reviewable on its own, which
 
 **D. Testnet credentials. (Confirmed available 2026-09-20.)** CP-6 can run once CP-4 lands.
 
-**E. The dependency swap is atomic. (Established 2026-09-20, after the original CP-2 failed.)** alloy 0.1 and alloy 2 cannot coexist in one dependency graph, so the old crate leaves in the same commit `hypersdk` arrives. This removes the `alloy2` alias, the bridging signer, and the old CP-6 rename step. It also makes CP-3 the largest single commit in the spec by construction, mitigated by CP-2's seam. Full evidence in `LEARNINGS.md`.
+**E. The dependency swap is atomic. (Established 2026-09-20, after the original CP-2 failed.)** alloy 0.1 and alloy 2 cannot coexist in one dependency graph, so the old crate leaves in the same commit `hypersdk` arrives. This removes the `alloy2` alias, the bridging signer, and the old CP-6 rename step. It also makes CP-3 the largest single commit in the spec by construction, mitigated by CP-2's boundary. Full evidence in `LEARNINGS.md`.
 
 **F. The transfer is disabled for one commit. (2026-09-20.)** CP-3 makes `transfer_usdc` return a typed unsupported error rather than ship an untested replacement inside a large mechanical commit. This keeps CP-3 behaviourally neutral and is what makes FR-9's isolation of the transfer fix possible. It is a deliberate, temporary regression in a path that already cannot succeed, and it must not survive CP-4.
 

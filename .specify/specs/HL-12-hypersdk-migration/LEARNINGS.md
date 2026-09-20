@@ -145,8 +145,8 @@ general works. The failure is specific to having both alloy majors present.
    and `ExchangeProvider<PrivateKeySigner>` all migrate inside the swap.
 3. **A non-buildable commit is not acceptable**, so unless the router's code is first
    decoupled from the old SDK's types, the swap must carry every call site at once.
-   That argues for a strangler seam before the swap.
-4. **The order path already has its seam.** `crate::services::exchange_api::ExchangeApi`
+   That argues for an intermediate boundary before the swap.
+4. **The order path already has its boundary.** `crate::services::exchange_api::ExchangeApi`
    is the internal boundary and returns router-owned types, so the SDK leak into other
    modules is only the read paths: `InfoProvider` and `UserFillByTime` used directly by
    `universe.rs`, `ws_fills.rs`, `import_worker.rs`, `journal_syncer/hyperliquid.rs`, and
@@ -166,7 +166,7 @@ not pulled into a trading router. The router uses only `Address`, `Signature`,
 
 ---
 
-## CP-2: Read paths behind a router-owned seam (2026-09-20)
+## CP-2: Read paths behind a router-owned boundary (2026-09-20)
 
 **Outcome.** New `services/hyperliquid/market_data.rs` (306 lines, 5 tests, 3 TB-01
 waivers). Five consumers migrated off `InfoProvider` and `UserFillByTime`:
@@ -175,14 +175,14 @@ waivers). Five consumers migrated off `InfoProvider` and `UserFillByTime`:
 router bin, `__check.sh` reported zero violations on changed lines.
 
 After this checkpoint the Hyperliquid SDK is named by exactly three production files:
-`market_data.rs` (the seam), `exchange_api.rs` (order path, self-contained behind the
+`market_data.rs` (the boundary), `exchange_api.rs` (order path, self-contained behind the
 `ExchangeApi` trait), and `types/hl_network.rs` (the `to_sdk` bridge). CP-3's diff is
 now concentrated in those three plus the Cargo manifests, instead of scattered across
 fourteen.
 
 ### `raw_json` is why `HlFill` mirrors all fifteen fields
 
-The obvious seam design is to carry only the fields the router reads. That would have
+The obvious boundary design is to carry only the fields the router reads. That would have
 been a silent data change. `journal_syncer::hyperliquid::convert_hl_fill` persists
 `serde_json::to_value(fill)` into `raw_fills.raw_json`, so the SDK struct's whole wire
 shape was already being stored. A narrower `HlFill` would have dropped `crossed`,
@@ -201,7 +201,7 @@ serialized. The consumer that reads every field may be a database column, not a 
 ### Rate-limit classification moved to the boundary, with the same predicate
 
 `journal_syncer` used to sniff the error string for `429` or `rate` inline and map to
-`SyncError::RateLimit`. The seam now owns that predicate and returns a typed
+`SyncError::RateLimit`. The boundary now owns that predicate and returns a typed
 `HlMarketDataError::RateLimited`, so the consumer matches on a variant. The predicate
 itself is unchanged and is duplicated nowhere. When `hypersdk` arrives in CP-3 it
 exposes a typed status, and this is the one place that has to change.
@@ -348,3 +348,138 @@ Two last measurements close the order-encoding question:
 - `normalize_status`, `extract_order_id`, `extract_avg_price`, and `build_order_request`
   are referenced only inside `exchange_api.rs`. No other module sees the SDK's order
   types, so that file can be migrated on its own.
+
+---
+
+## CP-3: Atomic swap to hypersdk (2026-09-20)
+
+**Outcome.** `hyperliquid-sdk-rs` and `[patch.crates-io]` are gone, `vendor/` is deleted
+(28 files), and `hypersdk = "0.2.15"` + `alloy = "=2.4.2"` are in. Router tests went 943
+passed to 954 passed, 0 failed, 22 ignored. Clippy is unchanged at 5 warnings on the
+router bin and 6 on the test bin. `__check.sh` reports zero TB-09 or TB-10 violations on
+any added line.
+
+Gates, all run from `testudo-exchange/` with `SQLX_OFFLINE=true`:
+
+| Gate | Result |
+|---|---|
+| `cargo tree -p router -i hyperliquid-sdk-rs` | `did not match any packages` |
+| `cargo tree -p router -i hypersdk` | `hypersdk v0.2.15` |
+| `cargo tree -p router -i alloy` | `alloy v2.4.2` |
+| `cargo clippy -p router --all-targets` | bin 5, test bin 6 (baseline) |
+| `cargo clippy --all-targets` (workspace) | exit 0 |
+| `cargo test -p router --bin router` | 954 passed / 0 failed / 22 ignored |
+| `cargo test` (workspace) | exit 0, 0 failed |
+| `__check.sh` on added lines | no violations |
+
+Changed outside the three adapter files: `Cargo.toml` (×2), `Cargo.lock`,
+`services/auth/siwe.rs` (one line plus comment), `services/exchange_api.rs` (one variant),
+`routes/trade_management.rs` (two match arms), `types/hl_network.rs`, `market_data.rs`,
+and the two `tests/` files.
+
+### The plan's file list was short by two files
+
+`services/exchange_api.rs` and `routes/trade_management.rs` had to move. The typed "not
+implemented" transfer error of task 3 is a new `ExchangeApiError` variant, and
+`routes/trade_management.rs` matches that enum exhaustively in `format_exchange_error` and
+`error_code_for`, so both need an arm. Four lines of real change. Same class of omission
+as CP-1's: **any checkpoint that changes a shared enum's shape must carry its match
+sites**, and the enum lives outside the directory the plan was watching.
+
+`signal.rs` and the second `trade_management.rs` match have a `_ => false` arm, so they
+needed nothing. Worth checking for a catch-all before assuming an enum change is
+contained: it is what kept this from being four files.
+
+### The plan's task-7 fixture described a value that cannot exist
+
+Task 7 asked for `Action::Order(fixture).prehash(nonce, None, None, Chain::Mainnet)` to
+equal `0x6c43321e0f67bbafa52f8ad0cca68ce5e6700cac04fd5f8ccc1df6d4d3e799b0`, "for the
+order fixture described in the verified mapping below". Two things were wrong.
+
+First, the verified mapping never described an order fixture. Second, `0x6c43321e...` is
+not a `prehash` of any order: it is the *agent* hash
+`agent_signing_hash(Chain::Mainnet, 0xde6c4037...)`, measured in the pre-swap probe to
+prove the domain and `Agent` encoding match the vendored crate. `prehash` for an order is
+`agent_signing_hash(chain, keccak(msgpack(action) ‖ nonce ‖ 0 ‖ 0))`, so it equals that
+value only if the fixture's msgpack hash happens to be `0xde6c4037...`.
+
+Written literally, the assertion would have failed against a correct implementation. That
+is the same failure mode as pinning the signature: the fix that makes it pass would be to
+change the encoding. It was corrected rather than written in.
+
+What is asserted instead, in `exchange_api.rs::tests`:
+
+1. `agent_signing_digest_matches_the_external_vector` - `agent_signing_hash` equals
+   `0x6c43321e...` for connection id `0xde6c4037...`. This is the only value with an
+   external reference, and it is the one that closed the spec's 422 risk.
+2. `order_signing_input_is_stable` - the fixture order's msgpack connection id
+   (`0x80a7fa73...`) and its `prehash` (`0x5262c55d...`) against measured goldens, plus
+   `prehash == agent_signing_hash(chain, connection_id)`.
+3. `signed_order_recovers_to_the_signing_key` - the property the exchange actually checks.
+
+Together 1 and 2 pin the whole chain without either being circular: 1 proves the outer
+`Agent`/domain layer against an independent reference, 2 locks the inner msgpack layer.
+There is no independent reference for the inner layer, because the old and new crates
+encode the order body differently by design. CP-6 is the authority for that, not a test.
+
+### `Cloid` and `OidOrCloid` are re-exported one level up
+
+`hypersdk::hypercore::types` has `use crate::hypercore::{Chain, Cloid, OidOrCloid, ...}`
+as a private import, so `types::Cloid` is a privacy error even though `types::OrderRequest`
+is public. Both aliases must be imported from `hypersdk::hypercore`. Three compile errors
+came from this, which is the cheap kind.
+
+### The `0x` prefix repair is gone, and so is string comparison
+
+The old crate's `with_cloid(Uuid)` produced unprefixed hex, so `place_order` and
+`place_trigger_order` each carried a `if !s.starts_with("0x")` repair, and
+`find_oid_by_cloid` compared three string spellings of the same cloid for compatibility.
+`Cloid` is `B128`, so `format!("{c:#x}")` is the only encoding serde can produce and
+`find_oid_by_cloid` is now `order.cloid == Some(wanted)`. Both repairs and the
+three-way comparison are deleted.
+
+`cloid_from_uuid` is the single conversion, and `cloid_uuid_is_the_big_endian_hex_hyperliquid_expects`
+pins it against the `cloid:{:032x}` order-id format this module still emits, because those
+two representations have to agree or a cancel by cloid never finds its order.
+
+### `format_sz` became `round_sz` and returns a `Decimal`
+
+`hypersdk` serialises `sz` and `limit_px` with `decimal_normalized`, which strips trailing
+zeros, so the wire form of a rounded quantity is just the `Decimal`. Returning a `String`
+and re-parsing it would have been a round trip through the same value. `round_sz` returns
+the `Decimal`; the wire bytes are identical to the old path.
+
+Tick rounding is unchanged, as FR-4 requires: `(limit_px / tick).round_dp(0) * tick` with
+`tick_size_from_mid`'s existing bands. The one edit to that function is that it now takes
+a `Decimal` instead of a `&str`, so the `f64` parse and its `unwrap_or(0.0)` are gone.
+`PerkMarket::round_price` was not adopted.
+
+### CP-2's prediction of a typed rate-limit status was wrong
+
+CP-2's notes said "When `hypersdk` arrives in CP-3 it exposes a typed status, and this is
+the one place that has to change." It does not. `hypersdk`'s transport error is
+`ApiError(pub String)`; the status codes are not modelled. `HlMarketDataError::classify`
+keeps its substring predicate unchanged, and the comment now says why.
+
+### Known gap carried forward: `Fill` has two fields `HlFill` does not
+
+`hypersdk`'s `Fill` has `builder_fee` and `liquidation`, which the vendored crate's
+`UserFillByTime` did not. `HlFill` still has fifteen fields, so both are dropped before
+`raw_json` is written. That is not a regression - the old path dropped them too - and FR-4
+says behaviour stays put, so nothing changed here.
+
+But the wire-shape test only proves the drop is harmless when both are `None`, and
+`liquidation` is not always `None`: a liquidated position produces fills that carry it.
+The router has no builder, so `builder_fee` should stay absent; `liquidation` is the real
+one. Either `HlFill` grows two fields or the column is knowingly lossy. It is recorded
+here rather than silently left, and CP-6 should check one liquidation fill if it can. This
+is a new spec, not CP-6 scope.
+
+### Assertions added, and where density was deliberately not chased
+
+`transfer_usdc` gained one `debug_assert!` on the resolved query address, `place_order`
+one on the single-order batch yielding at most one status, and `place_trigger_order` one
+on surfacing a per-status error as a warning. The crate does not enforce TB-01 density
+anywhere else and CP-2 already recorded why box-ticking it is worse than not: several of
+these functions are branch-free field maps whose only available assertion restates an
+assignment. Every new assert here names an invariant that a caller could actually break.
