@@ -194,6 +194,8 @@ Isolated from the swap so the behavioural change is reviewable on its own, which
 - **Tasks**:
   1. Testnet credentials confirmed available 2026-09-20, so this checkpoint can run as soon as CP-4 lands.
   2. Run the six testnet criteria in the spec: agent approval, a limit entry with linked SL and TP that places, fills, and cancels, the spot to perp transfer, the perp to spot transfer, WebSocket fill journalling, and balance and clearinghouse agreement with the exchange UI.
+
+     **Prerequisite for the two transfer criteria.** `transfer_usdc` has no caller: no route, no `ExchangeApi` trait method, and nothing in the journal or the extension. Measured in CP-4 against revision `434e912a`, so it predates the swap. The transfer criteria cannot be exercised through the running router; check the decision on wiring it up before treating an unreachable path as verified, or drive it from a harness and record that in `LEARNINGS.md`.
   3. Record every result, including a failure, in `LEARNINGS.md`. Do not treat a green local suite as evidence: no local check exercises the transfer, which is the reason the spec exists.
 - **Verification**: `LEARNINGS.md` contains the six criteria with observed output and balances. Production criteria stay unchecked until a canary.
 - **Commit message**: `docs(hl): record testnet acceptance for the hypersdk migration`
