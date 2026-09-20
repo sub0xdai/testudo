@@ -483,3 +483,97 @@ on surfacing a per-status error as a warning. The crate does not enforce TB-01 d
 anywhere else and CP-2 already recorded why box-ticking it is worse than not: several of
 these functions are branch-free field maps whose only available assertion restates an
 assignment. Every new assert here names an invariant that a caller could actually break.
+
+---
+
+## CP-4: Spot and perp transfer on usd_class_transfer (2026-09-20)
+
+**Outcome.** `transfer_usdc` now calls `Client::usd_class_transfer` for both directions,
+with a new `parse_transfer_amount` helper that returns a decimal USDC value and rejects
+zero, negatives, and unparseable input. `ExchangeApiError::TransferNotImplemented` and
+both of its match arms in `routes/trade_management.rs` are gone. Three tests were added.
+Tests went 954 to 957 passed, clippy stayed at 5 warnings on the router bin, and
+`__check.sh` reported zero violations on added lines.
+
+### The transfer was already dead code, and the spec is wrong about it
+
+`transfer_usdc` has no caller anywhere in the repository. Not in Rust, not in the
+journal, not in the extension:
+
+```
+$ grep -rn "transfer_usdc" --include=*.rs --include=*.ts --include=*.tsx .
+./testudo-exchange/crates/router/src/services/hyperliquid/exchange_api.rs:149
+```
+
+That single hit is the definition. There is no transfer route, and the `ExchangeApi`
+trait has no transfer method (`get_balance`, `place_order`, `amend_order`,
+`cancel_order`, `cancel_all_orders`, and nothing else). Neither `testudo-journal/src`
+nor `testudo-extension/src` contains the word "transfer" at all.
+
+This is not a CP-3 regression. At revision `434e912a`, before the swap,
+`git grep -l transfer_usdc 434e912a` also returns only the file that defines it.
+
+So the spec's problem statement, "the journal and extension still offer spot-to-perp
+transfer, which cannot succeed", is not supported by the code. There is no UI control
+and no reachable backend path. The spec's second `[CLARIFY]`, about hiding a
+known-broken control, is moot for the same reason. `FR-3` is still satisfied literally:
+the transfer is implemented against `usd_class_transfer`, and the testnet criteria in
+CP-6 can exercise it once something calls it.
+
+### `signatureChainId` is hex, and the first test expectation was wrong
+
+The red step caught this because the test asserted the value instead of assuming it:
+
+```
+assertion `left == right` failed
+  left: String("0xa4b1")
+ right: "42161"
+```
+
+`Chain::arbitrum_id()` displays as `0xa4b1`, which is 42161 in hex. That is
+Hyperliquid's documented form for `signatureChainId`, and it matches what this repo's
+own `agent_approval.rs` builds for MetaMask-signed approvals
+(`format!("0x{:x}", signature_chain_id)`) and what the spec quotes from `hypersdk`'s
+source. The vendored crate's `UsdSend` used a decimal `signature_chain_id: u64`, so
+this is a real difference between the old and new wire forms for the same field. There
+is no working baseline to preserve either way: the spot to perp direction was rejected
+outright, and the perp to spot direction sent a different action entirely. CP-6 should
+confirm the exchange accepts the hex form on testnet.
+
+### The red step was worth running for the units alone
+
+`parse_transfer_amount` was written first with the old micro-unit conversion in place,
+so the test failed against it rather than against a missing function:
+
+```
+assertion `left == right` failed
+  left: 12500000
+ right: 12.5
+```
+
+That is the highest-severity hazard in the migration demonstrated rather than asserted
+in prose. A compile error would not have proven the guard bites; this does.
+
+### The plan's CP-4 verification grep was over-broad
+
+The criterion said `grep -rn "ClassTransfer\|spot_transfer_to_perp\|1_000_000"` would
+produce nothing. It produces eight hits, all benign:
+
+- `hl_fill_journal.rs:107`, `((ms % 1000) * 1_000_000)`, milliseconds to nanoseconds.
+- `cex_history.rs:1140`, `trade.transact_time_ns / 1_000_000`, nanoseconds to
+  milliseconds.
+- This file's own comments explaining the hazard, and the identifiers
+  `UsdClassTransfer`/`usdClassTransfer`, which are hypersdk's names and required.
+
+The intent was "no micro-unit conversion of a transfer amount". The corrected check is
+`grep -n "\* *Decimal::from(1_000_000\|trunc()" ...`, which is empty, and `\bClassTransfer\b`,
+which matches only a doc comment (the word boundary does not fall inside
+`UsdClassTransfer`). Recorded in the plan so the next checkpoint does not write a
+criterion that cannot pass.
+
+### Two TB-01 waivers, recorded rather than chased
+
+`parse_transfer_amount` and `transfer_usdc` carry `// @waiver TB-01`. The first is a
+parse plus a range check with no branch that can fail without returning an error; the
+second already asserts a non-zero query address and a positive amount, and a third
+assertion would restate one of those. The unit that matters is pinned by a test.

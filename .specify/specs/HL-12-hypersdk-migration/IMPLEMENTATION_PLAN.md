@@ -161,7 +161,9 @@ The signing digests were then compared directly: hypersdk's `signing::agent_sign
 8. `cargo check -p router --bin router`, then work the error list. The compiler is the enumeration; do not hand-audit for missed call sites.
 - **Commit message**: `refactor(hl): migrate the hyperliquid adapter to hypersdk`
 
-### CP-4: Spot and perp transfer on usd_class_transfer
+### CP-4: Spot and perp transfer on usd_class_transfer ✅
+
+Completed 2026-09-20 by /skill:vox build.
 
 Isolated from the swap so the behavioural change is reviewable on its own, which is FR-9. Both directions move together: the perp to spot path is not a class transfer today either, it is a `UsdSend` addressed to the signer's own address, so it returns `ok` without moving funds between classes.
 
@@ -171,7 +173,7 @@ Isolated from the swap so the behavioural change is reviewable on its own, which
   2. Remove `ExchangeApiError::TransferNotImplemented` and both match arms that CP-3 added in `routes/trade_management.rs` (line 165, which maps to a user-facing message, and line 482, which maps to the `transfer_not_implemented` status string). Leaving the variant behind is dead code once nothing constructs it, and both matches are exhaustive so they will not warn.
   3. **Delete the `* 1_000_000` conversion** that fed the old `u64` micro-unit field. `usd_class_transfer` takes a decimal USDC amount, so passing micro-units transfers a million times the intended value. This is the highest-severity hazard in the migration and it is silent and expensive.
   4. Assert the `usdClassTransfer` action body, including `hyperliquidChain`, `signatureChainId`, and the amount in decimal USDC units, in the same place the deleted `class_transfer_serializes_*` guard stood. The spec's ordering constraint requires the replacement to land with the removal.
-- **Verification**: `SQLX_OFFLINE=true cargo test -p router --bin router transfer` shows the body assertion passing, including the amount, and these all produce nothing: `grep -rn "ClassTransfer\|spot_transfer_to_perp\|1_000_000" crates/router/src`, `grep -rn "TransferNotImplemented" crates/router/src`, and `grep -rn "TransferNotImplemented" crates/router/src/services/exchange_api.rs`.
+- **Verification**: `SQLX_OFFLINE=true cargo test -p router --bin router transfer` shows the three transfer tests passing. The greps must be precise: `grep -rn "\* *Decimal::from(1_000_000\|trunc()" crates/router/src/services/hyperliquid/exchange_api.rs` produces nothing (the original criterion was `grep -rn "1_000_000"`, which also matches a millisecond-to-nanosecond conversion in `hl_fill_journal.rs`, a nanosecond-to-millisecond one in `cex_history.rs`, and this file's own comments about the hazard), `grep -rn "\bClassTransfer\b" crates/router/src` matches only a doc comment that names the deleted guard (`UsdClassTransfer` does not match, because the word boundary falls inside it), and `grep -rn "spot_transfer_to_perp\|TransferNotImplemented" crates/router/src` produces nothing.
 - **Commit message**: `fix(hl): transfer between spot and perp with the correct action shape`
 
 ### CP-5: Desk cleanup
