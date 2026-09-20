@@ -736,3 +736,67 @@ output was one finding (the transfer has no caller) and one number (the money wa
 spot, not perp). The rest was process. When a spec's verification list assumes an
 environment the operator does not want to use, the list is the thing to question first,
 not the environment.
+
+---
+
+## CP-6 task 1: deployed to production (2026-09-20)
+
+Deployed 2026-09-20. Services restarted 05:37:17 to 05:37:18 UTC.
+
+| | |
+|---|---|
+| Deployed commit | `4e55a2f` (the droplet's `origin/master` matches, so nothing was stale) |
+| Build | 200 crates, 8m 48s, zero errors in the log |
+| Binary | `target/release/router`, built 05:36, started 05:37 |
+| Services | `testudo-api`, `testudo-ws`, `testudo-cex` all active, **NRestarts=0** |
+| API health | 200 |
+| `422` count | 0 |
+| Startup | no abort |
+
+The only commit not on the droplet is `a8722618`, which touches `.specify/` only, so
+what is deployed is code-identical to `HEAD`.
+
+### The MSRV pin held, which was the whole reason for the deploy
+
+`alloy =2.4.2` declares `rust-version = 1.94.1` and the droplet runs exactly `1.94.1`.
+No headroom, and no local gate can test it. It built. This is why the dependency is
+pinned exactly rather than ranged: a caret range could have resolved to an alloy release
+needing a newer toolchain, and the failure would have appeared only here.
+
+### The restart-loop check mattered more than the health check
+
+The 2026-09-16 outage ran 36,315 restarts over roughly 49 hours because systemd returned
+`203/EXEC` against a missing binary and nobody looked. After this deploy, `NRestarts=0`
+on all three services and each `ActiveEnterTimestamp` matches the restart time. During
+that outage every service would also have read as "active" between restarts, so liveness
+alone is not the check. Also no startup abort, meaning the migration-checksum risk from
+the previous incident did not recur.
+
+### Pre-existing log noise, verified as pre-existing rather than assumed
+
+Two errors appear in the logs. Both predate this deploy:
+
+- `Sidecar unavailable: undefined is not a constructor (evaluating 'new
+  exchanges[exchangeName]...')`. This appears **28 times between 2026-09-18 11:00 and the
+  deploy**, so it is not ours. The rehydration path routes Hyperliquid `fetchOpenOrders`
+  through the CCXT sidecar, which has no `hyperliquid` exchange registered, so startup
+  reports `0 positions verified, 0 stale, 7 errors` across 7 active groups. Unrelated to
+  this migration, but it means position verification silently fails for HL on every
+  restart. Deserves its own ticket.
+- `Specified path is not a directory: "./uploads/journal"`, already recorded in the
+  handoff.
+
+### On verifying a deploy
+
+The timestamps are the evidence, not the script's closing message. `deploy.sh` finishes
+with a health check that the previous binary also satisfies, so "DEPLOY COMPLETE" with
+API 200 does not by itself prove the new code is live. The build-failure path does
+`exit 1`, so the gap is narrow, but the check that actually separates old from new is the
+binary mtime against the service's `ActiveEnterTimestamp`. Worth doing on the next
+deploy: a build can take 9 minutes and a mid-flight check looks exactly like a failed one.
+
+### CP-6 status after this
+
+Task 1 done. Tasks 2 to 5 remain: the canary trade, the 24-hour `422` watch, the optional
+transfer verification, and this record. Production has been running the migrated code
+since 05:37 UTC, so the `422` clock is running.
