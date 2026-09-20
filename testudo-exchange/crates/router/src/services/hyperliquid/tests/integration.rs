@@ -10,6 +10,7 @@
 //! The `HL_TESTNET_KEY` environment variable must contain an Ethereum private key
 //! (hex, with or without 0x prefix) that has testnet funds.
 
+use alloy::primitives::Address;
 use alloy::signers::local::PrivateKeySigner;
 use futures_util::StreamExt;
 use hypersdk::hypercore::{
@@ -349,4 +350,154 @@ async fn testnet_websocket_order_updates() {
     }
 
     tracing::info!("WebSocket subscription test complete");
+}
+
+// ─── FR-3 / FR-4: Spot to perp class transfer ────────────────────────
+
+/// Spot USDC and perp USDC, as the exchange reports them right now.
+///
+/// Spot comes from `user_balances`, perp from `clearinghouse_state.withdrawable`
+/// (available USDC, so an open position's unrealised PnL cannot move the number).
+// @waiver TB-01: a test-only read of two balances. It has nothing to assert; the
+// assertions live in the test that calls it.
+async fn usdc_split(client: &HttpClient, user: Address) -> (Decimal, Decimal) {
+    let spot = client
+        .user_balances(user)
+        .await
+        .expect("Failed to fetch spot balances")
+        .into_iter()
+        .find(|b| b.coin == "USDC")
+        .map(|b| b.total)
+        .unwrap_or(Decimal::ZERO);
+
+    let perp = client
+        .clearinghouse_state(user, None)
+        .await
+        .expect("Failed to fetch clearinghouse state")
+        .withdrawable;
+
+    (spot, perp)
+}
+
+/// Whether two USDC amounts agree to the precision the exchange reports.
+///
+/// A class transfer is free and instant, so the delta should be exact. The
+/// tolerance bounds the comparison against wire precision, not against fees.
+fn usdc_close(left: Decimal, right: Decimal) -> bool {
+    (left - right).abs() <= Decimal::new(1, 6)
+}
+
+/// FR-3 and FR-4: both transfer directions move funds between spot and perp.
+///
+/// One round trip covers both criteria. It starts from whichever class actually
+/// holds the funds, so it works on an account funded in either one, and the
+/// second leg then exercises the opposite direction. The assertion is the
+/// balances, not the call returning `Ok`: a transfer that silently moves nothing
+/// returns `Ok` too, which is the defect this spec exists to fix.
+#[tokio::test]
+#[ignore]
+async fn testnet_class_transfer_round_trip() {
+    let auth = testnet_auth();
+    let client = testnet_client();
+    let user = auth.address;
+    let nonces = NonceHandler::default();
+
+    // Small enough to work on a lightly funded testnet account. Override with
+    // HL_TESTNET_TRANSFER_USDC if the exchange rejects this size.
+    let amount = match std::env::var("HL_TESTNET_TRANSFER_USDC") {
+        Ok(raw) => Decimal::from_str(&raw).expect("HL_TESTNET_TRANSFER_USDC must parse"),
+        Err(_) => Decimal::from_str("0.2").expect("parse amount"),
+    };
+    assert!(
+        amount > Decimal::ZERO,
+        "HL_TESTNET_TRANSFER_USDC must be positive, got {amount}"
+    );
+
+    let (spot_start, perp_start) = usdc_split(&client, user).await;
+    tracing::info!(%spot_start, %perp_start, "class transfer: starting split");
+
+    let to_perp_first = spot_start >= amount;
+    assert!(
+        to_perp_first || perp_start >= amount,
+        "need at least {amount} USDC in one class to transfer: spot={spot_start}, perp={perp_start}"
+    );
+
+    client
+        .usd_class_transfer(&auth.signer, amount, to_perp_first, nonces.next(), None, None)
+        .await
+        .expect("first class transfer was rejected");
+
+    let (spot_mid, perp_mid) = usdc_split(&client, user).await;
+    let (want_spot, want_perp) = if to_perp_first {
+        (spot_start - amount, perp_start + amount)
+    } else {
+        (spot_start + amount, perp_start - amount)
+    };
+    tracing::info!(%spot_mid, %perp_mid, to_perp = to_perp_first, "class transfer: first leg");
+    assert!(
+        usdc_close(spot_mid, want_spot) && usdc_close(perp_mid, want_perp),
+        "first leg moved the wrong amounts: wanted spot={want_spot} perp={want_perp}, \
+         got spot={spot_mid} perp={perp_mid}"
+    );
+
+    client
+        .usd_class_transfer(&auth.signer, amount, !to_perp_first, nonces.next(), None, None)
+        .await
+        .expect("return class transfer was rejected");
+
+    let (spot_end, perp_end) = usdc_split(&client, user).await;
+    assert!(
+        usdc_close(spot_end, spot_start) && usdc_close(perp_end, perp_start),
+        "return leg did not restore the split: started spot={spot_start} perp={perp_start}, \
+         ended spot={spot_end} perp={perp_end}"
+    );
+    tracing::info!("class transfer round trip OK in both directions");
+}
+
+// ─── FR-5: agent wallet approval ──────────────────────────────
+
+/// FR-5: the account has an approved agent wallet, read from `extraAgents`.
+///
+/// `extraAgents` is indexed by the master account, so membership can only be
+/// asserted when the master address is known. Set `HL_TESTNET_MASTER_ADDRESS`
+/// to get the strong check; without it the test records what the account
+/// reports and says so, rather than passing on an unverified claim.
+#[tokio::test]
+#[ignore]
+async fn testnet_agent_wallet_is_approved() {
+    let auth = testnet_auth();
+    let client = testnet_client();
+
+    let own = client
+        .api_agents(auth.address)
+        .await
+        .expect("Failed to query approved agents for the signing key's own address");
+    tracing::info!(
+        address = %auth.address,
+        count = own.len(),
+        names = ?own.iter().map(|a| a.name.as_str()).collect::<Vec<_>>(),
+        "agents approved on the signing key's own address"
+    );
+
+    let master = match std::env::var("HL_TESTNET_MASTER_ADDRESS") {
+        Ok(raw) => raw.parse::<Address>().expect("HL_TESTNET_MASTER_ADDRESS must parse"),
+        Err(_) => {
+            tracing::warn!(
+                "HL_TESTNET_MASTER_ADDRESS unset, so approval is reported but not asserted"
+            );
+            return;
+        }
+    };
+
+    let approved = client
+        .api_agents(master)
+        .await
+        .expect("Failed to query approved agents for the master account");
+    tracing::info!(%master, count = approved.len(), "agents approved on the master account");
+    assert!(
+        approved.iter().any(|a| a.address == auth.address),
+        "signing key {} is not among the master account's approved agents: {:?}",
+        auth.address,
+        approved.iter().map(|a| a.address).collect::<Vec<_>>()
+    );
 }
