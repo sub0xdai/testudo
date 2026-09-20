@@ -225,17 +225,23 @@ Six vulnerabilities became one:
 
 Worth remembering for the next audit. `cargo audit` scans `Cargo.lock`, which records optional dependencies whether or not their features are enabled. `cargo tree` measures what is built. On a crate with a large optional surface the two disagree widely: the swap added alloy 2's optional signer backends to the lock while leaving zero compiled artifacts for gcloud, aws-kms, turnkey, or hidapi. Reading the lock's advisory list as a list of shipped problems overstates it; reading `cargo tree` alone understates it, because lock-only entries still cost upgrades.
 
-### CP-6: Testnet acceptance
+### CP-6: Production canary
 
-- **Touches**: `.specify/specs/HL-12-hypersdk-migration/LEARNINGS.md`
+**Scope changed 2026-09-20.** This checkpoint was "testnet acceptance", running six live testnet criteria. Testnet testing was declined, so it is now the spec's two production criteria instead. Those are the stronger check anyway: a real trade exercises the same order path against the live venue, and it is the only thing that can show that the exchange accepts the signatures `hypersdk` produces. The local work pins the digest against the production vector, but pinning a digest is not the exchange verifying a signature.
+
+The six testnet criteria are recorded as **not run**, with that reason. Their checkboxes in the spec stay unticked, so the gap is visible rather than assumed closed.
+
+- **Touches**: `LEARNINGS.md`, and the spec's acceptance checkboxes.
 - **Tasks**:
-  1. Testnet credentials confirmed available 2026-09-20, so this checkpoint can run as soon as CP-4 lands.
-  2. Run the six testnet criteria in the spec: agent approval, a limit entry with linked SL and TP that places, fills, and cancels, the spot to perp transfer, the perp to spot transfer, WebSocket fill journalling, and balance and clearinghouse agreement with the exchange UI.
+  1. Deploy. `scripts/deploy.sh` runs `git pull --ff-only` and builds in place, so the push is the prerequisite. Watch the first build: `alloy 2.4.2` declares `rust-version = 1.94.1` and the droplet runs exactly `1.94.1`, so this is the one check no local gate can make. Disk was at 86% before the build. Do not run `cargo update` on the droplet; `Cargo.lock` carries the pins.
+  2. Place one minimum-size order: about $10 notional, so roughly $1 of margin at 10x, with a linked stop-loss and take-profit. Then cancel it. This is the first live order this migration's code has ever placed, and `exchange_api.rs` is 1,291 changed lines covering place, trigger, amend, cancel, and close.
+  3. Watch `POST /exchange` for 422s for 24 hours. A 422 means the exchange rejected a signature, which is the spec's headline risk and precisely what the digest pin cannot prove on its own.
+  4. Optionally verify the transfer, since FR-3 is the reason this spec exists. It has no route, so the only way to exercise our implementation is the harness with a mainnet key. That moves your own USDC between your own spot and perp accounts: fee-free, reversible, and if the units were wrong the failure mode is a rejection rather than a loss, because the exchange will not conjure the funds.
+  5. Record every result, including any failure, in `LEARNINGS.md`.
+- **Verification**: `LEARNINGS.md` records the deploy, the canary trade with its status transitions, and the 422 watch. The spec's six testnet boxes stay unticked and carry the reason.
+- **Commit message**: `docs(hl): record the production canary for the hypersdk migration`
 
-     **Prerequisite for the two transfer criteria.** `transfer_usdc` has no caller: no route, no `ExchangeApi` trait method, and nothing in the journal or the extension. Measured in CP-4 against revision `434e912a`, so it predates the swap. The transfer criteria cannot be exercised through the running router; check the decision on wiring it up before treating an unreachable path as verified, or drive it from a harness and record that in `LEARNINGS.md`.
-  3. Record every result, including a failure, in `LEARNINGS.md`. Do not treat a green local suite as evidence: no local check exercises the transfer, which is the reason the spec exists.
-- **Verification**: `LEARNINGS.md` contains the six criteria with observed output and balances. Production criteria stay unchecked until a canary.
-- **Commit message**: `docs(hl): record testnet acceptance for the hypersdk migration`
+**What this does not prove.** The order path is proven by task 2 and the signature acceptance by task 3. The transfer is proven only if task 4 runs; otherwise FR-3 rests on the local action-body assertion and the unit test, which pin the wire shape and the amount units but never contact an exchange. The harness that was written for the testnet criteria stays in the tree as an `#[ignore]`d test, unused by this checkpoint.
 
 ## Sequencing Rules
 
@@ -243,7 +249,7 @@ Worth remembering for the next audit. `cargo audit` scans `Cargo.lock`, which re
 - CP-2 must precede CP-3, or the swap carries the read paths too.
 - CP-3 is atomic and single-commit by construction: the old crate must leave in the same commit that `hypersdk` arrives.
 - CP-4 must follow CP-3, because CP-3 temporarily disables the transfer rather than fixing it, and CP-4 is the FR-9 isolation commit for that fix.
-- CP-6 must follow CP-4, since it is the only checkpoint that needs a working end-to-end transfer.
+- CP-6 must follow CP-4, and it is the only checkpoint that touches production: it deploys the whole migration and canaries one trade.
 - A partially migrated tree must never be deployed. Every checkpoint above builds and passes the suite on its own, so no checkpoint needs a deploy.
 
 ---

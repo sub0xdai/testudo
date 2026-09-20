@@ -682,3 +682,57 @@ false, so it now carries the date and the method.
 Two yanked crates remain in the lock and are left at the default warn level: chacha20
 0.10.0 via rand 0.10.1, and spin 0.9.8 via lazy_static. Both predate this work, neither
 is a vulnerability, and neither has a reachable replacement in the current graph.
+
+---
+
+## CP-6 rescoped: production canary instead of testnet (2026-09-20)
+
+CP-6 was "testnet acceptance", six live testnet criteria. Testnet testing was declined,
+so the checkpoint is now the spec's two production criteria: one real minimum-size trade
+after deploy, then a 24-hour watch for `422`s.
+
+This is the stronger check, and it is worth saying why rather than treating it as a
+concession. The local work pins the EIP-712 digest against the vendored crate's
+production vector, so the signing model is known to be byte-identical. But a pinned
+digest is not the exchange accepting a signature, and no local test can be. A real order
+on the live venue is the only thing that closes that, which is exactly what the
+production criteria ask for.
+
+The six testnet criteria stay unticked in the spec, with a note pointing here. That is
+deliberate: they were not run, and an unticked box is an honest record while a ticked one
+that was never executed is not.
+
+### What each piece now proves
+
+| Piece | Proves | Does not prove |
+|---|---|---|
+| Local gates (1,550 tests, clippy, audit) | the code compiles, the wire shapes are right, the units are right, the digest matches production | anything about a live exchange |
+| Canary trade (task 2) | the order path against the live venue: place, linked SL/TP, cancel, status transitions | signature acceptance on its own, since one order could pass by luck |
+| 24h `422` watch (task 3) | the exchange accepts the signatures `hypersdk` produces, across many orders and market conditions | the transfer |
+| Transfer harness on mainnet (task 4, optional) | FR-3, the reason the spec exists | nothing, if skipped |
+
+The transfer is the honest gap. It has no route, so the only way to exercise our
+implementation is the harness, and running that against mainnet moves real funds between
+your own spot and perp accounts. It is fee-free and reversible, and a units error fails
+as a rejection rather than a loss because the exchange will not create funds. If task 4 is
+skipped, FR-3 rests entirely on the local action-body assertion and the unit test, and
+the spec should be read as having verified the wire shape of the transfer but not the
+transfer.
+
+### The testnet harness is committed and unused
+
+`testnet_class_transfer_round_trip` and `testnet_agent_wallet_is_approved` stay in the
+tree as `#[ignore]`d tests. They were red-proven against live testnet with a throwaway
+key, so they work; they are simply not part of this spec's verification any more. Anyone
+who wants the cheap safe check later can run them in an afternoon.
+
+### A note on how this got overbuilt
+
+The testnet path was pursued well past the point of value: the six criteria were treated
+as mandatory because the spec listed them, without stepping back to ask what the cheapest
+thing was that would actually close the risk. It produced a harness, a funding analysis,
+a drip investigation, and a detour into which balance bucket holds mock USDC. The useful
+output was one finding (the transfer has no caller) and one number (the money was in
+spot, not perp). The rest was process. When a spec's verification list assumes an
+environment the operator does not want to use, the list is the thing to question first,
+not the environment.

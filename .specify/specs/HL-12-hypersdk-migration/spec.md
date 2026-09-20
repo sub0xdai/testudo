@@ -157,6 +157,8 @@ The `Network` enum is a two-variant type used solely to choose between `https://
 
 Hyperliquid testnet is reachable at `api.hyperliquid-testnet.xyz`, and the router already supports `Network::Testnet`, so these are executable rather than aspirational. They need a funded testnet account and an approved agent wallet.
 
+> **These six criteria were declined on 2026-09-20 and are deliberately unrun.** Testnet testing was not going to happen, so the plan's CP-6 was rescoped to the production criteria below instead. That is the stronger check: a real trade exercises the same order path against the live venue and is the only thing that shows the exchange accepting a signature. These boxes stay unticked so the gap is visible rather than assumed closed. Reasons and residual risk: `.specify/specs/HL-12-hypersdk-migration/IMPLEMENTATION_PLAN.md` (CP-6) and `LEARNINGS.md`.
+
 - [ ] Agent wallet approval succeeds against testnet
 - [ ] A limit entry with a linked stop-loss and take-profit places, fills, and is cancelled cleanly
 - [ ] Spot-to-perp transfer of a small testnet amount succeeds and the resulting balances match the exchange's reported state
