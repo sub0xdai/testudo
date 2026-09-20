@@ -10,11 +10,11 @@ use crate::services::hyperliquid::exchange_api::HyperliquidExchangeApi;
 use crate::services::hyperliquid::universe::AssetUniverse;
 use crate::services::typesafe::SystemOneClient;
 use crate::services::{CexClient, ExecutionService};
+use crate::types::hl_network::HlNetwork;
 use common_utils::adapters::CredentialValidator;
 use common_utils::auth::TokenService;
 use dashmap::DashMap;
 use engine::EngineHandle;
-use hyperliquid_sdk_rs::Network;
 use pg_queue::PgQueueManager;
 use sqlx_postgres::PostgresDb;
 use std::sync::Arc;
@@ -45,7 +45,7 @@ pub struct AppState {
     /// FIX-07: Shared HTTP client for Hyperliquid API calls (10s timeout, connection pooling)
     pub hl_http_client: reqwest::Client,
     /// FIX-07: Hyperliquid network resolved once at startup
-    pub hl_network: Network,
+    pub hl_network: HlNetwork,
     /// HL-03: Native Hyperliquid exchange API for trading + transfers
     pub hl_exchange_api: Option<Arc<HyperliquidExchangeApi>>,
     /// JNL-12 FR-7: Dedicated pool for journal analytics queries

@@ -13,7 +13,7 @@ use hyperliquid_sdk_rs::{
         CancelRequest as HlCancelRequest, ExchangeDataStatus, Limit, OrderRequest as HlOrderRequest,
         OrderType as HlOrderType, Trigger,
     },
-    ExchangeProvider, InfoProvider, Network,
+    ExchangeProvider, InfoProvider,
 };
 use rust_decimal::Decimal;
 use std::str::FromStr;
@@ -21,6 +21,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use super::auth::{AuthCache, AuthError, AuthMode, HyperliquidAuth};
+use crate::types::hl_network::HlNetwork;
 use super::universe::AssetUniverse;
 use crate::repositories::exchange_account::ExchangeAccountRepository;
 use crate::types::exchange_names::{auth_modes, exchanges};
@@ -44,7 +45,7 @@ pub struct HyperliquidExchangeApi {
     universe: Arc<AssetUniverse>,
     auth_cache: Arc<AuthCache>,
     account_repo: ExchangeAccountRepository,
-    network: Network,
+    network: HlNetwork,
 }
 
 impl HyperliquidExchangeApi {
@@ -52,9 +53,9 @@ impl HyperliquidExchangeApi {
         universe: Arc<AssetUniverse>,
         auth_cache: Arc<AuthCache>,
         account_repo: ExchangeAccountRepository,
-        network: Network,
+        network: HlNetwork,
     ) -> Self {
-        let info = InfoProvider::new(network);
+        let info = InfoProvider::new(network.to_sdk());
         Self {
             info,
             universe,
@@ -138,8 +139,8 @@ impl HyperliquidExchangeApi {
         auth: &HyperliquidAuth,
     ) -> ExchangeProvider<PrivateKeySigner> {
         match self.network {
-            Network::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
-            Network::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
+            HlNetwork::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
+            HlNetwork::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
         }
     }
 
@@ -358,10 +359,7 @@ impl ExchangeApi for HyperliquidExchangeApi {
     ) -> Result<Decimal, ExchangeApiError> {
         let auth = self.load_auth(user_id, exchange_account_id).await?;
         let query_addr = auth.query_address();
-        let info_url = match self.network {
-            Network::Mainnet => "https://api.hyperliquid.xyz/info",
-            Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-        };
+        let info_url = self.network.info_url();
 
         // For unified accounts, spotClearinghouseState is the source of truth
         // for trading balance across spot and perps.

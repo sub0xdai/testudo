@@ -10,6 +10,7 @@
 pub mod agent_approval;
 pub mod auth;
 pub mod exchange_api;
+pub mod market_data;
 pub mod routing;
 pub mod universe;
 pub mod ws_fills;
@@ -19,6 +20,7 @@ mod tests;
 
 pub use auth::{AuthMode, HyperliquidAuth};
 pub use exchange_api::HyperliquidExchangeApi;
+pub use market_data::{HlFill, HlMarketData, HlMarketDataError, HlPerp};
 pub use routing::RoutingExchangeApi;
 pub use universe::AssetUniverse;
 pub use ws_fills::HyperliquidFillSubscriber;

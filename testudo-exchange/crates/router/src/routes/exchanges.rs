@@ -166,10 +166,7 @@ pub async fn add_exchange_account(
     let validated_permissions = if req.exchange_name.eq_ignore_ascii_case(exchanges::HYPERLIQUID) {
         // Hyperliquid: validate by querying clearinghouseState with the address
         let query_address = &req.api_key; // api_key stores the Ethereum address for HL
-        let info_url = match app_state.hl_network {
-            hyperliquid_sdk_rs::Network::Mainnet => "https://api.hyperliquid.xyz/info",
-            hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-        };
+        let info_url = app_state.hl_network.info_url();
         let payload = serde_json::json!({ "type": "clearinghouseState", "user": query_address });
         match app_state.hl_http_client.post(info_url).json(&payload).send().await {
             Ok(resp) if resp.status().is_success() => {
@@ -350,10 +347,7 @@ pub async fn test_exchange_connection(
     let start = std::time::Instant::now();
     let (status, message) = if creds.exchange_name == exchanges::HYPERLIQUID {
         let query_address = creds.wallet_address.as_deref().unwrap_or(&creds.api_key);
-        let info_url = match app_state.hl_network {
-            hyperliquid_sdk_rs::Network::Mainnet => "https://api.hyperliquid.xyz/info",
-            hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-        };
+        let info_url = app_state.hl_network.info_url();
         let payload = serde_json::json!({ "type": "clearinghouseState", "user": query_address });
         match app_state.hl_http_client.post(info_url).json(&payload).send().await {
             Ok(resp) if resp.status().is_success() => {
@@ -494,10 +488,7 @@ async fn get_hyperliquid_balance(
         .as_deref()
         .unwrap_or(&creds.api_key);
 
-    let info_url = match app_state.hl_network {
-        hyperliquid_sdk_rs::Network::Mainnet => "https://api.hyperliquid.xyz/info",
-        hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-    };
+    let info_url = app_state.hl_network.info_url();
 
     let client = &app_state.hl_http_client;
 
@@ -637,10 +628,7 @@ async fn get_hyperliquid_positions(
     app_state: &web::Data<AppState>,
 ) -> Result<HttpResponse> {
     let query_address = creds.wallet_address.as_deref().unwrap_or(&creds.api_key);
-    let info_url = match app_state.hl_network {
-        hyperliquid_sdk_rs::Network::Mainnet => "https://api.hyperliquid.xyz/info",
-        hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-    };
+    let info_url = app_state.hl_network.info_url();
 
     // Fetch clearinghouseState for positions
     let state_payload = serde_json::json!({ "type": "clearinghouseState", "user": query_address });

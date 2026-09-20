@@ -191,10 +191,7 @@ async fn fetch_hl_margin(
     app_state: &AppState,
 ) -> (Decimal, Decimal, Decimal) {
     let query_address = creds.wallet_address.as_deref().unwrap_or(&creds.api_key);
-    let info_url = match app_state.hl_network {
-        hyperliquid_sdk_rs::Network::Mainnet => "https://api.hyperliquid.xyz/info",
-        hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-    };
+    let info_url = app_state.hl_network.info_url();
     let payload = serde_json::json!({ "type": "clearinghouseState", "user": query_address });
 
     let body: serde_json::Value = match app_state
@@ -293,10 +290,7 @@ async fn fetch_hl_positions(
     app_state: &AppState,
 ) -> Vec<PositionEntry> {
     let query_address = creds.wallet_address.as_deref().unwrap_or(&creds.api_key);
-    let info_url = match app_state.hl_network {
-        hyperliquid_sdk_rs::Network::Mainnet => "https://api.hyperliquid.xyz/info",
-        hyperliquid_sdk_rs::Network::Testnet => "https://api.hyperliquid-testnet.xyz/info",
-    };
+    let info_url = app_state.hl_network.info_url();
     let payload = serde_json::json!({ "type": "clearinghouseState", "user": query_address });
 
     let body: serde_json::Value = match app_state

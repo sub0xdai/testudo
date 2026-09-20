@@ -11,24 +11,25 @@ use alloy::primitives::Address;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use common_utils::journal::{FillSide, RawFill};
-use hyperliquid_sdk_rs::{types::info_types::UserFillByTime, InfoProvider, Network};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::repositories::exchange_account::ExchangeAccountRepository;
+use crate::services::hyperliquid::market_data::{HlFill, HlMarketData, HlMarketDataError};
+use crate::types::hl_network::HlNetwork;
 use super::{FillSource, SyncError};
 
 pub struct HyperliquidFillSource {
-    info: InfoProvider,
+    market_data: HlMarketData,
     exchange_account_repo: ExchangeAccountRepository,
     label: String,
 }
 
 impl HyperliquidFillSource {
-    pub fn new(network: Network, exchange_account_repo: ExchangeAccountRepository) -> Self {
+    pub fn new(network: HlNetwork, exchange_account_repo: ExchangeAccountRepository) -> Self {
         Self {
-            info: InfoProvider::new(network),
+            market_data: HlMarketData::new(network),
             exchange_account_repo,
             label: "hyperliquid".to_string(),
         }
@@ -60,16 +61,12 @@ impl FillSource for HyperliquidFillSource {
         let since_ms = since.timestamp_millis() as u64;
 
         let hl_fills = self
-            .info
-            .user_fills_by_time(user_address, since_ms, None, None)
+            .market_data
+            .fills_between(user_address, since_ms, None)
             .await
-            .map_err(|e| {
-                let msg = e.to_string();
-                if msg.contains("429") || msg.to_lowercase().contains("rate") {
-                    SyncError::RateLimit
-                } else {
-                    SyncError::Network(msg)
-                }
+            .map_err(|e| match e {
+                HlMarketDataError::RateLimited(_) => SyncError::RateLimit,
+                HlMarketDataError::Fetch(msg) => SyncError::Network(msg),
             })?;
 
         tracing::debug!(
@@ -92,12 +89,12 @@ impl FillSource for HyperliquidFillSource {
     }
 }
 
-/// Convert a Hyperliquid `UserFillByTime` into a `RawFill`.
+/// Convert a Hyperliquid `HlFill` into a `RawFill`.
 ///
 /// Returns `None` for spot fills (coin starts with '@') and unparseable fields.
-/// Does NOT filter by `closed_pnl` — raw_fills stores all fills; reconstruct_trades
+/// Does NOT filter by `closed_pnl` - raw_fills stores all fills; reconstruct_trades
 /// derives closed round trips from net-qty crossings.
-pub(crate) fn convert_hl_fill(fill: &UserFillByTime, user_id: Uuid) -> Option<RawFill> {
+pub(crate) fn convert_hl_fill(fill: &HlFill, user_id: Uuid) -> Option<RawFill> {
     // Skip spot fills (coin starts with '@')
     if fill.coin.starts_with('@') {
         return None;
@@ -144,8 +141,8 @@ mod tests {
 
     fn assert_send_sync<T: Send + Sync>() {}
 
-    fn make_fill(coin: &str, side: &str, px: &str, sz: &str, tid: u64, time: u64) -> UserFillByTime {
-        UserFillByTime {
+    fn make_fill(coin: &str, side: &str, px: &str, sz: &str, tid: u64, time: u64) -> HlFill {
+        HlFill {
             closed_pnl: "0".to_string(),
             coin: coin.to_string(),
             crossed: true,

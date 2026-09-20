@@ -13,10 +13,11 @@
 //! ```
 
 use alloy::signers::local::PrivateKeySigner;
-use hyperliquid_sdk_rs::{ExchangeProvider, InfoProvider, Network};
+use hyperliquid_sdk_rs::{ExchangeProvider, InfoProvider};
 
 use crate::services::hyperliquid::auth::HyperliquidAuth;
 use crate::services::hyperliquid::universe::AssetUniverse;
+use crate::types::hl_network::HlNetwork;
 
 /// Load testnet wallet address from environment.
 fn testnet_wallet_address() -> String {
@@ -57,7 +58,7 @@ async fn test_agent_wallet_full_lifecycle() {
     let exchange = ExchangeProvider::testnet_agent(agent_signer.clone(), agent_address);
 
     // 3. Attempt to place a limit order (should fail — agent not approved on-chain)
-    let universe = AssetUniverse::fetch(Network::Testnet)
+    let universe = AssetUniverse::fetch(HlNetwork::Testnet)
         .await
         .expect("Failed to fetch universe");
     let btc_index = universe.resolve("BTC").expect("BTC should exist in universe");
@@ -103,7 +104,7 @@ async fn test_agent_wallet_query_address_dispatch() {
     );
 
     // Verify balance query uses wallet address via InfoProvider
-    let info = InfoProvider::new(Network::Testnet);
+    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
     let state = info.user_state(expected).await;
     assert!(
         state.is_ok(),
@@ -124,7 +125,7 @@ async fn test_agent_wallet_revocation() {
 
     let exchange = ExchangeProvider::testnet_agent(agent_signer, agent_address);
 
-    let universe = AssetUniverse::fetch(Network::Testnet)
+    let universe = AssetUniverse::fetch(HlNetwork::Testnet)
         .await
         .expect("Failed to fetch universe");
     let btc_index = universe.resolve("BTC").expect("BTC should exist in universe");

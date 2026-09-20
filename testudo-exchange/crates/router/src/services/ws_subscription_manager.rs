@@ -8,8 +8,9 @@ use crate::services::exchange_api::ExchangeApi;
 use crate::services::hyperliquid::auth::{AuthCache, HyperliquidAuth};
 use crate::services::hyperliquid::ws_fills::HyperliquidFillSubscriber;
 use crate::types::exchange_names::{auth_modes, exchanges};
+use crate::types::hl_network::HlNetwork;
 use engine::EngineHandle;
-use hyperliquid_sdk_rs::Network;
+
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -44,7 +45,7 @@ pub struct WsSubscriptionManager {
     sandbox: bool,
     entries: Arc<Mutex<HashMap<SubscriptionKey, SubscriptionEntry>>>,
     /// HL-05: Optional Hyperliquid network for native WS subscription.
-    hl_network: Option<Network>,
+    hl_network: Option<HlNetwork>,
     /// HL-05: Optional auth cache for resolving HL user addresses.
     hl_auth_cache: Option<Arc<AuthCache>>,
     /// REL-02: Optional journal service for direct HL closing fill writes.
@@ -78,7 +79,7 @@ impl WsSubscriptionManager {
     }
 
     /// HL-05: Enable Hyperliquid native WS subscriptions.
-    pub fn with_hyperliquid(mut self, network: Network, auth_cache: Arc<AuthCache>) -> Self {
+    pub fn with_hyperliquid(mut self, network: HlNetwork, auth_cache: Arc<AuthCache>) -> Self {
         self.hl_network = Some(network);
         self.hl_auth_cache = Some(auth_cache);
         self

@@ -71,6 +71,7 @@ pub mod utils; // Universal validation and response abstractions
 use crate::config::RouterConfig;
 use crate::middleware::JwtMiddleware;
 use crate::types::app::AppState;
+use crate::types::hl_network::HlNetwork;
 
 /// SEC-02: Check if an origin is allowed by the CORS policy.
 /// Web app origins checked against ALLOWED_ORIGINS.
@@ -358,9 +359,9 @@ async fn main() -> std::io::Result<()> {
     // HL-05: Check for Hyperliquid native integration
     let hl_enabled = std::env::var("HYPERLIQUID_ENABLED").unwrap_or_default() == "true";
     let hl_network = if std::env::var("HYPERLIQUID_TESTNET").unwrap_or_default() == "true" {
-        hyperliquid_sdk_rs::Network::Testnet
+        HlNetwork::Testnet
     } else {
-        hyperliquid_sdk_rs::Network::Mainnet
+        HlNetwork::Mainnet
     };
 
     // FIX-07: Shared HTTP client for all Hyperliquid API calls (connection pooling + 10s timeout)

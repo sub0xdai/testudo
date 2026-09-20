@@ -10,21 +10,9 @@
 // @anchor exchange:router:agent_approval
 // @tags api
 
-use hyperliquid_sdk_rs::Network;
+use crate::types::hl_network::HlNetwork;
 use serde_json::{json, Value};
 use thiserror::Error;
-
-/// EIP-712 domain chainId for Hyperliquid signature verification.
-/// For MetaMask-signed approvals: use the actual network chain ID.
-/// Mainnet = Arbitrum One (42161), Testnet = Arbitrum Sepolia (421614).
-/// Note: The Rust SDK uses 421614 for server-side signing, but MetaMask-signed
-/// approvals on mainnet require the connected chain's ID (42161).
-fn signature_chain_id(network: Network) -> u64 {
-    match network {
-        Network::Mainnet => 42161,
-        Network::Testnet => 421614,
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum ApprovalError {
@@ -44,10 +32,10 @@ pub enum ApprovalError {
 /// the Hyperliquid SDK's `ApproveAgent` action encoding.
 pub fn build_eip712_typed_data(
     agent_address: &str,
-    network: Network,
+    network: HlNetwork,
     nonce: u64,
 ) -> Value {
-    let chain_str = chain_string(network);
+    let chain_str = network.chain_string();
 
     json!({
         "types": {
@@ -68,7 +56,7 @@ pub fn build_eip712_typed_data(
         "domain": {
             "name": "HyperliquidSignTransaction",
             "version": "1",
-            "chainId": signature_chain_id(network),
+            "chainId": network.arbitrum_chain_id(),
             "verifyingContract": "0x0000000000000000000000000000000000000000"
         },
         "message": {
@@ -119,17 +107,17 @@ pub fn parse_signature(sig_hex: &str) -> Result<(String, String, u8), ApprovalEr
 pub async fn submit_approval(
     client: &reqwest::Client,
     agent_address: &str,
-    network: Network,
+    network: HlNetwork,
     nonce: u64,
     signature: &str,
 ) -> Result<Value, ApprovalError> {
     let (r, s, v) = parse_signature(signature)?;
-    let chain_str = chain_string(network);
+    let chain_str = network.chain_string();
 
     let payload = json!({
         "action": {
             "type": "approveAgent",
-            "signatureChainId": format!("0x{:x}", signature_chain_id(network)),
+            "signatureChainId": format!("0x{:x}", network.arbitrum_chain_id()),
             "hyperliquidChain": chain_str,
             "agentAddress": agent_address,
             "agentName": null,
@@ -143,9 +131,9 @@ pub async fn submit_approval(
         }
     });
 
-    let url = exchange_url(network);
+    let url = network.exchange_url();
     let resp = client
-        .post(&url)
+        .post(url)
         .json(&payload)
         .send()
         .await
@@ -191,16 +179,16 @@ pub async fn verify_registration(
     client: &reqwest::Client,
     wallet_address: &str,
     agent_address: &str,
-    network: Network,
+    network: HlNetwork,
 ) -> Result<bool, ApprovalError> {
-    let url = info_url(network);
+    let url = network.info_url();
     let payload = json!({
         "type": "extraAgents",
         "user": wallet_address
     });
 
     let resp = client
-        .post(&url)
+        .post(url)
         .json(&payload)
         .send()
         .await
@@ -234,30 +222,6 @@ pub async fn verify_registration(
     Ok(false)
 }
 
-/// Map `Network` to the Hyperliquid chain string used in EIP-712 messages.
-fn chain_string(network: Network) -> &'static str {
-    match network {
-        Network::Testnet => "Testnet",
-        Network::Mainnet => "Mainnet",
-    }
-}
-
-/// Get the Hyperliquid exchange API URL for the given network.
-fn exchange_url(network: Network) -> String {
-    match network {
-        Network::Testnet => "https://api.hyperliquid-testnet.xyz/exchange".to_string(),
-        Network::Mainnet => "https://api.hyperliquid.xyz/exchange".to_string(),
-    }
-}
-
-/// Get the Hyperliquid info API URL for the given network.
-fn info_url(network: Network) -> String {
-    match network {
-        Network::Testnet => "https://api.hyperliquid-testnet.xyz/info".to_string(),
-        Network::Mainnet => "https://api.hyperliquid.xyz/info".to_string(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,7 +230,7 @@ mod tests {
     fn test_build_eip712_typed_data_mainnet() {
         let agent_addr = "0x1234567890abcdef1234567890abcdef12345678";
         let nonce = 1710600000000u64;
-        let data = build_eip712_typed_data(agent_addr, Network::Mainnet, nonce);
+        let data = build_eip712_typed_data(agent_addr, HlNetwork::Mainnet, nonce);
 
         // Verify domain
         let domain = &data["domain"];
@@ -301,7 +265,7 @@ mod tests {
     fn test_build_eip712_typed_data_testnet() {
         let data = build_eip712_typed_data(
             "0xabcdef1234567890abcdef1234567890abcdef12",
-            Network::Testnet,
+            HlNetwork::Testnet,
             999999,
         );
         assert_eq!(data["message"]["hyperliquidChain"], "Testnet");
@@ -357,35 +321,5 @@ mod tests {
 
         let err = parse_signature(&sig).unwrap_err();
         assert!(matches!(err, ApprovalError::InvalidSignature(_)));
-    }
-
-    #[test]
-    fn test_chain_string() {
-        assert_eq!(chain_string(Network::Mainnet), "Mainnet");
-        assert_eq!(chain_string(Network::Testnet), "Testnet");
-    }
-
-    #[test]
-    fn test_exchange_url() {
-        assert_eq!(
-            exchange_url(Network::Mainnet),
-            "https://api.hyperliquid.xyz/exchange"
-        );
-        assert_eq!(
-            exchange_url(Network::Testnet),
-            "https://api.hyperliquid-testnet.xyz/exchange"
-        );
-    }
-
-    #[test]
-    fn test_info_url() {
-        assert_eq!(
-            info_url(Network::Mainnet),
-            "https://api.hyperliquid.xyz/info"
-        );
-        assert_eq!(
-            info_url(Network::Testnet),
-            "https://api.hyperliquid-testnet.xyz/info"
-        );
     }
 }

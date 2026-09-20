@@ -1,0 +1,350 @@
+# HL-12-hypersdk-migration - LEARNINGS
+
+Per-spec learning record. Written as each checkpoint lands.
+
+---
+
+## Baselines (recorded at CP-1, before any code changed)
+
+All commands run from `testudo-exchange/` with `SQLX_OFFLINE=true`.
+
+| Gate | Command | Baseline |
+|---|---|---|
+| Tests | `cargo test -p router --bin router` | 938 passed, 22 ignored, 0 failed (960 listed) |
+| Lint | `cargo clippy -p router --all-targets` | `router` bin 5 warnings, test bin 6 warnings |
+| Lint (workspace) | `cargo clippy --all-targets` | `common_utils` 2, `db-processor` 1 |
+| Old crate present | `cargo tree -p router -i hyperliquid-sdk-rs` | resolves to `vendor/hyperliquid-sdk-rs` |
+| New crate absent | `cargo tree -p router -i hypersdk` | `did not match any packages` |
+
+Toolchains: this machine `rustc 1.98.0`, droplet (`n0x`) `rustc 1.94.1`. The droplet
+version was confirmed by direct query, not taken from the spec. It matters because
+alloy 2.2.0 and later declare `rust-version = 1.94.1`, so the droplet sits exactly on
+the boundary.
+
+---
+
+## CP-1: Network resolution becomes local (2026-09-20)
+
+**Outcome.** 14 files changed, +73 / -161, plus a new `types/hl_network.rs`. Tests
+stayed at 960 listed, clippy stayed at 5 warnings on the router bin. No SDK `Network`
+reference remains outside `types/hl_network.rs`, which is now the single boundary where
+the type is named.
+
+### The test count did not go up, and that is correct
+
+The plan expected "960 tests plus the new URL test". The count is 960 before and after.
+Three URL tests were deleted from `agent_approval.rs` (`test_chain_string`,
+`test_exchange_url`, `test_info_url`) and three were added in `types/hl_network.rs`.
+Net zero. The behaviour is still asserted; the assertions moved to the single place that
+now owns the URLs. A rising count is not the signal here, and pretending it was would
+have hidden a redundant duplicate.
+
+### Do not run `cargo fmt -p router` inside a checkpoint
+
+`cargo fmt -p router` reformatted **94 files** in one pass. The router crate is not
+rustfmt-clean under this toolchain, so formatting the crate rewrites code this spec has
+no business touching. That would have destroyed the reviewable-diff property FR-9 asks
+for, and it would collide with every other in-flight branch.
+
+It was reverted in full and the edits re-applied by hand. The clean diff is 14 files.
+
+If a checkpoint needs formatting, format only the lines it added, or run the formatter
+on the one new file. Never crate-wide.
+
+### The plan's CP-1 file list was short by two files
+
+`services/hyperliquid/tests/{integration,agent_wallet_integration}.rs` also had to
+change, because `AssetUniverse::fetch` and `HyperliquidFillSubscriber::new` changed
+their parameter type and the tests call both. The plan listed those two files under
+CP-3. Any checkpoint that changes a provider's public signature must carry its call
+sites, including test call sites.
+
+### `&'static str` over `String` for the URL helpers
+
+The deleted `agent_approval.rs` helpers returned `String` by allocating in each match
+arm. `HlNetwork::info_url` and friends return `&'static str` constants, which is
+allocation-free and is what TB-05 wants, but it changes the call sites: `.post(&url)`
+becomes `.post(url)`, because `reqwest` implements `IntoUrl` for `&str` and not for
+`&&str`. Two call sites needed that change.
+
+### Temporary bridge, and where it dies
+
+`HlNetwork::to_sdk()` is the only place the vendored `Network` type is still named. It
+exists because `InfoProvider::new` and `ExchangeProvider::{mainnet,testnet}` still want
+the SDK type. It is called from `universe.rs`, `ws_fills.rs`, `exchange_api.rs`,
+`import_worker.rs`, `journal_syncer/hyperliquid.rs`, and the two integration test files.
+CP-6 deletes it along with the crate. One guard test pins the mapping so a future
+edit cannot silently flip mainnet and testnet.
+
+---
+
+## CP-2 blocked: alloy 0.1 and alloy 2 cannot coexist (2026-09-20)
+
+The plan's CP-2 assumed `hypersdk` (which needs `alloy = "2"`) could be added
+*alongside* `hyperliquid-sdk-rs` (which needs `alloy = "0.1"`), with alloy 2 arriving
+under an `alloy2` alias, both crates in the tree until CP-6 removed the old one.
+
+**That is impossible. Cargo forbids it, for two independent reasons.**
+
+### Blocker 1: duplicate `links` value
+
+```
+error: failed to select a version for `alloy`.
+    ... required by package `hyperliquid-sdk-rs v0.1.2 (vendor/hyperliquid-sdk-rs)`
+package `alloy` links to the native library `ckzg`, but it conflicts with a previous
+package which links to `ckzg` as well:
+package `router v0.1.0`
+note: only one package in the dependency graph may specify the same links value
+to ensure that only one copy of a native library is linked in the final binary
+```
+
+alloy 0.1.x pulls `c-kzg 1.0.3`; alloy 2.x pulls `c-kzg 2.1.8`. Both declare
+`links = "ckzg"`, and cargo allows only one package per graph to declare a given
+`links` value. The old crate reaches c-kzg through its `alloy` `full` feature.
+
+### Blocker 2: the duplicate `alloy` dependency edge itself
+
+Narrowing the vendored fork's `alloy` request to `full` minus `kzg`, `provider-ws`, and
+`provider-ipc` removes blocker 1. It does not help, because a second, unrelated failure
+appears:
+
+```
+versions that meet the requirements `^0.1` are: 0.1.4, 0.1.3, 0.1.2, 0.1.1, 0.1.0
+package `router` depends on `alloy` with feature `signer-local` but `alloy` does not
+have that feature.
+```
+
+This is requested on the `^0.1` edge while alloy 2 is also in the graph. Note that
+alloy 0.1.4's index entry declares `signer-local` only in `features2`, not in
+`features`. Whatever cargo is doing internally, the practical answer is the same.
+
+### Experiments behind the conclusion
+
+All run against the current lock with `SQLX_OFFLINE=true`.
+
+| Manifest state | Result |
+|---|---|
+| pristine tree | resolves, builds |
+| pristine + `once_cell = "1"` (forces a full re-resolve, no alloy change) | **resolves**, exit 0 |
+| pristine + `hypersdk = "0.2.15"` | fails, blocker 1 |
+| pristine + `alloy2 = { package = "alloy", version = "=2.4.2" }` only | fails, blocker 1 |
+| pristine + vendored fork's alloy narrowed to drop kzg | fails, blocker 2 |
+| old crate and `[patch.crates-io]` removed, `hypersdk` + `alloy = "=2.4.2"` added | **resolves**, exit 0 |
+
+The `once_cell` row is the control. It proves the `alloy = { version = "0.1", features =
+["signers", "signer-local"] }` line is not latently invalid and that re-resolution in
+general works. The failure is specific to having both alloy majors present.
+
+### What this means for the plan
+
+1. **The dependency swap is atomic.** `hypersdk` in and `hyperliquid-sdk-rs` out must
+   land in the same commit. There is no intermediate state where both exist, so there is
+   no `alloy2` alias to rename later and no bridging signer to write.
+2. **The alloy bump cannot be split out either.** The router cannot move to alloy 2
+   while the old crate is present, so `siwe.rs`, the `routes/exchanges.rs` test signers,
+   and `ExchangeProvider<PrivateKeySigner>` all migrate inside the swap.
+3. **A non-buildable commit is not acceptable**, so unless the router's code is first
+   decoupled from the old SDK's types, the swap must carry every call site at once.
+   That argues for a strangler seam before the swap.
+4. **The order path already has its seam.** `crate::services::exchange_api::ExchangeApi`
+   is the internal boundary and returns router-owned types, so the SDK leak into other
+   modules is only the read paths: `InfoProvider` and `UserFillByTime` used directly by
+   `universe.rs`, `ws_fills.rs`, `import_worker.rs`, `journal_syncer/hyperliquid.rs`, and
+   `hl_fill_journal.rs`.
+
+The end state is confirmed reachable, so this is a sequencing problem, not a
+feasibility one.
+
+### Also worth knowing
+
+With the old crate gone, `alloy = { version = "=2.4.2", features = ["signers",
+"signer-local"] }` keeps alloy's default features, which include `essentials`. The
+feature set should be chosen deliberately at swap time (`default-features = false`) so
+alloy's optional signer backends (AWS KMS, GCP, Turnkey, Ledger) and its kzg stack are
+not pulled into a trading router. The router uses only `Address`, `Signature`,
+`eip191_hash_message`, `PrivateKeySigner`, and `SignerSync`.
+
+---
+
+## CP-2: Read paths behind a router-owned seam (2026-09-20)
+
+**Outcome.** New `services/hyperliquid/market_data.rs` (306 lines, 5 tests, 3 TB-01
+waivers). Five consumers migrated off `InfoProvider` and `UserFillByTime`:
+`universe.rs`, `ws_fills.rs`, `import_worker.rs`, `journal_syncer/hyperliquid.rs`,
+`hl_fill_journal.rs`. Tests went 960 to 965 listed, clippy stayed at 5 warnings on the
+router bin, `__check.sh` reported zero violations on changed lines.
+
+After this checkpoint the Hyperliquid SDK is named by exactly three production files:
+`market_data.rs` (the seam), `exchange_api.rs` (order path, self-contained behind the
+`ExchangeApi` trait), and `types/hl_network.rs` (the `to_sdk` bridge). CP-3's diff is
+now concentrated in those three plus the Cargo manifests, instead of scattered across
+fourteen.
+
+### `raw_json` is why `HlFill` mirrors all fifteen fields
+
+The obvious seam design is to carry only the fields the router reads. That would have
+been a silent data change. `journal_syncer::hyperliquid::convert_hl_fill` persists
+`serde_json::to_value(fill)` into `raw_fills.raw_json`, so the SDK struct's whole wire
+shape was already being stored. A narrower `HlFill` would have dropped `crossed`,
+`hash`, `start_position`, and `cloid` from every future row while leaving existing rows
+with them.
+
+`HlFill` therefore carries all fifteen fields with the SDK's `camelCase` naming, and
+`hl_fill_matches_the_sdk_wire_shape` asserts
+`to_value(HlFill::from(&sdk_fill)) == to_value(&sdk_fill)`. That test is the guard: it
+compares serialized forms rather than field by field, so a renamed, added, or dropped
+field fails it.
+
+Worth generalising: before narrowing an ingested type, grep for where the original gets
+serialized. The consumer that reads every field may be a database column, not a function.
+
+### Rate-limit classification moved to the boundary, with the same predicate
+
+`journal_syncer` used to sniff the error string for `429` or `rate` inline and map to
+`SyncError::RateLimit`. The seam now owns that predicate and returns a typed
+`HlMarketDataError::RateLimited`, so the consumer matches on a variant. The predicate
+itself is unchanged and is duplicated nowhere. When `hypersdk` arrives in CP-3 it
+exposes a typed status, and this is the one place that has to change.
+
+### The plan's verification line under-listed the files
+
+CP-2's grep criterion named three files; the real answer is five. The two
+`services/hyperliquid/tests/` integration files are `#[cfg(test)]`, testnet-only, and
+drive the SDK directly, so they stay until CP-3. The plan has been corrected. The
+production-code claim in the criterion held exactly.
+
+### TB-01 waivers on pure mapping
+
+Three functions carry `// @waiver TB-01` annotations: the `From<&UserFillByTime> for
+HlFill` field map, `HlMarketDataError::classify`, and nothing else. Each is a branch-free
+or two-branch map where the only assertion available would restate an assignment, and
+each has a test pinning the behaviour instead. The other functions in the module carry
+real assertions: `perps` asserts the universe is non-empty, `fills_between` asserts the
+conversion neither drops nor duplicates fills and rejects the zero address. Note that
+TB-01's density rule is applied nowhere else in this crate; enforcing it here would have
+been box-ticking, and the waivers are recorded rather than hidden.
+
+### Both CP-1 and CP-2 are uncommitted
+
+The working tree holds both checkpoints. They interleave in `universe.rs`, `ws_fills.rs`,
+and the hyperliquid module files, so splitting them retroactively needs hunk-level
+staging. Committing them before CP-3 is worth doing: CP-3 is the largest commit in the
+spec and it deserves a clean base.
+
+---
+
+## CP-3 reconnaissance: the signing model is compatible, and the planned fixture was wrong (2026-09-20)
+
+CP-3 is the atomic dependency swap. It was not started in this session: it is the
+largest checkpoint in the spec, it cannot be split, and a half-migrated tree does not
+build, so an incomplete attempt is worse than no attempt. Instead its two highest
+unknowns were measured in a scratch crate outside the repo, and both came back with
+answers that change the work.
+
+### Method
+
+`/tmp/alloy2probe` is a throwaway crate with `hypersdk = "0.2.15"` and
+`alloy = { version = "=2.4.2", default-features = false, features = ["signers",
+"signer-local", "k256"] }`, containing every call-site shape CP-3 has to write: the
+SIWE primitives, the test signers, `place`/`cancel`/`cancel_by_cloid`/`modify`,
+`clearinghouse_state`, `open_orders`, `usd_class_transfer`, `NonceHandler`, `Cloid`
+construction, `Action::prehash`, `Action::sign_sync`, and the `Fill` conversion.
+
+`/tmp/oldprobe` is a second crate depending on the vendored `hyperliquid-sdk-rs` path,
+used to compute the *same* signing digest through the production code path. The two
+cannot share a graph, which is the whole reason for the swap.
+
+Neither probe touches the repo. `Cargo.lock` and `vendor/` were verified unchanged
+afterwards.
+
+### Finding 1: alloy 2 needs almost no code change
+
+The probe compiled with three errors, all of them in the probe's own code rather than
+alloy incompatibilities. `eip191_hash_message`, `Address`, `Signature`,
+`recover_address_from_prehash`, and `PrivateKeySigner::{random, address, from_str}` are
+unchanged, and a `PrivateKeySigner` from alloy 2 satisfies hypersdk's `SignerSync`
+directly.
+
+The single real API delta in existing code: alloy 2's
+`Signature::from_bytes_and_parity` is **infallible** and returns `Signature`, not
+`Result`. In `services/auth/siwe.rs` that removes one `?` and its error mapping. The
+plan had budgeted `siwe.rs` and the `routes/exchanges.rs` test signers as migration
+work; the truth is one line in one file and nothing at all in the other.
+
+New surface the rewrite needs: `Cloid` is `pub type Cloid = B128` (`Cloid::from_str`,
+`Cloid::ZERO`), `OidOrCloid = Either<u64, Cloid>`, `NonceHandler` is public and
+`Send + Sync` so the router now generates its own nonces, `BatchCancelCloid` requires a
+`fast` field, and the trigger variant is spelled `TpSl`.
+
+### Finding 2: the domain and Agent encoding are byte-identical
+
+The spec's headline risk was a silent signing-model change producing HTTP 422 on every
+order. Measured directly:
+
+| Source | Signing digest for `connectionId de6c4037...` |
+|---|---|
+| vendored `hyperliquid-sdk-rs` (`Agent { source: "a" }`, production path) | `0x6c43321e0f67bbafa52f8ad0cca68ce5e6700cac04fd5f8ccc1df6d4d3e799b0` |
+| `hypersdk` (`signing::agent_signing_hash`) | `0x6c43321e0f67bbafa52f8ad0cca68ce5e6700cac04fd5f8ccc1df6d4d3e799b0` |
+
+Identical. The `Exchange` / `"1"` / `1337` / `0x0` domain and the
+`Agent(string source,bytes32 connectionId)` struct encode the same way in both crates.
+The risk is closed by measurement, not by argument.
+
+### Finding 3: pin the digest, never the signature
+
+The plan's CP-3 task 7 said to pin the Agent wrapper and domain against the vendored
+crate's external vector, `connectionId de6c4037...` / signature `fa8a41f6...`. **That
+instruction was wrong and has been corrected.**
+
+Signing that identical digest with that identical key produces a *different* signature
+under alloy 2:
+
+```
+ours r||s : 5928e9a0b25c0d5c96fa998de2ce6dfee78260ed7388416244895292b34b375b5fe8ea602f3adb8b42d73757b2e6f910e97f8e7bdc1682408d0d0b0d32614fab
+their r||s: fa8a41f6a3fa728206df80801a83bcbfbab08649cd34d9c0bfba7c7b2f99340ff53a00226604567b98a1492803190d65a201d6805e5831b7044f17fd530aec78
+```
+
+Both recover to the same address. The cause is not a hashing difference; alloy 2 derives
+the deterministic ECDSA nonce differently. That is harmless, because an ECDSA signature
+over a digest is not unique and the exchange verifies by recovering the signer.
+
+It is not harmless in a test. A fixture pinned to `fa8a41f6...` **fails against a
+correct implementation**. Whoever hit that failure would either delete the assertion or
+start "fixing" the signing path, and the second option damages a money path. The correct
+fixture asserts the digest, which is stable, exchange-verified, and identical across
+both crates, plus a recovery check that the signature yields the signing key's address.
+
+Generalisation worth carrying: when pinning cryptography across a dependency bump, pin
+the input to the signature, not the signature. A deterministic nonce is deterministic
+only within one implementation of the algorithm.
+
+### Finding 4: `Fill` conversion needs explicit wire formatting
+
+hypersdk parses fills into `Decimal`, `Side`, and `FillDirection`, so `HlFill` has to be
+rebuilt rather than copied. `normalize().to_string()` for the numeric fields, and the
+enum matches are exact because `Side` serialises as `"B"`/`"A"` and `FillDirection` as
+`"Open Long"` and friends. Hyperliquid sends normalised numeric strings, so this should
+be byte-identical, but that is an assumption: CP-6 should compare one live `raw_json`
+against the exchange payload rather than trusting it.
+
+### CP-3 execution decision (2026-09-20)
+
+CP-3 stays atomic. The alternative considered was splitting it into CP-3a (swap plus
+read paths, with order placement returning a typed unavailable error) and CP-3b (the
+order path), which would have made each half tractable but would land a commit where
+trading is disabled. Rejected: nothing should ship in a state where the core function
+does not work, even if that commit is never deployed.
+
+Consequence: CP-3 needs an uninterrupted session. It is a writing task against the
+verified mapping above, not a discovery task, but it cannot be interleaved with other
+work.
+
+Two last measurements close the order-encoding question:
+
+- `decimal_normalized` serialises a `Decimal` as a string with trailing zeros stripped.
+  So hypersdk's JSON body and the bytes it hashes agree, which is what Hyperliquid
+  requires and what the old crate's `limit_px: String` produced. Consistent by
+  construction rather than by argument.
+- `normalize_status`, `extract_order_id`, `extract_avg_price`, and `build_order_request`
+  are referenced only inside `exchange_api.rs`. No other module sees the SDK's order
+  types, so that file can be migrated on its own.

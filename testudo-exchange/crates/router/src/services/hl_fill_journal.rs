@@ -9,12 +9,12 @@
 // @tags api
 
 use chrono::{DateTime, TimeZone, Utc};
-use hyperliquid_sdk_rs::types::info_types::UserFillByTime;
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use uuid::Uuid;
 
 use super::journal_service::TradeCloseEvent;
+use crate::services::hyperliquid::market_data::HlFill;
 
 /// Build a `TradeCloseEvent` from an HL closing fill.
 ///
@@ -23,7 +23,7 @@ use super::journal_service::TradeCloseEvent;
 ///
 /// `source` identifies the caller ("import_hl" or "live_poll").
 pub fn build_trade_close_event(
-    fill: &UserFillByTime,
+    fill: &HlFill,
     user_id: Uuid,
     open_time_ms: Option<u64>,
     source: &str,
@@ -126,8 +126,8 @@ mod tests {
         oid: u64,
         tid: u64,
         time: u64,
-    ) -> UserFillByTime {
-        UserFillByTime {
+    ) -> HlFill {
+        HlFill {
             closed_pnl: closed_pnl.to_string(),
             coin: coin.to_string(),
             crossed: true,

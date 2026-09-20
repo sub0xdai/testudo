@@ -7,9 +7,11 @@
 // @anchor exchange:router:universe
 // @tags api
 
-use hyperliquid_sdk_rs::{InfoProvider, Network};
+use crate::types::hl_network::HlNetwork;
 use std::collections::HashMap;
 use thiserror::Error;
+
+use super::market_data::HlMarketData;
 
 /// Errors from asset universe operations.
 #[derive(Debug, Error)]
@@ -42,21 +44,20 @@ pub struct AssetUniverse {
 
 impl AssetUniverse {
     /// Fetch the asset universe from Hyperliquid and build the cache.
-    pub async fn fetch(network: Network) -> Result<Self, UniverseError> {
-        let info = InfoProvider::new(network);
-        let meta = info
-            .meta()
+    pub async fn fetch(network: HlNetwork) -> Result<Self, UniverseError> {
+        let perps = HlMarketData::new(network)
+            .perps()
             .await
             .map_err(|e| UniverseError::FetchFailed(e.to_string()))?;
 
         let mut assets = HashMap::new();
-        for (index, asset) in meta.universe.into_iter().enumerate() {
+        for perp in perps {
             assets.insert(
-                asset.name.to_uppercase(),
+                perp.name.to_uppercase(),
                 AssetMeta {
-                    index: index as u32,
-                    sz_decimals: asset.sz_decimals,
-                    max_leverage: asset.max_leverage,
+                    index: perp.index,
+                    sz_decimals: perp.sz_decimals,
+                    max_leverage: perp.max_leverage,
                 },
             );
         }

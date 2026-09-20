@@ -11,9 +11,10 @@
 
 use alloy::primitives::Address;
 use chrono::{DateTime, Utc};
-use hyperliquid_sdk_rs::{InfoProvider, Network};
 use pg_queue::{QueueName, QueueRepository};
 use crate::repositories::exchange_account::ExchangeAccountRepository;
+use crate::services::hyperliquid::market_data::{HlFill, HlMarketData};
+use crate::types::hl_network::HlNetwork;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -69,7 +70,7 @@ pub struct ImportWorker {
     queue: QueueRepository,
     exchange_repo: ExchangeAccountRepository,
     journal: Arc<JournalService>,
-    hl_network: Network,
+    hl_network: HlNetwork,
     pool: sqlx::PgPool,
     http_client: reqwest::Client,
 }
@@ -79,7 +80,7 @@ impl ImportWorker {
         queue: QueueRepository,
         exchange_repo: ExchangeAccountRepository,
         journal: Arc<JournalService>,
-        hl_network: Network,
+        hl_network: HlNetwork,
         pool: sqlx::PgPool,
     ) -> Self {
         Self {
@@ -212,7 +213,7 @@ impl ImportWorker {
         let address = Address::from_str(wallet_address)
             .map_err(|e| ImportError::CredentialLoad(format!("Invalid wallet address: {e}")))?;
 
-        let info = InfoProvider::new(self.hl_network);
+        let market_data = HlMarketData::new(self.hl_network);
 
         let mut result = ImportResult::default();
 
@@ -223,8 +224,8 @@ impl ImportWorker {
         let mut open_times: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
 
         loop {
-            let fills = info
-                .user_fills_by_time(address, cursor, Some(end_time), None)
+            let fills = market_data
+                .fills_between(address, cursor, Some(end_time))
                 .await
                 .map_err(|e| ImportError::ApiFetch(format!("HL fills query failed: {e}")))?;
 
@@ -294,7 +295,7 @@ impl ImportWorker {
     /// `open_time_ms`: timestamp of the corresponding open fill for duration calc.
     async fn process_hl_fill(
         &self,
-        fill: &hyperliquid_sdk_rs::types::info_types::UserFillByTime,
+        fill: &HlFill,
         user_id: Uuid,
         open_time_ms: Option<u64>,
     ) -> Result<ProcessOutcome, ImportError> {

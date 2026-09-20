@@ -13,7 +13,7 @@
 use alloy::signers::local::PrivateKeySigner;
 use hyperliquid_sdk_rs::{
     types::ws::{Message, Subscription},
-    ExchangeProvider, InfoProvider, Network, RawWsProvider,
+    ExchangeProvider, InfoProvider, RawWsProvider,
 };
 use rust_decimal::Decimal;
 use std::str::FromStr;
@@ -21,6 +21,7 @@ use std::time::Duration;
 
 use crate::services::hyperliquid::auth::HyperliquidAuth;
 use crate::services::hyperliquid::universe::AssetUniverse;
+use crate::types::hl_network::HlNetwork;
 
 /// Load testnet private key from environment. Panics with helpful message if absent.
 fn testnet_key() -> String {
@@ -61,7 +62,7 @@ async fn testnet_construct_signer_and_derive_address() {
 #[tokio::test]
 #[ignore]
 async fn testnet_fetch_meta_and_resolve_btc() {
-    let universe = AssetUniverse::fetch(Network::Testnet)
+    let universe = AssetUniverse::fetch(HlNetwork::Testnet)
         .await
         .expect("Failed to fetch testnet asset universe");
 
@@ -96,7 +97,7 @@ async fn testnet_fetch_meta_and_resolve_btc() {
 #[ignore]
 async fn testnet_query_balance() {
     let auth = testnet_auth();
-    let info = InfoProvider::new(Network::Testnet);
+    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
 
     let state = info
         .user_state(auth.address)
@@ -127,12 +128,12 @@ async fn testnet_query_balance() {
 #[ignore]
 async fn testnet_order_lifecycle() {
     let auth = testnet_auth();
-    let universe = AssetUniverse::fetch(Network::Testnet)
+    let universe = AssetUniverse::fetch(HlNetwork::Testnet)
         .await
         .expect("Failed to fetch universe");
 
     let exchange = ExchangeProvider::testnet(auth.signer.clone());
-    let info = InfoProvider::new(Network::Testnet);
+    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
 
     // Check if account has funds
     let state = info.user_state(auth.address).await.expect("user_state failed");
@@ -239,7 +240,7 @@ async fn testnet_order_lifecycle() {
 #[ignore]
 async fn testnet_fetch_positions() {
     let auth = testnet_auth();
-    let info = InfoProvider::new(Network::Testnet);
+    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
 
     // Positions are part of user_state response
     let state = info
@@ -272,7 +273,7 @@ async fn testnet_websocket_order_updates() {
     let auth = testnet_auth();
 
     // Connect to testnet WebSocket
-    let mut ws = RawWsProvider::connect(Network::Testnet)
+    let mut ws = RawWsProvider::connect(HlNetwork::Testnet.to_sdk())
         .await
         .expect("Failed to connect to testnet WebSocket");
 

@@ -20,10 +20,7 @@
 
 use alloy::primitives::Address;
 use futures_util::{SinkExt, StreamExt};
-use hyperliquid_sdk_rs::{
-    types::info_types::UserFillByTime,
-    InfoProvider, Network,
-};
+use super::market_data::{HlFill, HlMarketData};
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
@@ -37,6 +34,7 @@ use uuid::Uuid;
 use super::AssetUniverse;
 use crate::services::exchange_api::{ExchangeApi, ExchangeApiError};
 use crate::services::OrderUpdateEvent;
+use crate::types::hl_network::HlNetwork;
 use engine::shadow::order_group::OrderGroupStatus;
 use engine::EngineHandle;
 
@@ -65,14 +63,6 @@ const PING_INTERVAL_SECS: u64 = 30;
 /// Read timeout: if no frame (data, pong, or anything) arrives within this
 /// duration, consider the connection dead and force reconnect.
 const READ_TIMEOUT_SECS: u64 = 60;
-
-/// Hyperliquid WS endpoints.
-fn ws_url(network: Network) -> &'static str {
-    match network {
-        Network::Mainnet => "wss://api.hyperliquid.xyz/ws",
-        Network::Testnet => "wss://api.hyperliquid-testnet.xyz/ws",
-    }
-}
 
 // ── HL WS JSON types (minimal, avoid SDK's Message type) ──────────────
 
@@ -115,10 +105,10 @@ struct HlBasicOrder {
 /// - Periodic REST poll every 30s (reliable fallback)
 /// - OID-based deduplication across WS + REST
 pub struct HyperliquidFillSubscriber {
-    network: Network,
+    network: HlNetwork,
     user_address: Address,
     order_update_sender: mpsc::Sender<OrderUpdateEvent>,
-    info: InfoProvider,
+    market_data: HlMarketData,
     /// FIX-02: Watermark — timestamp of last processed event for reconnect reconciliation.
     last_event_timestamp: Option<u64>,
     /// FIX-02: Bounded set of recently-seen OIDs for deduplication.
@@ -137,16 +127,16 @@ pub struct HyperliquidFillSubscriber {
 
 impl HyperliquidFillSubscriber {
     pub fn new(
-        network: Network,
+        network: HlNetwork,
         user_address: Address,
         order_update_sender: mpsc::Sender<OrderUpdateEvent>,
     ) -> Self {
-        let info = InfoProvider::new(network);
+        let market_data = HlMarketData::new(network);
         Self {
             network,
             user_address,
             order_update_sender,
-            info,
+            market_data,
             last_event_timestamp: None,
             seen_oids: HashSet::new(),
             user_id: None,
@@ -229,7 +219,7 @@ impl HyperliquidFillSubscriber {
         &mut self,
         stop_rx: &mut watch::Receiver<bool>,
     ) -> Result<(), String> {
-        let url = ws_url(self.network);
+        let url = self.network.ws_url();
 
         // 1. Connect via tokio-tungstenite (TLS handled by native-tls feature)
         let (ws_stream, _response) = tokio_tungstenite::connect_async(url)
@@ -404,7 +394,7 @@ impl HyperliquidFillSubscriber {
                 // FIX-02: Enrich fill price for closed orders via REST
                 if event.status == "closed" {
                     enrich_fill_price(
-                        &self.info,
+                        &self.market_data,
                         self.user_address,
                         &mut event,
                         update.status_timestamp,
@@ -430,10 +420,9 @@ impl HyperliquidFillSubscriber {
             "FIX-02: reconciling fills since watermark"
         );
 
-        let fills = match self.info.user_fills_by_time(
+        let fills = match self.market_data.fills_between(
             self.user_address,
             since_ts,
-            None,
             None,
         ).await {
             Ok(f) => f,
@@ -444,7 +433,7 @@ impl HyperliquidFillSubscriber {
         };
 
         // Group fills by OID for FillDetector path (entry fills)
-        let mut oid_fills: HashMap<u64, Vec<&UserFillByTime>> = HashMap::new();
+        let mut oid_fills: HashMap<u64, Vec<&HlFill>> = HashMap::new();
         for fill in &fills {
             oid_fills.entry(fill.oid).or_default().push(fill);
         }
@@ -743,7 +732,7 @@ fn now_ms() -> u64 {
 
 /// FIX-02: Query REST for actual fill price and update `event.average`.
 async fn enrich_fill_price(
-    info: &InfoProvider,
+    market_data: &HlMarketData,
     user_address: Address,
     event: &mut OrderUpdateEvent,
     status_timestamp: u64,
@@ -755,7 +744,7 @@ async fn enrich_fill_price(
 
     let start_time = status_timestamp.saturating_sub(FILL_LOOKBACK_MS);
 
-    match info.user_fills_by_time(user_address, start_time, None, None).await {
+    match market_data.fills_between(user_address, start_time, None).await {
         Ok(fills) => {
             if let Some(px) = compute_avg_price(oid, &fills) {
                 event.average = Some(px);
@@ -763,7 +752,7 @@ async fn enrich_fill_price(
             } else {
                 // Retry once after 500ms (stale data mitigation)
                 tokio::time::sleep(Duration::from_millis(500)).await;
-                match info.user_fills_by_time(user_address, start_time, None, None).await {
+                match market_data.fills_between(user_address, start_time, None).await {
                     Ok(fills) => {
                         if let Some(px) = compute_avg_price(oid, &fills) {
                             event.average = Some(px);
@@ -784,7 +773,7 @@ async fn enrich_fill_price(
     }
 }
 
-fn compute_avg_price(oid: u64, fills: &[UserFillByTime]) -> Option<Decimal> {
+fn compute_avg_price(oid: u64, fills: &[HlFill]) -> Option<Decimal> {
     let mut total_value = Decimal::ZERO;
     let mut total_sz = Decimal::ZERO;
 
@@ -808,7 +797,7 @@ fn compute_avg_price(oid: u64, fills: &[UserFillByTime]) -> Option<Decimal> {
     }
 }
 
-fn build_event_from_fills(oid: u64, fills: &[&UserFillByTime]) -> Option<OrderUpdateEvent> {
+fn build_event_from_fills(oid: u64, fills: &[&HlFill]) -> Option<OrderUpdateEvent> {
     let first = fills.first()?;
 
     let side = match first.side.as_str() {
@@ -881,8 +870,8 @@ mod tests {
         }
     }
 
-    fn make_fill(coin: &str, side: &str, px: &str, sz: &str, oid: u64, time: u64) -> UserFillByTime {
-        UserFillByTime {
+    fn make_fill(coin: &str, side: &str, px: &str, sz: &str, oid: u64, time: u64) -> HlFill {
+        HlFill {
             closed_pnl: "0".to_string(),
             coin: coin.to_string(),
             crossed: true,
@@ -1049,7 +1038,7 @@ mod tests {
 
     #[test]
     fn compute_avg_price_empty_fills() {
-        let fills: Vec<UserFillByTime> = vec![];
+        let fills: Vec<HlFill> = vec![];
         assert!(compute_avg_price(100, &fills).is_none());
     }
 
@@ -1058,7 +1047,7 @@ mod tests {
     #[test]
     fn build_event_single_fill() {
         let fill = make_fill("BTC", "B", "65000", "0.1", 100, 1710000000);
-        let fills: Vec<&UserFillByTime> = vec![&fill];
+        let fills: Vec<&HlFill> = vec![&fill];
         let event = build_event_from_fills(100, &fills).unwrap();
 
         assert_eq!(event.id, "100");
@@ -1074,7 +1063,7 @@ mod tests {
     fn build_event_multiple_fills_weighted_avg() {
         let f1 = make_fill("BTC", "A", "64000", "0.3", 100, 1710000000);
         let f2 = make_fill("BTC", "A", "64200", "0.2", 100, 1710000001);
-        let fills: Vec<&UserFillByTime> = vec![&f1, &f2];
+        let fills: Vec<&HlFill> = vec![&f1, &f2];
         let event = build_event_from_fills(100, &fills).unwrap();
 
         assert_eq!(event.average, Some(dec!(64080)));
@@ -1085,7 +1074,7 @@ mod tests {
 
     #[test]
     fn build_event_empty_fills() {
-        let fills: Vec<&UserFillByTime> = vec![];
+        let fills: Vec<&HlFill> = vec![];
         assert!(build_event_from_fills(100, &fills).is_none());
     }
 
@@ -1094,7 +1083,7 @@ mod tests {
     #[test]
     fn record_oid_new_returns_true() {
         let mut sub = HyperliquidFillSubscriber::new(
-            Network::Testnet,
+            HlNetwork::Testnet,
             Address::ZERO,
             mpsc::channel(1).0,
         );
@@ -1105,7 +1094,7 @@ mod tests {
     #[test]
     fn record_oid_duplicate_returns_false() {
         let mut sub = HyperliquidFillSubscriber::new(
-            Network::Testnet,
+            HlNetwork::Testnet,
             Address::ZERO,
             mpsc::channel(1).0,
         );
@@ -1116,7 +1105,7 @@ mod tests {
     #[test]
     fn record_oid_clears_at_capacity() {
         let mut sub = HyperliquidFillSubscriber::new(
-            Network::Testnet,
+            HlNetwork::Testnet,
             Address::ZERO,
             mpsc::channel(1).0,
         );
