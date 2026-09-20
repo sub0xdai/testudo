@@ -1,4 +1,4 @@
-//! Testnet integration tests for Hyperliquid native SDK.
+//! Testnet integration tests for the Hyperliquid native adapter.
 //!
 //! These tests validate against the live Hyperliquid testnet API.
 //! They are `#[ignore]` by default and only run when credentials are provided:
@@ -11,15 +11,20 @@
 //! (hex, with or without 0x prefix) that has testnet funds.
 
 use alloy::signers::local::PrivateKeySigner;
-use hyperliquid_sdk_rs::{
-    types::ws::{Message, Subscription},
-    ExchangeProvider, InfoProvider, RawWsProvider,
+use futures_util::StreamExt;
+use hypersdk::hypercore::{
+    self,
+    types::{Incoming, OrderRequest, OrderResponseStatus, OrderTypePlacement, Subscription},
+    ws::Event,
+    ActionError, BatchCancel, BatchOrder, Cancel, Chain, Cloid, HttpClient, NonceHandler,
+    OrderGrouping, TimeInForce,
 };
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use std::time::Duration;
 
 use crate::services::hyperliquid::auth::HyperliquidAuth;
+use crate::services::hyperliquid::exchange_api::round_sz;
 use crate::services::hyperliquid::universe::AssetUniverse;
 use crate::types::hl_network::HlNetwork;
 
@@ -36,6 +41,32 @@ fn testnet_auth() -> HyperliquidAuth {
     let key = testnet_key();
     HyperliquidAuth::from_credentials("", &key)
         .expect("Failed to construct HyperliquidAuth from HL_TESTNET_KEY")
+}
+
+fn testnet_client() -> HttpClient {
+    HttpClient::new(Chain::Testnet)
+}
+
+/// Place a single order through `hypersdk`, the way the router does.
+async fn place(
+    client: &HttpClient,
+    auth: &HyperliquidAuth,
+    nonces: &NonceHandler,
+    order: OrderRequest,
+) -> Result<Vec<OrderResponseStatus>, ActionError<Cloid>> {
+    client
+        .place(
+            &auth.signer,
+            BatchOrder {
+                orders: vec![order],
+                grouping: OrderGrouping::Na,
+                builder: None,
+            },
+            nonces.next(),
+            None,
+            None,
+        )
+        .await
 }
 
 // ─── FR-4: Auth validation ───────────────────────────────────────────
@@ -97,16 +128,14 @@ async fn testnet_fetch_meta_and_resolve_btc() {
 #[ignore]
 async fn testnet_query_balance() {
     let auth = testnet_auth();
-    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
+    let client = testnet_client();
 
-    let state = info
-        .user_state(auth.address)
+    let state = client
+        .clearinghouse_state(auth.address, None)
         .await
-        .expect("Failed to fetch user state from testnet");
+        .expect("Failed to fetch clearinghouse state from testnet");
 
-    // Parse account value — should be a valid decimal (may be zero if unfunded)
-    let account_value =
-        Decimal::from_str(&state.margin_summary.account_value).expect("Invalid account_value");
+    let account_value = state.margin_summary.account_value;
 
     // Account value should be non-negative
     assert!(
@@ -117,7 +146,7 @@ async fn testnet_query_balance() {
 
     tracing::info!(
         "Testnet balance: account_value={}, margin_used={}",
-        state.margin_summary.account_value,
+        account_value,
         state.margin_summary.total_margin_used
     );
 }
@@ -132,13 +161,16 @@ async fn testnet_order_lifecycle() {
         .await
         .expect("Failed to fetch universe");
 
-    let exchange = ExchangeProvider::testnet(auth.signer.clone());
-    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
+    let client = testnet_client();
+    let nonces = NonceHandler::default();
 
     // Check if account has funds
-    let state = info.user_state(auth.address).await.expect("user_state failed");
-    let balance = Decimal::from_str(&state.margin_summary.account_value).unwrap_or_default();
-    if balance < Decimal::new(1, 0) {
+    let state = client
+        .clearinghouse_state(auth.address, None)
+        .await
+        .expect("clearinghouse_state failed");
+    let balance = state.margin_summary.account_value;
+    if balance < Decimal::ONE {
         tracing::warn!(
             "Testnet account has insufficient balance ({}), skipping order lifecycle",
             balance
@@ -150,62 +182,58 @@ async fn testnet_order_lifecycle() {
     let sz_decimals = universe.sz_decimals("BTC").unwrap();
 
     // Place a limit buy at a very low price (won't fill)
-    let sz = format!("{:.prec$}", 0.001, prec = sz_decimals as usize);
-    let order = hyperliquid_sdk_rs::types::OrderRequest::limit(
-        btc_index,
-        true,      // is_buy
-        "1000.0",  // very low price — won't fill
-        &sz,
-        "Gtc",
-    );
+    let order = OrderRequest {
+        asset: btc_index as usize,
+        is_buy: true,
+        limit_px: Decimal::from_str("1000.0").expect("limit price"),
+        sz: round_sz(Decimal::from_str("0.001").expect("size"), sz_decimals),
+        reduce_only: false,
+        order_type: OrderTypePlacement::Limit {
+            tif: TimeInForce::Gtc,
+        },
+        cloid: Cloid::ZERO,
+    };
 
-    let response = exchange
-        .place_order(&order)
+    let statuses = place(&client, &auth, &nonces, order)
         .await
         .expect("Failed to place testnet order");
 
-    tracing::info!("Place order response: {:?}", response);
+    tracing::info!("Place order response: {:?}", statuses);
 
-    // Extract OID from response
-    let exchange_response = response
-        .into_result()
-        .expect("Exchange returned error on place_order");
-
-    let oid = exchange_response
-        .data
-        .as_ref()
-        .and_then(|d| {
-            d.statuses.iter().find_map(|s| match s {
-                hyperliquid_sdk_rs::types::ExchangeDataStatus::Resting(r) => Some(r.oid),
-                _ => None,
-            })
-        });
+    let oid = statuses.iter().find_map(OrderResponseStatus::oid);
 
     if let Some(oid) = oid {
         tracing::info!("Order placed with OID: {}", oid);
 
         // Verify order is open
-        let open_orders = info
-            .open_orders(auth.address)
+        let open_orders = client
+            .open_orders(auth.address, None)
             .await
             .expect("Failed to fetch open orders");
 
-        let found = open_orders.iter().any(|o| o.oid == oid);
         assert!(
-            found,
+            open_orders.iter().any(|o| o.oid == oid),
             "Placed order (OID={}) should appear in open orders",
             oid
         );
 
         // Cancel the order
-        let cancel_response = exchange
-            .cancel_order(btc_index, oid)
+        client
+            .cancel(
+                &auth.signer,
+                BatchCancel {
+                    cancels: vec![Cancel {
+                        asset: btc_index as usize,
+                        oid,
+                    }],
+                    fast: false,
+                },
+                nonces.next(),
+                None,
+                None,
+            )
             .await
             .expect("Failed to cancel testnet order");
-
-        cancel_response
-            .into_result()
-            .expect("Exchange returned error on cancel_order");
 
         tracing::info!("Order {} canceled", oid);
 
@@ -213,14 +241,13 @@ async fn testnet_order_lifecycle() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         // Verify order is no longer open
-        let open_after = info
-            .open_orders(auth.address)
+        let open_after = client
+            .open_orders(auth.address, None)
             .await
             .expect("Failed to fetch open orders after cancel");
 
-        let still_open = open_after.iter().any(|o| o.oid == oid);
         assert!(
-            !still_open,
+            !open_after.iter().any(|o| o.oid == oid),
             "Canceled order (OID={}) should not appear in open orders",
             oid
         );
@@ -229,7 +256,7 @@ async fn testnet_order_lifecycle() {
     } else {
         tracing::warn!(
             "Order did not return a Resting status — may have been rejected. Response: {:?}",
-            exchange_response
+            statuses
         );
     }
 }
@@ -240,13 +267,12 @@ async fn testnet_order_lifecycle() {
 #[ignore]
 async fn testnet_fetch_positions() {
     let auth = testnet_auth();
-    let info = InfoProvider::new(HlNetwork::Testnet.to_sdk());
+    let client = testnet_client();
 
-    // Positions are part of user_state response
-    let state = info
-        .user_state(auth.address)
+    let state = client
+        .clearinghouse_state(auth.address, None)
         .await
-        .expect("Failed to fetch user state from testnet");
+        .expect("Failed to fetch clearinghouse state from testnet");
 
     let positions = &state.asset_positions;
 
@@ -256,10 +282,10 @@ async fn testnet_fetch_positions() {
 
     for pos in positions {
         tracing::info!(
-            "  Position: coin={}, size={}, entry_px={}, unrealized_pnl={}",
+            "  Position: coin={}, size={}, entry_px={:?}, unrealized_pnl={}",
             pos.position.coin,
             pos.position.szi,
-            pos.position.entry_px.as_deref().unwrap_or("0"),
+            pos.position.entry_px,
             pos.position.unrealized_pnl,
         );
     }
@@ -273,65 +299,54 @@ async fn testnet_websocket_order_updates() {
     let auth = testnet_auth();
 
     // Connect to testnet WebSocket
-    let mut ws = RawWsProvider::connect(HlNetwork::Testnet.to_sdk())
-        .await
-        .expect("Failed to connect to testnet WebSocket");
-
-    // Subscribe to order updates for our address
-    let subscription = Subscription::OrderUpdates {
-        user: auth.address,
-    };
-
-    let (_sub_id, mut receiver) = ws
-        .subscribe(subscription)
-        .await
-        .expect("Failed to subscribe to order updates");
+    let mut ws = hypercore::testnet_ws();
+    ws.subscribe(Subscription::OrderUpdates { user: auth.address });
 
     tracing::info!("WebSocket subscribed");
 
-    // Start reading messages (consumes the provider)
-    let reader_handle = tokio::spawn(async move {
-        let _ = ws.start_reading().await;
-    });
+    // Wait briefly for any messages (there may be none if no orders are active).
+    // The stream also carries connection state events, so a message is not guaranteed.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
 
-    // Wait briefly for any messages (there may be none if no orders are active)
-    let timeout_result = tokio::time::timeout(Duration::from_secs(3), receiver.recv()).await;
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            tracing::info!("No WebSocket messages within 3s timeout (no active orders — expected)");
+            break;
+        }
 
-    match timeout_result {
-        Ok(Some(msg)) => {
-            // Verify message format
-            match msg {
-                Message::OrderUpdates(updates) => {
-                    tracing::info!("Received {} order update(s)", updates.data.len());
-                    for update in &updates.data {
-                        // Verify expected fields exist
-                        assert!(!update.order.coin.is_empty(), "coin should not be empty");
-                        assert!(!update.order.side.is_empty(), "side should not be empty");
-                        assert!(update.order.oid > 0, "oid should be positive");
-                        tracing::info!(
-                            "  Update: coin={}, side={}, status={}",
-                            update.order.coin,
-                            update.order.side,
-                            update.status
-                        );
-                    }
+        match tokio::time::timeout(remaining, ws.next()).await {
+            Ok(Some(Event::Message(Incoming::OrderUpdates(updates)))) => {
+                tracing::info!("Received {} order update(s)", updates.len());
+                for update in &updates {
+                    // Verify expected fields exist
+                    assert!(!update.order.coin.is_empty(), "coin should not be empty");
+                    assert!(update.order.oid > 0, "oid should be positive");
+                    tracing::info!(
+                        "  Update: coin={}, side={:?}, status={:?}",
+                        update.order.coin,
+                        update.order.side,
+                        update.status
+                    );
                 }
-                other => {
-                    tracing::info!("Received non-order message: {:?}", other);
-                }
+                break;
             }
-        }
-        Ok(None) => {
-            tracing::info!("WebSocket channel closed (no active orders — expected)");
-        }
-        Err(_) => {
-            tracing::info!(
-                "No WebSocket messages within 3s timeout (no active orders — expected)"
-            );
+            Ok(Some(Event::Message(other))) => {
+                tracing::info!("Received non-order message: {:?}", other);
+            }
+            Ok(Some(Event::Connected)) | Ok(Some(Event::Disconnected)) => {}
+            Ok(None) => {
+                tracing::info!("WebSocket channel closed (no active orders — expected)");
+                break;
+            }
+            Err(_) => {
+                tracing::info!(
+                    "No WebSocket messages within 3s timeout (no active orders — expected)"
+                );
+                break;
+            }
         }
     }
 
-    // Clean up
-    reader_handle.abort();
     tracing::info!("WebSocket subscription test complete");
 }

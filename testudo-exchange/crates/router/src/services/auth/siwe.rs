@@ -176,8 +176,10 @@ pub fn recover_signer(message: &str, signature_hex: &str) -> Result<Address, Aut
         }
     };
 
-    let sig = Signature::from_bytes_and_parity(&r_s, parity)
-        .map_err(|e| AuthError::Unauthorized(format!("invalid signature: {}", e)))?;
+    // HL-12: alloy 2's `from_bytes_and_parity` is infallible, so there is no
+    // error to map. The `v` normalisation above still rejects an out-of-range
+    // byte, which is the only invalid input this function accepted before.
+    let sig = Signature::from_bytes_and_parity(&r_s, parity);
     sig.recover_address_from_prehash(&hash)
         .map_err(|e| AuthError::Unauthorized(format!("signature recovery failed: {}", e)))
 }

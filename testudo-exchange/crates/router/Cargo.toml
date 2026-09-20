@@ -48,8 +48,16 @@ rand.workspace = true
 dashmap = "5.5"
 
 # HL-01/02: Hyperliquid native integration
-hyperliquid-sdk-rs = "0.1.2"
-alloy = { version = "0.1", features = ["signers", "signer-local"] }
+#
+# HL-12: `hypersdk` replaces the vendored `hyperliquid-sdk-rs`, which is gone.
+# The alloy pin is load-bearing, not tidiness. alloy 2.2.0 and later declare
+# `rust-version = 1.94.1`, which is exactly what the droplet runs, so a caret
+# range can lock a version the droplet refuses to build. `default-features =
+# false` matters for the same class of reason: alloy's defaults pull
+# `essentials`, and with it the AWS KMS, GCP, Turnkey, and Ledger signer
+# backends and a kzg stack this router never uses.
+hypersdk = "0.2.15"
+alloy = { version = "=2.4.2", default-features = false, features = ["signers", "signer-local", "k256"] }
 
 # AUTH-03: Solana wallet authentication
 ed25519-dalek = "2"

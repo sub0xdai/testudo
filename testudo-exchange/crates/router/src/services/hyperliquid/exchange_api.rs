@@ -6,17 +6,17 @@
 // @anchor exchange:router:exchange_api
 // @tags api
 
-use alloy::signers::local::PrivateKeySigner;
+use alloy::primitives::Address;
 use async_trait::async_trait;
-use hyperliquid_sdk_rs::{
+use hypersdk::hypercore::{
     types::{
-        CancelRequest as HlCancelRequest, ExchangeDataStatus, Limit, OrderRequest as HlOrderRequest,
-        OrderType as HlOrderType, Trigger,
+        BatchCancel, BatchCancelCloid, BatchModify, BatchOrder, CancelByCloid, Modify,
+        OrderGrouping, OrderRequest as HlOrderRequest, OrderResponseStatus,
+        OrderTypePlacement, TimeInForce, TpSl,
     },
-    ExchangeProvider, InfoProvider,
+    Cancel as HlCancel, Cloid, HttpClient, NonceHandler, OidOrCloid,
 };
 use rust_decimal::Decimal;
-use std::str::FromStr;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -37,11 +37,17 @@ const CLOID_NAMESPACE: Uuid = Uuid::NAMESPACE_DNS;
 
 /// Native Hyperliquid exchange API implementation.
 ///
-/// Implements the `ExchangeApi` trait using the Hyperliquid Rust SDK directly,
-/// bypassing the Node.js sidecar. Credentials are loaded per-request from the
-/// existing `ExchangeAccountRepository` and cached via `AuthCache`.
+/// Implements the `ExchangeApi` trait using `hypersdk` directly, bypassing the
+/// Node.js sidecar. Credentials are loaded per-request from the existing
+/// `ExchangeAccountRepository` and cached via `AuthCache`.
+///
+/// `hypersdk` no longer generates nonces internally, so this struct owns a
+/// [`NonceHandler`] and threads a fresh nonce into every signed action. The
+/// handler is atomically monotonic, so one per router is correct and sharing it
+/// across concurrent requests is what keeps nonces unique.
 pub struct HyperliquidExchangeApi {
-    info: InfoProvider,
+    client: HttpClient,
+    nonces: NonceHandler,
     universe: Arc<AssetUniverse>,
     auth_cache: Arc<AuthCache>,
     account_repo: ExchangeAccountRepository,
@@ -55,9 +61,9 @@ impl HyperliquidExchangeApi {
         account_repo: ExchangeAccountRepository,
         network: HlNetwork,
     ) -> Self {
-        let info = InfoProvider::new(network.to_sdk());
         Self {
-            info,
+            client: HttpClient::new(network.chain()),
+            nonces: NonceHandler::default(),
             universe,
             auth_cache,
             account_repo,
@@ -129,23 +135,17 @@ impl HyperliquidExchangeApi {
         }
     }
 
-    /// Build an `ExchangeProvider` from a cached signer.
-    ///
-    /// Always uses the plain constructor (no agent wrapping, no vault).
-    /// Agent wallets sign with their own key; the HL API recovers the
-    /// signer address and looks up the agent→user approval mapping.
-    fn build_exchange(
-        &self,
-        auth: &HyperliquidAuth,
-    ) -> ExchangeProvider<PrivateKeySigner> {
-        match self.network {
-            HlNetwork::Mainnet => ExchangeProvider::mainnet(auth.signer.clone()),
-            HlNetwork::Testnet => ExchangeProvider::testnet(auth.signer.clone()),
-        }
-    }
-
     /// Transfer USDC between spot and perp accounts.
-    /// `to_perp`: true = spot→perp, false = perp→spot.
+    ///
+    /// HL-12 CP-3 leaves this unimplemented for exactly one commit. The vendored
+    /// SDK's `spotUser`/`classTransfer` action has no `hypersdk` equivalent, and
+    /// the replacement is a behavioural change - the amount becomes a decimal in
+    /// USDC rather than a `u64` in micro-units - that FR-9 wants reviewed on its
+    /// own in CP-4. Failing closed is the only option that neither ships an
+    /// untested money path nor changes the amount's units silently.
+    ///
+    /// The `auth` load is kept so a missing or inactive account still reports as
+    /// such rather than as an unimplemented transfer.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
@@ -154,34 +154,16 @@ impl HyperliquidExchangeApi {
         to_perp: bool,
     ) -> Result<bool, ExchangeApiError> {
         let auth = self.load_auth(user_id, Some(account_id)).await?;
-        let exchange = self.build_exchange(&auth);
-
-        if to_perp {
-            // Spot→Perp: spot_transfer_to_perp. The SDK sends this action's
-            // amount as `usdc`, which is a field-level serde rename in
-            // `vendor/hyperliquid-sdk-rs`; the wire shape is pinned by
-            // `class_transfer_serializes_the_field_name_hyperliquid_expects`.
-            let dec: Decimal = amount.parse().map_err(|e| {
-                ExchangeApiError::Internal(format!("Invalid amount: {}", e))
-            })?;
-            let usdc: u64 = (dec * Decimal::from(1_000_000u64))
-                .trunc().to_string().parse::<u64>().unwrap_or(0);
-            let status = exchange
-                .spot_transfer_to_perp(usdc, true)
-                .await
-                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
-            let ok = status.is_ok();
-            tracing::info!("HL spot→perp: usdc={} ok={}", usdc, ok);
-            Ok(ok)
-        } else {
-            let status = exchange
-                .usd_transfer(auth.signer.address(), amount)
-                .await
-                .map_err(|e| ExchangeApiError::Internal(format!("Transfer failed: {}", e)))?;
-            let ok = status.is_ok();
-            tracing::info!("HL perp→spot: ok={}", ok);
-            Ok(ok)
-        }
+        debug_assert!(
+            auth.query_address() != Address::ZERO,
+            "a loaded auth must resolve to a non-zero query address"
+        );
+        tracing::warn!(
+            amount = %amount,
+            to_perp = %to_perp,
+            "HL spot/perp transfer is unimplemented in this build; HL-12 CP-4 lands it"
+        );
+        Err(ExchangeApiError::TransferNotImplemented)
     }
 }
 
@@ -196,7 +178,7 @@ pub fn generate_cloid(client_order_id: &str) -> Uuid {
 /// Build a Hyperliquid `OrderRequest` from a `PlaceOrderRequest`.
 ///
 /// Handles market, limit, and stop-loss order type mapping.
-/// Formats quantity to the correct number of decimal places using `sz_decimals`.
+/// Rounds quantity to the market's `sz_decimals`.
 pub fn build_order_request(
     asset_index: u32,
     req: &PlaceOrderRequest,
@@ -204,148 +186,154 @@ pub fn build_order_request(
 ) -> Result<HlOrderRequest, ExchangeApiError> {
     let is_buy = matches!(req.side, OrderSide::Buy);
 
-    // Format size with correct decimal precision
-    let sz = format_sz(req.quantity, sz_decimals);
+    // Round size to the market's decimal precision
+    let sz = round_sz(req.quantity, sz_decimals);
 
     let cloid = req
         .client_order_id
         .as_ref()
-        .map(|coid| generate_cloid(coid));
+        .map(|coid| cloid_from_uuid(generate_cloid(coid)))
+        .unwrap_or(Cloid::ZERO);
 
     let order = match req.order_type {
         ApiOrderType::Market => {
-            // Market = aggressive IOC limit at a very unfavorable price
-            // Hyperliquid doesn't have native market orders; use IOC limit.
+            // Market = aggressive IOC limit at a very unfavorable price.
+            // Hyperliquid has no native market order; use IOC limit.
             let slippage_price = if is_buy {
                 // Buy: set limit price very high to ensure fill
-                req.price
-                    .unwrap_or_else(|| Decimal::new(999_999_999, 0))
-                    .to_string()
+                req.price.unwrap_or_else(|| Decimal::new(999_999_999, 0))
             } else {
                 // Sell: set limit price very low to ensure fill
-                req.price
-                    .unwrap_or_else(|| Decimal::new(1, 2)) // 0.01
-                    .to_string()
+                req.price.unwrap_or_else(|| Decimal::new(1, 2)) // 0.01
             };
-            HlOrderRequest::limit(asset_index, is_buy, slippage_price, &sz, "Ioc")
-                .reduce_only(req.reduce_only)
-                .with_cloid(cloid)
+            HlOrderRequest {
+                asset: asset_index as usize,
+                is_buy,
+                limit_px: slippage_price,
+                sz,
+                reduce_only: req.reduce_only,
+                order_type: OrderTypePlacement::Limit {
+                    tif: TimeInForce::Ioc,
+                },
+                cloid,
+            }
         }
         ApiOrderType::Limit => {
             let price = req
                 .price
                 .ok_or_else(|| ExchangeApiError::Internal("Limit order requires price".into()))?;
-            HlOrderRequest::limit(asset_index, is_buy, price.to_string(), &sz, "Gtc")
-                .reduce_only(req.reduce_only)
-                .with_cloid(cloid)
+            HlOrderRequest {
+                asset: asset_index as usize,
+                is_buy,
+                limit_px: price,
+                sz,
+                reduce_only: req.reduce_only,
+                order_type: OrderTypePlacement::Limit {
+                    tif: TimeInForce::Gtc,
+                },
+                cloid,
+            }
         }
         ApiOrderType::StopLoss => {
             let trigger_px = req.stop_price.ok_or_else(|| {
                 ExchangeApiError::Internal("StopLoss order requires stop_price".into())
             })?;
-            let mut order = HlOrderRequest::trigger(
-                asset_index,
-                is_buy,
-                trigger_px.to_string(),
-                &sz,
-                "sl",
-                true, // is_market: stop-loss executes as market
-            )
-            .reduce_only(true) // SL is always reduce-only
-            .with_cloid(cloid);
-            order.limit_px = trigger_limit_px(&trigger_px, is_buy);
-            order
+            trigger_order(asset_index, is_buy, trigger_px, sz, TpSl::Sl, cloid)
         }
         ApiOrderType::TakeProfit => {
             let trigger_px = req.stop_price.ok_or_else(|| {
                 ExchangeApiError::Internal("TakeProfit order requires stop_price".into())
             })?;
-            let mut order = HlOrderRequest::trigger(
-                asset_index,
-                is_buy,
-                trigger_px.to_string(),
-                &sz,
-                "tp",
-                true, // is_market: take-profit executes as market
-            )
-            .reduce_only(true) // TP is always reduce-only
-            .with_cloid(cloid);
-            order.limit_px = trigger_limit_px(&trigger_px, is_buy);
-            order
+            trigger_order(asset_index, is_buy, trigger_px, sz, TpSl::Tp, cloid)
         }
     };
 
     Ok(order)
 }
 
-/// Compute the limit price for market trigger orders.
-/// Hyperliquid requires a valid `limit_px` even when `isMarket = true`.
-/// The SDK defaults to "0" which is rejected as "Order has invalid price."
-/// Per HL SDK convention: set limit_px = trigger_px for market triggers.
-fn trigger_limit_px(trigger_px: &Decimal, _is_buy: bool) -> String {
-    trigger_px.normalize().to_string()
+/// Build a trigger order.
+///
+/// Both SL and TP execute as market on trigger, and Hyperliquid rejects the
+/// action unless `limit_px` is a valid price, so it is set to the trigger price.
+fn trigger_order(
+    asset_index: u32,
+    is_buy: bool,
+    trigger_px: Decimal,
+    sz: Decimal,
+    tpsl: TpSl,
+    cloid: Cloid,
+) -> HlOrderRequest {
+    let limit_px = trigger_limit_px(&trigger_px);
+    HlOrderRequest {
+        asset: asset_index as usize,
+        is_buy,
+        limit_px,
+        sz,
+        reduce_only: true, // SL and TP are always reduce-only
+        order_type: OrderTypePlacement::Trigger {
+            is_market: true,
+            trigger_px,
+            tpsl,
+        },
+        cloid,
+    }
 }
 
-/// Derive tick size from the nearest price steps in the L2 order book.
-fn tick_size_from_mid(mid: &str) -> Decimal {
+/// Convert a router CLOID UUID into the SDK's 128-bit client order ID.
+///
+/// Big-endian, matching `format!("{:032x}", uuid.as_u128())` and therefore the
+/// `cloid:<hex>` strings this module already emits.
+pub fn cloid_from_uuid(cloid: Uuid) -> Cloid {
+    Cloid::from(*cloid.as_bytes())
+}
+
+/// Compute the limit price for market trigger orders.
+/// Per HL SDK convention: `limit_px = trigger_px` for market triggers.
+fn trigger_limit_px(trigger_px: &Decimal) -> Decimal {
+    trigger_px.normalize()
+}
+
+/// Choose a conservative price tick from the mid price.
+fn tick_size_from_mid(mid: Decimal) -> Decimal {
     // Conservative: use 1 decimal place for prices > 1000, 2 for > 100
-    let val: f64 = mid.parse().unwrap_or(0.0);
-    if val >= 10000.0 { Decimal::new(1, 0) }
-    else if val >= 1000.0 { Decimal::new(1, 1) }
-    else if val >= 100.0 { Decimal::new(1, 2) }
-    else if val >= 1.0 { Decimal::new(1, 3) }
+    if mid >= Decimal::from(10_000u32) { Decimal::new(1, 0) }
+    else if mid >= Decimal::from(1_000u32) { Decimal::new(1, 1) }
+    else if mid >= Decimal::from(100u32) { Decimal::new(1, 2) }
+    else if mid >= Decimal::ONE { Decimal::new(1, 3) }
     else { Decimal::new(1, 5) }
 }
 
-/// Format a quantity to the correct number of decimal places for Hyperliquid.
-pub fn format_sz(quantity: Decimal, sz_decimals: u32) -> String {
-    let scaled = quantity
-        .round_dp(sz_decimals)
-        .normalize();
-    scaled.to_string()
+/// Round a quantity to the number of decimal places Hyperliquid accepts.
+///
+/// `hypersdk` serialises the size with `decimal_normalized`, which strips
+/// trailing zeros, so a plain `Decimal` is the wire form.
+pub fn round_sz(quantity: Decimal, sz_decimals: u32) -> Decimal {
+    quantity.round_dp(sz_decimals).normalize()
 }
 
 /// Extract the order ID (OID) from a Hyperliquid exchange response.
-pub fn extract_order_id(
-    statuses: &[ExchangeDataStatus],
-) -> Option<u64> {
-    for status in statuses {
-        match status {
-            ExchangeDataStatus::Resting(r) => return Some(r.oid),
-            ExchangeDataStatus::Filled(f) => return Some(f.oid),
-            _ => {}
-        }
-    }
-    None
+pub fn extract_order_id(statuses: &[OrderResponseStatus]) -> Option<u64> {
+    statuses.iter().find_map(OrderResponseStatus::oid)
 }
 
-/// HL-11 FR-1: Normalize ExchangeDataStatus to CCXT-compatible status string.
+/// HL-11 FR-1: Normalize the order status to a CCXT-compatible status string.
 /// "closed" = filled/done, "open" = resting/waiting, "error:..." = rejected.
-pub fn normalize_status(status: &ExchangeDataStatus) -> String {
+pub fn normalize_status(status: &OrderResponseStatus) -> String {
     match status {
-        ExchangeDataStatus::Filled(_) => "closed".to_string(),
-        ExchangeDataStatus::Success => "closed".to_string(),
-        ExchangeDataStatus::Resting(_) => "open".to_string(),
-        ExchangeDataStatus::WaitingForTrigger => "open".to_string(),
-        ExchangeDataStatus::WaitingForFill => "open".to_string(),
-        ExchangeDataStatus::Error(msg) => format!("error:{}", msg),
+        OrderResponseStatus::Filled { .. } => "closed".to_string(),
+        OrderResponseStatus::Success => "closed".to_string(),
+        OrderResponseStatus::Resting { .. } => "open".to_string(),
+        OrderResponseStatus::WaitingForTrigger => "open".to_string(),
+        OrderResponseStatus::WaitingForFill => "open".to_string(),
+        OrderResponseStatus::Error(msg) => format!("error:{}", msg),
     }
 }
 
-/// Extract the average fill price from a response (if filled).
-pub fn extract_avg_price(statuses: &[ExchangeDataStatus]) -> Option<Decimal> {
-    for status in statuses {
-        if let ExchangeDataStatus::Filled(f) = status {
-            return Decimal::from_str(&f.avg_px).ok();
-        }
-    }
-    None
-}
-
-/// FIX-01: Parse a decimal from a string, returning an error on failure.
-fn parse_decimal(s: &str) -> Result<Decimal, ExchangeApiError> {
-    Decimal::from_str(s).map_err(|e| {
-        ExchangeApiError::Exchange(format!("Failed to parse decimal '{}': {}", s, e))
+/// Extract the average fill price from a response (if any status filled).
+pub fn extract_avg_price(statuses: &[OrderResponseStatus]) -> Option<Decimal> {
+    statuses.iter().find_map(|status| match status {
+        OrderResponseStatus::Filled { avg_px, .. } => Some(*avg_px),
+        _ => None,
     })
 }
 
@@ -393,10 +381,9 @@ impl ExchangeApi for HyperliquidExchangeApi {
         }
 
         // Fall back to perp clearinghouse
-        let state = self.info.user_state(query_addr).await
+        let state = self.client.clearinghouse_state(query_addr, None).await
             .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
-        let account_value = parse_decimal(&state.margin_summary.account_value)?;
-        Ok(account_value)
+        Ok(state.margin_summary.account_value)
     }
 
     async fn place_order(
@@ -406,7 +393,6 @@ impl ExchangeApi for HyperliquidExchangeApi {
         let auth = self
             .load_auth(req.user_id, req.exchange_account_id)
             .await?;
-        let exchange = self.build_exchange(&auth);
 
         // Resolve symbol to HL coin and asset index
         let coin = AssetUniverse::to_hl_coin(&req.symbol);
@@ -422,44 +408,32 @@ impl ExchangeApi for HyperliquidExchangeApi {
         // HL-11: For market orders without a price, query mid price and apply
         // 10% slippage band. HL rejects extreme prices (e.g. 0.01 for BTC).
         if req.order_type == ApiOrderType::Market && req.price.is_none() {
-            if let Ok(mids) = self.info.all_mids().await {
-                if let Some(mid_str) = mids.get(coin) {
-                    if let Ok(mid) = Decimal::from_str(mid_str) {
-                        let slippage = mid * Decimal::new(10, 2); // 10%
-                        let is_buy = matches!(req.side, OrderSide::Buy);
-                        req.price = Some(if is_buy { mid + slippage } else { mid - slippage });
-                        tracing::debug!(
-                            coin = %coin,
-                            mid = %mid,
-                            slippage_price = ?req.price,
-                            is_buy = %is_buy,
-                            "HL market order: using mid price with 10% slippage"
-                        );
-                    }
+            if let Ok(mids) = self.client.all_mids(None).await {
+                if let Some(mid) = mids.get(coin) {
+                    let slip = *mid * Decimal::new(10, 2); // 10%
+                    let is_buy = matches!(req.side, OrderSide::Buy);
+                    req.price = Some(if is_buy { *mid + slip } else { *mid - slip });
+                    tracing::debug!(
+                        coin = %coin,
+                        mid = %mid,
+                        slippage_price = ?req.price,
+                        is_buy = %is_buy,
+                        "HL market order: using mid price with 10% slippage"
+                    );
                 }
             }
         }
 
         let mut hl_order = build_order_request(asset_index, &req, sz_decimals)?;
 
-        // Round limit price to HL tick size derived from L2 order book.
-        if let Ok(mids) = self.info.all_mids().await {
-            if let Some(mid_str) = mids.get(coin) {
-                let tick = tick_size_from_mid(mid_str);
-                let raw = Decimal::from_str(&hl_order.limit_px).unwrap_or(Decimal::ZERO);
-                hl_order.limit_px = ((raw / tick).round_dp(0) * tick).normalize().to_string();
+        // Round limit price to HL tick size derived from the mid price.
+        if let Ok(mids) = self.client.all_mids(None).await {
+            if let Some(mid) = mids.get(coin) {
+                let tick = tick_size_from_mid(*mid);
+                hl_order.limit_px = (hl_order.limit_px / tick).round_dp(0) * tick;
             }
         }
-        let cloid = req.client_order_id.as_ref().map(|c| generate_cloid(c));
-
-        // Fix CLOID format: Hyperliquid API requires "0x" prefix + 32 hex chars.
-        // The SDK's with_cloid() formats without prefix, so we override here.
-        // Must call place_order() directly (not place_order_with_cloid which re-formats).
-        if let Some(ref cloid_str) = hl_order.cloid {
-            if !cloid_str.starts_with("0x") {
-                hl_order.cloid = Some(format!("0x{}", cloid_str));
-            }
-        }
+        let cloid_uuid = req.client_order_id.as_ref().map(|c| generate_cloid(c));
 
         tracing::info!(
             coin = %coin,
@@ -475,33 +449,38 @@ impl ExchangeApi for HyperliquidExchangeApi {
             "HyperliquidExchangeApi: placing order"
         );
 
-        let response = exchange
-            .place_order(&hl_order)
+        let nonce = self.nonces.next();
+        let statuses = self
+            .client
+            .place(
+                &auth.signer,
+                BatchOrder {
+                    orders: vec![hl_order],
+                    grouping: OrderGrouping::Na,
+                    builder: None,
+                },
+                nonce,
+                None,
+                None,
+            )
             .await
             .map_err(|e| ExchangeApiError::Exchange(format!("Place order failed: {}", e)))?;
 
-        let resp = response
-            .into_result()
-            .map_err(ExchangeApiError::Exchange)?;
-
-        let statuses = resp
-            .data
-            .as_ref()
-            .map(|d| d.statuses.as_slice())
-            .unwrap_or(&[]);
+        debug_assert!(
+            statuses.len() <= 1,
+            "a single-order batch must yield at most one status"
+        );
 
         // Extract OID from response
-        let order_id = if let Some(oid) = extract_order_id(statuses) {
+        let order_id = if let Some(oid) = extract_order_id(&statuses) {
             oid.to_string()
         } else {
             // Check for error statuses before falling back to CLOID.
-            let error_msg = statuses.iter().find_map(|s| {
-                if let ExchangeDataStatus::Error(msg) = s { Some(msg.clone()) } else { None }
-            });
+            let error_msg = statuses.iter().find_map(|s| s.error());
             if let Some(msg) = error_msg {
-                return Err(ExchangeApiError::Exchange(msg));
+                return Err(ExchangeApiError::Exchange(msg.to_string()));
             }
-            if let Some(cloid_uuid) = cloid {
+            if let Some(cloid_uuid) = cloid_uuid {
                 match self.find_oid_by_cloid(&auth, cloid_uuid).await {
                     Ok(oid) => oid.to_string(),
                     Err(_) => format!("cloid:{:032x}", cloid_uuid.as_u128()),
@@ -511,36 +490,36 @@ impl ExchangeApi for HyperliquidExchangeApi {
             }
         };
 
-        let avg_price = extract_avg_price(statuses);
-        // HL-11 FR-1: Normalize ExchangeDataStatus to CCXT-compatible strings
+        let avg_price = extract_avg_price(&statuses);
+        // HL-11 FR-1: Normalize the order status to CCXT-compatible strings
         // so downstream `is_filled` check (== "closed") works for immediate fills.
         let status = statuses.first().map(normalize_status);
 
         // HL-09 FR-1/FR-2: Place SL/TP as separate trigger orders after entry
         let close_is_buy = !matches!(req.side, OrderSide::Buy);
-        let sz = format_sz(req.quantity, sz_decimals);
+        let sz = round_sz(req.quantity, sz_decimals);
         let mut sl_order_id = None;
         let mut tp_order_id = None;
 
         // Round trigger prices to HL tick size
-        let tick = self.info.all_mids().await.ok()
-            .and_then(|mids| mids.get(coin).cloned())
-            .map(|mid| tick_size_from_mid(&mid))
+        let tick = self.client.all_mids(None).await.ok()
+            .and_then(|mids| mids.get(coin).copied())
+            .map(tick_size_from_mid)
             .unwrap_or(Decimal::new(1, 2)); // default 0.01
 
         if let Some(sl_trigger) = req.stop_loss_trigger {
-            let sl_rounded = ((sl_trigger / tick).round_dp(0) * tick).normalize();
+            let sl_rounded = (sl_trigger / tick).round_dp(0) * tick;
             sl_order_id = self.place_trigger_order(
-                &exchange, &auth, asset_index, close_is_buy,
-                sl_rounded, &sz, "sl", req.client_order_id.as_deref(),
+                &auth, asset_index, close_is_buy,
+                sl_rounded, sz, TpSl::Sl, req.client_order_id.as_deref(),
             ).await;
         }
 
         if let Some(tp_trigger) = req.take_profit_trigger {
-            let tp_rounded = ((tp_trigger / tick).round_dp(0) * tick).normalize();
+            let tp_rounded = (tp_trigger / tick).round_dp(0) * tick;
             tp_order_id = self.place_trigger_order(
-                &exchange, &auth, asset_index, close_is_buy,
-                tp_rounded, &sz, "tp", req.client_order_id.as_deref(),
+                &auth, asset_index, close_is_buy,
+                tp_rounded, sz, TpSl::Tp, req.client_order_id.as_deref(),
             ).await;
         }
 
@@ -562,7 +541,6 @@ impl ExchangeApi for HyperliquidExchangeApi {
         exchange_account_id: Option<Uuid>,
     ) -> Result<String, ExchangeApiError> {
         let auth = self.load_auth(user_id, exchange_account_id).await?;
-        let exchange = self.build_exchange(&auth);
 
         let oid: u64 = parse_oid(order_id)?;
 
@@ -594,72 +572,78 @@ impl ExchangeApi for HyperliquidExchangeApi {
                 "Amend requires non-zero quantity".into(),
             ));
         }
-        let sz = format_sz(quantity, sz_decimals);
+        let sz = round_sz(quantity, sz_decimals);
 
         let new_order = match amend.order_type {
             Some(ApiOrderType::StopLoss) => {
                 let trigger_px = amend.new_stop_price.ok_or_else(|| {
                     ExchangeApiError::Internal("StopLoss amend requires stop_price".into())
                 })?;
-                let mut order = HlOrderRequest::trigger(
-                    asset_index,
-                    is_buy,
-                    trigger_px.to_string(),
-                    &sz,
-                    "sl",
-                    true,
-                )
-                .reduce_only(true);
-                order.limit_px = trigger_limit_px(&trigger_px, is_buy);
-                order
+                trigger_order(asset_index, is_buy, trigger_px, sz, TpSl::Sl, Cloid::ZERO)
             }
             Some(ApiOrderType::TakeProfit) => {
                 let trigger_px = amend.new_stop_price.ok_or_else(|| {
                     ExchangeApiError::Internal("TakeProfit amend requires stop_price".into())
                 })?;
-                let mut order = HlOrderRequest::trigger(
-                    asset_index,
-                    is_buy,
-                    trigger_px.to_string(),
-                    &sz,
-                    "tp",
-                    true,
-                )
-                .reduce_only(true);
-                order.limit_px = trigger_limit_px(&trigger_px, is_buy);
-                order
+                trigger_order(asset_index, is_buy, trigger_px, sz, TpSl::Tp, Cloid::ZERO)
             }
             Some(ApiOrderType::Market) => {
-                let price = if is_buy { "999999999" } else { "0.01" };
-                HlOrderRequest::limit(asset_index, is_buy, price, &sz, "Ioc")
-                    .reduce_only(amend.reduce_only)
+                let price = if is_buy {
+                    Decimal::new(999_999_999, 0)
+                } else {
+                    Decimal::new(1, 2)
+                };
+                HlOrderRequest {
+                    asset: asset_index as usize,
+                    is_buy,
+                    limit_px: price,
+                    sz,
+                    reduce_only: amend.reduce_only,
+                    order_type: OrderTypePlacement::Limit {
+                        tif: TimeInForce::Ioc,
+                    },
+                    cloid: Cloid::ZERO,
+                }
             }
             Some(ApiOrderType::Limit) | None => {
                 let price = amend.new_price.ok_or_else(|| {
                     ExchangeApiError::Internal("Limit amend requires price".into())
                 })?;
-                HlOrderRequest::limit(asset_index, is_buy, price.to_string(), &sz, "Gtc")
-                    .reduce_only(amend.reduce_only)
+                HlOrderRequest {
+                    asset: asset_index as usize,
+                    is_buy,
+                    limit_px: price,
+                    sz,
+                    reduce_only: amend.reduce_only,
+                    order_type: OrderTypePlacement::Limit {
+                        tif: TimeInForce::Gtc,
+                    },
+                    cloid: Cloid::ZERO,
+                }
             }
         };
 
-        let response = exchange
-            .modify_order(oid, new_order)
+        let nonce = self.nonces.next();
+        let statuses = self
+            .client
+            .modify(
+                &auth.signer,
+                BatchModify {
+                    modifies: vec![Modify {
+                        oid: OidOrCloid::Left(oid),
+                        order: new_order,
+                    }],
+                    always_place: false,
+                },
+                nonce,
+                None,
+                None,
+            )
             .await
             .map_err(|e| ExchangeApiError::Exchange(format!("Modify order failed: {}", e)))?;
 
-        let resp = response
-            .into_result()
-            .map_err(ExchangeApiError::Exchange)?;
-
-        let statuses = resp
-            .data
-            .as_ref()
-            .map(|d| d.statuses.as_slice())
-            .unwrap_or(&[]);
-
         // Modified orders keep the same OID on Hyperliquid
-        let new_oid = extract_order_id(statuses).unwrap_or(oid);
+        let new_oid = extract_order_id(&statuses).unwrap_or(oid);
 
         tracing::info!(
             old_oid = %oid,
@@ -679,35 +663,55 @@ impl ExchangeApi for HyperliquidExchangeApi {
         exchange_account_id: Option<Uuid>,
     ) -> Result<(), ExchangeApiError> {
         let auth = self.load_auth(user_id, exchange_account_id).await?;
-        let exchange = self.build_exchange(&auth);
 
         let coin = AssetUniverse::to_hl_coin(symbol);
         let asset_index = self
             .universe
             .resolve(coin)
             .map_err(|e| ExchangeApiError::Exchange(e.to_string()))?;
+        let nonce = self.nonces.next();
 
         // Handle both numeric OID and CLOID-based IDs
         if let Some(cloid_hex) = order_id.strip_prefix("cloid:") {
-            let cloid = Uuid::from_u128(
+            let cloid = cloid_from_uuid(Uuid::from_u128(
                 u128::from_str_radix(cloid_hex, 16).map_err(|e| {
                     ExchangeApiError::Internal(format!("Invalid CLOID: {}", e))
                 })?,
-            );
-            exchange
-                .cancel_order_by_cloid(asset_index, cloid)
+            ));
+            self.client
+                .cancel_by_cloid(
+                    &auth.signer,
+                    BatchCancelCloid {
+                        cancels: vec![CancelByCloid {
+                            asset: asset_index,
+                            cloid,
+                        }],
+                        fast: false,
+                    },
+                    nonce,
+                    None,
+                    None,
+                )
                 .await
-                .map_err(|e| ExchangeApiError::Exchange(format!("Cancel failed: {}", e)))?
-                .into_result()
-                .map_err(ExchangeApiError::Exchange)?;
+                .map_err(|e| ExchangeApiError::Exchange(format!("Cancel failed: {}", e)))?;
         } else {
             let oid: u64 = parse_oid(order_id)?;
-            exchange
-                .cancel_order(asset_index, oid)
+            self.client
+                .cancel(
+                    &auth.signer,
+                    BatchCancel {
+                        cancels: vec![HlCancel {
+                            asset: asset_index as usize,
+                            oid,
+                        }],
+                        fast: false,
+                    },
+                    nonce,
+                    None,
+                    None,
+                )
                 .await
-                .map_err(|e| ExchangeApiError::Exchange(format!("Cancel failed: {}", e)))?
-                .into_result()
-                .map_err(ExchangeApiError::Exchange)?;
+                .map_err(|e| ExchangeApiError::Exchange(format!("Cancel failed: {}", e)))?;
         }
 
         Ok(())
@@ -720,7 +724,6 @@ impl ExchangeApi for HyperliquidExchangeApi {
         exchange_account_id: Option<Uuid>,
     ) -> Result<(), ExchangeApiError> {
         let auth = self.load_auth(user_id, exchange_account_id).await?;
-        let exchange = self.build_exchange(&auth);
 
         let coin = AssetUniverse::to_hl_coin(symbol);
         let asset_index = self
@@ -730,16 +733,21 @@ impl ExchangeApi for HyperliquidExchangeApi {
 
         // Fetch all open orders for this user
         let open_orders = self
-            .info
-            .open_orders(auth.query_address())
+            .client
+            .open_orders(auth.query_address(), None)
             .await
-            .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch open orders: {}", e)))?;
+            .map_err(|e| {
+                ExchangeApiError::Exchange(format!("Failed to fetch open orders: {}", e))
+            })?;
 
         // Filter to this symbol and build cancel requests
-        let cancels: Vec<HlCancelRequest> = open_orders
+        let cancels: Vec<HlCancel> = open_orders
             .iter()
             .filter(|o| o.coin.to_uppercase() == coin.to_uppercase())
-            .map(|o| HlCancelRequest::new(asset_index, o.oid))
+            .map(|o| HlCancel {
+                asset: asset_index as usize,
+                oid: o.oid,
+            })
             .collect();
 
         if cancels.is_empty() {
@@ -753,12 +761,20 @@ impl ExchangeApi for HyperliquidExchangeApi {
             "HyperliquidExchangeApi: bulk cancelling orders"
         );
 
-        exchange
-            .bulk_cancel(cancels)
+        let nonce = self.nonces.next();
+        self.client
+            .cancel(
+                &auth.signer,
+                BatchCancel {
+                    cancels,
+                    fast: false,
+                },
+                nonce,
+                None,
+                None,
+            )
             .await
-            .map_err(|e| ExchangeApiError::Exchange(format!("Bulk cancel failed: {}", e)))?
-            .into_result()
-            .map_err(ExchangeApiError::Exchange)?;
+            .map_err(|e| ExchangeApiError::Exchange(format!("Bulk cancel failed: {}", e)))?;
 
         Ok(())
     }
@@ -771,8 +787,8 @@ impl ExchangeApi for HyperliquidExchangeApi {
     ) -> Result<Option<PositionInfo>, ExchangeApiError> {
         let auth = self.load_auth(user_id, exchange_account_id).await?;
         let state = self
-            .info
-            .user_state(auth.query_address())
+            .client
+            .clearinghouse_state(auth.query_address(), None)
             .await
             .map_err(|e| ExchangeApiError::Exchange(format!("Failed to fetch user state: {}", e)))?;
 
@@ -784,7 +800,7 @@ impl ExchangeApi for HyperliquidExchangeApi {
 
         let position_info = match pos {
             Some(ap) => {
-                let szi = parse_decimal(&ap.position.szi)?;
+                let szi = ap.position.szi;
                 if szi == Decimal::ZERO {
                     None
                 } else {
@@ -794,17 +810,12 @@ impl ExchangeApi for HyperliquidExchangeApi {
                         "short".to_string()
                     };
 
-                    let entry_price = match ap.position.entry_px.as_ref() {
-                        Some(s) => parse_decimal(s)?,
-                        None => Decimal::ZERO,
-                    };
-
                     Some(PositionInfo {
                         symbol: symbol.to_string(),
                         side,
                         quantity: szi.abs(),
-                        entry_price,
-                        unrealized_pnl: parse_decimal(&ap.position.unrealized_pnl)?,
+                        entry_price: ap.position.entry_px.unwrap_or(Decimal::ZERO),
+                        unrealized_pnl: ap.position.unrealized_pnl,
                     })
                 }
             }
@@ -818,115 +829,117 @@ impl ExchangeApi for HyperliquidExchangeApi {
 impl HyperliquidExchangeApi {
     /// HL-09 FR-1/FR-2: Place a trigger order (SL or TP) and return the exchange order ID.
     /// Logs warnings on failure but never errors — SL/TP failure must not fail the entry.
+    #[allow(clippy::too_many_arguments)]
     async fn place_trigger_order(
         &self,
-        exchange: &ExchangeProvider<PrivateKeySigner>,
         auth: &HyperliquidAuth,
         asset_index: u32,
         close_is_buy: bool,
         trigger_px: Decimal,
-        sz: &str,
-        tpsl: &str,
+        sz: Decimal,
+        tpsl: TpSl,
         client_order_id_base: Option<&str>,
     ) -> Option<String> {
+        let tpsl_label = match tpsl {
+            TpSl::Sl => "sl",
+            TpSl::Tp => "tp",
+        };
+
         // Generate CLOID with ":sl" or ":tp" suffix for tracking
-        let cloid = client_order_id_base
-            .map(|base| generate_cloid(&format!("{}:{}", base, tpsl)));
+        let cloid_uuid = client_order_id_base
+            .map(|base| generate_cloid(&format!("{}:{}", base, tpsl_label)));
+        let cloid = cloid_uuid.map(cloid_from_uuid).unwrap_or(Cloid::ZERO);
 
-        let mut order = HlOrderRequest::trigger(
-            asset_index, close_is_buy, trigger_px.to_string(), sz, tpsl, true,
-        )
-        .reduce_only(true)
-        .with_cloid(cloid);
-
-        // Fix limit_px: SDK defaults to "0" which HL rejects as "invalid price"
-        order.limit_px = trigger_limit_px(&trigger_px, close_is_buy);
-
-        // Fix CLOID 0x prefix
-        if let Some(ref s) = order.cloid {
-            if !s.starts_with("0x") {
-                order.cloid = Some(format!("0x{}", s));
-            }
-        }
+        let order = trigger_order(asset_index, close_is_buy, trigger_px, sz, tpsl, cloid);
 
         tracing::info!(
-            tpsl = %tpsl,
+            tpsl = %tpsl_label,
             trigger_px = %trigger_px,
             close_is_buy = %close_is_buy,
-            cloid = ?order.cloid,
-            "Placing {} trigger order", tpsl
-        );
-
-        // Log the full order for debugging
-        tracing::info!(
-            tpsl = %tpsl,
             limit_px = %order.limit_px,
             sz = %order.sz,
             is_buy = %order.is_buy,
             reduce_only = %order.reduce_only,
             order_type = ?order.order_type,
-            "{} trigger order details", tpsl
+            cloid = ?order.cloid,
+            "{} trigger order details", tpsl_label
         );
 
-        match exchange.place_order(&order).await {
-            Ok(response) => match response.into_result() {
-                Ok(resp) => {
-                    let statuses = resp.data.as_ref()
-                        .map(|d| d.statuses.as_slice()).unwrap_or(&[]);
-                    tracing::info!(
-                        tpsl = %tpsl,
-                        statuses = ?statuses,
-                        "{} trigger response statuses", tpsl
-                    );
-                    // Try OID from response first
-                    if let Some(oid) = extract_order_id(statuses) {
+        let nonce = self.nonces.next();
+        let placed = self
+            .client
+            .place(
+                &auth.signer,
+                BatchOrder {
+                    orders: vec![order],
+                    grouping: OrderGrouping::Na,
+                    builder: None,
+                },
+                nonce,
+                None,
+                None,
+            )
+            .await;
+
+        match placed {
+            Ok(statuses) => {
+                tracing::info!(
+                    tpsl = %tpsl_label,
+                    statuses = ?statuses,
+                    "{} trigger response statuses", tpsl_label
+                );
+                // A rejected trigger comes back as a per-status error inside an
+                // otherwise successful response, so it has to be surfaced here.
+                if let Some(err) = statuses.iter().find_map(OrderResponseStatus::error) {
+                    tracing::warn!("{} trigger rejected: {}", tpsl_label, err);
+                }
+                // Try OID from response first
+                if let Some(oid) = extract_order_id(&statuses) {
+                    return Some(oid.to_string());
+                }
+                // CLOID fallback for WaitingForTrigger
+                if let Some(cloid_uuid) = cloid_uuid {
+                    if let Ok(oid) = self.find_oid_by_cloid(auth, cloid_uuid).await {
                         return Some(oid.to_string());
                     }
-                    // CLOID fallback for WaitingForTrigger
-                    if let Some(cloid_uuid) = cloid {
-                        if let Ok(oid) = self.find_oid_by_cloid(auth, cloid_uuid).await {
-                            return Some(oid.to_string());
-                        }
-                        return Some(format!("cloid:{:032x}", cloid_uuid.as_u128()));
-                    }
-                    tracing::warn!("{} trigger placed but no OID returned", tpsl);
-                    None
+                    return Some(format!("cloid:{:032x}", cloid_uuid.as_u128()));
                 }
-                Err(e) => { tracing::warn!("{} trigger rejected: {}", tpsl, e); None }
-            },
-            Err(e) => { tracing::warn!("{} trigger failed: {}", tpsl, e); None }
+                tracing::warn!("{} trigger placed but no OID returned", tpsl_label);
+                None
+            }
+            Err(e) => {
+                tracing::warn!("{} trigger failed: {}", tpsl_label, e);
+                None
+            }
         }
     }
 
-    /// Query frontend open orders to find an OID by CLOID.
-    /// Used as fallback when place_order response doesn't include OID (trigger orders).
+    /// Query open orders to find an OID by CLOID.
+    /// Used as fallback when place response doesn't include OID (trigger orders).
     async fn find_oid_by_cloid(
         &self,
         auth: &HyperliquidAuth,
         cloid: Uuid,
     ) -> Result<u64, ExchangeApiError> {
-        let cloid_hex = format!("0x{:032x}", cloid.as_u128());
+        let wanted = cloid_from_uuid(cloid);
 
         let orders = self
-            .info
-            .frontend_open_orders(auth.query_address())
+            .client
+            .open_orders(auth.query_address(), None)
             .await
             .map_err(|e| {
                 ExchangeApiError::Exchange(format!("Failed to fetch open orders: {}", e))
             })?;
 
         for order in &orders {
-            if let Some(ref c) = order.cloid {
-                // Match with or without 0x prefix for compatibility
-                if *c == cloid_hex || format!("0x{}", c) == cloid_hex || *c == cloid_hex[2..] {
-                    return Ok(order.oid);
-                }
+            if order.cloid == Some(wanted) {
+                return Ok(order.oid);
             }
         }
 
         Err(ExchangeApiError::Exchange(format!(
-            "Order with CLOID {} not found in open orders",
-            cloid_hex
+            "Order with CLOID {:#x} not found in open orders",
+            wanted
         )))
     }
 }
@@ -941,8 +954,54 @@ fn parse_oid(order_id: &str) -> Result<u64, ExchangeApiError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyperliquid_sdk_rs::types::{FilledOrder, RestingOrder};
+    use alloy::primitives::B256;
+    use hypersdk::hypercore::{
+        signing::agent_signing_hash,
+        types::{Action, Cancel, OrderTypePlacement},
+        Chain,
+    };
     use rust_decimal_macros::dec;
+    use serde_json::json;
+
+    /// A hand-chosen CLOID so the wire string is checkable by eye.
+    const FIXTURE_CLOID_VALUE: u128 = 0xdead_beef;
+
+    fn fixture_cloid() -> Cloid {
+        Cloid::from(FIXTURE_CLOID_VALUE.to_be_bytes())
+    }
+
+    fn limit_request() -> PlaceOrderRequest {
+        PlaceOrderRequest {
+            user_id: Uuid::new_v4(),
+            symbol: "BTC_USDT".to_string(),
+            side: OrderSide::Buy,
+            order_type: ApiOrderType::Limit,
+            quantity: dec!(0.12345),
+            price: Some(dec!(65000.5)),
+            stop_price: None,
+            leverage: 10,
+            exchange_account_id: None,
+            reduce_only: false,
+            client_order_id: None,
+            stop_loss_trigger: None,
+            take_profit_trigger: None,
+        }
+    }
+
+    /// The order the signing fixture pins. Values are fixed so the digest is.
+    fn fixture_order() -> HlOrderRequest {
+        HlOrderRequest {
+            asset: 0,
+            is_buy: true,
+            limit_px: dec!(50000),
+            sz: dec!(0.1),
+            reduce_only: false,
+            order_type: OrderTypePlacement::Limit {
+                tif: TimeInForce::Gtc,
+            },
+            cloid: Cloid::ZERO,
+        }
+    }
 
     // ==================== CLOID Tests ====================
 
@@ -977,114 +1036,98 @@ mod tests {
         assert_eq!(cloid.get_version_num(), 5);
     }
 
+    #[test]
+    fn cloid_uuid_is_the_big_endian_hex_hyperliquid_expects() {
+        // The same UUID reaches the exchange two ways: as the `cloid:` fallback
+        // order id this module prints, and as the 128-bit value on the wire.
+        // They must agree, or a cancel by cloid can never find its order.
+        let uuid = Uuid::from_u128(FIXTURE_CLOID_VALUE);
+        assert_eq!(
+            format!("{:032x}", uuid.as_u128()),
+            "000000000000000000000000deadbeef"
+        );
+        assert_eq!(
+            format!("{:#x}", cloid_from_uuid(uuid)),
+            "0x000000000000000000000000deadbeef"
+        );
+    }
+
     // ==================== Order Building Tests ====================
 
     #[test]
     fn build_limit_order() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "BTC_USDT".to_string(),
-            side: OrderSide::Buy,
-            order_type: ApiOrderType::Limit,
-            quantity: dec!(0.12345),
-            price: Some(dec!(65000.5)),
-            stop_price: None,
-            leverage: 10,
-            exchange_account_id: None,
-            reduce_only: false,
-            client_order_id: Some("testudo:test-id:entry".to_string()),
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
-
-        let order = build_order_request(0, &req, 5).unwrap();
+        let order = build_order_request(0, &limit_request(), 5).unwrap();
         assert_eq!(order.asset, 0);
         assert!(order.is_buy);
-        assert_eq!(order.limit_px, "65000.5");
-        assert_eq!(order.sz, "0.12345");
+        assert_eq!(order.limit_px, dec!(65000.5));
+        assert_eq!(order.sz, dec!(0.12345));
         assert!(!order.reduce_only);
-        assert!(order.cloid.is_some());
-        assert!(matches!(order.order_type, HlOrderType::Limit(Limit { ref tif }) if tif == "Gtc"));
+        assert!(order.cloid.is_zero());
+        assert!(matches!(
+            order.order_type,
+            OrderTypePlacement::Limit { tif: TimeInForce::Gtc }
+        ));
     }
 
     #[test]
     fn build_market_order() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "ETH_USDT".to_string(),
-            side: OrderSide::Sell,
-            order_type: ApiOrderType::Market,
-            quantity: dec!(1.5),
-            price: None,
-            stop_price: None,
-            leverage: 5,
-            exchange_account_id: None,
-            reduce_only: false,
-            client_order_id: None,
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
+        let mut req = limit_request();
+        req.symbol = "ETH_USDT".to_string();
+        req.side = OrderSide::Sell;
+        req.order_type = ApiOrderType::Market;
+        req.quantity = dec!(1.5);
+        req.price = None;
 
         let order = build_order_request(1, &req, 4).unwrap();
         assert_eq!(order.asset, 1);
         assert!(!order.is_buy); // Sell
-        assert_eq!(order.sz, "1.5");
-        assert!(order.cloid.is_none());
+        assert_eq!(order.sz, dec!(1.5));
+        assert!(order.cloid.is_zero());
         // Market = IOC limit
-        assert!(matches!(order.order_type, HlOrderType::Limit(Limit { ref tif }) if tif == "Ioc"));
+        assert!(matches!(
+            order.order_type,
+            OrderTypePlacement::Limit { tif: TimeInForce::Ioc }
+        ));
     }
 
     #[test]
     fn build_stop_loss_order() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "SOL_USDT".to_string(),
-            side: OrderSide::Sell,
-            order_type: ApiOrderType::StopLoss,
-            quantity: dec!(10),
-            price: None,
-            stop_price: Some(dec!(120.50)),
-            leverage: 3,
-            exchange_account_id: None,
-            reduce_only: true,
-            client_order_id: Some("testudo:test-id:sl".to_string()),
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
+        let mut req = limit_request();
+        req.symbol = "SOL_USDT".to_string();
+        req.side = OrderSide::Sell;
+        req.order_type = ApiOrderType::StopLoss;
+        req.quantity = dec!(10);
+        req.price = None;
+        req.stop_price = Some(dec!(120.50));
+        req.reduce_only = true;
+        req.client_order_id = Some("testudo:test-id:sl".to_string());
 
         let order = build_order_request(5, &req, 2).unwrap();
         assert_eq!(order.asset, 5);
         assert!(!order.is_buy); // Sell side
-        assert_eq!(order.sz, "10");
+        assert_eq!(order.sz, dec!(10));
         assert!(order.reduce_only); // SL is always reduce-only
-        assert!(order.cloid.is_some());
+        assert!(!order.cloid.is_zero());
         match &order.order_type {
-            HlOrderType::Trigger(t) => {
-                assert!(t.is_market);
-                assert_eq!(t.trigger_px, "120.50");
-                assert_eq!(t.tpsl, "sl");
+            OrderTypePlacement::Trigger {
+                is_market,
+                trigger_px,
+                tpsl,
+            } => {
+                assert!(*is_market);
+                assert_eq!(*trigger_px, dec!(120.50));
+                assert_eq!(*tpsl, TpSl::Sl);
             }
-            _ => panic!("Expected trigger order type"),
+            other => panic!("Expected trigger order type, got {other:?}"),
         }
+        // Hyperliquid rejects a trigger whose limit price is zero.
+        assert_eq!(order.limit_px, dec!(120.5));
     }
 
     #[test]
     fn build_limit_order_without_price_fails() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "BTC_USDT".to_string(),
-            side: OrderSide::Buy,
-            order_type: ApiOrderType::Limit,
-            quantity: dec!(0.01),
-            price: None, // Missing!
-            stop_price: None,
-            leverage: 1,
-            exchange_account_id: None,
-            reduce_only: false,
-            client_order_id: None,
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
+        let mut req = limit_request();
+        req.price = None; // Missing!
 
         let err = build_order_request(0, &req, 5).unwrap_err();
         assert!(matches!(err, ExchangeApiError::Internal(_)));
@@ -1092,73 +1135,77 @@ mod tests {
 
     #[test]
     fn build_stop_loss_without_stop_price_fails() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "BTC_USDT".to_string(),
-            side: OrderSide::Sell,
-            order_type: ApiOrderType::StopLoss,
-            quantity: dec!(0.01),
-            price: None,
-            stop_price: None, // Missing!
-            leverage: 1,
-            exchange_account_id: None,
-            reduce_only: true,
-            client_order_id: None,
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
+        let mut req = limit_request();
+        req.side = OrderSide::Sell;
+        req.order_type = ApiOrderType::StopLoss;
+        req.stop_price = None; // Missing!
 
         let err = build_order_request(0, &req, 5).unwrap_err();
         assert!(matches!(err, ExchangeApiError::Internal(_)));
     }
 
-    // ==================== Format Tests ====================
+    // ==================== Size Rounding Tests ====================
 
     #[test]
-    fn format_sz_respects_decimals() {
-        assert_eq!(format_sz(dec!(0.123456789), 5), "0.12346"); // rounds
-        assert_eq!(format_sz(dec!(1.5), 2), "1.5");
-        assert_eq!(format_sz(dec!(100), 0), "100");
-        assert_eq!(format_sz(dec!(0.1), 8), "0.1");
+    fn round_sz_respects_decimals() {
+        assert_eq!(round_sz(dec!(0.123456789), 5), dec!(0.12346)); // rounds
+        assert_eq!(round_sz(dec!(1.5), 2), dec!(1.5));
+        assert_eq!(round_sz(dec!(100), 0), dec!(100));
+        assert_eq!(round_sz(dec!(0.1), 8), dec!(0.1));
+    }
+
+    #[test]
+    fn tick_size_tracks_the_mid_price_band() {
+        assert_eq!(tick_size_from_mid(dec!(50000)), dec!(1));
+        assert_eq!(tick_size_from_mid(dec!(5000)), dec!(0.1));
+        assert_eq!(tick_size_from_mid(dec!(500)), dec!(0.01));
+        assert_eq!(tick_size_from_mid(dec!(5)), dec!(0.001));
+        assert_eq!(tick_size_from_mid(dec!(0.5)), dec!(0.00001));
     }
 
     // ==================== Response Extraction Tests ====================
 
     #[test]
     fn extract_oid_from_resting() {
-        let statuses = vec![ExchangeDataStatus::Resting(RestingOrder { oid: 42 })];
+        let statuses = vec![OrderResponseStatus::Resting {
+            oid: 42,
+            cloid: None,
+        }];
         assert_eq!(extract_order_id(&statuses), Some(42));
     }
 
     #[test]
     fn extract_oid_from_filled() {
-        let statuses = vec![ExchangeDataStatus::Filled(FilledOrder {
-            total_sz: "0.5".to_string(),
-            avg_px: "65000.0".to_string(),
+        let statuses = vec![OrderResponseStatus::Filled {
+            total_sz: dec!(0.5),
+            avg_px: dec!(65000),
             oid: 123,
-        })];
+        }];
         assert_eq!(extract_order_id(&statuses), Some(123));
     }
 
     #[test]
     fn extract_oid_from_waiting_for_trigger_returns_none() {
-        let statuses = vec![ExchangeDataStatus::WaitingForTrigger];
+        let statuses = vec![OrderResponseStatus::WaitingForTrigger];
         assert_eq!(extract_order_id(&statuses), None);
     }
 
     #[test]
     fn extract_avg_price_from_filled() {
-        let statuses = vec![ExchangeDataStatus::Filled(FilledOrder {
-            total_sz: "0.5".to_string(),
-            avg_px: "65432.10".to_string(),
+        let statuses = vec![OrderResponseStatus::Filled {
+            total_sz: dec!(0.5),
+            avg_px: dec!(65432.10),
             oid: 1,
-        })];
+        }];
         assert_eq!(extract_avg_price(&statuses), Some(dec!(65432.10)));
     }
 
     #[test]
     fn extract_avg_price_from_resting_returns_none() {
-        let statuses = vec![ExchangeDataStatus::Resting(RestingOrder { oid: 1 })];
+        let statuses = vec![OrderResponseStatus::Resting {
+            oid: 1,
+            cloid: None,
+        }];
         assert_eq!(extract_avg_price(&statuses), None);
     }
 
@@ -1182,54 +1229,40 @@ mod tests {
 
     #[test]
     fn build_take_profit_order() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "BTC_USDT".to_string(),
-            side: OrderSide::Sell,
-            order_type: ApiOrderType::TakeProfit,
-            quantity: dec!(0.5),
-            price: None,
-            stop_price: Some(dec!(70000)),
-            leverage: 3,
-            exchange_account_id: None,
-            reduce_only: true,
-            client_order_id: Some("testudo:test-id:tp".to_string()),
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
+        let mut req = limit_request();
+        req.side = OrderSide::Sell;
+        req.order_type = ApiOrderType::TakeProfit;
+        req.quantity = dec!(0.5);
+        req.price = None;
+        req.stop_price = Some(dec!(70000));
+        req.reduce_only = true;
+        req.client_order_id = Some("testudo:test-id:tp".to_string());
 
         let order = build_order_request(0, &req, 5).unwrap();
         assert!(!order.is_buy); // Sell side
-        assert_eq!(order.sz, "0.5");
+        assert_eq!(order.sz, dec!(0.5));
         assert!(order.reduce_only);
-        assert!(order.cloid.is_some());
+        assert!(!order.cloid.is_zero());
         match &order.order_type {
-            HlOrderType::Trigger(t) => {
-                assert!(t.is_market);
-                assert_eq!(t.trigger_px, "70000");
-                assert_eq!(t.tpsl, "tp");
+            OrderTypePlacement::Trigger {
+                is_market,
+                trigger_px,
+                tpsl,
+            } => {
+                assert!(*is_market);
+                assert_eq!(*trigger_px, dec!(70000));
+                assert_eq!(*tpsl, TpSl::Tp);
             }
-            _ => panic!("Expected trigger order type"),
+            other => panic!("Expected trigger order type, got {other:?}"),
         }
     }
 
     #[test]
     fn build_take_profit_without_stop_price_fails() {
-        let req = PlaceOrderRequest {
-            user_id: Uuid::new_v4(),
-            symbol: "BTC_USDT".to_string(),
-            side: OrderSide::Sell,
-            order_type: ApiOrderType::TakeProfit,
-            quantity: dec!(0.01),
-            price: None,
-            stop_price: None, // Missing!
-            leverage: 1,
-            exchange_account_id: None,
-            reduce_only: true,
-            client_order_id: None,
-            stop_loss_trigger: None,
-            take_profit_trigger: None,
-        };
+        let mut req = limit_request();
+        req.side = OrderSide::Sell;
+        req.order_type = ApiOrderType::TakeProfit;
+        req.stop_price = None; // Missing!
 
         let err = build_order_request(0, &req, 5).unwrap_err();
         assert!(matches!(err, ExchangeApiError::Internal(_)));
@@ -1239,7 +1272,7 @@ mod tests {
 
     #[test]
     fn extract_oid_from_success_returns_none() {
-        let statuses = vec![ExchangeDataStatus::Success];
+        let statuses = vec![OrderResponseStatus::Success];
         assert_eq!(extract_order_id(&statuses), None);
     }
 
@@ -1265,78 +1298,260 @@ mod tests {
 
     #[test]
     fn status_filled_maps_to_closed() {
-        let status = ExchangeDataStatus::Filled(FilledOrder {
-            total_sz: "1.0".to_string(),
-            avg_px: "50000.0".to_string(),
+        let status = OrderResponseStatus::Filled {
+            total_sz: dec!(1.0),
+            avg_px: dec!(50000),
             oid: 99,
-        });
+        };
         assert_eq!(normalize_status(&status), "closed");
     }
 
     #[test]
     fn status_success_maps_to_closed() {
-        assert_eq!(normalize_status(&ExchangeDataStatus::Success), "closed");
+        assert_eq!(normalize_status(&OrderResponseStatus::Success), "closed");
     }
 
     #[test]
     fn status_resting_maps_to_open() {
-        let status = ExchangeDataStatus::Resting(RestingOrder { oid: 1 });
+        let status = OrderResponseStatus::Resting {
+            oid: 1,
+            cloid: None,
+        };
         assert_eq!(normalize_status(&status), "open");
     }
 
     #[test]
     fn status_waiting_for_trigger_maps_to_open() {
-        assert_eq!(normalize_status(&ExchangeDataStatus::WaitingForTrigger), "open");
+        assert_eq!(
+            normalize_status(&OrderResponseStatus::WaitingForTrigger),
+            "open"
+        );
     }
 
     #[test]
     fn status_waiting_for_fill_maps_to_open() {
-        assert_eq!(normalize_status(&ExchangeDataStatus::WaitingForFill), "open");
+        assert_eq!(
+            normalize_status(&OrderResponseStatus::WaitingForFill),
+            "open"
+        );
     }
 
     #[test]
     fn status_error_maps_to_error_prefix() {
-        let status = ExchangeDataStatus::Error("insufficient margin".to_string());
+        let status = OrderResponseStatus::Error("insufficient margin".to_string());
         assert_eq!(normalize_status(&status), "error:insufficient margin");
     }
 
-    /// Pins the wire shape `spot_transfer_to_perp` sends.
-    ///
-    /// The SDK derives field names from `rename_all = "camelCase"`, so a Rust
-    /// field named `usd_size` goes on the wire as `usdSize`. Hyperliquid wants
-    /// `usdc` and rejects the action otherwise. This is fixed by a one-line
-    /// `#[serde(rename = "usdc")]` in `vendor/hyperliquid-sdk-rs`, wired in
-    /// through `[patch.crates-io]`.
-    ///
-    /// The assertion is the guard: dropping the `[patch]` entry, or bumping the
-    /// SDK past the fix, makes this fail here instead of failing at trade time
-    /// against the live exchange. Nothing else in the codebase observes the
-    /// serialized name, because the field is only ever read by serde.
+    // ==================== HL-12 CP-3: wire-shape body assertions ====================
+    //
+    // Hyperliquid hashes the same bytes it reads as JSON, and it reads short
+    // keys. Nothing else in this crate observes the serialized names, because
+    // they are only ever produced by serde, so these assertions are the only
+    // guard against a rename shipping straight to the exchange.
+
     #[test]
-    fn class_transfer_serializes_the_field_name_hyperliquid_expects() {
-        use hyperliquid_sdk_rs::types::actions::ClassTransfer;
+    fn order_body_carries_the_short_keys_and_normalised_decimals() {
+        let value = serde_json::to_value(Action::Order(BatchOrder {
+            orders: vec![fixture_order()],
+            grouping: OrderGrouping::Na,
+            builder: None,
+        }))
+        .expect("order action serializes");
 
-        let transfer = ClassTransfer {
-            usd_size: 50_000_000,
-            to_perp: true,
-        };
-        let value = serde_json::to_value(&transfer).expect("ClassTransfer serializes");
-
-        assert_eq!(
-            value.get("usdc").and_then(|v| v.as_u64()),
-            Some(50_000_000),
-            "Hyperliquid rejects the action unless the amount is sent as `usdc`; \
-             got keys {value:?}. Is the [patch.crates-io] entry still present?"
-        );
-        assert_eq!(value["toPerp"], serde_json::json!(true));
+        assert_eq!(value["type"], json!("order"));
+        assert_eq!(value["grouping"], json!("na"));
+        let order = &value["orders"][0];
+        assert_eq!(order["a"], json!(0));
+        assert_eq!(order["b"], json!(true));
+        assert_eq!(order["p"], json!("50000"));
+        assert_eq!(order["s"], json!("0.1"));
+        assert_eq!(order["r"], json!(false));
+        assert_eq!(order["t"]["limit"]["tif"], json!("Gtc"));
+        // The zero cloid is omitted, matching the Python SDK's hashing.
+        assert!(order.get("c").is_none(), "zero cloid must be omitted");
         assert!(
-            value.get("usdSize").is_none(),
-            "the camelCase-derived name must not appear on the wire"
+            order.get("limitPx").is_none(),
+            "the long field name must never reach the wire; got {value:?}"
         );
+    }
+
+    #[test]
+    fn order_body_carries_a_non_zero_cloid_as_full_width_hex() {
+        let mut order = fixture_order();
+        order.cloid = fixture_cloid();
+        let value = serde_json::to_value(Action::Order(BatchOrder {
+            orders: vec![order],
+            grouping: OrderGrouping::Na,
+            builder: None,
+        }))
+        .expect("order action serializes");
+
         assert_eq!(
-            value.as_object().map(|o| o.len()),
-            Some(2),
-            "exactly usdc and toPerp, nothing else"
+            value["orders"][0]["c"],
+            json!("0x000000000000000000000000deadbeef")
+        );
+    }
+
+    #[test]
+    fn trigger_body_carries_the_lowercase_tpsl_tag() {
+        let mut order = fixture_order();
+        order.order_type = OrderTypePlacement::Trigger {
+            is_market: true,
+            trigger_px: dec!(120.5),
+            tpsl: TpSl::Sl,
+        };
+        let value = serde_json::to_value(Action::Order(BatchOrder {
+            orders: vec![order],
+            grouping: OrderGrouping::Na,
+            builder: None,
+        }))
+        .expect("trigger action serializes");
+
+        let trigger = &value["orders"][0]["t"]["trigger"];
+        assert_eq!(trigger["isMarket"], json!(true));
+        assert_eq!(trigger["triggerPx"], json!("120.5"));
+        assert_eq!(trigger["tpsl"], json!("sl"));
+    }
+
+    #[test]
+    fn cancel_body_omits_the_fast_flag() {
+        let value = serde_json::to_value(Action::Cancel(BatchCancel {
+            cancels: vec![HlCancel {
+                asset: 3,
+                oid: 42,
+            }],
+            fast: false,
+        }))
+        .expect("cancel action serializes");
+
+        assert_eq!(value["type"], json!("cancel"));
+        assert_eq!(value["cancels"][0], json!({ "a": 3, "o": 42 }));
+        // The exchange rejects an action hashed with `f: false`.
+        assert!(value.get("f").is_none(), "fast must be omitted when false");
+    }
+
+    #[test]
+    fn cancel_by_cloid_body_carries_the_asset_and_hex_cloid() {
+        let value = serde_json::to_value(Action::CancelByCloid(BatchCancelCloid {
+            cancels: vec![CancelByCloid {
+                asset: 3,
+                cloid: fixture_cloid(),
+            }],
+            fast: false,
+        }))
+        .expect("cancelByCloid action serializes");
+
+        assert_eq!(value["type"], json!("cancelByCloid"));
+        assert_eq!(value["cancels"][0]["asset"], json!(3));
+        assert_eq!(
+            value["cancels"][0]["cloid"],
+            json!("0x000000000000000000000000deadbeef")
+        );
+    }
+
+    #[test]
+    fn modify_body_nests_the_replacement_order() {
+        let value = serde_json::to_value(Action::BatchModify(BatchModify {
+            modifies: vec![Modify {
+                oid: OidOrCloid::Left(7),
+                order: fixture_order(),
+            }],
+            always_place: false,
+        }))
+        .expect("modify action serializes");
+
+        assert_eq!(value["type"], json!("batchModify"));
+        assert_eq!(value["modifies"][0]["oid"], json!(7));
+        assert_eq!(value["modifies"][0]["order"]["p"], json!("50000"));
+        assert!(
+            value.get("a").is_none(),
+            "alwaysPlace must be omitted when false"
+        );
+    }
+
+    // ==================== HL-12 CP-3: signing fixtures ====================
+    //
+    // Pin the input to the signature, never the signature. An ECDSA signature
+    // over a digest is not unique, and alloy 2 derives its deterministic nonce
+    // differently from alloy 0.1. The vendored crate's expected signature
+    // `fa8a41f6...` does not survive the alloy bump and would fail against a
+    // correct implementation, so a fixture pinned to it would be actively
+    // harmful: the fix that makes it pass damages a money path.
+
+    /// Nonce for the signing fixtures. Fixed so the digest is.
+    const FIXTURE_NONCE: u64 = 1_770_000_000_000;
+
+    /// The exchange-verified digest for `Agent(source, connectionId)` on
+    /// mainnet, measured against the vendored crate's own test vector before
+    /// the swap. This is the one value here with an external reference: it
+    /// proves the EIP-712 domain and the `Agent` struct encode identically in
+    /// both crates, which closed the spec's headline 422 risk.
+    #[test]
+    fn agent_signing_digest_matches_the_external_vector() {
+        let connection_id: B256 =
+            "0xde6c4037798a4434ca03cd05f00e3b803126221375cd1e7eaaaf041768be06eb"
+                .parse()
+                .expect("connection id");
+
+        assert_eq!(
+            format!("{:#x}", agent_signing_hash(Chain::Mainnet, connection_id)),
+            "0x6c43321e0f67bbafa52f8ad0cca68ce5e6700cac04fd5f8ccc1df6d4d3e799b0"
+        );
+    }
+
+    /// Locks the msgpack encoding of the fixture order.
+    ///
+    /// The digest above proves the outer `Agent` layer matches the exchange;
+    /// this value is the inner layer, and together they pin the whole chain:
+    /// msgpack action -> keccak -> `Agent` -> EIP-712 -> digest. If a future
+    /// hypersdk release changes the action encoding, this fails here rather
+    /// than at trade time.
+    #[test]
+    fn order_signing_input_is_stable() {
+        let action = Action::Order(BatchOrder {
+            orders: vec![fixture_order()],
+            grouping: OrderGrouping::Na,
+            builder: None,
+        });
+
+        let connection_id = action
+            .hash(FIXTURE_NONCE, None, None)
+            .expect("action hashes");
+        assert_eq!(
+            format!("{:#x}", connection_id),
+            "0x80a7fa73795d92fa7ef42bac59658a57660f92c3e2b5ccdf827265cb0396ecf0"
+        );
+
+        let prehash = action
+            .prehash(FIXTURE_NONCE, None, None, Chain::Mainnet)
+            .expect("action prehashes");
+        assert_eq!(prehash, agent_signing_hash(Chain::Mainnet, connection_id));
+        assert_eq!(
+            format!("{:#x}", prehash),
+            "0x5262c55da753cec89aca4f45e385b848eb7c3bc9a4bd01ea89dadd09267cabaa"
+        );
+    }
+
+    /// The signature is not pinned, but it must recover to the signing key.
+    ///
+    /// This is what the exchange does, so it is the property that actually has
+    /// to hold across the alloy bump.
+    #[test]
+    fn signed_order_recovers_to_the_signing_key() {
+        let signer = alloy::signers::local::PrivateKeySigner::random();
+        let action = Action::Order(BatchOrder {
+            orders: vec![fixture_order()],
+            grouping: OrderGrouping::Na,
+            builder: None,
+        });
+
+        let request = action
+            .sign_sync(&signer, FIXTURE_NONCE, None, None, Chain::Mainnet)
+            .expect("action signs");
+
+        assert_eq!(
+            request.recover(Chain::Mainnet).expect("signature recovers"),
+            signer.address()
         );
     }
 }

@@ -1,14 +1,14 @@
 // @anchor exchange:router:hl_network
 // @tags api
 
-use hyperliquid_sdk_rs::Network;
+use hypersdk::hypercore::Chain;
 
 /// Hyperliquid network selection - single source of truth.
 ///
 /// Every endpoint the router talks to is derived here, so no call site matches
-/// on a network variant to pick a URL string. This replaces the SDK's own
-/// `Network` enum across the router. The one conversion back to the SDK type,
-/// [`HlNetwork::to_sdk`], is deleted with the vendored crate in HL-12 CP-6.
+/// on a network variant to pick a URL string. This replaced the old SDK's own
+/// `Network` enum across the router in HL-12 CP-1, and [`HlNetwork::chain`] now
+/// bridges to `hypersdk`'s `Chain`, which is the only type the SDK accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HlNetwork {
     Mainnet,
@@ -59,14 +59,14 @@ impl HlNetwork {
         }
     }
 
-    /// Convert to the vendored SDK's network enum.
+    /// The chain identifier `hypersdk` signs and addresses actions with.
     ///
-    /// Every SDK call that is not yet migrated still needs this type. Deleted
-    /// in HL-12 CP-6 together with the vendored crate.
-    pub const fn to_sdk(self) -> Network {
+    /// This is the only place the router names the SDK's chain type, so a URL
+    /// and a signing domain cannot drift apart.
+    pub const fn chain(self) -> Chain {
         match self {
-            Self::Mainnet => Network::Mainnet,
-            Self::Testnet => Network::Testnet,
+            Self::Mainnet => Chain::Mainnet,
+            Self::Testnet => Chain::Testnet,
         }
     }
 }
@@ -109,8 +109,8 @@ mod tests {
     }
 
     #[test]
-    fn sdk_conversion_maps_each_variant() {
-        assert_eq!(HlNetwork::Mainnet.to_sdk(), Network::Mainnet);
-        assert_eq!(HlNetwork::Testnet.to_sdk(), Network::Testnet);
+    fn sdk_chain_maps_each_variant() {
+        assert_eq!(HlNetwork::Mainnet.chain(), Chain::Mainnet);
+        assert_eq!(HlNetwork::Testnet.chain(), Chain::Testnet);
     }
 }

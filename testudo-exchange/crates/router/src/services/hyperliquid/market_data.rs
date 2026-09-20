@@ -1,23 +1,22 @@
 //! HL-12 CP-2: the router-owned boundary for Hyperliquid market data and fills.
 //!
-//! Before this module, the read paths named `InfoProvider` and `UserFillByTime`
-//! directly, which spread two Hyperliquid SDK types across five modules and made
-//! the CP-3 dependency swap touch all of them. Conversion now happens here and
-//! nowhere else.
+//! Before this module, the read paths named the SDK's provider types directly,
+//! which spread those types across five modules and made the CP-3 dependency
+//! swap touch all of them. Conversion happens here and nowhere else, which is
+//! TB-16 applied at the boundary.
 //!
 //! `HlFill` mirrors the wire shape field for field, including the four fields the
 //! router never reads (`crossed`, `hash`, `start_position`, `cloid`). It has to:
 //! `journal_syncer::hyperliquid::convert_hl_fill` persists the whole fill as
 //! `raw_json`, so a narrower type would silently change that column.
 //!
-//! The implementation is still the vendored `hyperliquid-sdk-rs`. HL-12 CP-3
-//! replaces it with `hypersdk` behind this same surface.
+//! The implementation is `hypersdk` as of HL-12 CP-3.
 
 // @anchor exchange:router:market_data
 // @tags api
 
 use alloy::primitives::Address;
-use hyperliquid_sdk_rs::{types::info_types::UserFillByTime, InfoProvider};
+use hypersdk::hypercore::{types::Fill, HttpClient};
 use serde::{Deserialize, Serialize};
 
 use crate::types::hl_network::HlNetwork;
@@ -46,28 +45,40 @@ pub struct HlFill {
     pub cloid: Option<String>,
 }
 
-impl From<&UserFillByTime> for HlFill {
+/// Render a `Decimal` the way the exchange sends it.
+///
+/// hypersdk parses fills into `Decimal`, but `raw_fills.raw_json` stores the
+/// wire strings, so the conversion back has to strip trailing zeros the same
+/// way `decimal_normalized` does on the way out.
+fn wire_decimal(value: rust_decimal::Decimal) -> String {
+    value.normalize().to_string()
+}
+
+impl From<&Fill> for HlFill {
     // @waiver TB-01: pure field map with no branches, so the only assertion
     // available would restate an assignment. The invariant that actually matters
     // - that this mirrors the exchange wire shape - is enforced by
     // `hl_fill_matches_the_sdk_wire_shape`, which compares the serialized forms.
-    fn from(fill: &UserFillByTime) -> Self {
+    fn from(fill: &Fill) -> Self {
         Self {
-            closed_pnl: fill.closed_pnl.clone(),
+            closed_pnl: wire_decimal(fill.closed_pnl),
             coin: fill.coin.clone(),
             crossed: fill.crossed,
-            dir: fill.dir.clone(),
+            dir: fill.dir.to_string(),
             hash: fill.hash.clone(),
             oid: fill.oid,
-            px: fill.px.clone(),
-            side: fill.side.clone(),
-            start_position: fill.start_position.clone(),
-            sz: fill.sz.clone(),
+            px: wire_decimal(fill.px),
+            side: match fill.side {
+                hypersdk::hypercore::Side::Bid => "B".to_string(),
+                hypersdk::hypercore::Side::Ask => "A".to_string(),
+            },
+            start_position: wire_decimal(fill.start_position),
+            sz: wire_decimal(fill.sz),
             time: fill.time,
-            fee: fill.fee.clone(),
+            fee: wire_decimal(fill.fee),
             fee_token: fill.fee_token.clone(),
             tid: fill.tid,
-            cloid: fill.cloid.clone(),
+            cloid: fill.cloid.map(|cloid| format!("{:#x}", cloid)),
         }
     }
 }
@@ -115,9 +126,10 @@ pub enum HlMarketDataError {
 impl HlMarketDataError {
     /// Classify a transport error once, at the boundary.
     ///
-    /// The rate-limit signal is a substring match because the vendored SDK
-    /// exposes no typed status. It reproduces the predicate the journal syncer
-    /// used to apply inline, so classification moves without changing behaviour.
+    /// The rate-limit signal is a substring match because `hypersdk` exposes
+    /// `ApiError(String)` rather than a typed status. It reproduces the predicate
+    /// the journal syncer used to apply inline, so classification moves without
+    /// changing behaviour.
     ///
     // @waiver TB-01: a two-branch classifier with one expression per branch. The
     // only assertion available would restate the match. Behaviour is pinned by
@@ -138,34 +150,33 @@ impl HlMarketDataError {
 /// per request. It is deliberately not a trait: there is one venue and one
 /// implementation, and an interface with a single implementor is noise.
 pub struct HlMarketData {
-    info: InfoProvider,
+    client: HttpClient,
 }
 
 impl HlMarketData {
     pub fn new(network: HlNetwork) -> Self {
         Self {
-            info: InfoProvider::new(network.to_sdk()),
+            client: HttpClient::new(network.chain()),
         }
     }
 
     /// Fetch the perpetual universe, indexed by position.
     pub async fn perps(&self) -> Result<Vec<HlPerp>, HlMarketDataError> {
-        let meta = self
-            .info
-            .meta()
+        let markets = self
+            .client
+            .perps()
             .await
             .map_err(HlMarketDataError::classify)?;
 
-        let perps: Vec<HlPerp> = meta
-            .universe
-            .into_iter()
+        let perps: Vec<HlPerp> = markets
+            .iter()
             .enumerate()
-            .map(|(index, asset)| {
+            .map(|(index, market)| {
                 HlPerp::from_universe_entry(
                     index,
-                    asset.name,
-                    asset.sz_decimals,
-                    asset.max_leverage,
+                    market.name.clone(),
+                    market.sz_decimals as u32,
+                    market.max_leverage as u32,
                 )
             })
             .collect();
@@ -190,8 +201,8 @@ impl HlMarketData {
         );
 
         let raw = self
-            .info
-            .user_fills_by_time(user, start_ms, end_ms, None)
+            .client
+            .user_fills_by_time(user, start_ms, end_ms)
             .await
             .map_err(HlMarketDataError::classify)?;
 
@@ -209,24 +220,36 @@ impl HlMarketData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hypersdk::hypercore::{
+        types::{FillDirection, Side},
+        Cloid,
+    };
+    use rust_decimal::Decimal;
+    use std::str::FromStr;
 
-    fn sdk_fill() -> UserFillByTime {
-        UserFillByTime {
-            closed_pnl: "-12.5".to_string(),
+    /// A fill in the wire shape Hyperliquid sends: normalised numeric strings and
+    /// full-width hex for the cloid.
+    fn sdk_fill() -> Fill {
+        Fill {
             coin: "BTC".to_string(),
-            crossed: true,
-            dir: "Close Long".to_string(),
+            px: Decimal::from_str("64250.5").expect("px"),
+            sz: Decimal::from_str("0.4").expect("sz"),
+            side: Side::Ask,
+            time: 1_770_000_000_123,
+            start_position: Decimal::from_str("0.4").expect("start_position"),
+            dir: FillDirection::CloseLong,
+            closed_pnl: Decimal::from_str("-12.5").expect("closed_pnl"),
             hash: "0x9f2a".to_string(),
             oid: 880_101,
-            px: "64250.5".to_string(),
-            side: "A".to_string(),
-            start_position: "0.4".to_string(),
-            sz: "0.4".to_string(),
-            time: 1_770_000_000_123,
-            fee: "1.285".to_string(),
-            fee_token: "USDC".to_string(),
+            crossed: true,
+            fee: Decimal::from_str("1.285").expect("fee"),
             tid: 5_512_004,
-            cloid: Some("0x0102".to_string()),
+            cloid: Some(
+                Cloid::from_str("0x00000000000000000000000000000102").expect("cloid"),
+            ),
+            fee_token: "USDC".to_string(),
+            builder_fee: None,
+            liquidation: None,
         }
     }
 
@@ -248,21 +271,30 @@ mod tests {
         let sdk = sdk_fill();
         let ours = HlFill::from(&sdk);
 
-        assert_eq!(ours.closed_pnl, sdk.closed_pnl);
+        assert_eq!(ours.closed_pnl, "-12.5");
         assert_eq!(ours.coin, sdk.coin);
         assert_eq!(ours.crossed, sdk.crossed);
-        assert_eq!(ours.dir, sdk.dir);
+        assert_eq!(ours.dir, "Close Long");
         assert_eq!(ours.hash, sdk.hash);
         assert_eq!(ours.oid, sdk.oid);
-        assert_eq!(ours.px, sdk.px);
-        assert_eq!(ours.side, sdk.side);
-        assert_eq!(ours.start_position, sdk.start_position);
-        assert_eq!(ours.sz, sdk.sz);
+        assert_eq!(ours.px, "64250.5");
+        assert_eq!(ours.side, "A");
+        assert_eq!(ours.start_position, "0.4");
+        assert_eq!(ours.sz, "0.4");
         assert_eq!(ours.time, sdk.time);
-        assert_eq!(ours.fee, sdk.fee);
+        assert_eq!(ours.fee, "1.285");
         assert_eq!(ours.fee_token, sdk.fee_token);
         assert_eq!(ours.tid, sdk.tid);
-        assert_eq!(ours.cloid, sdk.cloid);
+        assert_eq!(ours.cloid.as_deref(), Some("0x00000000000000000000000000000102"));
+    }
+
+    #[test]
+    fn fill_side_is_recovered_from_the_enum() {
+        let mut sdk = sdk_fill();
+        sdk.side = Side::Bid;
+        assert_eq!(HlFill::from(&sdk).side, "B");
+        sdk.side = Side::Ask;
+        assert_eq!(HlFill::from(&sdk).side, "A");
     }
 
     #[test]
