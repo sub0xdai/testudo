@@ -176,45 +176,54 @@ Isolated from the swap so the behavioural change is reviewable on its own, which
 - **Verification**: `SQLX_OFFLINE=true cargo test -p router --bin router transfer` shows the three transfer tests passing. The greps must be precise: `grep -rn "\* *Decimal::from(1_000_000\|trunc()" crates/router/src/services/hyperliquid/exchange_api.rs` produces nothing (the original criterion was `grep -rn "1_000_000"`, which also matches a millisecond-to-nanosecond conversion in `hl_fill_journal.rs`, a nanosecond-to-millisecond one in `cex_history.rs`, and this file's own comments about the hazard), `grep -rn "\bClassTransfer\b" crates/router/src` matches only a doc comment that names the deleted guard (`UsdClassTransfer` does not match, because the word boundary falls inside it), and `grep -rn "spot_transfer_to_perp\|TransferNotImplemented" crates/router/src` produces nothing.
 - **Commit message**: `fix(hl): transfer between spot and perp with the correct action shape`
 
-### CP-5: Desk cleanup - PARTIAL, gate blocked
+### CP-5: Desk cleanup ✅
 
-Two of three tasks are done and verified. The checkpoint is **not** marked complete: its second verification clause cannot pass, and it cannot pass for reasons that predate this spec. See the audit gate below.
+Completed 2026-09-20 by /skill:vox build.
 
-- **Touches**: `scripts/deploy.sh`, `.cargo/audit.toml`, `crates/router/src/types/hl_network.rs`
+- **Touches**: `scripts/deploy.sh`, `.cargo/audit.toml`, `Cargo.lock`, `crates/router/src/types/hl_network.rs`
 - **Tasks**:
-  1. Delete the stale comment block at `scripts/deploy.sh:41-45` that describes the removed registry patch. FR-8.
+  1. Delete the stale comment block at `scripts/deploy.sh:41-45` describing the removed registry patch. FR-8.
 
-     **Done 2026-09-20.** The paragraph is gone; `bash -n` passes and no `vendor/hyperliquid-sdk-rs` or `patch.crates-io` reference remains. Note the same file still carries a historical comment naming `hyperliquid-sdk-rs` as the crate whose compile error was swallowed by `tail -3`. It is accurate history explaining why the log exists, so it stays.
-  2. Prune `.cargo/audit.toml`.
+     **Done.** The paragraph is gone. `bash -n` passes, no `vendor/hyperliquid-sdk-rs` or `patch.crates-io` reference remains, and the only `sed` left in the file formats a log tail. The file still carries a historical comment naming `hyperliquid-sdk-rs` as the crate whose compile error `tail -3` swallowed; that stays, because it is accurate history explaining why the log exists.
+  2. Revise `.cargo/audit.toml`.
 
-     **Done 2026-09-20, but with a corrected answer.** The task said five entries existed only because of alloy 0.1.x. Measured by emptying the ignore list and re-running `cargo audit`, only **three** are dead: `RUSTSEC-2025-0073` (alloy-dyn-abi), `RUSTSEC-2024-0370` (proc-macro-error), `RUSTSEC-2026-0002` (lru). `RUSTSEC-2024-0388` (derivative) and `RUSTSEC-2024-0436` (paste) **still fire**, because those crates survive the swap on another path. Deleting them as written would have broken `cargo audit` on a live advisory. They are kept, and the file records the measurement method so the next person does not have to guess.
-  3. Update the `hl_network.rs` doc comment, which currently says `to_sdk` is deleted in CP-6.
+     **Done, and the answer differed from the task.** See the triage below. Three entries were dead and removed, two were still live and kept, and the gate itself needed dependency upgrades rather than pruning.
+  3. Update the `hl_network.rs` doc comment.
 
-     **Already done in CP-3 (2026-09-20).** The swap deleted `to_sdk`, and the comment naming CP-6 would have been false, so it was corrected then. Verified this checkpoint; nothing left to do.
-- **Verification**: `grep -rn "sed" scripts/deploy.sh` shows no dependency patching (passes: the only `sed` left is `sed 's/^/    /'` formatting a log tail). `cargo audit` reports nothing outside the pruned ignore list (**fails**, see below).
-- **Commit message**: `chore(hl): drop the dependency-patching desk clutter`
+     **Already correct from CP-3.** Verified, nothing to do.
+- **Verification**: `grep -n "sed" scripts/deploy.sh` shows only log formatting, and `cargo audit` **exits 0**.
+- **Commit message**: `chore(hl): close the audit gate and drop the dependency-patching clutter`
 
-#### The audit gate, and why this checkpoint cannot close
+#### The audit triage
 
-`cargo audit` exits 1 with six vulnerabilities, and it did so **before the swap as well**: scanning the pre-CP-3 lock at revision `30aba60e` reports six vulnerabilities under the same ignore list. So the swap did not break this gate, and pruning dead ignores cannot fix it.
+The task said five `RUSTSEC` entries existed only because of alloy 0.1.x. Re-derived by emptying the ignore list and reading what actually matched:
 
-Outstanding, split by whether the crate is actually built. Build graph measured with `cargo tree -p router --target all -e normal`:
+| Entry | Verdict |
+|---|---|
+| `RUSTSEC-2025-0073` alloy-dyn-abi | dead, removed |
+| `RUSTSEC-2024-0370` proc-macro-error | dead, removed (crate left the lock) |
+| `RUSTSEC-2026-0002` lru | dead, removed |
+| `RUSTSEC-2024-0388` derivative | **still fires**, kept |
+| `RUSTSEC-2024-0436` paste | **still fires**, kept |
 
-| Advisory | Crate | Built? |
-|---|---|---|
-| RUSTSEC-2026-0258 | h2 0.3.27 (via actix-http) | yes |
-| RUSTSEC-2026-0285 | rustls 0.23.40 | yes |
-| RUSTSEC-2026-0221 | event-listener 5.4.1 | yes |
-| RUSTSEC-2026-0220 | ruint 1.18.0 (via alloy-primitives) | yes |
-| RUSTSEC-2026-0190 | anyhow 1.0.102 (via hypersdk) | yes |
-| RUSTSEC-2026-0173 | proc-macro-error2 2.0.1 (unmaintained) | yes |
-| RUSTSEC-2026-0258 | h2 0.4.14 (via tonic, gcloud-sdk) | no, lock only |
-| RUSTSEC-2026-0235 | rkyv 0.7.46 | no, lock only |
-| RUSTSEC-2026-0185 | quinn-proto 0.11.14 | no, lock only |
+Deleting the last two as written would have put `cargo audit` on live advisories while looking like housekeeping.
 
-The three lock-only entries arrive through alloy 2's optional signer backends. `default-features = false` keeps them out of the build graph, but `Cargo.lock` records optional dependencies regardless of whether their features are enabled, and `cargo audit` scans the lock rather than the graph. `cargo tree -i alloy-signer-gcp --target all -e all` finds no parent at all.
+The gate itself was red with six vulnerabilities, and red before the swap, so pruning could never have closed it. Eight dependencies were upgraded instead: anyhow 1.0.104, rustls 0.23.45, event-listener 5.4.2, ruint 1.20.0, quinn-proto 0.11.15, h2 0.4.16, actix-http 3.13.6, validator_derive 0.20.1. One more was fixed by a dependency move rather than an upgrade: `rust_decimal 1.43.0` dropped its optional `rkyv ^0.7`, which removed `RUSTSEC-2026-0235` outright instead of justifying it.
 
-Closing this gate is a security-posture decision, not a cleanup: upgrade the five built crates where an upstream fix exists, extend the ignore list with written justifications, or record the red gate as reviewed and accepted. Adding ignores to turn the gate green is the one option that must not happen by default, which is why this checkpoint stops here and asks.
+Six vulnerabilities became one:
+
+| Remaining | Crate | Built | Disposition |
+|---|---|---|---|
+| `RUSTSEC-2026-0258` | h2 0.3.27 via actix-http | yes | justified ignore, no reachable fix |
+| `RUSTSEC-2023-0071` | rsa via sqlx-mysql | yes | justified ignore, no upstream fix |
+| `RUSTSEC-2024-0388` | derivative | no | justified ignore, unmaintained |
+| `RUSTSEC-2024-0436` | paste | no | justified ignore, unmaintained |
+
+`h2 0.3.27` is the only one left carrying real exposure. `actix-http 3.13.6` is the newest 3.x release and still declares `h2 = "^0.3.27"`, so the fix needs actix-http 4 and actix-web 5. Verified against crates.io on 2026-09-20 rather than assumed. Each entry in `.cargo/audit.toml` now states its reason, and the file records the measurement method.
+
+#### Lock is not the build graph
+
+Worth remembering for the next audit. `cargo audit` scans `Cargo.lock`, which records optional dependencies whether or not their features are enabled. `cargo tree` measures what is built. On a crate with a large optional surface the two disagree widely: the swap added alloy 2's optional signer backends to the lock while leaving zero compiled artifacts for gcloud, aws-kms, turnkey, or hidapi. Reading the lock's advisory list as a list of shipped problems overstates it; reading `cargo tree` alone understates it, because lock-only entries still cost upgrades.
 
 ### CP-6: Testnet acceptance
 

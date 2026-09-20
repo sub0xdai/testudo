@@ -647,3 +647,38 @@ exists, extend the ignore list with written justifications, or record the red ga
 reviewed and accepted. The shortest path to a green gate is the second, and it is also
 the one that converts a known exposure into an invisible one. That decision is not the
 builder's to make, so CP-5 stops and asks.
+
+### CP-5 resolution: six vulnerabilities to one (2026-09-20)
+
+Decision taken: triage now, upgrade what is fixable, justify the rest. Outcome: the gate
+is green, and only one entry carries real exposure.
+
+Upgraded: anyhow 1.0.104, rustls 0.23.45, event-listener 5.4.2, ruint 1.20.0,
+quinn-proto 0.11.15, h2 0.4.16, actix-http 3.13.6, validator_derive 0.20.1. The whole
+workspace still reports 1550 passed and 0 failed afterwards, and clippy is unchanged at
+5 warnings on the router bin.
+
+Fixed by a dependency move rather than an upgrade: `rust_decimal 1.43.0` dropped its
+optional `rkyv ^0.7`, which removed `RUSTSEC-2026-0235` outright. That is the better
+outcome and it was one `cargo update` away. Checking whether the *newer release of the
+parent* dropped the offending dependency is worth doing before writing a justification
+for it; the ignore list is not the only fix available for a transitive advisory.
+
+Left with a written justification, four entries:
+
+| Advisory | Crate | Built | Why it stays |
+|---|---|---|---|
+| RUSTSEC-2026-0258 | h2 0.3.27 via actix-http | yes | newest actix-http 3.x still requires `h2 ^0.3`; needs actix-web 5 |
+| RUSTSEC-2023-0071 | rsa via sqlx-mysql | yes | no upstream fix, unused at runtime for Postgres |
+| RUSTSEC-2024-0388 | derivative | no | unmaintained, no reachable replacement |
+| RUSTSEC-2024-0436 | paste | no | unmaintained, successor exists but nothing in the graph moved to it |
+
+Before writing the h2 justification the claim "blocked upstream" was checked against
+crates.io rather than inferred from the lock: `actix-http` 3.13.6 is genuinely the
+newest release (2026-09-15) and its `h2` requirement is genuinely `^0.3.27`. A
+justification that says "no fix exists" is the kind of statement that quietly becomes
+false, so it now carries the date and the method.
+
+Two yanked crates remain in the lock and are left at the default warn level: chacha20
+0.10.0 via rand 0.10.1, and spin 0.9.8 via lazy_static. Both predate this work, neither
+is a vulnerability, and neither has a reachable replacement in the current graph.
