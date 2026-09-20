@@ -38,12 +38,6 @@ echo ""
 echo "[2/6] Building Rust backend..."
 cd "$TESTUDO_DIR/testudo-exchange"
 
-# The ClassTransfer field-name fix this script used to `sed` into the cargo
-# registry now lives in `vendor/hyperliquid-sdk-rs` and is wired in through
-# `[patch.crates-io]`. Editing a shared registry cache meant production built a
-# different dependency tree than every other environment, and an incomplete
-# sed (the field moved but its call site did not) broke the build outright.
-
 find crates -name "*.rs" -exec touch {} + 2>/dev/null || true  # bust cargo cache after git pull
 
 # The full compiler output goes to a log rather than through `tail -3`, which

@@ -577,3 +577,73 @@ criterion that cannot pass.
 parse plus a range check with no branch that can fail without returning an error; the
 second already asserts a non-zero query address and a positive amount, and a third
 assertion would restate one of those. The unit that matters is pinned by a test.
+
+---
+
+## CP-5: Desk cleanup, and a red audit gate (2026-09-20)
+
+**Partially done.** The stale deploy comment is gone and `.cargo/audit.toml` is pruned
+and accurate. The checkpoint is deliberately **not** marked complete: its second
+verification clause cannot pass, and could not have passed before this spec started.
+
+### The plan's prune list was wrong, and measurement caught it
+
+The task said five `RUSTSEC` entries existed only because of alloy 0.1.x. Two of them
+still fire. Method, which is now recorded in the file itself:
+
+```
+$ mv .cargo/audit.toml /tmp/keep && cargo audit    # apply no ignores, read what matches
+```
+
+Dead, and removed: `RUSTSEC-2025-0073` (alloy-dyn-abi), `RUSTSEC-2024-0370`
+(proc-macro-error, which has left the lock entirely), `RUSTSEC-2026-0002` (lru).
+
+Still live, and kept: `RUSTSEC-2024-0388` (derivative) and `RUSTSEC-2024-0436` (paste).
+Both crates survive the swap on another path. Deleting them as instructed would have
+put `cargo audit` on a live advisory while looking like housekeeping.
+
+The lesson generalises: "this ignore exists because of dependency X" is a claim about
+the *present* graph, not about the history of the file, and it is cheap to re-derive.
+
+### The audit gate was already red, and the swap is not responsible
+
+`cargo audit` exits 1 with six vulnerabilities. Scanning the pre-CP-3 lock
+(`git show 30aba60e:testudo-exchange/Cargo.lock`) under the same ignore list reports six
+as well. So this is a standing condition, not a regression, and no amount of pruning
+dead ignores changes it.
+
+Split by whether the crate is actually built (`cargo tree -p router --target all -e
+normal`):
+
+| Advisory | Crate | Built |
+|---|---|---|
+| RUSTSEC-2026-0258 | h2 0.3.27 via actix-http | yes |
+| RUSTSEC-2026-0285 | rustls 0.23.40 | yes |
+| RUSTSEC-2026-0221 | event-listener 5.4.1 | yes |
+| RUSTSEC-2026-0220 | ruint 1.18.0 via alloy-primitives | yes |
+| RUSTSEC-2026-0190 | anyhow 1.0.102 via hypersdk | yes |
+| RUSTSEC-2026-0173 | proc-macro-error2 2.0.1, unmaintained | yes |
+| RUSTSEC-2026-0258 | h2 0.4.14 via tonic and gcloud-sdk | no, lock only |
+| RUSTSEC-2026-0235 | rkyv 0.7.46 | no, lock only |
+| RUSTSEC-2026-0185 | quinn-proto 0.11.14 | no, lock only |
+
+The three lock-only rows arrive through alloy 2's optional signer backends.
+`default-features = false` does keep them out of the build graph, and the earlier CP-3
+measurement stands: zero compiled artifacts for gcloud, aws-kms, turnkey, or hidapi.
+But `Cargo.lock` records optional dependencies whether or not their features are
+enabled, and `cargo audit` scans the lock rather than the graph, so the advisory surface
+is wider than the binary. `cargo tree -i alloy-signer-gcp --target all -e all` reports
+no parent at all, which is the proof that nothing enables it.
+
+This is worth knowing the next time the lock looks alarming: `cargo audit` measures the
+lock, `cargo tree` measures the build, and they can disagree by a wide margin on a
+crate with a large optional-feature surface.
+
+### Why this checkpoint stopped instead of closing
+
+Closing the gate means one of three things, and all three are security-posture
+decisions rather than cleanup: upgrade the five built crates where an upstream fix
+exists, extend the ignore list with written justifications, or record the red gate as
+reviewed and accepted. The shortest path to a green gate is the second, and it is also
+the one that converts a known exposure into an invisible one. That decision is not the
+builder's to make, so CP-5 stops and asks.
