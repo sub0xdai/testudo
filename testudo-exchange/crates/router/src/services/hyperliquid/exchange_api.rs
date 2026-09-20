@@ -137,15 +137,20 @@ impl HyperliquidExchangeApi {
 
     /// Transfer USDC between spot and perp accounts.
     ///
-    /// HL-12 CP-3 leaves this unimplemented for exactly one commit. The vendored
-    /// SDK's `spotUser`/`classTransfer` action has no `hypersdk` equivalent, and
-    /// the replacement is a behavioural change - the amount becomes a decimal in
-    /// USDC rather than a `u64` in micro-units - that FR-9 wants reviewed on its
-    /// own in CP-4. Failing closed is the only option that neither ships an
-    /// untested money path nor changes the amount's units silently.
+    /// Transfer USDC between the spot and perpetual accounts.
     ///
-    /// The `auth` load is kept so a missing or inactive account still reports as
-    /// such rather than as an unimplemented transfer.
+    /// `to_perp` true moves spot to perp, false moves perp to spot. Both
+    /// directions use `usdClassTransfer`, which carries the `hyperliquidChain`
+    /// and `signatureChainId` fields the old `spotUser`/`classTransfer` action
+    /// omitted and which the exchange rejected it for.
+    ///
+    /// The old perp to spot path was not a class transfer either: it sent a
+    /// `UsdSend` addressed to the signer's own address, which returns `ok`
+    /// without moving funds between classes.
+    //
+    // @waiver TB-01: the two real invariants here, a non-zero query address and
+    // a positive decimal amount, are asserted below and inside
+    // `parse_transfer_amount`. A third would restate one of those.
     pub async fn transfer_usdc(
         &self,
         user_id: Uuid,
@@ -158,12 +163,21 @@ impl HyperliquidExchangeApi {
             auth.query_address() != Address::ZERO,
             "a loaded auth must resolve to a non-zero query address"
         );
-        tracing::warn!(
-            amount = %amount,
-            to_perp = %to_perp,
-            "HL spot/perp transfer is unimplemented in this build; HL-12 CP-4 lands it"
+        let decimal = parse_transfer_amount(amount)?;
+        let nonce = self.nonces.next();
+
+        self.client
+            .usd_class_transfer(&auth.signer, decimal, to_perp, nonce, None, None)
+            .await
+            .map_err(|e| ExchangeApiError::Exchange(format!("Transfer failed: {e}")))?;
+
+        tracing::info!(
+            amount = %decimal,
+            to_perp,
+            network = ?self.network,
+            "HL USDC class transfer submitted"
         );
-        Err(ExchangeApiError::TransferNotImplemented)
+        Ok(true)
     }
 }
 
@@ -309,6 +323,30 @@ fn tick_size_from_mid(mid: Decimal) -> Decimal {
 /// trailing zeros, so a plain `Decimal` is the wire form.
 pub fn round_sz(quantity: Decimal, sz_decimals: u32) -> Decimal {
     quantity.round_dp(sz_decimals).normalize()
+}
+
+/// Parse a USDC amount for a spot/perp class transfer.
+///
+/// `usd_class_transfer` takes a decimal USDC amount. The vendored crate took a
+/// `u64` in micro-units instead, so the old call site multiplied by 1_000_000
+/// before handing the value over. Carrying that conversion across the swap
+/// moves a million times the intended amount, which is why the unit is pinned
+/// by a test rather than left to review.
+//
+// @waiver TB-01: a parse plus a range check, with no branch that can fail
+// without returning an error. The assertions available would restate the range
+// check; `transfer_amount_is_decimal_usdc_not_micro_units` pins the unit that
+// actually matters.
+fn parse_transfer_amount(amount: &str) -> Result<Decimal, ExchangeApiError> {
+    let decimal: Decimal = amount.parse().map_err(|e| {
+        ExchangeApiError::Internal(format!("Invalid transfer amount '{amount}': {e}"))
+    })?;
+    if decimal <= Decimal::ZERO {
+        return Err(ExchangeApiError::Internal(format!(
+            "Transfer amount must be positive, got '{amount}'"
+        )));
+    }
+    Ok(decimal)
 }
 
 /// Extract the order ID (OID) from a Hyperliquid exchange response.
@@ -957,7 +995,7 @@ mod tests {
     use alloy::primitives::B256;
     use hypersdk::hypercore::{
         signing::agent_signing_hash,
-        types::{Action, Cancel, OrderTypePlacement},
+        types::{Action, Cancel, OrderTypePlacement, UsdClassTransferAction},
         Chain,
     };
     use rust_decimal_macros::dec;
@@ -1553,5 +1591,61 @@ mod tests {
             request.recover(Chain::Mainnet).expect("signature recovers"),
             signer.address()
         );
+    }
+
+    // ==================== Transfer Tests ====================
+
+    /// The transfer amount is decimal USDC, never micro-units.
+    ///
+    /// This is the highest-severity hazard in the migration: the vendored crate
+    /// took a `u64` in micro-units, so the old call site multiplied by
+    /// 1_000_000. `usd_class_transfer` takes a decimal. If the conversion came
+    /// back, every transfer would move a million times the intended amount.
+    #[test]
+    fn transfer_amount_is_decimal_usdc_not_micro_units() {
+        assert_eq!(parse_transfer_amount("12.5").expect("parses"), dec!(12.5));
+        assert_eq!(parse_transfer_amount("1000").expect("parses"), dec!(1000));
+        assert_eq!(
+            parse_transfer_amount("0.000001").expect("parses"),
+            dec!(0.000001)
+        );
+        assert_ne!(
+            parse_transfer_amount("12.5").expect("parses"),
+            dec!(12_500_000),
+            "a micro-unit conversion turned 12.5 USDC into 12.5 million"
+        );
+    }
+
+    #[test]
+    fn transfer_amount_rejects_zero_negative_and_unparseable() {
+        assert!(parse_transfer_amount("0").is_err());
+        assert!(parse_transfer_amount("-1").is_err());
+        assert!(parse_transfer_amount("not-a-number").is_err());
+    }
+
+    /// Pins the wire body, replacing the `ClassTransfer` guard this migration
+    /// deleted. The old action omitted `hyperliquidChain` and
+    /// `signatureChainId`, which is why the transfer was rejected.
+    #[test]
+    fn usd_class_transfer_body_carries_the_chain_fields_and_decimal_amount() {
+        let nonce = 1_770_000_000_000u64;
+        let action = Action::UsdClassTransfer(UsdClassTransferAction {
+            signature_chain_id: Chain::Mainnet.arbitrum_id().to_string(),
+            hyperliquid_chain: Chain::Mainnet,
+            amount: "12.5".to_string(),
+            to_perp: true,
+            nonce,
+        });
+        let body = serde_json::to_value(&action).expect("action serialises");
+
+        assert_eq!(body["type"], "usdClassTransfer");
+        assert_eq!(body["hyperliquidChain"], "Mainnet");
+        // Hex, not decimal: 42161 is 0xa4b1. Hyperliquid documents the hex form,
+        // and `agent_approval.rs` formats it the same way for MetaMask-signed
+        // approvals, so this is the convention the exchange expects.
+        assert_eq!(body["signatureChainId"], "0xa4b1");
+        assert_eq!(body["amount"], "12.5");
+        assert_eq!(body["toPerp"], true);
+        assert_eq!(body["nonce"], nonce);
     }
 }

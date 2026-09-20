@@ -162,9 +162,6 @@ fn format_exchange_error(e: &ExchangeApiError) -> String {
         ExchangeApiError::Exchange(msg) => format!("Exchange error: {}", msg),
         ExchangeApiError::Internal(msg) => format!("Internal error: {}", msg),
         ExchangeApiError::OrderNotFound(id) => format!("Order not found: {}", id),
-        ExchangeApiError::TransferNotImplemented => {
-            "Spot/perp transfers are not available in this build".to_string()
-        }
     }
 }
 
@@ -479,7 +476,6 @@ fn error_code_for(e: &ExchangeApiError) -> String {
         }
         ExchangeApiError::Internal(_) => "internal_error".to_string(),
         ExchangeApiError::OrderNotFound(_) => "order_not_found".to_string(),
-        ExchangeApiError::TransferNotImplemented => "transfer_not_implemented".to_string(),
     }
 }
 

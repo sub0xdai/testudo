@@ -30,11 +30,6 @@ pub enum ExchangeApiError {
     Internal(String),
     #[error("Agent wallet inactive: account {account_id} needs re-authorization")]
     AgentWalletInactive { account_id: Uuid },
-    /// HL-12 CP-3: the spot/perp transfer is deliberately unimplemented for one
-    /// commit, so the swap stays behaviourally neutral under FR-9. The
-    /// `usd_class_transfer` rewrite lands in CP-4 and deletes this variant.
-    #[error("Spot/perp USDC transfers are not implemented in this build")]
-    TransferNotImplemented,
 }
 
 /// Request to place an order via the exchange API.
