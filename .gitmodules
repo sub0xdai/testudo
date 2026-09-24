@@ -4,6 +4,3 @@
 [submodule "testudo-web"]
 	path = testudo-web
 	url = https://github.com/sub0xdai/testudo-web.git
-[submodule "testudo-ops"]
-	path = testudo-ops
-	url = https://github.com/sub0xdai/testudo-ops.git
