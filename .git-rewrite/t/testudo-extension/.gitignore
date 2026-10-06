@@ -1,6 +1,0 @@
-node_modules/
-dist/
-bun.lock
-*.map
-test-results/
-playwright-report/

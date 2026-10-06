@@ -86,6 +86,9 @@ target/
 # AI analysis output (graphify, etc.)
 graphify-out/
 
+# git filter-branch scratch state
+.git-rewrite/
+
 # Archived documentation (local only)
 archive-docs/
 

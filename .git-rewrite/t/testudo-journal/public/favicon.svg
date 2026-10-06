@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#000000"/>
-  <!-- T as path, not text - more reliable for favicons -->
-  <path d="M8 6h16v4H18v16h-4V10H8V6z" fill="#FFFFFF"/>
-</svg>
