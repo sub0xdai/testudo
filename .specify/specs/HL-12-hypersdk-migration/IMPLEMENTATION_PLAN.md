@@ -283,7 +283,7 @@ The six testnet criteria are recorded as **not run**, with that reason. Their ch
 
 - No liveness alert on `testudo-api`. The spec's third `[CLARIFY]` asks whether to add one first; it would have caught the 49-hour outage in minutes.
 - `./uploads/journal` does not resolve relative to the systemd `WorkingDirectory`, so journal image uploads fail and actix-files logs at every startup.
-- The canonical `scrub.py` pre-commit hook has the `set -e` bug that this clone's copy was fixed for. Worth fixing at the source.
+- The canonical `scrub.py` pre-commit hook had both defects: the `set -e` bug, and redaction that rewrote staged files. Both are fixed at the source now. `~/.pi/agent/APPEND_SYSTEM.md` ships a hook that blocks the commit and prints `file:line`, with `@waiver PII` for a false positive and `scrub.py --fix` for deliberate redaction.
 - `AGENTS.local.md` does not exist, though the generated `AGENTS.md` points at it. The 134 lines of project guidance it should hold are recoverable from `git show 68067bc1:AGENTS.md`.
 
 ---

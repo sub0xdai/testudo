@@ -93,7 +93,7 @@ This matters because the previous note sent us toward the wrong fix. Do not patc
 
 **Pre-existing, unrelated.** `./uploads/journal` does not exist relative to `WorkingDirectory=/opt/testudo/testudo-exchange`, so actix-files logs an error at every startup and journal image uploads will fail. Disk on the droplet is 85% full (12 GB free).
 
-**Scrub hook.** Fixed in this clone: `vendor/` excluded, and `set -e` removed so the hook's own `case $?` can handle scrub.py's exit code. The canonical version of that hook has the same bug and no path exclusion, so other projects scaffolded from it will silently rewrite files. Worth fixing at the source.
+**Scrub hook.** Fixed here and at the source. The hook lives in `.githooks/pre-commit` (enabled by `git config core.hooksPath .githooks`), excludes `vendor/`, and no longer rewrites staged files: it prints `file:line` with a masked match and aborts the commit. A false positive takes `@waiver PII: <reason>` on the line, and deliberate redaction is `scrub.py --fix`. The canonical template in `~/.pi/agent/APPEND_SYSTEM.md` carries the same design, so a project scaffolded from it starts safe.
 
 ---
 

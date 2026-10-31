@@ -1,0 +1,33 @@
+#!/bin/bash
+set -uo pipefail
+
+is_vendored() {
+  local dir
+  dir=$(dirname "$1")
+  while :; do
+    if [[ -f "$dir/VENDOR" ]] && grep -q 'Upstream:' "$dir/VENDOR"; then
+      return 0
+    fi
+    if [[ "$dir" == "." || "$dir" == "/" ]]; then
+      return 1
+    fi
+    dir=$(dirname "$dir")
+  done
+}
+
+FILES=()
+while IFS= read -r f; do
+  case "$f" in
+    testudo-exchange/vendor/*) continue ;;
+  esac
+  is_vendored "$f" || FILES+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(rs|ts|tsx|js|jsx)$' || true)
+[ ${#FILES[@]} -eq 0 ] && exit 0
+
+if [ ! -x ./.venv/bin/python ]; then
+  echo "pre-commit: ./.venv/bin/python is missing, so the PII scan did not run."
+  echo "pre-commit: uv sync (or uv add presidio-analyzer presidio-anonymizer) to enable it."
+  exit 0
+fi
+
+./.venv/bin/python scrub.py "${FILES[@]}" || exit 1
